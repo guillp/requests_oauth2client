@@ -1,6 +1,6 @@
 from setuptools import setup
 
-__title__ = "request_oauth2client"
+__title__ = "requests_oauth2client"
 __description__ = "OAuth20 Client for Humans, with Requests Authentication Handlers."
 __url__ = "https://github.com/guillp/requests_oauth2client"
 __version__ = "0.1.0"
