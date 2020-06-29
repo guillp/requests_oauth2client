@@ -1,6 +1,6 @@
-from .auth import (BearerAuthorization, BearerToken, OAuth2AuthorizationCode,
-                   OAuth2ClientCredentials, OAuth20AccessAndRefreshToken)
+from .auth import (BearerAuth, BearerToken, OAuth2AuthorizationCodeAuth,
+                   OAuth2ClientCredentialsAuth, OAuth20AccessAndRefreshTokenAuth)
 from .authorization_code import AuthorizationCodeHandler
-from .client import OAuth20Client
+from .client import OAuth2Client
 from .client_authentication import (ClientSecretBasic, ClientSecretJWT,
                                     ClientSecretPost, PrivateKeyJWT)

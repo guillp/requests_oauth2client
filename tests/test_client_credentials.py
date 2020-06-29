@@ -4,7 +4,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-from requests_oauth2client import ClientSecretPost, OAuth2ClientCredentials, OAuth20Client
+from requests_oauth2client import ClientSecretPost, OAuth2ClientCredentialsAuth, OAuth2Client
 
 load_dotenv(Path(__file__).with_name("client_credentials.env"))
 
@@ -16,14 +16,14 @@ api = os.getenv("TEST_API")
 
 
 def test_client_credentials_get_token():
-    client = OAuth20Client(token_endpoint, ClientSecretPost(client_id, client_secret))
+    client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     token_response = client.client_credentials(audience=audience)
     assert token_response.access_token
     print(token_response.access_token)
 
 
 def test_client_credentials_api():
-    client = OAuth20Client(token_endpoint, ClientSecretPost(client_id, client_secret))
-    auth = OAuth2ClientCredentials(client, audience=audience)
+    client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
+    auth = OAuth2ClientCredentialsAuth(client, audience=audience)
     response = requests.get(api, auth=auth)
     assert response.ok

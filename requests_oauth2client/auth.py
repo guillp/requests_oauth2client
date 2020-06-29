@@ -39,7 +39,7 @@ class BearerToken:
         return self.access_token
 
 
-class BearerAuthorization(requests.auth.AuthBase):
+class BearerAuth(requests.auth.AuthBase):
     """
     A Requests compatible Authentication helper for API protected with Bearer tokens.
     """
@@ -66,7 +66,7 @@ class BearerAuthorization(requests.auth.AuthBase):
         return request
 
 
-class OAuth2ClientCredentials(BearerAuthorization):
+class OAuth2ClientCredentialsAuth(BearerAuth):
     """
     A Requests Authentication handler that automatically gets access tokens from an OAuth20 Token Endpoint
     with the Client Credentials grant (and can get a new one once it is expired).
@@ -83,7 +83,7 @@ class OAuth2ClientCredentials(BearerAuthorization):
         return super().__call__(request)
 
 
-class OAuth20AccessAndRefreshToken(BearerAuthorization):
+class OAuth20AccessAndRefreshTokenAuth(BearerAuth):
     """
     A Requests Authentication handler that handles a Bearer access token and automatically it them when expired.
     """
@@ -102,7 +102,7 @@ class OAuth20AccessAndRefreshToken(BearerAuthorization):
         return super().__call__(request)
 
 
-class OAuth2AuthorizationCode(OAuth20AccessAndRefreshToken):
+class OAuth2AuthorizationCodeAuth(OAuth20AccessAndRefreshTokenAuth):
     """
     A Requests Authentication handler that exchanges an authorization code for an access token,
     then automatically refreshes it once it is expired.

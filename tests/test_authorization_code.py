@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from requests_oauth2client import ClientSecretPost, OAuth20Client
+from requests_oauth2client import ClientSecretPost, OAuth2Client
 from requests_oauth2client.authorization_code import AuthorizationCodeHandler, PkceHelper
 from requests_oauth2client.discovery import oidc_discovery_document_url
 
@@ -36,7 +36,7 @@ def test_authorization_code(session):
     params = input("Callback url or params: ")
     code = authorization_request.validate_callback(params)
 
-    client = OAuth20Client(token_endpoint, ClientSecretPost(client_id, client_secret))
+    client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     token = client.authorization_code(code=code, redirect_uri=redirect_uri)
     print(token)
 
@@ -62,7 +62,7 @@ def test_authorization_code_pkce(session):
     params = input("Callback url or params: ")
     code = authorization_request.validate_callback(params)
 
-    client = OAuth20Client(token_endpoint, ClientSecretPost(client_id, client_secret))
+    client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     token = client.authorization_code(
         code=code, redirect_uri=redirect_uri, code_verifier=code_verifier
     )

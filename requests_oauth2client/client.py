@@ -1,14 +1,14 @@
 import requests
 
-from .auth import BearerAuthorization
+from .auth import BearerAuth
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope, InvalidTokenResponse,
                          UnauthorizedClient, UnknownTokenResponseError)
 from .token_response import TokenResponse
 
 
-class OAuth20Client:
+class OAuth2Client:
     """
-    An OAuth20 client, able to obtain tokens from the Token Endpoint using one of the standardised Grant Types.
+    An OAuth 2.0 client, able to obtain tokens from the Token Endpoint using one of the standardised Grant Types.
     """
 
     exception_classes = {
@@ -142,7 +142,7 @@ class OAuth20Client:
         )
 
 
-class OpenIdConnectClient(OAuth20Client):
+class OpenIdConnectClient(OAuth2Client):
     """
     An OIDC compatible client. It can do everything an OAuth20Client can do, and call the userinfo endpoint.
     """
@@ -162,7 +162,7 @@ class OpenIdConnectClient(OAuth20Client):
         :param access_token: the access token to use
         :return: the requests Response returned by the userinfo endpoint.
         """
-        return self.session.post(auth=BearerAuthorization(access_token))
+        return self.session.post(auth=BearerAuth(access_token))
 
     @classmethod
     def from_discovery_document(cls, discovery, auth_method, session=None):
