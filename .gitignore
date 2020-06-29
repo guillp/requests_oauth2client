@@ -1,0 +1,4 @@
+*.env
+/.idea/
+/request_oauth2client.egg-info/
+/dist/
