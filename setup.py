@@ -1,7 +1,7 @@
 from setuptools import setup
 
 __title__ = "requests_oauth2client"
-__description__ = "OAuth20 Client for Humans, with Requests Authentication Handlers."
+__description__ = "An OAuth 2.0 client library for Python, with requests integration."
 __url__ = "https://github.com/guillp/requests_oauth2client"
 __version__ = "0.1.0"
 __author__ = "Guillaume Pujol"
@@ -28,8 +28,8 @@ setup(
     author_email=__author_email__,
     url=__url__,
     packages=["requests_oauth2client"],
-    package_data={"": ["LICENSE"]},
-    package_dir={"requests": "requests"},
+    package_data={"": ["LICENSE", "requirements.txt"]},
+    package_dir={"requests_oauth2client": "requests_oauth2client"},
     include_package_data=True,
     python_requires=">=3.6",
     install_requires=requires,

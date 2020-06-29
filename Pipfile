@@ -11,6 +11,7 @@ isort = "*"
 coverage = "*"
 pipenv = "*"
 bump2version = "*"
+twine = "*"
 
 [packages]
 requests = "*"

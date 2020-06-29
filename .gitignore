@@ -2,3 +2,4 @@
 /.idea/
 /requests_oauth2client.egg-info/
 /dist/
+__pycache__
