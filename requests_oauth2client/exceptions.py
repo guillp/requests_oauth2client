@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class OAuth2Error(Exception):
     pass
 

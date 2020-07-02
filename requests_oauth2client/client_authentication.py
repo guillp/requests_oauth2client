@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Callable
+from typing import Any, Callable
 from uuid import uuid4
 
 import furl  # type: ignore[import]
@@ -14,7 +16,7 @@ class ClientAuthenticationMethod(requests.auth.AuthBase):
     Base class for the Client Authentication methods.
     """
 
-    def __call__(self, request: requests.PreparedRequest):
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         if (
             request.method != "POST"
             or request.headers["Content-Type"] != "application/x-www-form-urlencoded"
@@ -34,7 +36,7 @@ class ClientSecretBasic(ClientAuthenticationMethod):
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
-    def __call__(self, request: requests.PreparedRequest):
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
         request.headers["Authorization"] = _basic_auth_str(self.client_id, self.client_secret)
         return request
@@ -50,7 +52,7 @@ class ClientSecretPost(ClientAuthenticationMethod):
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
-    def __call__(self, request: requests.PreparedRequest):
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
         data = furl.Query(request.body)
         data.set([("client_id", self.client_id), ("client_secret", self.client_secret)])
@@ -63,17 +65,19 @@ class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
     Base class for assertion based client authentication methods.
     """
 
-    def __init__(self, alg: str, lifetime: int, jti_gen: Callable[[], str]):
+    def __init__(self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]):
+        self.client_id = str(client_id)
         self.alg = alg
         self.lifetime = lifetime
         self.jti_gen = jti_gen
 
-    def client_assertion(self, audience: str):
+    def client_assertion(self, audience: str) -> str:
         raise NotImplementedError()
 
-    def __call__(self, request):
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
         token_endpoint = request.url
+        assert token_endpoint is not None
         data = furl.Query(request.body)
         client_assertion = self.client_assertion(token_endpoint)
         data.set(
@@ -99,15 +103,14 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         self,
         client_id: str,
         client_secret: str,
-        alg="HS256",
+        alg: str = "HS256",
         lifetime: int = 60,
-        jti_gen=lambda: uuid4(),
-    ):
-        super().__init__(alg, lifetime, jti_gen)
-        self.client_id = str(client_id)
+        jti_gen: Callable[[], Any] = lambda: uuid4(),
+    ) -> None:
+        super().__init__(client_id, alg, lifetime, jti_gen)
         self.client_secret = str(client_secret)
 
-    def client_assertion(self, audience: str):
+    def client_assertion(self, audience: str) -> str:
         iat = int(datetime.now().timestamp())
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
@@ -126,7 +129,8 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
             },
         )
         jwt.make_signed_token(jwk)
-        return jwt.serialize()
+        assertion: str = jwt.serialize()
+        return assertion
 
 
 class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
@@ -140,8 +144,8 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         private_jwk: JWK,
         alg: str = "RS256",
         lifetime: int = 60,
-        kid=None,
-        jti_gen=lambda: uuid4(),
+        kid: str = None,
+        jti_gen: Callable[[], Any] = lambda: uuid4(),
     ):
         alg = private_jwk.get("alg", alg)
         if not alg:
@@ -154,12 +158,11 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
                 "Asymmetric signing requires a kid, either as part of the private JWK, or passed as parameter"
             )
 
-        super().__init__(alg, lifetime, jti_gen)
-        self.client_id = str(client_id)
+        super().__init__(client_id, alg, lifetime, jti_gen)
         self.private_jwk = private_jwk
         self.kid = kid
 
-    def client_assertion(self, audience: str, lifetime: int = 60, jti: str = None):
+    def client_assertion(self, audience: str, lifetime: int = 60, jti: str = None) -> str:
         iat = int(datetime.now().timestamp())
         exp = iat + lifetime
         if jti is None:
@@ -182,7 +185,8 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
             },
         )
         jwt.make_signed_token(self.private_jwk)
-        return jwt.serialize()
+        assertion: str = jwt.serialize()
+        return assertion
 
 
 class PublicApp(ClientAuthenticationMethod):
@@ -190,10 +194,10 @@ class PublicApp(ClientAuthenticationMethod):
     Handles the "none" authentication method (client only sends its client_id).
     """
 
-    def __init__(self, client_id: str):
+    def __init__(self, client_id: str) -> None:
         self.client_id = client_id
 
-    def __call__(self, request: requests.PreparedRequest):
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
         data = furl.Query(request.body)
         data.set([("client_id", self.client_id)])

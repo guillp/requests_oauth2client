@@ -1,4 +1,6 @@
-from typing import Any, Dict, Union
+from __future__ import annotations
+
+from typing import Any, Dict, Type, Union
 
 import requests
 
@@ -6,7 +8,7 @@ from .auth import BearerAuth
 from .client_authentication import ClientAuthenticationMethod
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope, InvalidTokenResponse,
                          UnauthorizedClient, UnknownTokenResponseError)
-from .token_response import BearerToken, TokenResponse
+from .token_response import BearerToken, BearerTokenEndpointResponse
 
 
 class OAuth2Client:
@@ -14,14 +16,14 @@ class OAuth2Client:
     An OAuth 2.0 client, able to obtain tokens from the Token Endpoint using one of the standardised Grant Types.
     """
 
-    exception_classes = {
+    exception_classes: Dict[str, Type[Exception]] = {
         "invalid_scope": InvalidScope,
         "invalid_grant": InvalidGrant,
         "access_denied": AccessDenied,
         "unauthorized_client": UnauthorizedClient,
     }
 
-    token_response_class = TokenResponse
+    token_response_class: Type[BearerToken] = BearerTokenEndpointResponse
 
     def __init__(
         self,
@@ -43,7 +45,7 @@ class OAuth2Client:
         self.auth_method = auth_method
         self.session = session or requests.Session()
 
-    def token_request(self, data: Dict[str, Any]):
+    def token_request(self, data: Dict[str, Any]) -> BearerToken:
         """
         Sends a authenticated request to the token endpoint.
         :param data: parameters to send to the token endpoint
@@ -68,12 +70,13 @@ class OAuth2Client:
 
         if error_description or error_uri:
             raise InvalidTokenResponse(
-                "error_message or error_uri returned without error",
+                "token endpoint returned a error_message or error_uri returned without an error",
                 error_description,
                 error_uri,
             )
+        raise InvalidTokenResponse("token endpoint returned an error without description")
 
-    def client_credentials(self, **token_kwargs):
+    def client_credentials(self, **token_kwargs: Any) -> BearerToken:
         """
         Sends a request to the token endpoint with the client_credentials grant.
         :param token_kwargs: additional args to pass to the token endpoint
@@ -82,7 +85,7 @@ class OAuth2Client:
         data = dict(grant_type="client_credentials", **token_kwargs)
         return self.token_request(data)
 
-    def authorization_code(self, code: str, **token_kwargs):
+    def authorization_code(self, code: str, **token_kwargs: Any) -> BearerToken:
         """
         Sends a request to the token endpoint with the authorization_code grant.
         :param code: an authorization code to exchange for tokens
@@ -92,7 +95,7 @@ class OAuth2Client:
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         return self.token_request(data)
 
-    def refresh_token(self, refresh_token: str, **token_kwargs):
+    def refresh_token(self, refresh_token: str, **token_kwargs: Any) -> BearerToken:
         """
         Sends a request to the token endpoint with the refresh_token grant.
         :param refresh_token: a refresh_token
@@ -102,7 +105,9 @@ class OAuth2Client:
         data = dict(grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs)
         return self.token_request(data)
 
-    def revoke_access_token(self, access_token: Union[BearerToken, str], **requests_kwargs):
+    def revoke_access_token(
+        self, access_token: Union[BearerToken, str], **requests_kwargs: Any
+    ) -> None:
         """
         Sends a request to the revocation endpoint to revoke an access token.
         :param access_token: the access token to revoke
@@ -114,7 +119,7 @@ class OAuth2Client:
                 **requests_kwargs,
             ).raise_for_status()
 
-    def revoke_refresh_token(self, refresh_token: str, **requests_kwargs):
+    def revoke_refresh_token(self, refresh_token: str, **requests_kwargs: Any) -> None:
         """
         Sends a request to the revocation endpoint to revoke a refresh token.
         :param refresh_token: the refresh token to revoke
@@ -129,7 +134,7 @@ class OAuth2Client:
     @classmethod
     def from_discovery_endpoint(
         cls, url: str, auth_method: ClientAuthenticationMethod, session: requests.Session = None
-    ):
+    ) -> "OAuth2Client":
         """
         Initialise an OAuth20Client, retrieving server metadata from a discovery document.
         :param url: the url where the server metadata will be retrieved
@@ -147,7 +152,7 @@ class OAuth2Client:
         discovery: Dict[str, Any],
         auth_method: ClientAuthenticationMethod,
         session: requests.Session = None,
-    ):
+    ) -> "OAuth2Client":
         """
         Initialises an OAuth20Client, based on the server metadata from `discovery`.
         :param discovery: a dict of server metadata, in the same format as retrieved from a discvovery endpoint.
@@ -179,13 +184,13 @@ class OpenIdConnectClient(OAuth2Client):
         self.userinfo_endpoint = userinfo_endpoint
         self.jwks_endpoint = jwks_endpoint
 
-    def userinfo(self, access_token: Union[BearerToken, str]):
+    def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
         """
         Calls the userinfo endpoint with the specified access_token and returns the result.
         :param access_token: the access token to use
         :return: the requests Response returned by the userinfo endpoint.
         """
-        return self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token))
+        return self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token)).json()
 
     @classmethod
     def from_discovery_document(
@@ -193,7 +198,7 @@ class OpenIdConnectClient(OAuth2Client):
         discovery: Dict[str, Any],
         auth_method: ClientAuthenticationMethod,
         session: requests.Session = None,
-    ):
+    ) -> "OpenIdConnectClient":
         return cls(
             token_endpoint=discovery["token_endpoint"],
             userinfo_endpoint=discovery["userinfo_endpoint"],

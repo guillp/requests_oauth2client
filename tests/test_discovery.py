@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from requests_oauth2client.discovery import (oauth2_discovery_document_url,
                                              oidc_discovery_document_url)
 

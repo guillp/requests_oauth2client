@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from setuptools import setup
 
 __title__ = "requests_oauth2client"

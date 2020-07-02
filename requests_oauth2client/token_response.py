@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import pprint
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Dict, Optional, Union
 
 
 class BearerToken:
@@ -37,30 +39,31 @@ class BearerToken:
         """
         return f"Bearer {self.access_token}"
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Returns the access token
         :return: the access token string
         """
         return self.access_token
 
-    def as_dict(self):
-        r = {
+    def as_dict(self) -> Dict[str, Any]:
+        r: Dict[str, Any] = {
             "access_token": self.access_token,
-            "expires_in": int(self.expires_at.timestamp() - datetime.now().timestamp()),
             "token_type": "Bearer",
         }
+        if self.expires_at:
+            r["expires_in"] = int(self.expires_at.timestamp() - datetime.now().timestamp())
         if self.scope:
             r["scope"] = self.scope
         if self.refresh_token:
             r["refresh_token"] = self.refresh_token
-        return str(r)
+        return r
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return pprint.pformat(self.as_dict())
 
 
-class TokenResponse(BearerToken):
+class BearerTokenEndpointResponse(BearerToken):
     """
     Like a BearerToken, but includes all the attributes returned by the token endpoint (id_token, etc.)
     """
@@ -73,8 +76,8 @@ class TokenResponse(BearerToken):
         scope: str = None,
         refresh_token: str = None,
         id_token: str = None,
-        **kwargs,
-    ):
+        **kwargs: Union[str, int, bool],
+    ) -> None:
         if token_type != "Bearer":
             raise ValueError("token types other than Bearer are not supported")
         if expires_in:
@@ -87,7 +90,7 @@ class TokenResponse(BearerToken):
         # TODO: parse the id token
         return self._id_token
 
-    def as_dict(self):
+    def as_dict(self) -> Dict[str, Any]:
         r = super().as_dict()
         if self._id_token:
             r["id_token"] = self._id_token
