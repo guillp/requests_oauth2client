@@ -1,9 +1,11 @@
 from datetime import datetime
-from urllib.parse import parse_qs
+from typing import Callable
 from uuid import uuid4
 
-import jwt
+import furl  # type: ignore[import]
 import requests
+from jwcrypto.jwk import JWK  # type: ignore[import]
+from jwcrypto.jwt import JWT  # type: ignore[import]
 from requests.auth import _basic_auth_str
 
 
@@ -12,10 +14,10 @@ class ClientAuthenticationMethod(requests.auth.AuthBase):
     Base class for the Client Authentication methods.
     """
 
-    def __call__(self, request):
+    def __call__(self, request: requests.PreparedRequest):
         if (
-                request.method != "POST"
-                or request.headers["Content-Type"] != "application/x-www-form-urlencoded"
+            request.method != "POST"
+            or request.headers["Content-Type"] != "application/x-www-form-urlencoded"
         ):
             raise RuntimeError(
                 "This request is not suitable to add OAuth2.0 Client Authentication"
@@ -28,11 +30,11 @@ class ClientSecretBasic(ClientAuthenticationMethod):
     Handles client_secret_basic authentication (client_id and client_secret passed as Basic authentication)
     """
 
-    def __init__(self, client_id, client_secret):
+    def __init__(self, client_id: str, client_secret: str):
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
-    def __call__(self, request):
+    def __call__(self, request: requests.PreparedRequest):
         request = super().__call__(request)
         request.headers["Authorization"] = _basic_auth_str(self.client_id, self.client_secret)
         return request
@@ -44,16 +46,15 @@ class ClientSecretPost(ClientAuthenticationMethod):
     passed as part of the request form data).
     """
 
-    def __init__(self, client_id, client_secret):
+    def __init__(self, client_id: str, client_secret: str):
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
-    def __call__(self, request):
+    def __call__(self, request: requests.PreparedRequest):
         request = super().__call__(request)
-        data = parse_qs(request.body)
-        data["client_id"] = [self.client_id]
-        data["client_secret"] = [self.client_secret]
-        request.prepare_body(data, files=None)
+        data = furl.Query(request.body)
+        data.set([("client_id", self.client_id), ("client_secret", self.client_secret)])
+        request.prepare_body(data.params, files=None)
         return request
 
 
@@ -62,17 +63,30 @@ class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
     Base class for assertion based client authentication methods.
     """
 
-    def client_assertion(self, audience, lifetime=60, jti=None):
+    def __init__(self, alg: str, lifetime: int, jti_gen: Callable[[], str]):
+        self.alg = alg
+        self.lifetime = lifetime
+        self.jti_gen = jti_gen
+
+    def client_assertion(self, audience: str):
         raise NotImplementedError()
 
     def __call__(self, request):
         request = super().__call__(request)
         token_endpoint = request.url
-        data = parse_qs(request.body)
-        data["client_id"] = self.client_id
-        data["client_assertion"] = self.client_assertion(token_endpoint)
-        data["client_assertion_type"] = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
-        request.prepare_body(data, files=None)
+        data = furl.Query(request.body)
+        client_assertion = self.client_assertion(token_endpoint)
+        data.set(
+            [
+                ("client_id", self.client_id),
+                ("client_assertion", client_assertion),
+                (
+                    "client_assertion_type",
+                    "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                ),
+            ]
+        )
+        request.prepare_body(data.params, files=None)
         return request
 
 
@@ -81,23 +95,28 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
     Handles client_secret_jwt client authentication method (client_assertion symmetrically signed with the client_secet).
     """
 
-    def __init__(self, client_id, client_secret):
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        alg="HS256",
+        lifetime: int = 60,
+        jti_gen=lambda: uuid4(),
+    ):
+        super().__init__(alg, lifetime, jti_gen)
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
-    def client_assertion(self, audience, lifetime=60, jti=None):
+    def client_assertion(self, audience: str):
         iat = int(datetime.now().timestamp())
-        exp = iat + lifetime
-        if jti is None:
-            jti = str(uuid4())
-        elif callable(jti):
-            jti = jti()
+        exp = iat + self.lifetime
+        jti = str(self.jti_gen())
 
-        if not isinstance(jti, str):
-            jti = str(jti)
+        jwk = JWK(kty="oct", o=self.client_secret)
 
-        return jwt.encode(
-            {
+        jwt = JWT(
+            header={"alg": self.alg},
+            claims={
                 "iss": self.client_id,
                 "sub": self.client_id,
                 "aud": audience,
@@ -105,9 +124,9 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
-            self.client_secret,
-            algorithm="HS256",
         )
+        jwt.make_signed_token(jwk)
+        return jwt.serialize()
 
 
 class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
@@ -115,12 +134,32 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
     Handles private_key_jwt client authentication method (client_assertion asymmetrically signed with a private key).
     """
 
-    def __init__(self, client_id, private_jwk, alg="RS256"):
+    def __init__(
+        self,
+        client_id: str,
+        private_jwk: JWK,
+        alg: str = "RS256",
+        lifetime: int = 60,
+        kid=None,
+        jti_gen=lambda: uuid4(),
+    ):
+        alg = private_jwk.get("alg", alg)
+        if not alg:
+            raise ValueError(
+                "Asymmetric signing requires an alg, either as part of the private JWK, or passed as parameter"
+            )
+        kid = private_jwk.get("kid", kid)
+        if not kid:
+            raise ValueError(
+                "Asymmetric signing requires a kid, either as part of the private JWK, or passed as parameter"
+            )
+
+        super().__init__(alg, lifetime, jti_gen)
         self.client_id = str(client_id)
         self.private_jwk = private_jwk
-        self.alg = private_jwk.get("alg", alg)
+        self.kid = kid
 
-    def client_assertion(self, audience, lifetime=60, jti=None):
+    def client_assertion(self, audience: str, lifetime: int = 60, jti: str = None):
         iat = int(datetime.now().timestamp())
         exp = iat + lifetime
         if jti is None:
@@ -131,8 +170,9 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         if not isinstance(jti, str):
             jti = str(jti)
 
-        return jwt.encode(
-            {
+        jwt = JWT(
+            header={"alg": self.alg, "kid": self.kid},
+            claims={
                 "iss": self.client_id,
                 "sub": self.client_id,
                 "aud": audience,
@@ -140,9 +180,9 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
-            self.private_jwk,
-            algorithm=self.alg,
         )
+        jwt.make_signed_token(self.private_jwk)
+        return jwt.serialize()
 
 
 class PublicApp(ClientAuthenticationMethod):
@@ -150,12 +190,12 @@ class PublicApp(ClientAuthenticationMethod):
     Handles the "none" authentication method (client only sends its client_id).
     """
 
-    def __init__(self, client_id):
+    def __init__(self, client_id: str):
         self.client_id = client_id
 
-    def __call__(self, request):
+    def __call__(self, request: requests.PreparedRequest):
         request = super().__call__(request)
-        data = parse_qs(request.body)
-        data["client_id"] = self.client_id
-        request.prepare_body(data, files=None)
+        data = furl.Query(request.body)
+        data.set([("client_id", self.client_id)])
+        request.prepare_body(data.params, files=None)
         return request

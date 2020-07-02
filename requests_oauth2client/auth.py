@@ -1,42 +1,7 @@
-from datetime import datetime
-
 import requests
 
 from .exceptions import ExpiredToken
-
-
-class BearerToken:
-    """
-    A wrapper around a Bearer Token and associated expiration date and refresh token,
-    as returned by an OAuth20 or OIDC Token Endpoint.
-    """
-
-    def __init__(self, access_token, expires_at=None, refresh_token=None):
-        self.access_token = access_token
-        self.expires_at = expires_at
-        self.refresh_token = refresh_token
-
-    def is_expired(self):
-        """
-        Returns true if the access token is expired at the time of the call.
-        :return:
-        """
-        if self.expires_at:
-            return datetime.now() > self.expires_at
-
-    def authorization_header(self):
-        """
-        Returns the Authorization Header value containing this access token, correctly formatted as per RFC6750.
-        :return: the value to use in a HTTP Authorization Header
-        """
-        return f"Bearer {self.access_token}"
-
-    def __str__(self):
-        """
-        Returns the access token
-        :return: the access token string
-        """
-        return self.access_token
+from .token_response import BearerToken
 
 
 class BearerAuth(requests.auth.AuthBase):
@@ -78,8 +43,9 @@ class OAuth2ClientCredentialsAuth(BearerAuth):
         self.token_kwargs = token_kwargs
 
     def __call__(self, request):
-        if self.token is None or self.token.is_expired():
-            self.token = self.client.client_credentials(**self.token_kwargs).access_token()
+        token = self.token
+        if token is None or token.is_expired():
+            self.token = self.client.client_credentials(**self.token_kwargs)
         return super().__call__(request)
 
 
@@ -94,11 +60,12 @@ class OAuth20AccessAndRefreshTokenAuth(BearerAuth):
         self.token_kwargs = token_kwargs
 
     def __call__(self, request):
-        if self.token.is_expired():
-            if self.token.refresh_token:
+        token = self.token
+        if token.is_expired():
+            if token.refresh_token:
                 self.token = self.client.refresh_token(
-                    refresh_token=self.token.refresh_token, **self.token_kwargs
-                ).access_token()
+                    refresh_token=token.refresh_token, **self.token_kwargs
+                )
         return super().__call__(request)
 
 
@@ -115,10 +82,9 @@ class OAuth2AuthorizationCodeAuth(OAuth20AccessAndRefreshTokenAuth):
         self.token_kwargs = token_kwargs
 
     def __call__(self, request):
-        if self.token is None or self.token.is_expired():
+        token = self.token
+        if token is None or token.is_expired():
             if self.code:
-                self.token = self.client.authorization_code(
-                    code=self.code, **self.token_kwargs
-                ).access_token()
+                self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
                 self.code = None
         return super().__call__(request)

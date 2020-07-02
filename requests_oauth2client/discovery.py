@@ -1,7 +1,7 @@
-from furl import Path, furl
+from furl import Path, furl  # type: ignore[import]
 
 
-def oidc_discovery_document_url(issuer):
+def oidc_discovery_document_url(issuer: str):
     """
     Given an `issuer` identifier, return the standardised URL where the OIDC discovery document can be retrieved,
     as specified in https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
@@ -13,7 +13,7 @@ def oidc_discovery_document_url(issuer):
     return str(url)
 
 
-def oauth2_discovery_document_url(issuer):
+def oauth2_discovery_document_url(issuer: str):
     """
     Given an `issuer` identifier, return the standardised URL where the OAuth20 server metadata can be retrieved,
     as specified in RFC8414.

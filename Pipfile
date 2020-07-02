@@ -12,11 +12,12 @@ coverage = "*"
 pipenv = "*"
 bump2version = "*"
 twine = "*"
+mypy = "*"
 
 [packages]
 requests = "*"
-pyjwt = "*"
 furl = "*"
+jwcrypto = "*"
 
 [requires]
 python_version = "3.6"

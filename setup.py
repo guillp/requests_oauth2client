@@ -47,5 +47,5 @@ setup(
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
     tests_require=tests_require,
-    project_urls={"Source": "https://github.com/guillp/requests_oauth2client", },
+    project_urls={"Source": "https://github.com/guillp/requests_oauth2client",},
 )

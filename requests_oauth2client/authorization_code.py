@@ -4,7 +4,7 @@ import re
 import secrets
 from collections import Iterable
 
-from furl import furl
+from furl import furl  # type: ignore[import]
 
 
 class PkceHelper:
@@ -42,17 +42,17 @@ class AuthorizationCodeHandler:
     """
 
     def __init__(
-            self,
-            authorization_endpoint,
-            client_id,
-            redirect_uri,
-            scope,
-            response_type="code",
-            state=True,
-            nonce=None,
-            code_verifier=None,
-            code_challenge_S256=True,
-            **kwargs,
+        self,
+        authorization_endpoint,
+        client_id,
+        redirect_uri,
+        scope,
+        response_type="code",
+        state=True,
+        nonce=None,
+        code_verifier=None,
+        code_challenge_S256=True,
+        **kwargs,
     ):
         if state is True:
             state = secrets.token_urlsafe(32)

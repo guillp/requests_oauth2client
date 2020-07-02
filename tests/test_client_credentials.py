@@ -4,7 +4,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-from requests_oauth2client import ClientSecretPost, OAuth2ClientCredentialsAuth, OAuth2Client
+from requests_oauth2client import ClientSecretPost, OAuth2Client, OAuth2ClientCredentialsAuth
 
 load_dotenv(Path(__file__).with_name("client_credentials.env"))
 
