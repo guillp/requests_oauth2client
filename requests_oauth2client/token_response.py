@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
+import json
 import pprint
+import zlib
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 
 class BearerToken:
@@ -51,17 +54,22 @@ class BearerToken:
         """
         return self.access_token
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
         r: Dict[str, Any] = {
             "access_token": self.access_token,
             "token_type": "Bearer",
         }
         if self.expires_at:
-            r["expires_in"] = int(self.expires_at.timestamp() - datetime.now().timestamp())
+            if expires_at:
+                r["expires_at"] = self.expires_at
+            else:
+                r["expires_in"] = int(self.expires_at.timestamp() - datetime.now().timestamp())
         if self.scope:
             r["scope"] = self.scope
         if self.refresh_token:
             r["refresh_token"] = self.refresh_token
+        if self.other:
+            r.update(self.other)
         return r
 
     def __repr__(self) -> str:
@@ -94,10 +102,41 @@ class BearerTokenEndpointResponse(BearerToken):
         # TODO: parse the id token
         return self._id_token
 
-    def as_dict(self) -> Dict[str, Any]:
-        r = super().as_dict()
+    def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
+        r = super().as_dict(expires_at)
         if self._id_token:
             r["id_token"] = self._id_token
-        if self.other:
-            r.update(self.other)
         return r
+
+
+class TokenSerializer:
+    def __init__(
+        self,
+        dumper: Callable[[BearerToken], str] = None,
+        loader: Callable[[str], BearerToken] = None,
+        token_class=BearerToken,
+    ):
+        self.token_class = token_class
+        self.dumper = dumper or self._default_dumper
+        self.loader = loader or self._default_loader
+
+    def _default_dumper(self, token: BearerToken) -> str:
+        return base64.urlsafe_b64encode(
+            zlib.compress(
+                json.dumps(token.as_dict(True), default=lambda d: d.isoformat()).encode()
+            )
+        ).decode()
+
+    def _default_loader(self, serialized: str) -> BearerToken:
+        attrs = json.loads(zlib.decompress(base64.urlsafe_b64decode(serialized)).decode())
+        expires_at = attrs.get("expires_at")
+        if expires_at:
+            attrs["expires_at"] = datetime.fromisoformat(expires_at)
+        return self.token_class(**attrs)
+
+    def dumps(self, token: BearerToken) -> str:
+        """Serialize and compress a given token for easier storage"""
+        return self.dumper(token)
+
+    def loads(self, serialized: str) -> BearerToken:
+        return self.loader(serialized)

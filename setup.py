@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 __title__ = "requests_oauth2client"
 __description__ = "An OAuth 2.0 client library for Python, with requests integration."
@@ -29,7 +29,7 @@ setup(
     author=__author__,
     author_email=__author_email__,
     url=__url__,
-    packages=["requests_oauth2client"],
+    packages=find_packages(exclude=("tests",)),
     package_data={"": ["LICENSE", "requirements.txt"]},
     package_dir={"requests_oauth2client": "requests_oauth2client"},
     include_package_data=True,
@@ -39,7 +39,6 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Natural Language :: English",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
