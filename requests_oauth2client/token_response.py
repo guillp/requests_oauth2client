@@ -17,11 +17,16 @@ class BearerToken:
         expires_at: datetime = None,
         scope: str = None,
         refresh_token: str = None,
+        token_type: str = "Bearer",
+        **kwargs: Any,
     ):
+        if token_type != "Bearer":
+            raise ValueError("This is not Bearer Token!", token_type)
         self.access_token = access_token
         self.expires_at = expires_at
         self.scope = scope
         self.refresh_token = refresh_token
+        self.other = kwargs
 
     def is_expired(self) -> Optional[bool]:
         """
@@ -82,9 +87,8 @@ class BearerTokenEndpointResponse(BearerToken):
             raise ValueError("token types other than Bearer are not supported")
         if expires_in:
             expires_at = datetime.now() + timedelta(seconds=expires_in)
-        super().__init__(access_token, expires_at, scope, refresh_token)
+        super().__init__(access_token, expires_at, scope, refresh_token, token_type, **kwargs)
         self._id_token = id_token
-        self.other = kwargs
 
     def id_token(self):
         # TODO: parse the id token
