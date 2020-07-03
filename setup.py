@@ -5,7 +5,7 @@ from setuptools import setup
 __title__ = "requests_oauth2client"
 __description__ = "An OAuth 2.0 client library for Python, with requests integration."
 __url__ = "https://github.com/guillp/requests_oauth2client"
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 __author__ = "Guillaume Pujol"
 __author_email__ = "guill.p.linux@gmail.com"
 __license__ = "Apache 2.0"
