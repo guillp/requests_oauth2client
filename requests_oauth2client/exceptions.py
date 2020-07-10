@@ -6,7 +6,10 @@ class OAuth2Error(Exception):
 
 
 class TokenResponseError(OAuth2Error):
-    pass
+    def __init__(self, error, description, uri):
+        self.error = error
+        self.description = description
+        self.uri = uri
 
 
 class InvalidTokenResponse(TokenResponseError):

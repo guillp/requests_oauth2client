@@ -6,8 +6,8 @@ import requests
 
 from .auth import BearerAuth
 from .client_authentication import ClientAuthenticationMethod
-from .exceptions import (AccessDenied, InvalidGrant, InvalidScope, InvalidTokenResponse,
-                         UnauthorizedClient, UnknownTokenResponseError)
+from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
+                         InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
 from .token_response import BearerToken, BearerTokenEndpointResponse
 
 
@@ -22,6 +22,8 @@ class OAuth2Client:
         "access_denied": AccessDenied,
         "unauthorized_client": UnauthorizedClient,
     }
+
+    default_exception_class = TokenResponseError
 
     token_response_class: Type[BearerToken] = BearerTokenEndpointResponse
 
@@ -62,11 +64,8 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(error)
-            if exception_class:
-                raise exception_class(error_description, error_uri)
-            else:
-                raise UnknownTokenResponseError(error, error_description, error_uri)
+            exception_class = self.exception_classes.get(error, self.default_exception_class)
+            raise exception_class(error, error_description, error_uri)
 
         if error_description or error_uri:
             raise InvalidTokenResponse(
