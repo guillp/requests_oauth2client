@@ -5,7 +5,6 @@ from typing import Any, Dict, Type, Union
 import requests
 
 from .auth import BearerAuth
-from .client_authentication import ClientAuthenticationMethod
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
                          InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
 from .token_response import BearerToken, BearerTokenEndpointResponse
@@ -30,21 +29,22 @@ class OAuth2Client:
     def __init__(
         self,
         token_endpoint: str,
-        auth_method: requests.auth.AuthBase,
+        auth: requests.auth.AuthBase,
         revocation_endpoint: str = None,
         session: requests.Session = None,
     ):
         """
         :param token_endpoint: the token endpoint where this client will get access tokens
-        :param auth_method: the authentication handler to use for client authentication on the token endpoint
+        :param auth: the authentication handler to use for client authentication on the token endpoint
         :param revocation_endpoint: the revocation endpoint url to use for revoking tokens
         :param session: a requests Session to use when sending HTTP requests
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint)
-        if auth_method is not None and not isinstance(auth_method, requests.auth.AuthBase):
-            raise TypeError("auth_method must be a requests Auth Handler")
-        self.auth_method = auth_method
+        if auth is not None:
+            if not isinstance(auth, requests.auth.AuthBase):
+                raise TypeError("auth must be a requests Auth Handler")
+        self.auth = auth
         self.session = session or requests.Session()
 
     def token_request(self, data: Dict[str, Any]) -> BearerToken:
@@ -53,7 +53,7 @@ class OAuth2Client:
         :param data: parameters to send to the token endpoint
         :return: the token endpoint response, as TokenResponse instance.
         """
-        response = self.session.post(self.token_endpoint, auth=self.auth_method, data=data)
+        response = self.session.post(self.token_endpoint, auth=self.auth, data=data)
         if response.ok:
             token_response = self.token_response_class(**response.json())
             return token_response
@@ -132,36 +132,34 @@ class OAuth2Client:
 
     @classmethod
     def from_discovery_endpoint(
-        cls, url: str, auth_method: ClientAuthenticationMethod, session: requests.Session = None
+        cls, url: str, auth: requests.auth.AuthBase, session: requests.Session = None
     ) -> "OAuth2Client":
         """
         Initialise an OAuth20Client, retrieving server metadata from a discovery document.
         :param url: the url where the server metadata will be retrieved
-        :param auth_method: the authentication handler to use for client authentication
+        :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
         :return: a OAuth20Client
         """
         session = session or requests.Session()
         discovery = session.get(url).json()
-        return cls.from_discovery_document(discovery, auth_method=auth_method, session=session)
+        return cls.from_discovery_document(discovery, auth=auth, session=session)
 
     @classmethod
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        auth_method: ClientAuthenticationMethod,
+        auth: requests.auth.AuthBase,
         session: requests.Session = None,
     ) -> "OAuth2Client":
         """
         Initialises an OAuth20Client, based on the server metadata from `discovery`.
-        :param discovery: a dict of server metadata, in the same format as retrieved from a discvovery endpoint.
-        :param auth_method: the authentication handler to use for client authentication
+        :param discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
+        :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
         :return: an OAuth20Client
         """
-        return cls(
-            token_endpoint=discovery["token_endpoint"], auth_method=auth_method, session=session
-        )
+        return cls(token_endpoint=discovery["token_endpoint"], auth=auth, session=session)
 
 
 class OpenIdConnectClient(OAuth2Client):
@@ -174,12 +172,10 @@ class OpenIdConnectClient(OAuth2Client):
         token_endpoint: str,
         userinfo_endpoint: str,
         jwks_endpoint: str,
-        auth_method: ClientAuthenticationMethod,
+        auth: requests.auth.AuthBase,
         session: requests.Session = None,
     ):
-        super().__init__(
-            token_endpoint=token_endpoint, auth_method=auth_method, session=session
-        )
+        super().__init__(token_endpoint=token_endpoint, auth=auth, session=session)
         self.userinfo_endpoint = userinfo_endpoint
         self.jwks_endpoint = jwks_endpoint
 
@@ -195,13 +191,13 @@ class OpenIdConnectClient(OAuth2Client):
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        auth_method: ClientAuthenticationMethod,
+        auth: requests.auth.AuthBase,
         session: requests.Session = None,
     ) -> "OpenIdConnectClient":
         return cls(
             token_endpoint=discovery["token_endpoint"],
             userinfo_endpoint=discovery["userinfo_endpoint"],
             jwks_endpoint=discovery["jwks_endpoint"],
-            auth_method=auth_method,
+            auth=auth,
             session=session,
         )
