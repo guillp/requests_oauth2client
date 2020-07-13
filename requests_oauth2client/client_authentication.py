@@ -10,6 +10,8 @@ from jwcrypto.jwk import JWK  # type: ignore[import]
 from jwcrypto.jwt import JWT  # type: ignore[import]
 from requests.auth import _basic_auth_str
 
+from requests_oauth2client.utils import b64u_encode
+
 
 class ClientAuthenticationMethod(requests.auth.AuthBase):
     """
@@ -115,7 +117,7 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 
-        jwk = JWK(kty="oct", o=self.client_secret)
+        jwk = JWK(kty="oct", k=b64u_encode(self.client_secret))
 
         jwt = JWT(
             header={"alg": self.alg},

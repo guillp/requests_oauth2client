@@ -12,7 +12,7 @@ class TokenResponseError(OAuth2Error):
         self.uri = uri
 
 
-class InvalidTokenResponse(TokenResponseError):
+class InvalidTokenResponse(OAuth2Error):
     pass
 
 
