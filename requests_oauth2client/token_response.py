@@ -93,6 +93,7 @@ class BearerTokenEndpointResponse(BearerToken):
     ) -> None:
         if token_type != "Bearer":
             raise ValueError("token types other than Bearer are not supported")
+        expires_at = None
         if expires_in:
             expires_at = datetime.now() + timedelta(seconds=expires_in)
         super().__init__(access_token, expires_at, scope, refresh_token, token_type, **kwargs)
