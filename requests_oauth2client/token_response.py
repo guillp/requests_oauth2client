@@ -5,7 +5,10 @@ import json
 import pprint
 import zlib
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
+
+if TYPE_CHECKING:
+    from .client import OAuth2Client
 
 
 class BearerToken:
@@ -49,7 +52,7 @@ class BearerToken:
 
     def __str__(self) -> str:
         """
-        Returns the access token
+        Returns the access token value, as a string
         :return: the access token string
         """
         return self.access_token
@@ -89,6 +92,7 @@ class BearerTokenEndpointResponse(BearerToken):
         scope: str = None,
         refresh_token: str = None,
         id_token: str = None,
+        client: OAuth2Client = None,
         **kwargs: Union[str, int, bool],
     ) -> None:
         if token_type != "Bearer":
@@ -97,17 +101,18 @@ class BearerTokenEndpointResponse(BearerToken):
         if expires_in:
             expires_at = datetime.now() + timedelta(seconds=expires_in)
         super().__init__(access_token, expires_at, scope, refresh_token, token_type, **kwargs)
+        self.client = client
         self._id_token = id_token
-
-    def id_token(self):
-        # TODO: parse the id token
-        return self._id_token
 
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
         r = super().as_dict(expires_at)
         if self._id_token:
             r["id_token"] = self._id_token
         return r
+
+    @classmethod
+    def from_requests_response(cls, client, resp):
+        return cls(client=client, **resp.json())
 
 
 class TokenSerializer:

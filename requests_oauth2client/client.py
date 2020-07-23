@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Type, Union
 
 import requests
 
-from .auth import BearerAuth
+from .client_authentication import ClientSecretPost
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
                          InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
-from .token_response import BearerToken, BearerTokenEndpointResponse
+from .token_response import BearerTokenEndpointResponse
+
+if TYPE_CHECKING:
+    from .token_response import BearerToken
 
 
 class OAuth2Client:
@@ -24,28 +27,47 @@ class OAuth2Client:
 
     default_exception_class = TokenResponseError
 
-    token_response_class: Type[BearerToken] = BearerTokenEndpointResponse
+    token_response_factory: "Callable[[OAuth2Client, requests.Response], BearerTokenEndpointResponse]" = BearerTokenEndpointResponse.from_requests_response
 
     def __init__(
         self,
         token_endpoint: str,
-        auth: requests.auth.AuthBase,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
         revocation_endpoint: str = None,
+        discovery_endpoint: str = None,
+        jwks_uri: str = None,
         session: requests.Session = None,
+        default_auth_handler=ClientSecretPost,
     ):
         """
         :param token_endpoint: the token endpoint where this client will get access tokens
         :param auth: the authentication handler to use for client authentication on the token endpoint
         :param revocation_endpoint: the revocation endpoint url to use for revoking tokens
         :param session: a requests Session to use when sending HTTP requests
+        :param default_auth_handler: if auth is a tuple (for example, a client_id and client_secret), init an object of
+        this class with auth values as parameters. This parameter is ignored if auth is an instance of AuthBase already.
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint)
-        if auth is not None:
-            if not isinstance(auth, requests.auth.AuthBase):
-                raise TypeError("auth must be a requests Auth Handler")
+        self.jwks_uri = str(jwks_uri)
+        self.server_discovery_endpoint = str(discovery_endpoint)
+        self.default_auth_handler = default_auth_handler
         self.auth = auth
         self.session = session or requests.Session()
+
+    @property
+    def auth(self) -> requests.auth.AuthBase:
+        return self._auth
+
+    @auth.setter
+    def auth(self, value: Union[requests.auth.AuthBase, Tuple[str, str]]):
+        if value is None:
+            self._auth = None
+        elif isinstance(value, requests.auth.AuthBase):
+            self._auth = value
+        elif isinstance(value, tuple) and len(value) == 2:
+            client_id, client_secret = value
+            self._auth = self.default_auth_handler(client_id, client_secret)
 
     def token_request(self, data: Dict[str, Any]) -> BearerToken:
         """
@@ -55,7 +77,7 @@ class OAuth2Client:
         """
         response = self.session.post(self.token_endpoint, auth=self.auth, data=data)
         if response.ok:
-            token_response = self.token_response_class(**response.json())
+            token_response = self.token_response_factory(self, response)
             return token_response
 
         # error handling
@@ -132,7 +154,10 @@ class OAuth2Client:
 
     @classmethod
     def from_discovery_endpoint(
-        cls, url: str, auth: requests.auth.AuthBase, session: requests.Session = None
+        cls,
+        url: str,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
+        session: requests.Session = None,
     ) -> "OAuth2Client":
         """
         Initialise an OAuth20Client, retrieving server metadata from a discovery document.
@@ -149,55 +174,14 @@ class OAuth2Client:
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        auth: requests.auth.AuthBase,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
         session: requests.Session = None,
     ) -> "OAuth2Client":
         """
-        Initialises an OAuth20Client, based on the server metadata from `discovery`.
+        Initialise an OAuth20Client, based on the server metadata from `discovery`.
         :param discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
         :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
         :return: an OAuth20Client
         """
         return cls(token_endpoint=discovery["token_endpoint"], auth=auth, session=session)
-
-
-class OpenIdConnectClient(OAuth2Client):
-    """
-    An OIDC compatible client. It can do everything an OAuth20Client can do, and call the userinfo endpoint.
-    """
-
-    def __init__(
-        self,
-        token_endpoint: str,
-        userinfo_endpoint: str,
-        jwks_endpoint: str,
-        auth: requests.auth.AuthBase,
-        session: requests.Session = None,
-    ):
-        super().__init__(token_endpoint=token_endpoint, auth=auth, session=session)
-        self.userinfo_endpoint = userinfo_endpoint
-        self.jwks_endpoint = jwks_endpoint
-
-    def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
-        """
-        Calls the userinfo endpoint with the specified access_token and returns the result.
-        :param access_token: the access token to use
-        :return: the requests Response returned by the userinfo endpoint.
-        """
-        return self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token)).json()
-
-    @classmethod
-    def from_discovery_document(
-        cls,
-        discovery: Dict[str, Any],
-        auth: requests.auth.AuthBase,
-        session: requests.Session = None,
-    ) -> "OpenIdConnectClient":
-        return cls(
-            token_endpoint=discovery["token_endpoint"],
-            userinfo_endpoint=discovery["userinfo_endpoint"],
-            jwks_endpoint=discovery["jwks_endpoint"],
-            auth=auth,
-            session=session,
-        )
