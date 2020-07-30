@@ -143,7 +143,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
     def __init__(
         self,
         client_id: str,
-        private_jwk: JWK,
+        private_jwk: dict,
         alg: str = "RS256",
         lifetime: int = 60,
         kid: str = None,
@@ -161,7 +161,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
             )
 
         super().__init__(client_id, alg, lifetime, jti_gen)
-        self.private_jwk = private_jwk
+        self.private_jwk = JWK(**private_jwk)
         self.kid = kid
 
     def client_assertion(self, audience: str, lifetime: int = 60, jti: str = None) -> str:
