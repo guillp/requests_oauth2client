@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
 
 import requests
 
-from .client_authentication import ClientSecretPost
+from .client_authentication import ClientSecretPost, PublicApp
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
                          InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
 from .token_response import BearerTokenEndpointResponse
@@ -32,7 +32,7 @@ class OAuth2Client:
     def __init__(
         self,
         token_endpoint: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         revocation_endpoint: str = None,
         discovery_endpoint: str = None,
         jwks_uri: str = None,
@@ -52,22 +52,25 @@ class OAuth2Client:
         self.jwks_uri = str(jwks_uri)
         self.server_discovery_endpoint = str(discovery_endpoint)
         self.default_auth_handler = default_auth_handler
-        self.auth = auth
+        self.auth = auth  # type: ignore[assignment]
         self.session = session or requests.Session()
 
     @property
-    def auth(self) -> requests.auth.AuthBase:
+    def auth(self) -> Optional[requests.auth.AuthBase]:
         return self._auth
 
     @auth.setter
-    def auth(self, value: Union[requests.auth.AuthBase, Tuple[str, str]]):
+    def auth(self, value: Union[requests.auth.AuthBase, Tuple[str, str], str]):
         if value is None:
-            self._auth = None
+            self._auth: Optional[requests.auth.AuthBase] = None
         elif isinstance(value, requests.auth.AuthBase):
             self._auth = value
         elif isinstance(value, tuple) and len(value) == 2:
             client_id, client_secret = value
             self._auth = self.default_auth_handler(client_id, client_secret)
+        elif isinstance(value, str):
+            client_id = value
+            self._auth = PublicApp(client_id)
 
     def token_request(self, data: Dict[str, Any]) -> BearerToken:
         """
@@ -77,7 +80,7 @@ class OAuth2Client:
         """
         response = self.session.post(self.token_endpoint, auth=self.auth, data=data)
         if response.ok:
-            token_response = self.token_response_factory(self, response)
+            token_response = self.token_response_factory(self, response)  # type: ignore[call-arg, arg-type]
             return token_response
 
         # error handling

@@ -98,7 +98,7 @@ class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
 
 class ClientSecretJWT(ClientAssertionAuthenticationMethod):
     """
-    Handles client_secret_jwt client authentication method (client_assertion symmetrically signed with the client_secet).
+    Handles client_secret_jwt client authentication method (client_assertion symmetrically signed with the client_secret).
     """
 
     def __init__(

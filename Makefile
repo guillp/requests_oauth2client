@@ -11,10 +11,10 @@ coverage-report:
 
 format:
 	black --target-version py36 . -l 96
-	isort -l 96 -e -y
+	isort -l 96 -e .
 
 mypy:
-	python -m mypy requests_oauth2client
+	python -m mypy requests_oauth2client --show-error-codes
 
 lock:
 	pipenv lock -r > requirements.txt
