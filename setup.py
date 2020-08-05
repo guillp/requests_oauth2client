@@ -15,9 +15,6 @@ with open("README.rst", "rt") as finput:
 with open("requirements.txt", "rt") as finput:
     requires = [line.strip() for line in finput.readlines()]
 
-with open("requirements-dev.txt", "rt") as finput:
-    tests_require = [line.strip() for line in finput.readlines()]
-
 setup(
     name=__title__,
     version=__version__,
@@ -45,6 +42,5 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
-    tests_require=tests_require,
     project_urls={"Source": "https://github.com/guillp/requests_oauth2client",},
 )

@@ -17,8 +17,7 @@ mypy:
 	python -m mypy requests_oauth2client --show-error-codes
 
 lock:
-	pipenv lock -r > requirements.txt
-	pipenv lock -r -d > requirements-dev.txt
+	pipenv run pip freeze > requirements.txt
 
 sdist:
 	python setup.py sdist
