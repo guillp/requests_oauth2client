@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from setuptools import find_packages, setup
 
 __title__ = "requests_oauth2client"
