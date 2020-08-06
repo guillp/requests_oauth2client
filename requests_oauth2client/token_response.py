@@ -90,7 +90,7 @@ class BearerTokenEndpointResponse(BearerToken):
         scope: str = None,
         refresh_token: str = None,
         id_token: str = None,
-        client: OAuth2Client = None,
+        client: "OAuth2Client" = None,
         **kwargs: Union[str, int, bool],
     ) -> None:
         if token_type != "Bearer":
