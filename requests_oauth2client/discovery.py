@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from furl import Path, furl  # type: ignore[import]
 
 

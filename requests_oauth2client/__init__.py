@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from .auth import (BearerAuth, OAuth2AuthorizationCodeAuth,
                    OAuth2ClientCredentialsAuth, OAuth20AccessAndRefreshTokenAuth)
 from .authorization_code import AuthorizationCodeHandler

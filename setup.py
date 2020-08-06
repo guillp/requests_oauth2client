@@ -42,5 +42,5 @@ setup(
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
-    project_urls={"Source": "https://github.com/guillp/requests_oauth2client",},
+    project_urls={"Source": "https://github.com/guillp/requests_oauth2client", },
 )
