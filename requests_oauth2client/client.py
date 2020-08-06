@@ -70,7 +70,7 @@ class OAuth2Client:
             client_id = value
             self._auth = PublicApp(client_id)
 
-    def token_request(self, data: Dict[str, Any]) -> BearerToken:
+    def token_request(self, data: Dict[str, Any]) -> "BearerToken":
         """
         Sends a authenticated request to the token endpoint.
         :param data: parameters to send to the token endpoint
@@ -98,7 +98,7 @@ class OAuth2Client:
             )
         raise InvalidTokenResponse("token endpoint returned an error without description")
 
-    def client_credentials(self, **token_kwargs: Any) -> BearerToken:
+    def client_credentials(self, **token_kwargs: Any) -> "BearerToken":
         """
         Sends a request to the token endpoint with the client_credentials grant.
         :param token_kwargs: additional args to pass to the token endpoint
@@ -107,7 +107,7 @@ class OAuth2Client:
         data = dict(grant_type="client_credentials", **token_kwargs)
         return self.token_request(data)
 
-    def authorization_code(self, code: str, **token_kwargs: Any) -> BearerToken:
+    def authorization_code(self, code: str, **token_kwargs: Any) -> "BearerToken":
         """
         Sends a request to the token endpoint with the authorization_code grant.
         :param code: an authorization code to exchange for tokens
@@ -117,7 +117,7 @@ class OAuth2Client:
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         return self.token_request(data)
 
-    def refresh_token(self, refresh_token: str, **token_kwargs: Any) -> BearerToken:
+    def refresh_token(self, refresh_token: str, **token_kwargs: Any) -> "BearerToken":
         """
         Sends a request to the token endpoint with the refresh_token grant.
         :param refresh_token: a refresh_token
@@ -128,7 +128,7 @@ class OAuth2Client:
         return self.token_request(data)
 
     def revoke_access_token(
-        self, access_token: Union[BearerToken, str], **requests_kwargs: Any
+        self, access_token: "Union[BearerToken, str]", **requests_kwargs: Any
     ) -> None:
         """
         Sends a request to the revocation endpoint to revoke an access token.

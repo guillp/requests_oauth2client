@@ -42,7 +42,7 @@ class OAuth2ClientCredentialsAuth(BearerAuth):
     with the Client Credentials grant (and can get a new one once it is expired).
     """
 
-    def __init__(self, client: OAuth2Client, **token_kwargs: Any):
+    def __init__(self, client: "OAuth2Client", **token_kwargs: Any):
         super().__init__(None)
         self.client = client
         self.token_kwargs = token_kwargs
@@ -59,7 +59,7 @@ class OAuth20AccessAndRefreshTokenAuth(BearerAuth):
     A Requests Authentication handler that handles a Bearer access token and automatically it them when expired.
     """
 
-    def __init__(self, client: OAuth2Client, token: str = None, **token_kwargs: Any) -> None:
+    def __init__(self, client: "OAuth2Client", token: str = None, **token_kwargs: Any) -> None:
         super().__init__(token)
         self.client = client
         self.token_kwargs = token_kwargs
@@ -79,7 +79,7 @@ class OAuth2AuthorizationCodeAuth(OAuth20AccessAndRefreshTokenAuth):
     then automatically refreshes it once it is expired.
     """
 
-    def __init__(self, client: OAuth2Client, code: str, **token_kwargs: Any) -> None:
+    def __init__(self, client: "OAuth2Client", code: str, **token_kwargs: Any) -> None:
         super().__init__(client, None)
         self.code: Optional[str] = code
         self.token_kwargs = token_kwargs
