@@ -13,6 +13,7 @@ pipenv = "*"
 bump2version = "*"
 twine = "*"
 mypy = "*"
+requests-mock = "*"
 
 [packages]
 requests = "*"
