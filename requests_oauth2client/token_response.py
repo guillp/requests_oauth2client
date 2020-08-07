@@ -127,7 +127,7 @@ class TokenSerializer:
     def _default_dumper(self, token: BearerToken) -> str:
         return base64.urlsafe_b64encode(
             zlib.compress(
-                json.dumps(token.as_dict(True), default=lambda d: d.strftime("YYYY-MM-DDTHH:MM:SS")).encode()
+                json.dumps(token.as_dict(True), default=lambda d: d.strftime("%Y-%m-%dT%H:%M:%S")).encode()
             )
         ).decode()
 
@@ -135,7 +135,7 @@ class TokenSerializer:
         attrs = json.loads(zlib.decompress(base64.urlsafe_b64decode(serialized)).decode())
         expires_at = attrs.get("expires_at")
         if expires_at:
-            attrs["expires_at"] = datetime.strptime(expires_at, "YYYY-MM-DDTHH:MM:SS")
+            attrs["expires_at"] = datetime.strptime(expires_at, "%Y-%m-%dT%H:%M:%S")
         return self.token_class(**attrs)
 
     def dumps(self, token: BearerToken) -> str:
