@@ -2,7 +2,7 @@ import base64
 import hashlib
 import re
 import secrets
-from collections import Iterable
+from collections.abc import Iterable
 from typing import Any, Union
 
 from furl import furl  # type: ignore[import]
