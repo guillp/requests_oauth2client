@@ -127,7 +127,9 @@ class TokenSerializer:
     def _default_dumper(self, token: BearerToken) -> str:
         return base64.urlsafe_b64encode(
             zlib.compress(
-                json.dumps(token.as_dict(True), default=lambda d: d.strftime("%Y-%m-%dT%H:%M:%S")).encode()
+                json.dumps(
+                    token.as_dict(True), default=lambda d: d.strftime("%Y-%m-%dT%H:%M:%S")
+                ).encode()
             )
         ).decode()
 
