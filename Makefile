@@ -10,6 +10,7 @@ coverage-report:
 	coverage html
 
 format:
+	autoflake --remove-all-unused-imports --ignore-init-module-imports --in-place --recursive .
 	black --target-version py36 . -l 96
 	isort -l 96 -e .
 
