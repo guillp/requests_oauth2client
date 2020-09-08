@@ -70,13 +70,16 @@ class OAuth2Client:
             client_id = value
             self._auth = PublicApp(client_id)
 
-    def token_request(self, data: Dict[str, Any]) -> "BearerToken":
+    def token_request(self, data: Dict[str, Any], timeout: int = 10, **kwargs) -> "BearerToken":
         """
         Sends a authenticated request to the token endpoint.
         :param data: parameters to send to the token endpoint
+        :param timeout: a timeout value for the call
         :return: the token endpoint response, as TokenResponse instance.
         """
-        response = self.session.post(self.token_endpoint, auth=self.auth, data=data)
+        response = self.session.post(
+            self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **kwargs
+        )
         if response.ok:
             token_response = self.token_response_factory(self, response)  # type: ignore[call-arg, arg-type]
             return token_response
@@ -98,58 +101,79 @@ class OAuth2Client:
             )
         raise InvalidTokenResponse("token endpoint returned an error without description")
 
-    def client_credentials(self, **token_kwargs: Any) -> "BearerToken":
+    def client_credentials(
+        self, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
+    ) -> "BearerToken":
         """
         Sends a request to the token endpoint with the client_credentials grant.
         :param token_kwargs: additional args to pass to the token endpoint
+        :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
+        requests_kwargs = requests_kwargs or {}
         data = dict(grant_type="client_credentials", **token_kwargs)
-        return self.token_request(data)
+        return self.token_request(data, **requests_kwargs)
 
-    def authorization_code(self, code: str, **token_kwargs: Any) -> "BearerToken":
+    def authorization_code(
+        self, code: str, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
+    ) -> "BearerToken":
         """
         Sends a request to the token endpoint with the authorization_code grant.
         :param code: an authorization code to exchange for tokens
         :param token_kwargs: additional args to pass to the token endpoint
+        :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
+        requests_kwargs = requests_kwargs or {}
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
-        return self.token_request(data)
+        return self.token_request(data, **requests_kwargs)
 
-    def refresh_token(self, refresh_token: str, **token_kwargs: Any) -> "BearerToken":
+    def refresh_token(
+        self, refresh_token: str, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
+    ) -> "BearerToken":
         """
         Sends a request to the token endpoint with the refresh_token grant.
         :param refresh_token: a refresh_token
         :param token_kwargs: additional args to pass to the token endpoint
+        :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
+        requests_kwargs = requests_kwargs or {}
         data = dict(grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs)
-        return self.token_request(data)
+        return self.token_request(data, **requests_kwargs)
 
     def revoke_access_token(
-        self, access_token: "Union[BearerToken, str]", **requests_kwargs: Any
+        self,
+        access_token: "Union[BearerToken, str]",
+        requests_kwargs: Dict[str, Any] = None,
+        **revoke_kwargs,
     ) -> None:
         """
         Sends a request to the revocation endpoint to revoke an access token.
         :param access_token: the access token to revoke
         :param requests_kwargs: additional parameters to pass to the revocation endpoint
         """
+        requests_kwargs = requests_kwargs or {}
         if self.revocation_endpoint:
             self.session.post(
-                data={"token": str(access_token), "token_type_hint": "access_token"},
+                data=dict(
+                    revoke_kwargs, token=str(access_token), token_type_hint="access_token"
+                ),
                 **requests_kwargs,
             ).raise_for_status()
 
-    def revoke_refresh_token(self, refresh_token: str, **requests_kwargs: Any) -> None:
+    def revoke_refresh_token(
+        self, refresh_token: str, requests_kwargs: Dict[str, Any] = None, **revoke_kwargs
+    ) -> None:
         """
         Sends a request to the revocation endpoint to revoke a refresh token.
         :param refresh_token: the refresh token to revoke
         :param requests_kwargs: additional parameters to pass to the revocation endpoint
         """
+        requests_kwargs = requests_kwargs or {}
         if self.revocation_endpoint:
             self.session.post(
-                data={"token": refresh_token, "token_type_hint": "refresh_token"},
+                data=dict(revoke_kwargs, token=refresh_token, token_type_hint="refresh_token"),
                 **requests_kwargs,
             ).raise_for_status()
 
