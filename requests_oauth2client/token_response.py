@@ -121,10 +121,17 @@ class TokenSerializer:
         token_class=BearerToken,
     ):
         self.token_class = token_class
-        self.dumper = dumper or self._default_dumper
-        self.loader = loader or self._default_loader
+        self.dumper = dumper or self.default_dumper
+        self.loader = loader or self.default_loader
 
-    def _default_dumper(self, token: BearerToken) -> str:
+    @staticmethod
+    def default_dumper(token: BearerToken) -> str:
+        """
+        Serializes as JSON, encodes as base64url of zlib compression of JSON representation of the Access Token,
+        with expiration date represented as expires_at.
+        :param token: the :class:`BearerToken` to serialize
+        :return: the serialized value
+        """
         return base64.urlsafe_b64encode(
             zlib.compress(
                 json.dumps(
@@ -133,16 +140,30 @@ class TokenSerializer:
             )
         ).decode()
 
-    def _default_loader(self, serialized: str) -> BearerToken:
+    def default_loader(self, serialized: str, token_class=BearerToken) -> BearerToken:
+        """
+        Default deserializer for tokens.
+        :param serialized: the serialized token
+        :return: a
+        """
         attrs = json.loads(zlib.decompress(base64.urlsafe_b64decode(serialized)).decode())
         expires_at = attrs.get("expires_at")
         if expires_at:
             attrs["expires_at"] = datetime.strptime(expires_at, "%Y-%m-%dT%H:%M:%S")
-        return self.token_class(**attrs)
+        return token_class(**attrs)
 
     def dumps(self, token: BearerToken) -> str:
-        """Serialize and compress a given token for easier storage"""
+        """
+        Serialize and compress a given token for easier storage
+        :param token: a BearerToken to serialize
+        :return: the serialized token, as a str
+        """
         return self.dumper(token)
 
     def loads(self, serialized: str) -> BearerToken:
+        """
+        Deserialize a serialized token
+        :param serialized: the serialized token
+        :return: the deserialized token
+        """
         return self.loader(serialized)

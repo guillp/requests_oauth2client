@@ -75,6 +75,7 @@ class OAuth2Client:
         Sends a authenticated request to the token endpoint.
         :param data: parameters to send to the token endpoint
         :param timeout: a timeout value for the call
+        :param kwargs: additional parameters to the post
         :return: the token endpoint response, as TokenResponse instance.
         """
         response = self.session.post(

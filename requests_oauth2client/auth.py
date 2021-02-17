@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 class BearerAuth(requests.auth.AuthBase):
     """
     A Requests compatible Authentication helper for API protected with Bearer tokens.
+    Using this AuthBase, you have to obtain an access token manually.
     """
 
     def __init__(self, token: Union[str, BearerToken] = None) -> None:
@@ -19,6 +20,10 @@ class BearerAuth(requests.auth.AuthBase):
 
     @property
     def token(self) -> Optional[BearerToken]:
+        """
+        The token that is used for authorization against the API.
+        :return:
+        """
         return self._token
 
     @token.setter
@@ -54,26 +59,44 @@ class OAuth2ClientCredentialsAuth(BearerAuth):
         return super().__call__(request)
 
 
-class OAuth20AccessAndRefreshTokenAuth(BearerAuth):
+class OAuth20AccessTokenAuth(BearerAuth):
     """
-    A Requests Authentication handler that handles a Bearer access token and automatically it them when expired.
+    A Requests Authentication handler using a Bearer access token, and can automatically refreshes it when expired.
     """
 
-    def __init__(self, client: "OAuth2Client", token: str = None, **token_kwargs: Any) -> None:
+    def __init__(
+        self, client: "OAuth2Client", token: Union[str, BearerToken] = None, **token_kwargs: Any
+    ) -> None:
+        """
+        Initializes an Authorization handler (RFC6750), with an (optional) initial token.
+        :param client: an `OAuth2Client` configured to talk to the token endpoint.
+        :param token: a BearerToken that has been retrieved from the token endpoint manually
+        :param token_kwargs: additional kwargs to pass to the token endpoint
+        """
         super().__init__(token)
         self.client = client
         self.token_kwargs = token_kwargs
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """
+        Adds the
+        :param request:
+        :return:
+        """
         token = self.token
-        if token is not None and token.is_expired() and token.refresh_token:
+        if (
+            token is not None
+            and token.is_expired()
+            and token.refresh_token
+            and self.client is not None
+        ):
             self.token = self.client.refresh_token(
                 refresh_token=token.refresh_token, **self.token_kwargs
             )
         return super().__call__(request)
 
 
-class OAuth2AuthorizationCodeAuth(OAuth20AccessAndRefreshTokenAuth):
+class OAuth2AuthorizationCodeAuth(OAuth20AccessTokenAuth):
     """
     A Requests Authentication handler that exchanges an authorization code for an access token,
     then automatically refreshes it once it is expired.
