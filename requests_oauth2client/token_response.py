@@ -55,6 +55,42 @@ class BearerToken:
         """
         return self.access_token
 
+    def __contains__(self, key: str) -> bool:
+        """
+        Check existence of a key in the token response.
+        Allows testing like `assert "refresh_token" in token_response`.
+        :param key: a key
+        :return: True if the key exists in the token response, False otherwise
+        """
+        if key == "access_token":
+            return True
+        elif key == "refresh_token":
+            return self.refresh_token is not None
+        elif key == "scope":
+            return self.scope is not None
+        elif key == "token_type":
+            raise ValueError("token_type is always Bearer, explicitly or implicitly")
+        elif key == "expires_in":
+            return self.expires_at is not None
+        elif key is None:
+            return False
+        else:
+            return key in self.other
+
+    def __getattr__(self, key):
+        """
+        Returns items from this Token Response.
+        Allows `token_response.expires_in` or `token_response.any_custom_attribute`
+        :param key: a key
+        :return: the associated value in this token response
+        :raises:
+        """
+        if key == "expires_in":
+            return int(self.expires_at.timestamp() - datetime.now().timestamp())
+        elif key == "token_type":
+            return "Bearer"
+        return self.other.get(key) or super().__getattr__(self, key)
+
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
         r: Dict[str, Any] = {
             "access_token": self.access_token,
@@ -64,7 +100,7 @@ class BearerToken:
             if expires_at:
                 r["expires_at"] = self.expires_at
             else:
-                r["expires_in"] = int(self.expires_at.timestamp() - datetime.now().timestamp())
+                r["expires_in"] = self.expires_in
         if self.scope:
             r["scope"] = self.scope
         if self.refresh_token:
