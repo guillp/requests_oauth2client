@@ -17,12 +17,24 @@ format:
 mypy:
 	python -m mypy requests_oauth2client --show-error-codes
 
-lock:
-	pipenv run pip freeze > requirements.txt
-
 sdist:
 	python setup.py sdist
 
-release: format lock sdist
+release: format sdist
+
+release-patch: format
+	bump2version patch setup.py
+	git push
+	twine upload
+
+release-minor: format
+	bump2version minor setup.py
+	git push
+	twine upload
+
+release-major: format
+	bump2version major setup.py
+	git push
+	twine upload
 
 .PHONY: tests mypy
