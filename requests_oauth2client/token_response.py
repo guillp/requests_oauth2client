@@ -89,7 +89,7 @@ class BearerToken:
             return int(self.expires_at.timestamp() - datetime.now().timestamp())
         elif key == "token_type":
             return "Bearer"
-        return self.other.get(key) or super().__getattr__(self, key)
+        return self.other.get(key) or super().__getattribute__(key)
 
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
         r: Dict[str, Any] = {
