@@ -163,4 +163,6 @@ def test_authorization_code_pkce(session, requests_mock):
     assert isinstance(token, BearerTokenEndpointResponse)
     assert token.access_token == access_token
     assert not token.is_expired()
-    assert token.expires_at == datetime.now() + timedelta(seconds=3600)
+    now = datetime.now()
+    assert 3598 <= token.expires_in <= 3600
+    assert now + timedelta(seconds=3598) <= token.expires_at <= now + timedelta(seconds=3600)
