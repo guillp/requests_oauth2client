@@ -3,11 +3,14 @@ from setuptools import find_packages, setup
 __title__ = "requests_oauth2client"
 __description__ = "An OAuth 2.0 client library for Python, with requests integration."
 __url__ = "https://github.com/guillp/requests_oauth2client"
-__version__ = "0.9.2"
 __author__ = "Guillaume Pujol"
 __author_email__ = "guill.p.linux@gmail.com"
 __license__ = "Apache 2.0"
 __copyright__ = "Copyright 2020 Guillaume Pujol"
+
+with open("VERSION") as finput:
+    version = finput.read()
+__version__ = version
 
 with open("README.rst", "rt") as finput:
     readme = finput.read()

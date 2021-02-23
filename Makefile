@@ -23,18 +23,15 @@ sdist:
 release: format sdist
 
 release-patch: format
-	bump2version patch setup.py
+	bump2version patch VERSION
 	git push
-	twine upload
 
 release-minor: format
-	bump2version minor setup.py
+	bump2version minor VERSION
 	git push
-	twine upload
 
 release-major: format
-	bump2version major setup.py
+	bump2version major VERSION
 	git push
-	twine upload
 
 .PHONY: tests mypy
