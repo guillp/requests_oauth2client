@@ -43,7 +43,7 @@ def b64u_decode(
     return decoded
 
 
-def make_jwk_key_pair(kty="RSA", **kwargs):
+def generate_jwk_key_pair(kty="RSA", **kwargs):
     from jwcrypto.jwk import JWK
 
     jwk = JWK.generate(kty=kty, **kwargs)

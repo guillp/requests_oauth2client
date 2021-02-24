@@ -8,8 +8,8 @@ import requests
 from jwcrypto.jwk import JWK
 from jwcrypto.jwt import JWT
 
-from requests_oauth2client import (ClientSecretBasic, ClientSecretPost, OAuth2Client,
-                                   OAuth2ClientCredentialsAuth, PrivateKeyJWT)
+from requests_oauth2client import (ClientSecretBasic, ClientSecretJWT, ClientSecretPost,
+                                   OAuth2Client, OAuth2ClientCredentialsAuth, PrivateKeyJWT)
 
 client_id = "TEST_CLIENT_ID"
 kid = "JWK-ABCD"
@@ -120,3 +120,59 @@ def test_private_key_jwt(requests_mock):
     )
     token_response = client.client_credentials()
     assert token_response.access_token == access_token
+
+
+def test_client_secret_jwt(requests_mock):
+    access_token = secrets.token_urlsafe()
+
+    def token_response_callback(request, context):
+        params = parse_qs(request.text)
+        assert params.get("client_id")[0] == client_id, "invalid client_id"
+        client_assertion = params.get("client_assertion")[0]
+        assert client_assertion, "missing client_assertion"
+        jwk = JWK(
+            kty="oct",
+            alg="HS256",
+            k=base64.urlsafe_b64encode(client_secret.encode()).decode().rstrip("="),
+        )
+        jwt = JWT(jwt=client_assertion, key=jwk)
+        claims = json.loads(jwt.claims)
+        now = int(datetime.now().timestamp())
+        assert now - 10 <= claims["iat"] <= now, "unexpected iat"
+        assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
+        assert claims["iss"] == client_id
+        assert claims["aud"] == token_endpoint
+        assert "jti" in claims
+        assert claims["sub"] == client_id
+
+        assert params.get("grant_type")[0] == "client_credentials", "invalid grant_type"
+
+        return {"access_token": access_token, "token_type": "Bearer", "expires_in": 3600}
+
+    requests_mock.post(
+        token_endpoint, json=token_response_callback,
+    )
+    client = OAuth2Client(token_endpoint, ClientSecretJWT(client_id, client_secret))
+    token_response = client.client_credentials()
+    assert token_response.access_token == access_token
+
+
+def test_public_client(requests_mock):
+    access_token = secrets.token_urlsafe()
+
+    def token_response_callback(request, context):
+        params = parse_qs(request.text)
+        assert params.get("client_id")[0] == client_id
+        assert params.get("grant_type")[0] == "client_credentials"
+
+        return {"access_token": access_token, "token_type": "Bearer", "expires_in": 3600}
+
+    requests_mock.post(
+        token_endpoint, json=token_response_callback,
+    )
+    client = OAuth2Client(token_endpoint, client_id)
+    auth = OAuth2ClientCredentialsAuth(client)
+
+    requests_mock.get(api, request_headers={"Authorization": f"Bearer {access_token}"})
+    response = requests.get(api, auth=auth)
+    assert response.ok
