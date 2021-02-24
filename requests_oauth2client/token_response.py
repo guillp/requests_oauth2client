@@ -3,10 +3,10 @@ import json
 import pprint
 import zlib
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 if TYPE_CHECKING:
-    from .client import OAuth2Client
+    pass
 
 
 class BearerToken:
@@ -18,6 +18,7 @@ class BearerToken:
     def __init__(
         self,
         access_token: str,
+        expires_in: int = None,
         expires_at: datetime = None,
         scope: str = None,
         refresh_token: str = None,
@@ -25,9 +26,14 @@ class BearerToken:
         **kwargs: Any,
     ):
         if token_type != "Bearer":
-            raise ValueError("This is not Bearer Token!", token_type)
+            raise ValueError("This is not a Bearer Token!", token_type)
         self.access_token = access_token
-        self.expires_at = expires_at
+        if expires_at:
+            self.expires_at = expires_at
+        elif expires_in:
+            self.expires_at = datetime.now() + timedelta(seconds=expires_in)
+        else:
+            self.expires_at = None
         self.scope = scope
         self.refresh_token = refresh_token
         self.other = kwargs
@@ -111,42 +117,6 @@ class BearerToken:
 
     def __repr__(self) -> str:
         return pprint.pformat(self.as_dict())
-
-
-class BearerTokenEndpointResponse(BearerToken):
-    """
-    Like a BearerToken, but includes all the attributes returned by the token endpoint (id_token, etc.)
-    """
-
-    def __init__(
-        self,
-        access_token: str,
-        expires_in: int = None,
-        token_type: str = "Bearer",
-        scope: str = None,
-        refresh_token: str = None,
-        id_token: str = None,
-        client: "OAuth2Client" = None,
-        **kwargs: Union[str, int, bool],
-    ) -> None:
-        if token_type != "Bearer":
-            raise ValueError("token types other than Bearer are not supported")
-        expires_at = None
-        if expires_in:
-            expires_at = datetime.now() + timedelta(seconds=expires_in)
-        super().__init__(access_token, expires_at, scope, refresh_token, token_type, **kwargs)
-        self.client = client
-        self._id_token = id_token
-
-    def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
-        r = super().as_dict(expires_at)
-        if self._id_token:
-            r["id_token"] = self._id_token
-        return r
-
-    @classmethod
-    def from_requests_response(cls, client, resp):
-        return cls(client=client, **resp.json())
 
 
 class TokenSerializer:

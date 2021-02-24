@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 import requests
 from furl import furl
 
-from requests_oauth2client import BearerTokenEndpointResponse, ClientSecretPost, OAuth2Client
+from requests_oauth2client import BearerToken, ClientSecretPost, OAuth2Client
 from requests_oauth2client.authorization_code import AuthorizationCodeHandler, PkceHelper
 from requests_oauth2client.discovery import oidc_discovery_document_url
 
@@ -78,7 +78,7 @@ def test_authorization_code(session, requests_mock):
         token_endpoint, json=token_response_callback,
     )
     token = client.authorization_code(code=code, redirect_uri=redirect_uri)
-    assert isinstance(token, BearerTokenEndpointResponse)
+    assert isinstance(token, BearerToken)
     assert token.access_token == access_token
     assert not token.is_expired()
     assert (
@@ -160,7 +160,7 @@ def test_authorization_code_pkce(session, requests_mock):
     token = client.authorization_code(
         code=code, redirect_uri=redirect_uri, code_verifier=code_verifier
     )
-    assert isinstance(token, BearerTokenEndpointResponse)
+    assert isinstance(token, BearerToken)
     assert token.access_token == access_token
     assert not token.is_expired()
     now = datetime.now()

@@ -1,11 +1,11 @@
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Type, Union
 
 import requests
 
 from .client_authentication import ClientSecretPost, PublicApp
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
                          InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
-from .token_response import BearerTokenEndpointResponse
+from .token_response import BearerToken
 
 if TYPE_CHECKING:
     from .token_response import BearerToken
@@ -25,7 +25,8 @@ class OAuth2Client:
 
     default_exception_class = TokenResponseError
 
-    token_response_factory: "Callable[[OAuth2Client, requests.Response], BearerTokenEndpointResponse]" = BearerTokenEndpointResponse.from_requests_response
+    # token_response_factory: "Callable[[OAuth2Client, requests.Response], BearerTokenEndpointResponse]" = BearerTokenEndpointResponse.from_requests_response
+    token_response_class = BearerToken
 
     def __init__(
         self,
@@ -82,7 +83,7 @@ class OAuth2Client:
             self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **kwargs
         )
         if response.ok:
-            token_response = self.token_response_factory(self, response)  # type: ignore[call-arg, arg-type]
+            token_response = self.token_response_class(**response.json())
             return token_response
 
         # error handling
