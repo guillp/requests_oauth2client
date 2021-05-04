@@ -9,7 +9,7 @@ import requests
 from furl import furl
 
 from requests_oauth2client import BearerToken, ClientSecretPost, OAuth2Client
-from requests_oauth2client.authorization_code import AuthorizationCodeHandler, PkceHelper
+from requests_oauth2client.authorization_request import AuthorizationRequest, PkceUtils
 from requests_oauth2client.discovery import oidc_discovery_document_url
 
 client_id = "TEST_CLIENT_ID"
@@ -34,8 +34,8 @@ def test_token_response(session, requests_mock):
     token_endpoint = discovery.get("token_endpoint")
     assert token_endpoint
 
-    code_verifier = PkceHelper.generate_code_verifier()
-    authorization_request = AuthorizationCodeHandler(
+    code_verifier = PkceUtils.generate_code_verifier()
+    authorization_request = AuthorizationRequest(
         authorization_endpoint,
         client_id,
         redirect_uri=redirect_uri,
