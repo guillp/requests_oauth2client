@@ -25,7 +25,8 @@ class ApiClient(requests.Session):
         """
         A customized request method to handle a path instead of a full url.
         :param method: the method to use
-        :param url: the url to send the request to. Can be a path instead of a full url; that path will be joined to the configured API url.
+        :param url: the url to send the request to. Can be a path instead of a full url; that path will be joined to the
+        configured API url.
         :param kwargs: additional arguments to :method:`request()`
         :return: a :class:`requests.Response` as returned by requests
         """
