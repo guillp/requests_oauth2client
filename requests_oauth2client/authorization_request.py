@@ -145,3 +145,6 @@ class AuthorizationRequest:
         if code is None:
             raise ValueError("missing code in callback!")
         return code
+
+    def __repr__(self):
+        return str(self.request)
