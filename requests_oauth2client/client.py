@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import requests
 
@@ -6,9 +6,6 @@ from .client_authentication import ClientSecretPost, PublicApp
 from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
                          InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
 from .token_response import BearerToken
-
-if TYPE_CHECKING:
-    from .token_response import BearerToken
 
 
 class OAuth2Client:
@@ -25,7 +22,6 @@ class OAuth2Client:
 
     default_exception_class = TokenResponseError
 
-    # token_response_factory: "Callable[[OAuth2Client, requests.Response], BearerTokenEndpointResponse]" = BearerTokenEndpointResponse.from_requests_response
     token_response_class = BearerToken
 
     def __init__(

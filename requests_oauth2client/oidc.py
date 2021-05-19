@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, Tuple, Union
 import requests
 from jwcrypto.jwt import JWT  # type: ignore[import]
 
-from . import BearerTokenEndpointResponse
 from .auth import BearerAuth
 from .client import OAuth2Client
 from .token_response import BearerToken

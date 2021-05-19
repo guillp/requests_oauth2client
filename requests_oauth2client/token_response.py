@@ -3,10 +3,7 @@ import json
 import pprint
 import zlib
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
-
-if TYPE_CHECKING:
-    pass
+from typing import Any, Callable, Dict, Optional
 
 
 class BearerToken:
