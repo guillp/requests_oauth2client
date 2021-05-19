@@ -13,7 +13,7 @@ def access_token():
 def test_bearer_auth(requests_mock, access_token):
     def callback(request, context):
         received_authorization_header = request.headers.get("Authorization")
-        expected_authorization_header = f"Basic {access_token}"
+        expected_authorization_header = f"Bearer {access_token}"
         assert received_authorization_header == expected_authorization_header
 
     requests_mock.post(
@@ -21,9 +21,8 @@ def test_bearer_auth(requests_mock, access_token):
     )
 
     API = "http://localhost/"
-    requests_mock.get(API)
     auth = BearerAuth(access_token)
-    response = requests.get(API, auth=auth)
+    response = requests.post(API, auth=auth)
     assert response.ok
 
 
@@ -32,12 +31,9 @@ def test_bearer_auth_none(requests_mock):
         received_authorization_header = request.headers.get("Authorization")
         assert received_authorization_header == None
 
-    requests_mock.post(
-        ANY, json=callback,
-    )
+    requests_mock.post(ANY, json=callback)
 
     API = "http://localhost/"
-    requests_mock.get(API)
     auth = BearerAuth()
-    response = requests.get(API, auth=auth)
+    response = requests.post(API, auth=auth)
     assert response.ok
