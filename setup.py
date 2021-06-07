@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 
 __title__ = "requests_oauth2client"
-__description__ = "An OAuth 2.0 client library for Python, with requests integration."
+__description__ = "An OAuth 2.x client library for Python, with requests integration."
 __url__ = "https://github.com/guillp/requests_oauth2client"
 __author__ = "Guillaume Pujol"
 __author_email__ = "guill.p.linux@gmail.com"
