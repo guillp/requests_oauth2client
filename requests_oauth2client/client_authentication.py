@@ -17,12 +17,12 @@ class ClientAuthenticationMethod(requests.auth.AuthBase):
     """
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
-        if (
-            request.method != "POST"
-            or request.headers["Content-Type"] != "application/x-www-form-urlencoded"
+        if request.method != "POST" or request.headers.get("Content-Type") not in (
+            "application/x-www-form-urlencoded",
+            None,
         ):
             raise RuntimeError(
-                "This request is not suitable to add OAuth2.0 Client Authentication"
+                "This request is not suitable for OAuth2.0 Client Authentication"
             )
         return request
 
