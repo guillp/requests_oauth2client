@@ -120,7 +120,7 @@ class AuthorizationRequest:
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
 
-        args = dict(
+        self.args = dict(
             client_id=client_id,
             redirect_uri=redirect_uri,
             response_type=response_type,
@@ -134,7 +134,7 @@ class AuthorizationRequest:
 
         self.request = furl(
             authorization_endpoint,
-            args={key: value for key, value in args.items() if value is not None},
+            args={key: value for key, value in self.args.items() if value is not None},
         )
 
     def validate_callback(self, response: str) -> str:
