@@ -12,7 +12,7 @@ class ApiClient(requests.Session):
 
     def __init__(
         self,
-        url: str,
+        url: Optional[str] = None,
         auth: Optional[requests.auth.AuthBase] = None,
         raise_for_status: bool = True,
     ):
