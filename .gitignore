@@ -3,3 +3,5 @@
 /requests_oauth2client.egg-info/
 /dist/
 __pycache__
+htmlcov/
+.coverage
