@@ -179,9 +179,11 @@ class OAuth2Client:
         requests_kwargs = requests_kwargs or {}
         if self.revocation_endpoint:
             self.session.post(
+                self.revocation_endpoint,
                 data=dict(
                     revoke_kwargs, token=str(access_token), token_type_hint="access_token"
                 ),
+                auth=self.auth,
                 **requests_kwargs,
             ).raise_for_status()
 
@@ -200,7 +202,9 @@ class OAuth2Client:
         requests_kwargs = requests_kwargs or {}
         if self.revocation_endpoint:
             self.session.post(
+                self.revocation_endpoint,
                 data=dict(revoke_kwargs, token=refresh_token, token_type_hint="refresh_token"),
+                auth=self.auth,
                 **requests_kwargs,
             ).raise_for_status()
 
