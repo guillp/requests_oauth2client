@@ -3,8 +3,9 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 import requests
 
 from .client_authentication import ClientSecretPost, PublicApp
-from .exceptions import (AccessDenied, InvalidGrant, InvalidScope,
-                         InvalidTokenResponse, TokenResponseError, UnauthorizedClient)
+from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
+                         InvalidGrant, InvalidScope, InvalidTokenResponse,
+                         SlowDown, TokenResponseError, UnauthorizedClient)
 from .token_response import BearerToken
 
 
@@ -18,6 +19,9 @@ class OAuth2Client:
         "invalid_grant": InvalidGrant,
         "access_denied": AccessDenied,
         "unauthorized_client": UnauthorizedClient,
+        "authorization_pending": AuthorizationPending,
+        "slow_down": SlowDown,
+        "expired_token": ExpiredDeviceCode,
     }
 
     default_exception_class = TokenResponseError
@@ -136,6 +140,24 @@ class OAuth2Client:
         """
         requests_kwargs = requests_kwargs or {}
         data = dict(grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs)
+        return self.token_request(data, **requests_kwargs)
+
+    def device_code(
+        self, device_code: str, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
+    ):
+        """
+        Sends a request to the token endpoint with the urn:ietf:params:oauth:grant-type:device_code grant.
+        :param device_code: a device code as received during the device authorization request
+        :param requests_kwargs: additional parameters for the call to requests
+        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, device_code, etc.
+        :return: a TokenResponse
+        """
+        requests_kwargs = requests_kwargs or {}
+        data = dict(
+            grant_type="urn:ietf:params:oauth:grant-type:device_code",
+            device_code=device_code,
+            **token_kwargs,
+        )
         return self.token_request(data, **requests_kwargs)
 
     def revoke_access_token(

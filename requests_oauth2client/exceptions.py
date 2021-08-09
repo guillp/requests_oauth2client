@@ -13,6 +13,10 @@ class InvalidTokenResponse(OAuth2Error):
     pass
 
 
+class ExpiredToken(OAuth2Error):
+    pass
+
+
 class UnknownTokenResponseError(TokenResponseError):
     pass
 
@@ -41,5 +45,21 @@ class UnauthorizedClient(TokenResponseError):
     pass
 
 
-class ExpiredToken(OAuth2Error):
+class DeviceAuthorizationError(TokenResponseError):
+    pass
+
+
+class AuthorizationPending(DeviceAuthorizationError):
+    pass
+
+
+class SlowDown(DeviceAuthorizationError):
+    pass
+
+
+class ExpiredDeviceCode(DeviceAuthorizationError):
+    pass
+
+
+class InvalidDeviceAuthorizationResponse(OAuth2Error):
     pass
