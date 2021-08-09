@@ -51,6 +51,7 @@ def test_oidc(requests_mock):
 
     authorization_code = secrets.token_urlsafe()
     state = authorization_request.state
+    nonce = authorization_request.nonce
     auth_response = furl(REDIRECT_URI, query={"code": authorization_code, "state": state}).url
 
     requests_mock.get(
@@ -65,6 +66,7 @@ def test_oidc(requests_mock):
     assert params.pop("response_type") == ["code"]
     assert params.pop("redirect_uri") == [REDIRECT_URI]
     assert params.pop("state") == [state]
+    assert params.pop("nonce") == [nonce]
 
     assert params.pop("code_challenge_method") == ["S256"]
     code_challenge = params.pop("code_challenge")[0]
@@ -106,5 +108,9 @@ def test_oidc(requests_mock):
     assert isinstance(token, OpenIdConnectTokenResponse)
     assert token.access_token == access_token
     assert not token.is_expired()
-    assert token.expires_at == datetime.now() + timedelta(seconds=3600)
+
+    now = datetime.now()
+    assert 3598 <= token.expires_in <= 3600
+    assert now + timedelta(seconds=3598) <= token.expires_at <= now + timedelta(seconds=3600)
+
     assert token.id_token == ID_TOKEN
