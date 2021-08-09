@@ -17,6 +17,12 @@ def test_b64u():
     uuid = uuid4()
     assert b64u_decode(b64u_encode(uuid)) == str(uuid)
 
+    class Str:
+        def __str__(self):
+            return b64u_encode(uuid)
+
+    assert b64u_decode(Str(), encoding=None) == str(uuid).encode()
+
 
 def test_generate_jwk_key_pair():
     private, public = generate_jwk_key_pair()

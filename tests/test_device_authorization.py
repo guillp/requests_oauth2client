@@ -17,31 +17,28 @@ def test_device_authorization(requests_mock):
     user_code = secrets.token_urlsafe(6)
     verification_uri = "https://test.com/verify_device"
 
-    def device_authorization_response_callback(request, context):
-        params = parse_qs(request.text)
-        assert params.get("client_id")[0] == client_id
-        assert params.get("client_secret")[0] == client_secret
-
-        return {
-            "device_code": device_code,
-            "user_code": user_code,
-            "verification_uri": verification_uri,
-            "expires_in": 3600,
-        }
-
-    requests_mock.post(
-        device_authorization_endpoint, json=device_authorization_response_callback,
-    )
-
     da_client = DeviceAuthorizationClient(
         device_authorization_endpoint=device_authorization_endpoint,
         auth=(client_id, client_secret),
     )
 
+    requests_mock.post(
+        device_authorization_endpoint,
+        json={
+            "device_code": device_code,
+            "user_code": user_code,
+            "verification_uri": verification_uri,
+            "expires_in": 3600,
+        },
+    )
     device_auth_resp = da_client.authorize_device()
     assert device_auth_resp.device_code
     assert device_auth_resp.user_code
     assert device_auth_resp.verification_uri
+
+    params = parse_qs(requests_mock.last_request.text)
+    assert params.get("client_id") == [client_id]
+    assert params.get("client_secret") == [client_secret]
 
     access_token = secrets.token_urlsafe()
 
@@ -77,8 +74,8 @@ def test_device_authorization(requests_mock):
     # 2nd attempt: slow down
     resp = pool_job()
     params = parse_qs(requests_mock.last_request.text)
-    assert params.get("client_id")[0] == client_id
-    assert params.get("client_secret")[0] == client_secret
+    assert params.get("client_id") == [client_id]
+    assert params.get("client_secret") == [client_secret]
 
     assert pool_job.interval == 10
     assert resp is None
@@ -86,7 +83,7 @@ def test_device_authorization(requests_mock):
     # 3rd attempt: access token delivered
     resp = pool_job()
     params = parse_qs(requests_mock.last_request.text)
-    assert params.get("client_id")[0] == client_id
-    assert params.get("client_secret")[0] == client_secret
+    assert params.get("client_id") == [client_id]
+    assert params.get("client_secret") == [client_secret]
 
     assert not resp.is_expired()
