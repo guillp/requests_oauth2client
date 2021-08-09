@@ -72,7 +72,7 @@ class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
         self.jti_gen = jti_gen
 
     def client_assertion(self, audience: str) -> str:
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma: no cover
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
@@ -146,7 +146,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         lifetime: int = 60,
         kid: Optional[str] = None,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
-    ):
+    ) -> None:
         alg = private_jwk.get("alg", alg)
         if not alg:
             raise ValueError(
