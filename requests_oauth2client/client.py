@@ -50,15 +50,19 @@ class OAuth2Client:
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint)
-        self.jwks_uri = str(jwks_uri)
-        self.server_discovery_endpoint = str(discovery_endpoint)
-        self.default_auth_handler = default_auth_handler
-        self.auth = auth  # type: ignore[assignment]
         self.session = session or requests.Session()
 
-    @property
-    def auth(self) -> Optional[requests.auth.AuthBase]:
-        return self._auth
+        self.auth: Optional[requests.auth.AuthBase]
+        if auth is None:
+            self.auth = None
+        elif isinstance(auth, requests.auth.AuthBase):
+            self.auth = auth
+        elif isinstance(auth, tuple) and len(auth) == 2:
+            client_id, client_secret = auth
+            self.auth = default_auth_handler(client_id, client_secret)
+        elif isinstance(auth, str):
+            client_id = auth
+            self.auth = PublicApp(client_id)
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
