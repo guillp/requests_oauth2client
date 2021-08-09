@@ -25,6 +25,7 @@ class BearerToken:
         if token_type != "Bearer":
             raise ValueError("This is not a Bearer Token!", token_type)
         self.access_token = access_token
+        self.expires_at: Optional[datetime]
         if expires_at:
             self.expires_at = expires_at
         elif expires_in:

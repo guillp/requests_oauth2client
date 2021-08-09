@@ -44,7 +44,7 @@ def b64u_decode(
 
 
 def generate_jwk_key_pair(kty="RSA", **kwargs):
-    from jwcrypto.jwk import JWK
+    from jwcrypto.jwk import JWK # type: ignore
 
     jwk = JWK.generate(kty=kty, **kwargs)
     private_jwk = jwk.export_private(as_dict=True)

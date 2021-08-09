@@ -22,7 +22,7 @@ class OAuth2Client:
 
     default_exception_class = TokenResponseError
 
-    token_response_class = BearerToken
+    token_response_class: Type = BearerToken
 
     def __init__(
         self,

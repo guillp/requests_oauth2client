@@ -2,7 +2,7 @@ import hashlib
 import re
 import secrets
 from collections.abc import Iterable
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Tuple
 
 from furl import furl  # type: ignore[import]
 
@@ -50,7 +50,7 @@ class PkceUtils:
             raise ValueError("Unsupported code_challenge_method", method)
 
     @classmethod
-    def generate_code_verifier_and_challenge(cls, method="S256") -> (str, str):
+    def generate_code_verifier_and_challenge(cls, method="S256") -> Tuple[str, str]:
         """
         Generate a valid code_verifier
         :return:
@@ -68,7 +68,7 @@ class PkceUtils:
         :return: True if verifier is valid, False, otherwise
         """
         return (
-            cls.code_verifier_re.match(verifier)
+            cls.code_verifier_re.match(verifier) is not None
             and cls.derive_challenge(verifier, method) == challenge
         )
 
