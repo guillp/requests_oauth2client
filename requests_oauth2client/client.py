@@ -29,8 +29,6 @@ class OAuth2Client:
         token_endpoint: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         revocation_endpoint: str = None,
-        discovery_endpoint: str = None,
-        jwks_uri: str = None,
         session: requests.Session = None,
         default_auth_handler=ClientSecretPost,
     ):
