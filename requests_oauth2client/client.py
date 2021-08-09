@@ -236,4 +236,13 @@ class OAuth2Client:
         :param session: a requests Session to use to retrieve the document and initialise the client with
         :return: an OAuth20Client
         """
-        return cls(token_endpoint=discovery["token_endpoint"], auth=auth, session=session)
+        token_endpoint = discovery.get("token_endpoint")
+        if token_endpoint is None:
+            raise ValueError("token_endpoint not found in that discovery document")
+        revocation_endpoint = discovery.get("revocation_endpoint")
+        return cls(
+            token_endpoint=discovery["token_endpoint"],
+            revocation_endpoint=revocation_endpoint,
+            auth=auth,
+            session=session,
+        )
