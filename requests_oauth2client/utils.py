@@ -1,8 +1,8 @@
 import base64
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 
-def b64u_encode(data: Union[bytes, str], encoding="utf-8"):
+def b64u_encode(data: Union[bytes, str], encoding: str = "utf-8") -> str:
     """
     Encodes some data in Base64url.
     :param data: the data to encode. Can be bytes or str.
@@ -43,8 +43,10 @@ def b64u_decode(
     return decoded
 
 
-def generate_jwk_key_pair(kty="RSA", **kwargs):
-    from jwcrypto.jwk import JWK # type: ignore
+def generate_jwk_key_pair(
+    kty: str = "RSA", **kwargs: Any
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    from jwcrypto.jwk import JWK  # type: ignore
 
     jwk = JWK.generate(kty=kty, **kwargs)
     private_jwk = jwk.export_private(as_dict=True)

@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import requests
 
-from .client_authentication import ClientSecretPost, PublicApp
+from .client_authentication import ClientSecretBasic, ClientSecretPost, PublicApp
 from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
                          InvalidGrant, InvalidScope, InvalidTokenResponse,
                          SlowDown, TokenResponseError, UnauthorizedClient)
@@ -26,23 +26,27 @@ class OAuth2Client:
 
     default_exception_class = TokenResponseError
 
-    token_response_class: Type = BearerToken
+    token_response_class: Type[BearerToken] = BearerToken
 
     def __init__(
         self,
         token_endpoint: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
-        revocation_endpoint: str = None,
-        session: requests.Session = None,
-        default_auth_handler=ClientSecretPost,
+        revocation_endpoint: Optional[str] = None,
+        session: Optional[requests.Session] = None,
+        default_auth_handler: Union[
+            Type[ClientSecretPost], Type[ClientSecretBasic]
+        ] = ClientSecretPost,
     ):
         """
         :param token_endpoint: the token endpoint where this client will get access tokens
-        :param auth: the authentication handler to use for client authentication on the token endpoint
-        :param revocation_endpoint: the revocation endpoint url to use for revoking tokens
+        :param auth: the authentication handler to use for client authentication on the token endpoint.  Can be a
+        `requests.auth.AuthBase` instance (which will be used directly), or a tuple of (client_id, client_secret) which
+        will initialize an instance of `default_auth_handler`, or a client_id which will use PublicApp authentication.
+        :param revocation_endpoint: the revocation endpoint url to use for revoking tokens, if any
         :param session: a requests Session to use when sending HTTP requests
         :param default_auth_handler: if auth is a tuple (for example, a client_id and client_secret), init an object of
-        this class with auth values as parameters. This parameter is ignored if auth is an instance of AuthBase already.
+        this class with auth values as parameters.
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint)
@@ -56,29 +60,18 @@ class OAuth2Client:
     def auth(self) -> Optional[requests.auth.AuthBase]:
         return self._auth
 
-    @auth.setter
-    def auth(self, value: Union[requests.auth.AuthBase, Tuple[str, str], str]):
-        if value is None:
-            self._auth: Optional[requests.auth.AuthBase] = None
-        elif isinstance(value, requests.auth.AuthBase):
-            self._auth = value
-        elif isinstance(value, tuple) and len(value) == 2:
-            client_id, client_secret = value
-            self._auth = self.default_auth_handler(client_id, client_secret)
-        elif isinstance(value, str):
-            client_id = value
-            self._auth = PublicApp(client_id)
-
-    def token_request(self, data: Dict[str, Any], timeout: int = 10, **kwargs) -> "BearerToken":
+    def token_request(
+        self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
+    ) -> BearerToken:
         """
         Sends a authenticated request to the token endpoint.
         :param data: parameters to send to the token endpoint
         :param timeout: a timeout value for the call
-        :param kwargs: additional parameters to the post
-        :return: the token endpoint response, as TokenResponse instance.
+        :param requests_kwargs: additional parameters for requests.post()
+        :return: the token endpoint response, as BearerToken instance.
         """
         response = self.session.post(
-            self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **kwargs
+            self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **requests_kwargs
         )
         if response.ok:
             token_response = self.token_response_class(**response.json())
@@ -102,11 +95,12 @@ class OAuth2Client:
         raise InvalidTokenResponse("token endpoint returned an error without description")
 
     def client_credentials(
-        self, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
-    ) -> "BearerToken":
+        self, requests_kwargs: Optional[Dict[str, Any]] = None, **token_kwargs: Any
+    ) -> BearerToken:
         """
         Sends a request to the token endpoint with the client_credentials grant.
-        :param token_kwargs: additional args to pass to the token endpoint
+        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type. Common parameters
+        to pass that way include scope, audience, resource, etc.
         :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
@@ -115,12 +109,12 @@ class OAuth2Client:
         return self.token_request(data, **requests_kwargs)
 
     def authorization_code(
-        self, code: str, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
-    ) -> "BearerToken":
+        self, code: str, requests_kwargs: Optional[Dict[str, Any]] = None, **token_kwargs: Any
+    ) -> BearerToken:
         """
         Sends a request to the token endpoint with the authorization_code grant.
         :param code: an authorization code to exchange for tokens
-        :param token_kwargs: additional args to pass to the token endpoint
+        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, code, etc.
         :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
@@ -129,28 +123,34 @@ class OAuth2Client:
         return self.token_request(data, **requests_kwargs)
 
     def refresh_token(
-        self, refresh_token: str, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
-    ) -> "BearerToken":
+        self,
+        refresh_token: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
         """
         Sends a request to the token endpoint with the refresh_token grant.
         :param refresh_token: a refresh_token
-        :param token_kwargs: additional args to pass to the token endpoint
+        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, refresh_token, etc.
         :param requests_kwargs: additional parameters for the call to requests
-        :return: a TokenResponse
+        :return: a BearerToken
         """
         requests_kwargs = requests_kwargs or {}
         data = dict(grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
     def device_code(
-        self, device_code: str, requests_kwargs: Dict[str, Any] = None, **token_kwargs: Any
-    ):
+        self,
+        device_code: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
         """
         Sends a request to the token endpoint with the urn:ietf:params:oauth:grant-type:device_code grant.
         :param device_code: a device code as received during the device authorization request
         :param requests_kwargs: additional parameters for the call to requests
         :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, device_code, etc.
-        :return: a TokenResponse
+        :return: a BearerToken
         """
         requests_kwargs = requests_kwargs or {}
         data = dict(
@@ -162,14 +162,15 @@ class OAuth2Client:
 
     def revoke_access_token(
         self,
-        access_token: "Union[BearerToken, str]",
-        requests_kwargs: Dict[str, Any] = None,
-        **revoke_kwargs,
+        access_token: Union[BearerToken, str],
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **revoke_kwargs: Any,
     ) -> None:
         """
         Sends a request to the revocation endpoint to revoke an access token.
         :param access_token: the access token to revoke
-        :param requests_kwargs: additional parameters to pass to the revocation endpoint
+        :param requests_kwargs: additional parameters for the underlying requests.post() call
+        :param revoke_kwargs: additional parameters to pass to the revocation endpoint
         """
         requests_kwargs = requests_kwargs or {}
         if self.revocation_endpoint:
@@ -181,12 +182,16 @@ class OAuth2Client:
             ).raise_for_status()
 
     def revoke_refresh_token(
-        self, refresh_token: str, requests_kwargs: Dict[str, Any] = None, **revoke_kwargs
+        self,
+        refresh_token: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **revoke_kwargs: Any,
     ) -> None:
         """
         Sends a request to the revocation endpoint to revoke a refresh token.
         :param refresh_token: the refresh token to revoke
         :param requests_kwargs: additional parameters to pass to the revocation endpoint
+        :param revoke_kwargs: additional parameters to pass to the revocation endpoint
         """
         requests_kwargs = requests_kwargs or {}
         if self.revocation_endpoint:
@@ -199,8 +204,8 @@ class OAuth2Client:
     def from_discovery_endpoint(
         cls,
         url: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
-        session: requests.Session = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        session: Optional[requests.Session] = None,
     ) -> "OAuth2Client":
         """
         Initialise an OAuth20Client, retrieving server metadata from a discovery document.
@@ -217,8 +222,8 @@ class OAuth2Client:
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
-        session: requests.Session = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        session: Optional[requests.Session] = None,
     ) -> "OAuth2Client":
         """
         Initialise an OAuth20Client, based on the server metadata from `discovery`.

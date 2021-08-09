@@ -1,14 +1,14 @@
 import time
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import requests
 
-from requests_oauth2client import BearerToken, ClientSecretPost, OAuth2Client
-from requests_oauth2client.client_authentication import PublicApp
-from requests_oauth2client.exceptions import (AuthorizationPending, DeviceAuthorizationError,
-                                              InvalidDeviceAuthorizationResponse, SlowDown,
-                                              UnauthorizedClient)
+from .client import OAuth2Client
+from .client_authentication import ClientSecretBasic, ClientSecretPost, PublicApp
+from .exceptions import (AuthorizationPending, DeviceAuthorizationError,
+                         InvalidDeviceAuthorizationResponse, SlowDown, UnauthorizedClient)
+from .token_response import BearerToken
 
 
 class DeviceAuthorizationResponse:
@@ -21,11 +21,11 @@ class DeviceAuthorizationResponse:
         device_code: str,
         user_code: str,
         verification_uri: str,
-        verification_uri_complete: str = None,
-        expires_in: int = None,
-        expires_at: datetime = None,
-        interval: int = None,
-        **kwargs,
+        verification_uri_complete: Optional[str] = None,
+        expires_in: Optional[int] = None,
+        expires_at: Optional[datetime] = None,
+        interval: Optional[int] = None,
+        **kwargs: Any,
     ):
         self.device_code = (device_code,)
         self.user_code = user_code
@@ -69,8 +69,10 @@ class DeviceAuthorizationClient:
         self,
         device_authorization_endpoint: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
-        session: requests.Session = None,
-        default_auth_handler=ClientSecretPost,
+        session: Optional[requests.Session] = None,
+        default_auth_handler: Union[
+            Type[ClientSecretPost], Type[ClientSecretBasic]
+        ] = ClientSecretPost,
     ):
         self.device_authorization_endpoint = device_authorization_endpoint
         self.session = session or requests.Session()
@@ -85,7 +87,7 @@ class DeviceAuthorizationClient:
             client_id = auth
             self.auth = PublicApp(client_id)
 
-    def authorize_device(self, **data):
+    def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
         """
         Sends a Device Authorization Request.
         :param data: additional data to send to the Device Authorization Endpoint
@@ -131,10 +133,10 @@ class DeviceAuthorizationPoolingJob:
         self,
         client: OAuth2Client,
         device_code: str,
-        interval: int = None,
-        requests_kwargs=None,
-        **token_kwargs,
-    ) -> None:
+        interval: Optional[int] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ):
         self.client = client
         self.device_code = device_code
         self.interval = interval or 5

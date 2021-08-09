@@ -2,11 +2,11 @@ import hashlib
 import re
 import secrets
 from collections.abc import Iterable
-from typing import Any, Optional, Union, Tuple
+from typing import Any, Optional, Tuple, Union
 
 from furl import furl  # type: ignore[import]
 
-from requests_oauth2client.utils import b64u_encode
+from .utils import b64u_encode
 
 
 class PkceUtils:
@@ -25,7 +25,7 @@ class PkceUtils:
         return secrets.token_urlsafe(96)
 
     @classmethod
-    def derive_challenge(cls, verifier: Union[str, bytes], method="S256") -> str:
+    def derive_challenge(cls, verifier: Union[str, bytes], method: str = "S256") -> str:
         """
         Derives the code_challenge from a given code_verifier
         :param verifier: a code verifier
@@ -50,7 +50,7 @@ class PkceUtils:
             raise ValueError("Unsupported code_challenge_method", method)
 
     @classmethod
-    def generate_code_verifier_and_challenge(cls, method="S256") -> Tuple[str, str]:
+    def generate_code_verifier_and_challenge(cls, method: str = "S256") -> Tuple[str, str]:
         """
         Generate a valid code_verifier
         :return:
@@ -60,7 +60,9 @@ class PkceUtils:
         return verifier, challenge
 
     @classmethod
-    def validate_code_verifier(cls, verifier, challenge, method="S256") -> bool:
+    def validate_code_verifier(
+        cls, verifier: str, challenge: str, method: str = "S256"
+    ) -> bool:
         """
         Validates a verifier against a challenge
         :param verifier: the code_verifier, exactly as submitted by the client on toker request
@@ -89,15 +91,18 @@ class AuthorizationRequest:
         scope: str,
         response_type: str = "code",
         state: Union[str, bool] = True,
-        nonce: str = None,
-        code_verifier: str = None,
+        nonce: Optional[str] = None,
+        code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
         **kwargs: Any,
     ) -> None:
+
         if state is True:
             state = secrets.token_urlsafe(32)
-        if nonce is True:
+
+        if nonce is None:
             nonce = secrets.token_urlsafe(32)
+
         if not isinstance(scope, str):
             if isinstance(scope, Iterable):
                 scope = "+".join(scope)
@@ -146,5 +151,5 @@ class AuthorizationRequest:
             raise ValueError("missing code in callback!")
         return code
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self.request)

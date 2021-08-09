@@ -3,7 +3,7 @@ import json
 import pprint
 import zlib
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Type
 
 
 class BearerToken:
@@ -15,10 +15,10 @@ class BearerToken:
     def __init__(
         self,
         access_token: str,
-        expires_in: int = None,
-        expires_at: datetime = None,
-        scope: str = None,
-        refresh_token: str = None,
+        expires_in: Optional[int] = None,
+        expires_at: Optional[datetime] = None,
+        scope: Optional[str] = None,
+        refresh_token: Optional[str] = None,
         token_type: str = "Bearer",
         **kwargs: Any,
     ):
@@ -81,7 +81,7 @@ class BearerToken:
         else:
             return key in self.other
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         """
         Returns items from this Token Response.
         Allows `token_response.expires_in` or `token_response.any_custom_attribute`
@@ -90,6 +90,8 @@ class BearerToken:
         :raises:
         """
         if key == "expires_in":
+            if self.expires_at is None:
+                return None
             return int(self.expires_at.timestamp() - datetime.now().timestamp())
         elif key == "token_type":
             return "Bearer"
@@ -120,9 +122,9 @@ class BearerToken:
 class TokenSerializer:
     def __init__(
         self,
-        dumper: Callable[[BearerToken], str] = None,
-        loader: Callable[[str], BearerToken] = None,
-        token_class=BearerToken,
+        dumper: Optional[Callable[[BearerToken], str]] = None,
+        loader: Optional[Callable[[str], BearerToken]] = None,
+        token_class: Type[BearerToken] = BearerToken,
     ):
         self.token_class = token_class
         self.dumper = dumper or self.default_dumper
@@ -144,7 +146,9 @@ class TokenSerializer:
             )
         ).decode()
 
-    def default_loader(self, serialized: str, token_class=BearerToken) -> BearerToken:
+    def default_loader(
+        self, serialized: str, token_class: Type[BearerToken] = BearerToken
+    ) -> BearerToken:
         """
         Default deserializer for tokens.
         :param serialized: the serialized token

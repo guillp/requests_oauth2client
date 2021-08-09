@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import requests
+from jwcrypto.jwk import JWK, JWKSet  # type: ignore[import]
 from jwcrypto.jwt import JWT  # type: ignore[import]
 
 from .auth import BearerAuth
@@ -10,11 +11,15 @@ from .token_response import BearerToken
 
 
 class IdToken:
-    def __init__(self, value):
+    def __init__(self, value: str):
         self.value = value
         self.jwt = JWT(jwt=self.value)
 
-    def validate(self, issuer, jwks, nonce=None):
+    def validate(self, issuer: str, jwks: Dict[str, Any], nonce: Optional[str] = None) -> bool:
+        if "keys" in jwks:
+            jwks = JWKSet(jwks)
+        else:
+            jwks = JWK(jwks)
         self.jwt.deserialize(self.value, jwks)
         issuer_from_token = self.jwt.token.jose_header.get("iss")
         if not issuer_from_token:
@@ -25,22 +30,23 @@ class IdToken:
             raise ValueError(
                 "unexpected nonce value, this token may be intended for a different login transaction"
             )
+        return True
 
     @property
-    def alg(self):
-        return self.jwt.jose_header.get("alg")
+    def alg(self) -> str:
+        return self.jwt.jose_header.get("alg")  # type: ignore
 
     @property
-    def kid(self):
-        return self.jwt.jose_header.get("kid")
+    def kid(self) -> str:
+        return self.jwt.jose_header.get("kid")  # type: ignore
 
-    def get_claim(self, key):
+    def get_claim(self, key: str) -> Any:
         return self.jwt.claims.get(key)
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         return self.get_claim(item)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, str):
             return self.value == other
         elif isinstance(other, IdToken):
@@ -53,10 +59,10 @@ class OpenIdConnectTokenResponse(BearerToken):
         self,
         access_token: str,
         id_token: str,
-        expires_in: int = None,
-        expires_at: datetime = None,
-        scope: str = None,
-        refresh_token: str = None,
+        expires_in: Optional[int] = None,
+        expires_at: Optional[datetime] = None,
+        scope: Optional[str] = None,
+        refresh_token: Optional[str] = None,
         token_type: str = "Bearer",
         **kwargs: Any,
     ):
@@ -85,11 +91,17 @@ class OpenIdConnectClient(OAuth2Client):
         *,
         token_endpoint: str,
         jwks_uri: str,
-        userinfo_endpoint: str = None,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
-        session: requests.Session = None,
+        revocation_endpoint: Optional[str] = None,
+        userinfo_endpoint: Optional[str] = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        session: Optional[requests.Session] = None,
     ):
-        super().__init__(token_endpoint=token_endpoint, auth=auth, session=session)
+        super().__init__(
+            token_endpoint=token_endpoint,
+            revocation_endpoint=revocation_endpoint,
+            auth=auth,
+            session=session,
+        )
         self.userinfo_endpoint = userinfo_endpoint
         self.jwks_uri = jwks_uri
 
@@ -107,8 +119,8 @@ class OpenIdConnectClient(OAuth2Client):
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        auth: Union[requests.auth.AuthBase, Tuple[str, str]],
-        session: requests.Session = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        session: Optional[requests.Session] = None,
     ) -> "OpenIdConnectClient":
         return cls(
             token_endpoint=discovery["token_endpoint"],

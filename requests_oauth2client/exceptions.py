@@ -1,9 +1,14 @@
+from typing import Optional
+
+
 class OAuth2Error(Exception):
     pass
 
 
 class TokenResponseError(OAuth2Error):
-    def __init__(self, error, description, uri):
+    def __init__(
+        self, error: str, description: Optional[str] = None, uri: Optional[str] = None
+    ):
         self.error = error
         self.description = description
         self.uri = uri

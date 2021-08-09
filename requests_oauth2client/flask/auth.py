@@ -13,7 +13,7 @@ class FlaskSessionAuthMixin:
     This way, each user of a Flask application has a different access token.
     """
 
-    def __init__(self, session_key: str, serializer: TokenSerializer = None):
+    def __init__(self, session_key: str, serializer: Optional[TokenSerializer] = None):
         self.serializer = serializer or TokenSerializer()
         self.session_key = session_key
 
@@ -44,7 +44,7 @@ class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCreden
         self,
         client: OAuth2Client,
         session_key: str,
-        serializer: TokenSerializer = None,
+        serializer: Optional[TokenSerializer] = None,
         **token_kwargs: Any,
     ) -> None:
         super().__init__(session_key, serializer)

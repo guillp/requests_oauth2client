@@ -15,7 +15,7 @@ class BearerAuth(requests.auth.AuthBase):
     Using this AuthBase, you have to obtain an access token manually.
     """
 
-    def __init__(self, token: Union[str, BearerToken] = None) -> None:
+    def __init__(self, token: Optional[Union[str, BearerToken]] = None) -> None:
         self.token = token  # type: ignore[assignment] # until https://github.com/python/mypy/issues/3004 is fixed
 
     @property
@@ -65,7 +65,10 @@ class OAuth20AccessTokenAuth(BearerAuth):
     """
 
     def __init__(
-        self, client: "OAuth2Client", token: Union[str, BearerToken] = None, **token_kwargs: Any
+        self,
+        client: "OAuth2Client",
+        token: Optional[Union[str, BearerToken]] = None,
+        **token_kwargs: Any,
     ) -> None:
         """
         Initializes an Authorization handler (RFC6750), with an (optional) initial token.

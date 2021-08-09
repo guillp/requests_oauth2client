@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, Dict, Optional
 from uuid import uuid4
 
 import furl  # type: ignore[import]
@@ -141,10 +141,10 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
     def __init__(
         self,
         client_id: str,
-        private_jwk: dict,
+        private_jwk: Dict[str, Any],
         alg: str = "RS256",
         lifetime: int = 60,
-        kid: str = None,
+        kid: Optional[str] = None,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
     ):
         alg = private_jwk.get("alg", alg)
@@ -162,7 +162,9 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         self.private_jwk = JWK(**private_jwk)
         self.kid = kid
 
-    def client_assertion(self, audience: str, lifetime: int = 60, jti: str = None) -> str:
+    def client_assertion(
+        self, audience: str, lifetime: int = 60, jti: Optional[str] = None
+    ) -> str:
         iat = int(datetime.now().timestamp())
         exp = iat + lifetime
         if jti is None:
