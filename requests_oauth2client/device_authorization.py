@@ -76,9 +76,7 @@ class DeviceAuthorizationClient:
     ):
         self.device_authorization_endpoint = device_authorization_endpoint
         self.session = session or requests.Session()
-        if auth is None:
-            self.auth: Optional[requests.auth.AuthBase] = None
-        elif isinstance(auth, requests.auth.AuthBase):
+        if isinstance(auth, requests.auth.AuthBase):
             self.auth = auth
         elif isinstance(auth, tuple) and len(auth) == 2:
             client_id, client_secret = auth
@@ -86,6 +84,8 @@ class DeviceAuthorizationClient:
         elif isinstance(auth, str):
             client_id = auth
             self.auth = PublicApp(client_id)
+        else:
+            raise ValueError("An Auth Handler is required")
 
     def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
         """
