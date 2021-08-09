@@ -53,9 +53,7 @@ class OAuth2Client:
         self.session = session or requests.Session()
 
         self.auth: Optional[requests.auth.AuthBase]
-        if auth is None:
-            self.auth = None
-        elif isinstance(auth, requests.auth.AuthBase):
+        if isinstance(auth, requests.auth.AuthBase):
             self.auth = auth
         elif isinstance(auth, tuple) and len(auth) == 2:
             client_id, client_secret = auth
@@ -63,6 +61,8 @@ class OAuth2Client:
         elif isinstance(auth, str):
             client_id = auth
             self.auth = PublicApp(client_id)
+        else:
+            raise ValueError("An AuthHandler is required")
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
