@@ -73,11 +73,9 @@ class BearerToken:
         elif key == "scope":
             return self.scope is not None
         elif key == "token_type":
-            raise ValueError("token_type is always Bearer, explicitly or implicitly")
+            return True
         elif key == "expires_in":
             return self.expires_at is not None
-        elif key is None:
-            return False
         else:
             return key in self.other
 

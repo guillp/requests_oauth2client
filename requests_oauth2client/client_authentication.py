@@ -6,9 +6,8 @@ import furl  # type: ignore[import]
 import requests
 from jwcrypto.jwk import JWK  # type: ignore[import]
 from jwcrypto.jwt import JWT  # type: ignore[import]
-from requests.auth import _basic_auth_str
 
-from requests_oauth2client.utils import b64u_encode
+from requests_oauth2client.utils import b64_encode, b64u_encode, sign_jwt
 
 
 class ClientAuthenticationMethod(requests.auth.AuthBase):
@@ -38,7 +37,8 @@ class ClientSecretBasic(ClientAuthenticationMethod):
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
-        request.headers["Authorization"] = _basic_auth_str(self.client_id, self.client_secret)
+        b64encoded_credentials = b64_encode(":".join((self.client_id, self.client_secret)))
+        request.headers["Authorization"] = f"Basic {b64encoded_credentials}"
         return request
 
 
@@ -115,10 +115,9 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 
-        jwk = JWK(kty="oct", k=b64u_encode(self.client_secret))
+        jwk = {"kty": "oct", "k": b64u_encode(self.client_secret)}
 
-        jwt = JWT(
-            header={"alg": self.alg},
+        jwt = sign_jwt(
             claims={
                 "iss": self.client_id,
                 "sub": self.client_id,
@@ -127,10 +126,10 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
+            private_jwk=jwk,
+            alg=self.alg,
         )
-        jwt.make_signed_token(jwk)
-        assertion: str = jwt.serialize()
-        return assertion
+        return jwt
 
 
 class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
@@ -159,7 +158,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
             )
 
         super().__init__(client_id, alg, lifetime, jti_gen)
-        self.private_jwk = JWK(**private_jwk)
+        self.private_jwk = private_jwk
         self.kid = kid
 
     def client_assertion(
@@ -175,8 +174,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         if not isinstance(jti, str):
             jti = str(jti)
 
-        jwt = JWT(
-            header={"alg": self.alg, "kid": self.kid},
+        assertion = sign_jwt(
             claims={
                 "iss": self.client_id,
                 "sub": self.client_id,
@@ -185,9 +183,10 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
+            private_jwk=self.private_jwk,
+            alg=self.alg,
+            kid=self.kid,
         )
-        jwt.make_signed_token(self.private_jwk)
-        assertion: str = jwt.serialize()
         return assertion
 
 

@@ -102,3 +102,31 @@ def test_token_response(session, requests_mock):
     assert params.get("grant_type")[0] == "authorization_code"
     assert params.get("code")[0] == authorization_code
     assert params.get("code_verifier")[0] == code_verifier
+
+
+def test_bearer_token():
+    token = BearerToken(access_token="foo", custom="whatever")
+    assert "access_token" in token
+    assert "refresh_token" not in token
+    assert "scope" not in token
+    assert "token_type" in token
+    assert "expires_in" not in token
+    assert "foo" not in token
+    assert "custom" in token
+    assert token.expires_in is None
+    assert token.token_type == "Bearer"
+    assert token.custom == "whatever"
+
+    assert token.as_dict() == {
+        "access_token": "foo",
+        "token_type": "Bearer",
+        "custom": "whatever",
+    }
+
+    assert str(token) == "foo"
+    assert repr(token)
+
+
+def test_invalid_token_type():
+    with pytest.raises(ValueError):
+        BearerToken(access_token="foo", token_type="PoP")

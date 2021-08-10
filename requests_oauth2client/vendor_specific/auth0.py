@@ -45,7 +45,12 @@ class Auth0OIDCClient(OpenIdConnectClient):
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
     ):
-        if "." not in tenant:
+        if (
+            "." not in tenant
+            or tenant.endswith(".eu")
+            or tenant.endswith(".us")
+            or tenant.endswith(".au")
+        ):
             tenant = f"{tenant}.auth0.com"
         token_endpoint = f"https://{tenant}/oauth/token"
         revocation_endpoint = f"https://{tenant}/oauth/revoke"

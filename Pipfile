@@ -15,6 +15,7 @@ twine = "*"
 mypy = "*"
 requests-mock = "*"
 autoflake = "*"
+flask = "*"
 
 [packages]
 requests = "*"

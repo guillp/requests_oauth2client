@@ -81,10 +81,12 @@ def test_no_url(requests_mock):
 
 def test_url_as_bytes(requests_mock):
     API_ENDPOINT = "https://localhost/myproject/myapi"
-    api = ApiClient(API_ENDPOINT.encode())
+    api = ApiClient(API_ENDPOINT)
 
     requests_mock.get(API_ENDPOINT, json={"status": "success"})
     resp = api.get()
+    assert resp.ok
+    resp = api.get(API_ENDPOINT.encode())
     assert resp.ok
 
 

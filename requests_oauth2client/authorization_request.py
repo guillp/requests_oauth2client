@@ -1,8 +1,7 @@
 import hashlib
 import re
 import secrets
-from collections.abc import Iterable
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from furl import furl  # type: ignore[import]
 
@@ -14,7 +13,7 @@ class PkceUtils:
     Contains helper methods for PKCE
     """
 
-    code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~\.]{43,128}$")
+    code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
 
     @classmethod
     def generate_code_verifier(cls) -> str:
@@ -31,19 +30,16 @@ class PkceUtils:
         :param verifier: a code verifier
         :return: a code_challenge derived from the given verifier
         """
-        if not isinstance(verifier, bytes):
-            if not cls.code_verifier_re.match(verifier):
-                raise ValueError(
-                    f"Invalid code verifier, does not match {cls.code_verifier_re}", verifier
-                )
-            verifier = verifier.encode()
-        else:
-            if not cls.code_verifier_re.match(verifier.decode()):
-                raise ValueError(
-                    f"Invalid code verifier, does not match {cls.code_verifier_re}", verifier
-                )
+        if isinstance(verifier, bytes):
+            verifier = verifier.decode()
+
+        if not cls.code_verifier_re.match(verifier):
+            raise ValueError(
+                f"Invalid code verifier, does not match {cls.code_verifier_re}", verifier
+            )
+
         if method == "S256":
-            return b64u_encode(hashlib.sha256(verifier).digest())
+            return b64u_encode(hashlib.sha256(verifier.encode()).digest())
         elif method == "plain":
             return b64u_encode(verifier)
         else:
@@ -88,10 +84,10 @@ class AuthorizationRequest:
         authorization_endpoint: str,
         client_id: str,
         redirect_uri: str,
-        scope: str,
+        scope: Union[str, Iterable[str]],
         response_type: str = "code",
         state: Union[str, bool] = True,
-        nonce: Optional[str] = None,
+        nonce: Union[str, bool, None] = None,
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
         **kwargs: Any,
@@ -102,10 +98,11 @@ class AuthorizationRequest:
 
         if nonce is None:
             nonce = secrets.token_urlsafe(32)
+        elif nonce is False:
+            nonce = None
 
         if not isinstance(scope, str):
-            if isinstance(scope, Iterable):
-                scope = "+".join(scope)
+            scope = "+".join(str(s) for s in scope)
 
         if not code_challenge_method:
             code_verifier = code_challenge = code_challenge_method = None

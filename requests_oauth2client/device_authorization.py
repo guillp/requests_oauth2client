@@ -112,14 +112,9 @@ class DeviceAuthorizationClient:
             exception_class = self.exception_classes.get(error, self.default_exception_class)
             raise exception_class(error, error_description, error_uri)
 
-        if error_description or error_uri:
-            raise InvalidDeviceAuthorizationResponse(
-                "device authorization endpoint returned a error_message or error_uri returned without an error",
-                error_description,
-                error_uri,
-            )
         raise InvalidDeviceAuthorizationResponse(
-            "device authorization endpoint returned an HTTP error without error description"
+            "device authorization endpoint returned an HTTP error without an error message",
+            error_json,
         )
 
 

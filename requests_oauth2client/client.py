@@ -7,6 +7,7 @@ from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
                          InvalidGrant, InvalidScope, InvalidTokenResponse,
                          SlowDown, TokenResponseError, UnauthorizedClient)
 from .token_response import BearerToken
+from .utils import validate_url
 
 
 class OAuth2Client:
@@ -49,7 +50,7 @@ class OAuth2Client:
         this class with auth values as parameters.
         """
         self.token_endpoint = str(token_endpoint)
-        self.revocation_endpoint = str(revocation_endpoint)
+        self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
         self.session = session or requests.Session()
 
         self.auth: Optional[requests.auth.AuthBase]
@@ -90,13 +91,9 @@ class OAuth2Client:
             exception_class = self.exception_classes.get(error, self.default_exception_class)
             raise exception_class(error, error_description, error_uri)
 
-        if error_description or error_uri:
-            raise InvalidTokenResponse(
-                "token endpoint returned a error_message or error_uri returned without an error",
-                error_description,
-                error_uri,
-            )
-        raise InvalidTokenResponse("token endpoint returned an error without description")
+        raise InvalidTokenResponse(
+            "token endpoint returned an HTTP error without error message", error_json
+        )
 
     def client_credentials(
         self, requests_kwargs: Optional[Dict[str, Any]] = None, **token_kwargs: Any
@@ -169,44 +166,50 @@ class OAuth2Client:
         access_token: Union[BearerToken, str],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **revoke_kwargs: Any,
-    ) -> None:
+    ) -> bool:
         """
         Sends a request to the revocation endpoint to revoke an access token.
         :param access_token: the access token to revoke
         :param requests_kwargs: additional parameters for the underlying requests.post() call
         :param revoke_kwargs: additional parameters to pass to the revocation endpoint
         """
+        if not self.revocation_endpoint:
+            return False
+
         requests_kwargs = requests_kwargs or {}
-        if self.revocation_endpoint:
-            self.session.post(
-                self.revocation_endpoint,
-                data=dict(
-                    revoke_kwargs, token=str(access_token), token_type_hint="access_token"
-                ),
-                auth=self.auth,
-                **requests_kwargs,
-            ).raise_for_status()
+        self.session.post(
+            self.revocation_endpoint,
+            data=dict(revoke_kwargs, token=str(access_token), token_type_hint="access_token"),
+            auth=self.auth,
+            **requests_kwargs,
+        ).raise_for_status()
+        return True
 
     def revoke_refresh_token(
         self,
         refresh_token: str,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **revoke_kwargs: Any,
-    ) -> None:
+    ) -> bool:
         """
         Sends a request to the revocation endpoint to revoke a refresh token.
-        :param refresh_token: the refresh token to revoke
-        :param requests_kwargs: additional parameters to pass to the revocation endpoint
-        :param revoke_kwargs: additional parameters to pass to the revocation endpoint
+        :param refresh_token: the refresh token to revoke.
+        :param requests_kwargs: additional parameters to pass to the revocation endpoint.
+        :param revoke_kwargs: additional parameters to pass to the revocation endpoint.
+        :return: True if the revocation request is successful, False if this client has no configured revocation
+        endpoint.
         """
+        if not self.revocation_endpoint:
+            return False
+
         requests_kwargs = requests_kwargs or {}
-        if self.revocation_endpoint:
-            self.session.post(
-                self.revocation_endpoint,
-                data=dict(revoke_kwargs, token=refresh_token, token_type_hint="refresh_token"),
-                auth=self.auth,
-                **requests_kwargs,
-            ).raise_for_status()
+        self.session.post(
+            self.revocation_endpoint,
+            data=dict(revoke_kwargs, token=refresh_token, token_type_hint="refresh_token"),
+            auth=self.auth,
+            **requests_kwargs,
+        ).raise_for_status()
+        return True
 
     @classmethod
     def from_discovery_endpoint(
@@ -232,20 +235,26 @@ class OAuth2Client:
         discovery: Dict[str, Any],
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
+        https: bool = True,
     ) -> "OAuth2Client":
         """
         Initialise an OAuth20Client, based on the server metadata from `discovery`.
         :param discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
         :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
-        :return: an OAuth20Client
+        :param https: if True, validates that urls in the discovery document use the https scheme
+        :return: an OAuth2Client
         """
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
+        validate_url(token_endpoint, https=https)
         revocation_endpoint = discovery.get("revocation_endpoint")
+        if revocation_endpoint is not None:
+            validate_url(revocation_endpoint, https=https)
+
         return cls(
-            token_endpoint=discovery["token_endpoint"],
+            token_endpoint=token_endpoint,
             revocation_endpoint=revocation_endpoint,
             auth=auth,
             session=session,

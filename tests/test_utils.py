@@ -1,7 +1,11 @@
 import string
 from uuid import uuid4
 
-from requests_oauth2client.utils import b64u_decode, b64u_encode, generate_jwk_key_pair
+import pytest
+
+from requests_oauth2client.exceptions import InvalidUrl
+from requests_oauth2client.utils import (b64u_decode, b64u_encode,
+                                         generate_jwk_key_pair, validate_url)
 
 clear_text = string.printable
 b64u = "MDEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVohIiMkJSYnKCkqKywtLi86Ozw9Pj9AW1xdXl9ge3x9fiAJCg0LDA"
@@ -27,3 +31,13 @@ def test_b64u():
 def test_generate_jwk_key_pair():
     private, public = generate_jwk_key_pair()
     assert private.get("kty") == "RSA"
+
+
+def test_validate_url():
+    validate_url("https://myas.local/token")
+    with pytest.raises(InvalidUrl):
+        validate_url("http://myas.local/token")
+    with pytest.raises(InvalidUrl):
+        validate_url("https://myas.local")
+    with pytest.raises(InvalidUrl):
+        validate_url("https://myas.local/token#foo")

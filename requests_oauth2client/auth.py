@@ -59,7 +59,7 @@ class OAuth2ClientCredentialsAuth(BearerAuth):
         return super().__call__(request)
 
 
-class OAuth20AccessTokenAuth(BearerAuth):
+class OAuth2AccessTokenAuth(BearerAuth):
     """
     A Requests Authentication handler using a Bearer access token, and can automatically refreshes it when expired.
     """
@@ -99,7 +99,7 @@ class OAuth20AccessTokenAuth(BearerAuth):
         return super().__call__(request)
 
 
-class OAuth2AuthorizationCodeAuth(OAuth20AccessTokenAuth):
+class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
     """
     A Requests Authentication handler that exchanges an authorization code for an access token,
     then automatically refreshes it once it is expired.

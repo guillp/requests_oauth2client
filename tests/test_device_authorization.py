@@ -1,9 +1,14 @@
 import secrets
 from urllib.parse import parse_qs
 
-from requests_oauth2client import OAuth2Client
+import pytest
+
+from requests_oauth2client import ClientSecretBasic, OAuth2Client
+from requests_oauth2client.client_authentication import PublicApp
 from requests_oauth2client.device_authorization import (DeviceAuthorizationClient,
                                                         DeviceAuthorizationPoolingJob)
+from requests_oauth2client.exceptions import (DeviceAuthorizationError,
+                                              InvalidDeviceAuthorizationResponse)
 
 client_id = "TEST_CLIENT_ID"
 client_secret = "TEST_CLIENT_SECRET"
@@ -35,6 +40,7 @@ def test_device_authorization(requests_mock):
     assert device_auth_resp.device_code
     assert device_auth_resp.user_code
     assert device_auth_resp.verification_uri
+    assert not device_auth_resp.is_expired()
 
     params = parse_qs(requests_mock.last_request.text)
     assert params.get("client_id") == [client_id]
@@ -87,3 +93,38 @@ def test_device_authorization(requests_mock):
     assert params.get("client_secret") == [client_secret]
 
     assert not resp.is_expired()
+
+
+def test_auth_handler():
+    auth = ClientSecretBasic(client_id, client_secret)
+    da_client = DeviceAuthorizationClient(
+        device_authorization_endpoint=device_authorization_endpoint, auth=auth,
+    )
+
+    assert da_client.auth == auth
+
+    da_client = DeviceAuthorizationClient(
+        device_authorization_endpoint=device_authorization_endpoint, auth=client_id,
+    )
+
+    assert isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
+
+
+def test_invalid_response(requests_mock):
+
+    da_client = DeviceAuthorizationClient(
+        device_authorization_endpoint=device_authorization_endpoint,
+        auth=(client_id, client_secret),
+    )
+
+    requests_mock.post(
+        device_authorization_endpoint, status_code=500, json={"error": "server_error"},
+    )
+    with pytest.raises(DeviceAuthorizationError):
+        da_client.authorize_device()
+
+    requests_mock.post(
+        device_authorization_endpoint, status_code=500, json={"foo": "bar"},
+    )
+    with pytest.raises(InvalidDeviceAuthorizationResponse):
+        da_client.authorize_device()

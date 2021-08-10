@@ -25,12 +25,12 @@ class FlaskSessionAuthMixin:
         return self.serializer.loads(serialized_token)
 
     @token.setter
-    def token(self, token: BearerToken) -> None:
+    def token(self, token: Optional[BearerToken]) -> None:
         if token:
             serialized_token = self.serializer.dumps(token)
             session[self.session_key] = serialized_token
         else:
-            session[self.session_key] = None
+            session.pop(self.session_key, None)
 
 
 class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth):

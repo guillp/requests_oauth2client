@@ -68,3 +68,7 @@ class ExpiredDeviceCode(DeviceAuthorizationError):
 
 class InvalidDeviceAuthorizationResponse(OAuth2Error):
     pass
+
+
+class InvalidUrl(ValueError):
+    pass
