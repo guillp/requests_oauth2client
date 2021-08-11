@@ -123,6 +123,29 @@ class OAuth2Client:
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
+    def authorization_code_pkce(
+        self,
+        code: str,
+        code_verifier: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
+        """
+        Sends a request to the token endpoint with the authorization_code grant, and
+        This is just an alias to `authorization_code()` with code_verifier as mandatory parameter.
+        :param code: an authorization code to exchange for tokens
+        :param code_verifier: the code verifier that matches the authorization code
+        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, code, etc.
+        :param requests_kwargs: additional parameters for the call to requests
+        :return: a BearerToken
+        """
+        return self.authorization_code(
+            code=code,
+            code_verifier=code_verifier,
+            requests_kwargs=requests_kwargs,
+            **token_kwargs,
+        )
+
     def refresh_token(
         self,
         refresh_token: str,
