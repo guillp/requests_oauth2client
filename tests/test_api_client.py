@@ -25,6 +25,13 @@ def test_api_client(requests_mock):
     assert requests_mock.last_request.method == "GET"
     assert requests_mock.last_request.headers.get("Authorization") == f"Bearer {ACCESS_TOKEN}"
 
+    requests_mock.get(API_ENDPOINT + "/resource", json={"status": "success"})
+    response = api.get("resource")
+    assert response.ok
+    assert requests_mock.last_request.url == API_ENDPOINT + "/resource"
+    assert requests_mock.last_request.method == "GET"
+    assert requests_mock.last_request.headers.get("Authorization") == f"Bearer {ACCESS_TOKEN}"
+
     OTHER_API = "https://other.api/somethingelse"
     requests_mock.get(OTHER_API, json={"status": "success"})
     response = api.get(OTHER_API)
