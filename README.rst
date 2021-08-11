@@ -6,16 +6,15 @@ based on the Client Credentials or Authorization Code (+ Refresh token) grants, 
 
 It also supports PKCE, Client Assertions, and other important features that are often overlooked in other client libraries.
 
-And it also has a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
+And it also includes a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
 
-*****
+************
 Installation
-*****
+************
 
 As easy as::
 
     pip install requests_oauth2client
-
 
 *****
 Usage
@@ -32,15 +31,15 @@ You usually also have to use requests for your actual API calls::
 That is unless you use the `ApiClient` wrapper from `requests_oauth2client`, as described below.
 
 Calling API with an access token
-======
+================================
 
 If you already managed to obtain an access token, you can simply use the BearerAuth authorization::
 
     token = "an_access_token"
     resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 
-Obtaining tokens with the client credentials grant
-=======
+Obtaining tokens with the Client Credentials grant
+==================================================
 To obtain tokens, you can do it the "manual" way, great for testing::
 
     token_endpoint = "https://my.as/token"
@@ -55,15 +54,15 @@ fetch an access token before accessing the API, and will obtain a new one once i
     auth = OAuth2ClientCredentialsAuth(client, audience=audience) # you may add additional kw params such as scope, resource, audience or whatever param the AS uses to grant you access
     response = requests.get("https://my.protected.api/endpoint", auth=auth)
 
-Obtaining tokens with the Authorization code grant
-========
+Obtaining tokens with the Authorization Code Grant
+==================================================
 
 Obtaining tokens with the Authorization code grant is made in 2 steps.
 First you must send the user to a specific url called the *Authentication Request*,
 then obtain the authorization code as response to this request, then exchange it for an access token.
 
-Generating authorization requests
-****************
+Generating Authorization Requests
+*********************************
 If you want to use the authorization code grant, you must first manage to obtain an authorization code,
 then exchange that code for an initial access token::
 
@@ -89,8 +88,11 @@ This request will look like, with line breaks for display purposes only::
     &code_challenge_method=S256
     &resource=https%3A%2F%2Fmy.resource.local%2Fapi
 
-Validating the response
-**********
+Redirecting or otherwise sending the user to this url is your application responsibility,
+as well as obtaining the Authorization Response url.
+
+Validating the Authorization Response
+*************************************
 
 Once the user is successfully authenticated and authorized, the AS will respond with a redirection to the redirect_uri.
 The authorization code is one of those parameters, but you must also validate that thee state matches your request.
@@ -106,7 +108,7 @@ AuthorizationRequest supports PKCE and uses it by default. You can avoid it by p
 You can obtain the generated code_verifier from `auth_request.code_verifier`.
 
 Exchanging code for tokens
-******************
+**************************
 
 To exchange a code for access and/or ID tokens, once again you can have the "manual" way::
 
@@ -122,7 +124,7 @@ Or the "automated" way::
 
 
 Device Authorization Grant
-===============
+==========================
 
 Helpers for the Device Authorization Grant are also included. To get device and user codes::
 
@@ -141,7 +143,7 @@ Helpers for the Device Authorization Grant are also included. To get device and 
     device_auth_resp.interval
 
 Send/show the verification uri to the user.
-You can then try the Token endpoint to check if the user successfully authorized you using an OAuth2Client:
+You can then try the Token endpoint to check if the user successfully authorized you using an OAuth2Client::
 
     client = OAuth2Client(
         token_endpoint="https://myas.local/token",
@@ -153,7 +155,7 @@ You can then try the Token endpoint to check if the user successfully authorized
 This will raise an exception, either `AuthorizationPending`, `SlowDown` or `ExpiredDeviceCode`, if the user did not yet finish authorizing your device,
 if you should increase your pooling period, or if the device code is no longer valid.
 
-To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this:
+To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this::
 
     pool_job = DeviceAuthorizationPoolingJob(
         client,
@@ -170,25 +172,20 @@ To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this:
 
 
 Supported Client Authorization Methods
-==============
+======================================
 
 `requests_oauth2client` supports multiple client authentication methods, as defined in multiple OAuth2.x standards.
 You select the appropriate method to use when initializing your OAuth2Client, with the `auth` parameter. Once initialised,
 a client will automatically use the configured authentication method every time it sends
 a requested to an endpoint that requires client authentication.
 
-- **client_secret_basic**: client_id and client_secret are included in clear-text in the Authorization header.
-To use it, just pass a `ClientSecretBasic(client_id, client_secret)` as auth parameter.
+- **client_secret_basic**: client_id and client_secret are included in clear-text in the Authorization header. To use it, just pass a `ClientSecretBasic(client_id, client_secret)` as auth parameter.
 
-- **client_secret_post**: client_id and client_secret are included as part of the body form data.
-To use it, pass a `ClientSecretPost(client_id, client_secret)` as auth parameter.
-This also what is being used as default when you pass a tuple `(client_id, client_secret)` as `auth`.
+- **client_secret_post**: client_id and client_secret are included as part of the body form data. To use it, pass a `ClientSecretPost(client_id, client_secret)` as auth parameter. This also what is being used as default when you pass a tuple `(client_id, client_secret)` as `auth`.
 
-- **client_secret_jwt**: client generates an ephemeral JWT assertion including information about itself (client_id), the AS (url of the endpoint),
-To use it, pass a `ClientSecretJWT(client_id, client_secret)` as auth parameter. Assertion generation is entirely automatic, you don't have anything to do.
+- **client_secret_jwt**: client generates an ephemeral JWT assertion including information about itself (client_id), the AS (url of the endpoint), and expiration date. To use it, pass a `ClientSecretJWT(client_id, client_secret)` as auth parameter. Assertion generation is entirely automatic, you don't have anything to do.
 
-- **private_key_jwt**: client uses a JWT assertion like client_secret_jwt, but it is signed with an asymetric key.
-To use it, you need a private signing key, in a `dict` that matches the JWK format. The matching public key must be registered for your client on AS side. Once you have that, using this auth method is as simple with the `PrivateKeyJWT` auth handler::
+- **private_key_jwt**: client uses a JWT assertion like client_secret_jwt, but it is signed with an asymetric key. To use it, you need a private signing key, in a `dict` that matches the JWK format. The matching public key must be registered for your client on AS side. Once you have that, using this auth method is as simple with the `PrivateKeyJWT` auth handler::
 
     private_jwk = {
         "kid": "mykid",
@@ -203,7 +200,7 @@ To use it, you need a private signing key, in a `dict` that matches the JWK form
     )
 
 Specialized API Client
-===============
+======================
 
 Using APIs usually involves multiple endpoints under the same root url, with a common authentication method.
 To make it easier, `requests_oauth2client` includes a specialized `requests.Session` subclass called ApiClient,
