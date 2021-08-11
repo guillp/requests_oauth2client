@@ -1,10 +1,11 @@
-A Python OAuth 2.0 client, able to obtain tokens from any OAuth2.x/OIDC compliant Authorization Server.
+A Python OAuth 2.x client, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC compliant Authorization Server.
 
-It comes with a `requests` add-on to handle OAuth 2.0 Bearer based authorization.
-It can also act as an OAuth 2.0/2.1 client, to automatically get and renew access tokens,
-based on the Client Credentials or Authorization Code (+ Refresh token) grants, and Device Authorization Grant.
+It can act as an OAuth 2.0/2.1 client, to automatically get and renew access tokens,
+based on the Client Credentials, Authorization Code (+ Refresh token), or the Device Authorization grants.
 
-It also supports PKCE, Client Assertions, and other important features that are often overlooked in other client libraries.
+It comes with a `requests` add-on to handle OAuth 2.0 Bearer Token based authorization when accessing APIs.
+
+It also supports PKCE, Client Assertions, using custom params to any endpoint, and other important features that are often overlooked in other client libraries.
 
 And it also includes a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
 
@@ -30,24 +31,24 @@ You usually also have to use requests for your actual API calls::
 
 That is unless you use the `ApiClient` wrapper from `requests_oauth2client`, as described below.
 
-Calling API with an access token
-================================
+Calling APIs with an access token
+=================================
 
-If you already managed to obtain an access token, you can simply use the BearerAuth authorization::
+If you already managed to obtain an access token, you can simply use the `BearerAuth` Auth Handler for `requests`::
 
     token = "an_access_token"
     resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 
 Obtaining tokens with the Client Credentials grant
 ==================================================
-To obtain tokens, you can do it the "manual" way, great for testing::
+To obtain tokens, you can do it the *manual* way, which is great for testing::
 
     token_endpoint = "https://my.as/token"
     client = OAuth2Client(token_endpoint, ClientSecretPost("client_id", "client_secret"))
     token = client.client_credentials(scope="myscope") # you may pass additional kw params such as resource, audience, or whatever your AS needs
 
-Or the "automated" way, for actual applications, with a custom requests Authentication Handler that will automatically
-fetch an access token before accessing the API, and will obtain a new one once it is expired::
+Or the *automated* way, for actual applications, with a custom requests Auth Handler that will automatically
+obtain an access token before accessing the API, and will get a new one once it is expired::
 
     token_endpoint = "https://my.as/token"
     client = OAuth2Client(token_endpoint, ClientSecretPost("client_id", "client_secret"))
@@ -57,14 +58,14 @@ fetch an access token before accessing the API, and will obtain a new one once i
 Obtaining tokens with the Authorization Code Grant
 ==================================================
 
-Obtaining tokens with the Authorization code grant is made in 2 steps.
+Obtaining tokens with the Authorization code grant is made in 3 steps.
 First you must send the user to a specific url called the *Authentication Request*,
-then obtain the authorization code as response to this request, then exchange it for an access token.
+then obtain and validate the *Authorization Response*, which contains an *Authorization Code*,
+then exchange it for an *Access Token*.
 
 Generating Authorization Requests
 *********************************
-If you want to use the authorization code grant, you must first manage to obtain an authorization code,
-then exchange that code for an initial access token::
+You can generate valid authorization requests with the `AuthorizationRequest` class::
 
     auth_request = AuthorizationRequest(
         authorization_endpoint,
@@ -94,8 +95,9 @@ as well as obtaining the Authorization Response url.
 Validating the Authorization Response
 *************************************
 
-Once the user is successfully authenticated and authorized, the AS will respond with a redirection to the redirect_uri.
-The authorization code is one of those parameters, but you must also validate that thee state matches your request.
+Once the user is successfully authenticated and authorized, the AS will respond with a redirection to your redirect_uri.
+That is the *Authorization Response*. It contains several parameters that must be retrieved by your client.
+The authorization code is one of those parameters, but you must also validate that the *state* matches your request.
 You can do this with::
 
     params = input("Please enter the full url and/or params obtained on the redirect_uri: ")
@@ -104,13 +106,13 @@ You can do this with::
     # initialize a OAuth2Client, same way as before
     client = OAuth2Client(token_endpoint, auth=ClientSecretPost(client_id, client_secret))
 
-AuthorizationRequest supports PKCE and uses it by default. You can avoid it by passing `code_challenge_method=None`
+AuthorizationRequest supports PKCE and uses it by default. You can avoid it by passing `code_challenge_method=None` to `AuthenticationRequest`.
 You can obtain the generated code_verifier from `auth_request.code_verifier`.
 
 Exchanging code for tokens
 **************************
 
-To exchange a code for access and/or ID tokens, once again you can have the "manual" way::
+To exchange a code for Access and/or ID tokens, once again you can have the "manual" way::
 
     token = client.authorization_code(code=code, code_verifier=auth_request.code_verifier, redirect_uri=redirect_uri) # add any other params as needed
     resp = requests.post("https://your.protected.api/endpoint", auth=BearerAuthorization(token))
@@ -120,7 +122,7 @@ Or the "automated" way::
     auth = OAuth2AuthorizationCodeAuth(client, code, redirect_uri=redirect_uri)  # add any other params as needed
     resp = requests.post("https://your.protected.api/endpoint", auth=auth)
 
-`OAuth2AuthorizationCodeAuth` will take care of refreshing the token automatically once it is expired, using the refresh token, if available
+`OAuth2AuthorizationCodeAuth` will take care of refreshing the token automatically once it is expired, using the refresh token, if available.
 
 
 Device Authorization Grant
@@ -135,25 +137,28 @@ Helpers for the Device Authorization Grant are also included. To get device and 
 
     device_auth_resp = da_client.authorize_device()
 
-`device_auth_resp` contains the Device Code, User Code and Verification URI returned by the AS::
+`device_auth_resp` contains the Device Code, User Code, Verification URI and other info returned by the AS::
 
     device_auth_resp.device_code
     device_auth_resp.user_code
     device_auth_resp.verification_uri
+    device_auth_resp.verification_uri_complete
+    device_auth_resp.expires_at # this is a datetime
     device_auth_resp.interval
 
-Send/show the verification uri to the user.
-You can then try the Token endpoint to check if the user successfully authorized you using an OAuth2Client::
+Send/show the Verification Uri and User Code to the user. He must use a browser to visit that url, authenticate and input the User Code.
+You can then request the Token endpoint to check if the user successfully authorized you using an `OAuth2Client`::
 
     client = OAuth2Client(
         token_endpoint="https://myas.local/token",
         auth=(client_id, client_secret)
     )
 
-    client.device_code(device_auth_resp.device_code)
+    token = client.device_code(device_auth_resp.device_code)
 
-This will raise an exception, either `AuthorizationPending`, `SlowDown` or `ExpiredDeviceCode`, if the user did not yet finish authorizing your device,
-if you should increase your pooling period, or if the device code is no longer valid.
+This will raise an exception, either `AuthorizationPending`, `SlowDown` or `ExpiredDeviceCode`, `AccessDenied` if the user did not yet finish authorizing your device,
+if you should increase your pooling period, or if the device code is no longer valid, or the user finally denied your access, respectively. Other exceptions may be raised depending on the error code that the AS responds with.
+If the user did finish authorizing successfully, `token` will contain your access token.
 
 To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this::
 
@@ -171,13 +176,13 @@ To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this:
 `DeviceAuthorizationPoolingJob` will automatically obey the pooling period. Everytime you call pool_job(), it will wait the appropriate number of seconds as indicated by the AS, and will apply slow_down requests.
 
 
-Supported Client Authorization Methods
-======================================
+Supported Client Authentication Methods
+=======================================
 
 `requests_oauth2client` supports multiple client authentication methods, as defined in multiple OAuth2.x standards.
 You select the appropriate method to use when initializing your OAuth2Client, with the `auth` parameter. Once initialised,
 a client will automatically use the configured authentication method every time it sends
-a requested to an endpoint that requires client authentication.
+a requested to an endpoint that requires client authentication. You don't have anything else to do afterwards.
 
 - **client_secret_basic**: client_id and client_secret are included in clear-text in the Authorization header. To use it, just pass a `ClientSecretBasic(client_id, client_secret)` as auth parameter.
 
@@ -214,10 +219,10 @@ call APIs that are protected with an OAuth2 Client Credentials Grant::
     resp = api.get("/resource") # will actually send a get to https://myapi.local/root/resource
 
 Note that `ApiClient` will never send requests "outside" its configured root url, unless you specifically give it full url at request time.
-The leading / in "/resource" above is optional.
-A leading / will not "reset" the url path to root, which means that you can also write::
+The leading / in `/resource` above is optional.
+A leading / will not "reset" the url path to root, which means that you can also write the relative path without the / and it will automatically be included::
 
     api.get("resource") # will actually send a get to https://myapi.local/root/resource
 
-`ApiClient` will, by default, raise exceptions whenever a requests returns an error status. You can disable that by passing `raise_for_status=False` when initializing you ApiClient.
+`ApiClient` will, by default, raise exceptions whenever a requests returns an error status. You can disable that by passing `raise_for_status=False` when initializing your `ApiClient`.
 
