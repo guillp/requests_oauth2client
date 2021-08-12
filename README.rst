@@ -184,11 +184,19 @@ You select the appropriate method to use when initializing your OAuth2Client, wi
 a client will automatically use the configured authentication method every time it sends
 a requested to an endpoint that requires client authentication. You don't have anything else to do afterwards.
 
-- **client_secret_basic**: client_id and client_secret are included in clear-text in the Authorization header. To use it, just pass a `ClientSecretBasic(client_id, client_secret)` as auth parameter.
+- **client_secret_basic**: client_id and client_secret are included in clear-text in the Authorization header. To use it, just pass a `ClientSecretBasic(client_id, client_secret)` as auth parameter::
 
-- **client_secret_post**: client_id and client_secret are included as part of the body form data. To use it, pass a `ClientSecretPost(client_id, client_secret)` as auth parameter. This also what is being used as default when you pass a tuple `(client_id, client_secret)` as `auth`.
+    client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
 
-- **client_secret_jwt**: client generates an ephemeral JWT assertion including information about itself (client_id), the AS (url of the endpoint), and expiration date. To use it, pass a `ClientSecretJWT(client_id, client_secret)` as auth parameter. Assertion generation is entirely automatic, you don't have anything to do.
+- **client_secret_post**: client_id and client_secret are included as part of the body form data. To use it, pass a `ClientSecretPost(client_id, client_secret)` as auth parameter. This also what is being used as default when you pass a tuple `(client_id, client_secret)` as `auth`::
+
+    client = OAuth2Client(token_endpoint, auth=ClientSecretPost(client_id, client_secret))
+    # or
+    client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
+
+- **client_secret_jwt**: client generates an ephemeral JWT assertion including information about itself (client_id), the AS (url of the endpoint), and expiration date. To use it, pass a `ClientSecretJWT(client_id, client_secret)` as auth parameter. Assertion generation is entirely automatic, you don't have anything to do::
+
+    client = OAuth2Client(token_endpoint, auth=ClientSecretJWT(client_id, client_secret))
 
 - **private_key_jwt**: client uses a JWT assertion like client_secret_jwt, but it is signed with an asymetric key. To use it, you need a private signing key, in a `dict` that matches the JWK format. The matching public key must be registered for your client on AS side. Once you have that, using this auth method is as simple with the `PrivateKeyJWT` auth handler::
 
@@ -203,6 +211,10 @@ a requested to an endpoint that requires client authentication. You don't have a
         "https://myas.local/token",
          auth=PrivateKeyJWT(client_id, private_jwk)
     )
+
+- **none**: client only presents its client_id in body form data to the AS, without any authentication credentials. Use `PublicApp(client_id)`::
+
+    client = OAuth2Client(token_endpoint, auth=PublicApp(client_id, client_secret))
 
 Specialized API Client
 ======================
