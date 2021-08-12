@@ -238,5 +238,27 @@ You can disable that by passing `raise_for_status=False` when initializing your 
     )
     resp = api.get("500") # without raise_for_status=False, this would raise a requests.exceptions.HTTPError
 
-`ApiClient` will, by default, raise exceptions whenever a requests returns an error status. You can disable that by passing `raise_for_status=False` when initializing your `ApiClient`.
+You may override this at request time::
+
+    resp = api.get("500", raise_for_status=True) # raise_for_status at request-time overrides raise_for_status defined at init-time
+
+Vendor-Specific clients
+=======================
+
+`requests_oauth2client` being flexible enough to handle most use cases, you should be able to use any AS by any vendor
+as long as it supports OAuth 2.0.
+
+You can however subclass OAuth2Client or ApiClient to make it easier to use with specific Authorization Servers or APIs.
+`requests_oauth2client.vendor_specific` includes such classes for Auth0::
+
+    from requests_oauth2client.vendor_specific import Auth0Client
+
+    a0client = Auth0Client("mytenant.eu", (client_id, client_secret))
+    # this will automatically initialize the token endpoint to https://mytenant.eu.auth0.com/oauth/token
+    # so you can use it directly
+    token = a0client.client_credentials(audience="audience")
+
+    # this is a wrapper around Auth0 Management API
+    a0mgmt = Auth0ManagementApiClient("mytenant.eu", (client_id, client_secret))
+    myusers = a0mgmt.get("users")
 

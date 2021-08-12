@@ -125,7 +125,11 @@ def test_raise_for_status(requests_mock):
     requests_mock.get(API_ENDPOINT, status_code=400, json={"status": "error"})
     resp = api.get()
     assert not resp.ok
+    with pytest.raises(HTTPError):
+        api.get(raise_for_status=True)
 
     api_raises = ApiClient(API_ENDPOINT, raise_for_status=True)
     with pytest.raises(HTTPError):
         api_raises.get()
+
+    assert not api_raises.get(raise_for_status=False).ok

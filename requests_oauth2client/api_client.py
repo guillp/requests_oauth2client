@@ -24,7 +24,7 @@ class ApiClient(requests.Session):
 
         self.url = url
         self.auth = auth
-        self.raise_exc = raise_for_status
+        self.raise_for_status = raise_for_status
 
     def request(
         self,
@@ -64,6 +64,7 @@ class ApiClient(requests.Session):
         verify: Optional[Union[str, bool]] = None,
         cert: Optional[Union[str, Tuple[str, str]]] = None,
         json: Optional[Mapping[str, Any]] = None,
+        raise_for_status: Optional[bool] = None,
     ) -> requests.Response:
         """
         A customized request method to handle a path instead of a full url.
@@ -119,7 +120,9 @@ class ApiClient(requests.Session):
             json=json,
         )
 
-        if self.raise_exc:
+        if raise_for_status is None:
+            raise_for_status = self.raise_for_status
+        if raise_for_status:
             response.raise_for_status()
         return response
 
