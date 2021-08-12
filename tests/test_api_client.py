@@ -97,6 +97,27 @@ def test_url_as_bytes(requests_mock):
     assert resp.ok
 
 
+def test_url_as_iterable(requests_mock):
+    API_ENDPOINT = "https://localhost/myproject/myapi"
+    api = ApiClient(API_ENDPOINT)
+
+    requests_mock.get(API_ENDPOINT + "/resource/1234/foo")
+    response = api.get(["resource", "1234", "foo"])
+    assert response.ok
+    assert requests_mock.last_request.method == "GET"
+    assert requests_mock.last_request.url == API_ENDPOINT + "/resource/1234/foo"
+
+    response = api.get(["resource", b"1234", "foo"])
+    assert response.ok
+    assert requests_mock.last_request.method == "GET"
+    assert requests_mock.last_request.url == API_ENDPOINT + "/resource/1234/foo"
+
+    response = api.get(["resource", 1234, "/foo"])
+    assert response.ok
+    assert requests_mock.last_request.method == "GET"
+    assert requests_mock.last_request.url == API_ENDPOINT + "/resource/1234/foo"
+
+
 def test_raise_for_status(requests_mock):
     API_ENDPOINT = "https://localhost/myproject/myapi"
     api = ApiClient(API_ENDPOINT, raise_for_status=False)

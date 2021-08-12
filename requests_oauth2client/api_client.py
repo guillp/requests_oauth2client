@@ -29,7 +29,7 @@ class ApiClient(requests.Session):
     def request(
         self,
         method: str,
-        url: Optional[Union[str, bytes]],
+        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
         params: Union[None, bytes, MutableMapping[str, str]] = None,
         data: Union[
             None,
@@ -74,15 +74,30 @@ class ApiClient(requests.Session):
         """
         if self.url:
             if url is not None:
+                if not isinstance(url, (str, bytes)):
+                    try:
+                        url = "/".join(
+                            [
+                                part.decode() if isinstance(part, bytes) else str(part)
+                                for part in url
+                                if part
+                            ]
+                        )
+                    except TypeError:
+                        raise TypeError(
+                            "Unexpected url type, please pass a relative path as string or bytes, "
+                            "or an iterable of string-able objects",
+                            type(url),
+                        )
+
                 if isinstance(url, bytes):
-                    url = url.lstrip(b"/").decode()
-                else:
-                    url = url.lstrip("/")
-                url = urljoin(self.url + "/", url)
+                    url = url.decode()
+
+                url = urljoin(self.url + "/", url.lstrip("/"))
             else:
                 url = self.url
 
-        if url is None:
+        if url is None or not isinstance(url, str):
             raise ValueError("No url to send the request to")
 
         response = super(ApiClient, self).request(

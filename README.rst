@@ -216,13 +216,27 @@ call APIs that are protected with an OAuth2 Client Credentials Grant::
 
     oauth2client = OAuth2Client("https://myas.local/token", (client_id, client_secret))
     api = ApiClient("https://myapi.local/root", auth=OAuth2ClientCredentialsAuth(oauth2client))
-    resp = api.get("/resource") # will actually send a get to https://myapi.local/root/resource
+    resp = api.get("/resource/foo") # will actually send a GET to https://myapi.local/root/resource/foo
 
 Note that `ApiClient` will never send requests "outside" its configured root url, unless you specifically give it full url at request time.
 The leading / in `/resource` above is optional.
 A leading / will not "reset" the url path to root, which means that you can also write the relative path without the / and it will automatically be included::
 
-    api.get("resource") # will actually send a get to https://myapi.local/root/resource
+    api.get("resource/foo") # will actually send a GET to https://myapi.local/root/resource/foo
+
+You may also pass the path as an iterable of strings (or string-able objects), in which case they will be joined with a / and appended to the url path::
+
+    api.get(["resource", "foo"]) # will actually send a GET to https://myapi.local/root/resource/foo
+    api.get(["users", 1234, "details"]) # will actually send a GET to https://myapi.local/root/users/1234/details
+
+`ApiClient` will, by default, raise exceptions whenever a request returns an error status.
+You can disable that by passing `raise_for_status=False` when initializing your `ApiClient`::
+
+    api = ApiClient(
+        "http://httpstat.us",
+         raise_for_status=False # this defaults to True
+    )
+    resp = api.get("500") # without raise_for_status=False, this would raise a requests.exceptions.HTTPError
 
 `ApiClient` will, by default, raise exceptions whenever a requests returns an error status. You can disable that by passing `raise_for_status=False` when initializing your `ApiClient`.
 
