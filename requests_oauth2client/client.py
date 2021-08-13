@@ -199,11 +199,11 @@ class OAuth2Client:
         actor_token_type: Optional[str] = None,
         requested_token_type: Optional[str] = None,
         **token_kwargs: Any,
-    ):
+    ) -> BearerToken:
         requests_kwargs = requests_kwargs or {}
 
         try:
-            subject_token_type = self.get_token_type(subject_token, subject_token_type)
+            subject_token_type = self.get_token_type(subject_token_type, subject_token)
         except ValueError:
             raise TypeError(
                 "Cannot determine the kind of subject_token you provided."
@@ -211,7 +211,7 @@ class OAuth2Client:
             )
         if actor_token:
             try:
-                actor_token_type = self.get_token_type(actor_token, actor_token_type)
+                actor_token_type = self.get_token_type(actor_token_type, actor_token)
             except ValueError:
                 raise TypeError(
                     "Cannot determine the kind of actor_token you provided."
@@ -230,23 +230,57 @@ class OAuth2Client:
         return self.token_request(data, **requests_kwargs)
 
     @classmethod
-    def get_token_type(cls, token: Union[str, BearerToken, IdToken], token_type: Optional[str]):
+    def get_token_type(
+        cls,
+        token_type: Optional[str] = None,
+        token: Union[None, str, BearerToken, IdToken] = None,
+    ) -> str:
+        if not (token_type or token):
+            raise ValueError(
+                "Cannot determine type of an empty token without a token_type hint"
+            )
+
         if token_type is None:
             if isinstance(token, str):
                 raise ValueError(
-                    "Cannot determine the type of token provided when it is a bare str. "
+                    "Cannot determine the type of provided token when it is a bare str. "
                     "Please specify a token_type."
                 )
-            if isinstance(token, BearerToken):
+            elif isinstance(token, BearerToken):
                 return "urn:ietf:params:oauth:token-type:access_token"
-            if isinstance(token, IdToken):
+            elif isinstance(token, IdToken):
                 return "urn:ietf:params:oauth:token-type:id_token"
+            else:
+                raise TypeError(
+                    "Unexpected type of token, please provide a string or a BearerToken or an IdToken",
+                    type(token),
+                )
         elif token_type == "access_token":
+            if token is not None and not isinstance(token, (str, BearerToken)):
+                raise ValueError(
+                    "The supplied token is not a BearerToken or a string representation of it",
+                    type(token),
+                )
             return "urn:ietf:params:oauth:token-type:access_token"
         elif token_type == "refresh_token":
+            if token is not None and isinstance(token, BearerToken) and not token.refresh_token:
+                raise ValueError("The supplied BearerToken doesn't have a refresh_token")
             return "urn:ietf:params:oauth:token-type:refresh_token"
         elif token_type == "id_token":
+            if token is not None and not isinstance(token, (str, IdToken)):
+                raise ValueError(
+                    "The supplied token is not an IdToken or a string representation of it",
+                    type(token),
+                )
             return "urn:ietf:params:oauth:token-type:id_token"
+        elif token_type == "saml1":
+            return "urn:ietf:params:oauth:token-type:saml1"
+        elif token_type == "saml2":
+            return "urn:ietf:params:oauth:token-type:saml2"
+        elif token_type == "jwt":
+            return "urn:ietf:params:oauth:token-type:jwt"
+
+        return token_type
 
     def revoke_access_token(
         self,

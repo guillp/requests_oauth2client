@@ -5,7 +5,8 @@ based on the Client Credentials, Authorization Code (+ Refresh token), or the De
 
 It comes with a `requests` add-on to handle OAuth 2.0 Bearer Token based authorization when accessing APIs.
 
-It also supports PKCE, Client Assertions, using custom params to any endpoint, and other important features that are often overlooked in other client libraries.
+It also supports PKCE, Client Assertions, Token Exchange, using custom params to any endpoint,
+and other important features that are often overlooked in other client libraries.
 
 And it also includes a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
 
@@ -215,6 +216,36 @@ a requested to an endpoint that requires client authentication. You don't have a
 - **none**: client only presents its client_id in body form data to the AS, without any authentication credentials. Use `PublicApp(client_id)`::
 
     client = OAuth2Client(token_endpoint, auth=PublicApp(client_id, client_secret))
+
+Token Exchange
+==============
+
+To send a token exchange request, use the `OAuth2Client.token_exchange()` method::
+
+    client = OAuth2Client(token_endpoint, auth=...)
+    token = client.token_exchange(
+        subject_token='your_token_value',
+        subject_token_type="urn:ietf:params:oauth:token-type:access_token"
+    )
+
+As with the other grant-type specific methods, you may specify additional keyword parameters, that will be passed
+to the token endpoint, including any standardised attribute like `actor_token` or `actor_token_type`, or any custom
+parameter.
+There are short names for token_types, that will be automatically translated to standardised types::
+
+    token = client.token_exchange(
+        subject_token='your_token_value',
+        subject_token_type="access_token", # will be automatically replaced by "urn:ietf:params:oauth:token-type:access_token"
+        actor_token='your_actor_token',
+        actor_token_type='id_token', # will be automatically replaced by "urn:ietf:params:oauth:token-type:id_token"
+    )
+
+Or to make it even easier, types can be guessed based on the supplied subject or actor token::
+
+    token = client.token_exchange(
+        subject_token=BearerToken('your_token_value'),  # subject_token_type will be "urn:ietf:params:oauth:token-type:access_token"
+        actor_token=IdToken('your_actor_token'), # actor_token_type will be "urn:ietf:params:oauth:token-type:id_token"
+    )
 
 Specialized API Client
 ======================
