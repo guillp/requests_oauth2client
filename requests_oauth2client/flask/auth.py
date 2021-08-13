@@ -4,7 +4,7 @@ from flask import session
 
 from ..auth import OAuth2ClientCredentialsAuth
 from ..client import OAuth2Client
-from ..token_response import BearerToken, TokenSerializer
+from ..tokens import BearerToken, TokenSerializer
 
 
 class FlaskSessionAuthMixin:

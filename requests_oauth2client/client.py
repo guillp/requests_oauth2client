@@ -6,7 +6,7 @@ from .client_authentication import ClientSecretBasic, ClientSecretPost, PublicAp
 from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
                          InvalidGrant, InvalidScope, InvalidTokenResponse,
                          SlowDown, TokenResponseError, UnauthorizedClient)
-from .token_response import BearerToken
+from .tokens import BearerToken, IdToken
 from .utils import validate_url
 
 

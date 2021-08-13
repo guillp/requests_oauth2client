@@ -10,7 +10,8 @@ from furl import furl
 
 from requests_oauth2client import AuthorizationRequest, ClientSecretPost, PkceUtils
 from requests_oauth2client.discovery import oidc_discovery_document_url
-from requests_oauth2client.oidc import IdToken, OpenIdConnectClient, OpenIdConnectTokenResponse
+from requests_oauth2client.oidc import OpenIdConnectClient, OpenIdConnectTokenResponse
+from requests_oauth2client.tokens import IdToken
 
 CLIENT_ID = "TEST_CLIENT_ID"
 CLIENT_SECRET = "TEST_CLIENT_SECRET"

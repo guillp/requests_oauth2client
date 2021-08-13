@@ -8,7 +8,7 @@ from .client import OAuth2Client
 from .client_authentication import ClientSecretBasic, ClientSecretPost, PublicApp
 from .exceptions import (AuthorizationPending, DeviceAuthorizationError,
                          InvalidDeviceAuthorizationResponse, SlowDown, UnauthorizedClient)
-from .token_response import BearerToken
+from .tokens import BearerToken
 
 
 class DeviceAuthorizationResponse:

@@ -4,5 +4,8 @@ from .auth import (BearerAuth, OAuth2AccessTokenAuth,
 from .authorization_request import AuthorizationRequest, PkceUtils
 from .client import OAuth2Client
 from .client_authentication import (ClientSecretBasic, ClientSecretJWT,
-                                    ClientSecretPost, PrivateKeyJWT)
-from .token_response import BearerToken
+                                    ClientSecretPost, PrivateKeyJWT, PublicApp)
+from .device_authorization import DeviceAuthorizationClient, DeviceAuthorizationPoolingJob
+from .discovery import (oauth2_discovery_document_url,
+                        oidc_discovery_document_url, well_known_uri)
+from .tokens import BearerToken, IdToken

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import requests
 
 from .exceptions import ExpiredToken
-from .token_response import BearerToken
+from .tokens import BearerToken
 
 if TYPE_CHECKING:
     from .client import OAuth2Client
