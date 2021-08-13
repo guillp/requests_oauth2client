@@ -72,3 +72,11 @@ class InvalidDeviceAuthorizationResponse(OAuth2Error):
 
 class InvalidUrl(ValueError):
     pass
+
+
+class InvalidJWT(ValueError):
+    pass
+
+
+class InvalidIdToken(InvalidJWT):
+    pass

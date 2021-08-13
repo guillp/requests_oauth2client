@@ -5,9 +5,11 @@ import zlib
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, Type
 
-from jwcrypto.jwk import JWK, JWKSet
-from jwcrypto.jws import InvalidJWSSignature
-from jwcrypto.jwt import JWT
+from jwcrypto.jwk import JWK, JWKSet  # type: ignore[import]
+from jwcrypto.jws import InvalidJWSObject, InvalidJWSSignature  # type: ignore[import]
+from jwcrypto.jwt import JWT  # type: ignore[import]
+
+from requests_oauth2client.exceptions import InvalidIdToken
 
 
 class BearerToken:
@@ -181,8 +183,11 @@ class TokenSerializer:
 
 class IdToken:
     def __init__(self, value: str):
+        try:
+            self.jwt = JWT(jwt=value)
+        except InvalidJWSObject as exc:
+            raise InvalidIdToken from exc
         self.value = value
-        self.jwt = JWT(jwt=self.value)
         self.payload: Optional[Dict[str, Any]] = None
 
     def validate(self, issuer: str, jwks: Dict[str, Any], nonce: Optional[str] = None) -> bool:
