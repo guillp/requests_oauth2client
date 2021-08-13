@@ -75,6 +75,12 @@ class OAuth2Client:
         :param requests_kwargs: additional parameters for requests.post()
         :return: the token endpoint response, as BearerToken instance.
         """
+        requests_kwargs = {
+            key: value
+            for key, value in requests_kwargs.items()
+            if value is not None and value != ""
+        }
+
         response = self.session.post(
             self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **requests_kwargs
         )
@@ -183,6 +189,64 @@ class OAuth2Client:
             **token_kwargs,
         )
         return self.token_request(data, **requests_kwargs)
+
+    def token_exchange(
+        self,
+        subject_token: Union[str, BearerToken],
+        subject_token_type: Optional[str] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        actor_token: Union[None, str, BearerToken, IdToken] = None,
+        actor_token_type: Optional[str] = None,
+        requested_token_type: Optional[str] = None,
+        **token_kwargs: Any,
+    ):
+        requests_kwargs = requests_kwargs or {}
+
+        try:
+            subject_token_type = self.get_token_type(subject_token, subject_token_type)
+        except ValueError:
+            raise TypeError(
+                "Cannot determine the kind of subject_token you provided."
+                "Please specify a subject_token_type."
+            )
+        if actor_token:
+            try:
+                actor_token_type = self.get_token_type(actor_token, actor_token_type)
+            except ValueError:
+                raise TypeError(
+                    "Cannot determine the kind of actor_token you provided."
+                    "Please specify an actor_token_type."
+                )
+
+        data = dict(
+            grant_type="urn:ietf:params:oauth:grant-type:token-exchange",
+            subject_token=subject_token,
+            subject_token_type=subject_token_type,
+            actor_token=actor_token,
+            actor_token_type=actor_token_type,
+            requested_token_type=requested_token_type,
+            **token_kwargs,
+        )
+        return self.token_request(data, **requests_kwargs)
+
+    @classmethod
+    def get_token_type(cls, token: Union[str, BearerToken, IdToken], token_type: Optional[str]):
+        if token_type is None:
+            if isinstance(token, str):
+                raise ValueError(
+                    "Cannot determine the type of token provided when it is a bare str. "
+                    "Please specify a token_type."
+                )
+            if isinstance(token, BearerToken):
+                return "urn:ietf:params:oauth:token-type:access_token"
+            if isinstance(token, IdToken):
+                return "urn:ietf:params:oauth:token-type:id_token"
+        elif token_type == "access_token":
+            return "urn:ietf:params:oauth:token-type:access_token"
+        elif token_type == "refresh_token":
+            return "urn:ietf:params:oauth:token-type:refresh_token"
+        elif token_type == "id_token":
+            return "urn:ietf:params:oauth:token-type:id_token"
 
     def revoke_access_token(
         self,
