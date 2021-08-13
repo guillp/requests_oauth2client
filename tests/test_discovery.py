@@ -1,5 +1,34 @@
 from requests_oauth2client.discovery import (oauth2_discovery_document_url,
-                                             oidc_discovery_document_url)
+                                             oidc_discovery_document_url, well_known_uri)
+
+
+def test_well_known_uri():
+    assert (
+        well_known_uri("http://www.example.com", "example")
+        == "http://www.example.com/.well-known/example"
+    )
+    assert (
+        well_known_uri("http://www.example.com/", "example")
+        == "http://www.example.com/.well-known/example"
+    )
+
+    assert (
+        well_known_uri("http://www.example.com/foo", "example")
+        == "http://www.example.com/.well-known/foo/example"
+    )
+    assert (
+        well_known_uri("http://www.example.com/foo/", "example")
+        == "http://www.example.com/.well-known/foo/example"
+    )
+
+    assert (
+        well_known_uri("http://www.example.com/foo/bar", "example")
+        == "http://www.example.com/.well-known/foo/bar/example"
+    )
+    assert (
+        well_known_uri("http://www.example.com/foo/bar/", "example")
+        == "http://www.example.com/.well-known/foo/bar/example"
+    )
 
 
 def test_oidc_discovery():
