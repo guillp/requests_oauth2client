@@ -28,7 +28,7 @@ class BearerToken:
         token_type: str = "Bearer",
         **kwargs: Any,
     ):
-        if token_type != "Bearer":
+        if token_type.title() != "Bearer":
             raise ValueError("This is not a Bearer Token!", token_type)
         self.access_token = access_token
         self.expires_at: Optional[datetime]
