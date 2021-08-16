@@ -41,7 +41,7 @@ class PkceUtils:
         if method == "S256":
             return b64u_encode(hashlib.sha256(verifier.encode()).digest())
         elif method == "plain":
-            return b64u_encode(verifier)
+            return verifier
         else:
             raise ValueError("Unsupported code_challenge_method", method)
 
