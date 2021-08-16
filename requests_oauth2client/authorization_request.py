@@ -96,7 +96,7 @@ class AuthorizationRequest:
         if state is True:
             state = secrets.token_urlsafe(32)
 
-        if nonce is None:
+        if nonce is None or nonce is True:
             nonce = secrets.token_urlsafe(32)
         elif nonce is False:
             nonce = None
