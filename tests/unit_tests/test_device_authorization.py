@@ -3,7 +3,8 @@ from datetime import datetime
 import pytest
 
 from requests_oauth2client import (BearerToken, ClientSecretPost, DeviceAuthorizationClient,
-                                   DeviceAuthorizationPoolingJob, OAuth2Client,
+                                   DeviceAuthorizationPoolingJob,
+                                   InvalidDeviceAuthorizationResponse, OAuth2Client,
                                    UnauthorizedClient)
 from requests_oauth2client.device_authorization import DeviceAuthorizationResponse
 
@@ -126,19 +127,43 @@ def test_device_authorization_client_error(
     requests_mock,
     device_authorization_client,
     device_authorization_endpoint,
-    device_code,
-    user_code,
-    verification_uri,
-    verification_uri_complete,
     client_secret_post_auth_validator,
     client_id,
     client_secret,
 ):
     requests_mock.post(
-        device_authorization_endpoint, status_code=400, json={"error": "unauthorized_client",},
+        device_authorization_endpoint,
+        status_code=400,
+        json={
+            "error": "unauthorized_client",
+        },
     )
 
     with pytest.raises(UnauthorizedClient):
+        device_authorization_client.authorize_device()
+    assert requests_mock.called_once
+    client_secret_post_auth_validator(
+        requests_mock.last_request, client_id=client_id, client_secret=client_secret
+    )
+
+
+def test_device_authorization_client_error(
+    requests_mock,
+    device_authorization_client,
+    device_authorization_endpoint,
+    client_secret_post_auth_validator,
+    client_id,
+    client_secret,
+):
+    requests_mock.post(
+        device_authorization_endpoint,
+        status_code=400,
+        json={
+            "foo": "bar",
+        },
+    )
+
+    with pytest.raises(InvalidDeviceAuthorizationResponse):
         device_authorization_client.authorize_device()
     assert requests_mock.called_once
     client_secret_post_auth_validator(
@@ -156,7 +181,11 @@ def test_device_authorization_pooling_job(
     access_token,
 ):
     client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
-    job = DeviceAuthorizationPoolingJob(client=client, device_code=device_code, interval=1,)
+    job = DeviceAuthorizationPoolingJob(
+        client=client,
+        device_code=device_code,
+        interval=1,
+    )
 
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
     assert job() is None

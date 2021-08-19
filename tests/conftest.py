@@ -263,6 +263,19 @@ def revocation_request_validator():
     return validator
 
 
+@pytest.fixture()
+def introspection_request_validator():
+    def validator(req, token, type_hint=None, **kwargs):
+        params = parse_qs(req.text)
+        assert params.get("token") == [token]
+        if type_hint is not None:
+            assert params.get("token_type_hint") == [type_hint]
+        for key, val in kwargs.items():
+            assert params.get(key) == [val]
+
+    return validator
+
+
 @pytest.fixture(params=[None, "resource", "/resource", "resource/foo", "/resource/foo"])
 def target_path(request):
     return request.param

@@ -72,6 +72,11 @@ def revocation_endpoint(issuer, join_url):
 
 
 @pytest.fixture()
+def introspection_endpoint(issuer, join_url):
+    return join_url(issuer, "oauth/introspect")
+
+
+@pytest.fixture()
 def userinfo_endpoint(issuer, join_url):
     return join_url(issuer, "oidc/userinfo")
 
@@ -282,6 +287,7 @@ def discovery_document(
     token_endpoint,
     authorization_endpoint,
     revocation_endpoint,
+    introspection_endpoint,
     userinfo_endpoint,
     jwks_uri,
 ):
@@ -291,17 +297,24 @@ def discovery_document(
         "token_endpoint": token_endpoint,
         "userinfo_endpoint": userinfo_endpoint,
         "revocation_endpoint": revocation_endpoint,
+        "introspection_endpoint": introspection_endpoint,
         "jwks_uri": jwks_uri,
     }
 
 
 @pytest.fixture()
 def oauth2client(
-    token_endpoint, revocation_endpoint, userinfo_endpoint, jwks_uri, client_auth_method
+    token_endpoint,
+    revocation_endpoint,
+    introspection_endpoint,
+    userinfo_endpoint,
+    jwks_uri,
+    client_auth_method,
 ):
     return OAuth2Client(
         token_endpoint,
         revocation_endpoint=revocation_endpoint,
+        introspection_endpoint=introspection_endpoint,
         userinfo_endpoint=userinfo_endpoint,
         jwks_uri=jwks_uri,
         auth=client_auth_method,
