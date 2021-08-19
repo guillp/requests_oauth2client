@@ -523,7 +523,13 @@ def test_userinfo_no_uri(token_endpoint, client_id):
 
 
 def test_from_discovery_document(
-    issuer, token_endpoint, revocation_endpoint, userinfo_endpoint, jwks_uri, client_id
+    issuer,
+    token_endpoint,
+    revocation_endpoint,
+    introspection_endpoint,
+    userinfo_endpoint,
+    jwks_uri,
+    client_id,
 ):
     """You initialize an OAuth2Client based on a standardised discovery document with OAuth2Client.from_discovery_document()."""
     client = OAuth2Client.from_discovery_document(
@@ -531,6 +537,7 @@ def test_from_discovery_document(
             "issuer": issuer,
             "token_endpoint": token_endpoint,
             "revocation_endpoint": revocation_endpoint,
+            "introspection_endpoint": introspection_endpoint,
             "userinfo_endpoint": userinfo_endpoint,
             "jwks_uri": jwks_uri,
         },
@@ -540,6 +547,7 @@ def test_from_discovery_document(
 
     assert client.token_endpoint == token_endpoint
     assert client.revocation_endpoint == revocation_endpoint
+    assert client.introspection_endpoint == introspection_endpoint
     assert client.userinfo_endpoint == userinfo_endpoint
     assert client.jwks_uri == jwks_uri
 
@@ -548,14 +556,18 @@ def test_from_discovery_document_missing_token_endpoint(revocation_endpoint, cli
     """Invalid discovery documents raises an exception."""
     with pytest.raises(ValueError):
         OAuth2Client.from_discovery_document(
-            {"revocation_endpoint": revocation_endpoint}, issuer=None, auth=client_id,
+            {"revocation_endpoint": revocation_endpoint},
+            issuer=None,
+            auth=client_id,
         )
 
 
 def test_from_discovery_document_token_endpoint_only(token_endpoint, client_id):
     """Invalid discovery documents raises an exception."""
     client = OAuth2Client.from_discovery_document(
-        {"token_endpoint": token_endpoint}, issuer=None, auth=client_id,
+        {"token_endpoint": token_endpoint},
+        issuer=None,
+        auth=client_id,
     )
 
     assert client.token_endpoint == token_endpoint
@@ -777,7 +789,11 @@ def test_revoke_token_error(
 
 
 def test_revoke_token_error_non_standard(
-    requests_mock, token_endpoint, revocation_endpoint, client_auth_method, refresh_token,
+    requests_mock,
+    token_endpoint,
+    revocation_endpoint,
+    client_auth_method,
+    refresh_token,
 ):
     """.revoke_token() sends a Revocation request to the Revocation Endpoint, with token_type_hint=access_token."""
     client = OAuth2Client(
@@ -900,3 +916,51 @@ def test_get_token_type():
 
     with pytest.raises(TypeError):
         OAuth2Client.get_token_type(token=1.33, token_type="id_token")
+
+
+def test_introspection(
+    requests_mock,
+    oauth2client,
+    introspection_endpoint,
+    introspection_request_validator,
+    client_auth_method_handler,
+    public_app_auth_validator,
+    client_id,
+    client_secret_post_auth_validator,
+    client_credential,
+    client_secret_basic_auth_validator,
+    client_secret_jwt_auth_validator,
+    private_key_jwt_auth_validator,
+    public_jwk,
+):
+    introspection_data = {"active": False}
+    requests_mock.post(introspection_endpoint, json=introspection_data)
+    data = oauth2client.introspect_token("access_token")
+    assert data == introspection_data
+    assert requests_mock.called_once
+    introspection_request_validator(requests_mock.last_request, token="access_token")
+
+    if client_auth_method_handler == PublicApp:
+        public_app_auth_validator(requests_mock.last_request, client_id=client_id)
+    elif client_auth_method_handler == ClientSecretPost:
+        client_secret_post_auth_validator(
+            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+        )
+    elif client_auth_method_handler == ClientSecretBasic:
+        client_secret_basic_auth_validator(
+            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+        )
+    elif client_auth_method_handler == ClientSecretJWT:
+        client_secret_jwt_auth_validator(
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
+            endpoint=introspection_endpoint,
+        )
+    elif client_auth_method_handler == PrivateKeyJWT:
+        private_key_jwt_auth_validator(
+            requests_mock.last_request,
+            client_id=client_id,
+            endpoint=introspection_endpoint,
+            public_jwk=public_jwk,
+        )

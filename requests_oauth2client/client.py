@@ -37,6 +37,7 @@ class OAuth2Client:
         token_endpoint: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         revocation_endpoint: Optional[str] = None,
+        introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
@@ -51,12 +52,16 @@ class OAuth2Client:
         `requests.auth.AuthBase` instance (which will be used directly), or a tuple of (client_id, client_secret) which
         will initialize an instance of `default_auth_handler`, or a client_id which will use PublicApp authentication.
         :param revocation_endpoint: the revocation endpoint url to use for revoking tokens, if any
+        :param introspection_endpoint: the introspection endpoint url to get info about tokens, if any
         :param session: a requests Session to use when sending HTTP requests
         :param default_auth_handler: if auth is a tuple (for example, a client_id and client_secret), init an object of
         this class with auth values as parameters.
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
+        self.introspection_endpoint = (
+            str(introspection_endpoint) if introspection_endpoint else None
+        )
         self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
@@ -415,6 +420,52 @@ class OAuth2Client:
             raise exception_class(error, error_description, error_uri)
         return False
 
+    def introspect_token(
+        self,
+        token: Union[str, BearerToken],
+        token_type_hint: Optional[str] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **introspect_kwargs: Any,
+    ):
+
+        if not self.introspection_endpoint:
+            return False
+
+        requests_kwargs = requests_kwargs or {}
+
+        if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
+            if token.refresh_token is None:
+                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
+            token = token.refresh_token
+
+        data = dict(introspect_kwargs, token=str(token))
+        if token_type_hint:
+            data["token_type_hint"] = token_type_hint
+
+        response = self.session.post(
+            self.introspection_endpoint,
+            data=data,
+            auth=self.auth,
+            **requests_kwargs,
+        )
+        if response.ok:
+            return response.json()
+
+        return self.on_introspection_error(response)
+
+    def on_introspection_error(self, response: requests.Response):
+        try:
+            data = response.json()
+        except ValueError:
+            response.raise_for_status()
+        error = data.get("error")
+        error_description = data.get("error_description")
+        error_uri = data.get("error_uri")
+        if error is not None:
+            exception_class = self.exception_classes.get(error, IntrospectionError)
+            raise exception_class(error, error_description, error_uri)
+        return False
+
     def get_public_jwks(self) -> Dict[str, Any]:
         if not self.jwks_uri:
             raise ValueError("No jwks uri defined for this client")
@@ -479,6 +530,9 @@ class OAuth2Client:
         revocation_endpoint = discovery.get("revocation_endpoint")
         if revocation_endpoint is not None:
             validate_url(revocation_endpoint, https=https)
+        introspection_endpoint = discovery.get("introspection_endpoint")
+        if introspection_endpoint is not None:
+            validate_url(introspection_endpoint, https=https)
         userinfo_endpoint = discovery.get("userinfo_endpoint")
         if userinfo_endpoint is not None:
             validate_url(userinfo_endpoint, https=https)
@@ -489,6 +543,7 @@ class OAuth2Client:
         return cls(
             token_endpoint=token_endpoint,
             revocation_endpoint=revocation_endpoint,
+            introspection_endpoint=introspection_endpoint,
             userinfo_endpoint=userinfo_endpoint,
             jwks_uri=jwks_uri,
             auth=auth,

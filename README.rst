@@ -5,7 +5,7 @@ based on the Client Credentials, Authorization Code (+ Refresh token), or the De
 
 It comes with a `requests` add-on to handle OAuth 2.0 Bearer Token based authorization when accessing APIs.
 
-It also supports PKCE, Client Assertions, Token Exchange, using custom params to any endpoint,
+It also supports OpenID Connect, PKCE, Client Assertions, Token Exchange, using custom params to any endpoint,
 and other important features that are often overlooked in other client libraries.
 
 And it also includes a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
