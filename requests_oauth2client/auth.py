@@ -5,7 +5,7 @@ import requests
 from .exceptions import ExpiredToken
 from .tokens import BearerToken
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .client import OAuth2Client
 
 
@@ -113,7 +113,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         token = self.token
         if token is None or token.is_expired():
-            if self.code:
+            if self.code:  # pragma: no branch
                 self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
                 self.code = None
         return super().__call__(request)
