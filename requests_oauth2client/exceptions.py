@@ -2,10 +2,16 @@ from typing import Optional
 
 
 class OAuth2Error(Exception):
-    pass
+    """
+    Base class for Exceptions raised by requests_oauth2client.
+    """
 
 
 class TokenResponseError(OAuth2Error):
+    """
+    Base class for exceptions raised when a token endpoint returns a standardised error.
+    """
+
     def __init__(
         self, error: str, description: Optional[str] = None, uri: Optional[str] = None
     ):
@@ -15,30 +21,38 @@ class TokenResponseError(OAuth2Error):
 
 
 class InvalidTokenResponse(OAuth2Error):
-    pass
+    """
+    Base class for exceptions raised when a token endpoint returns a non-standardised response.
+    """
 
 
 class ExpiredToken(OAuth2Error):
-    pass
+    """
+    Raised when an expired token is used.
+    """
 
 
 class UnknownTokenResponseError(TokenResponseError):
-    pass
+    """
+    Raised when an otherwise unknown error is returned by the token endpoint.
+    """
 
 
-class UnsupportedTokenType(TokenResponseError):
-    pass
+class ServerError(TokenResponseError):
+    """
+    Raised when the token endpoint returns error = server_error
+    """
 
 
 class InvalidScope(TokenResponseError):
     pass
 
 
-class InvalidGrant(TokenResponseError):
+class InvalidTarget(TokenResponseError):
     pass
 
 
-class InvalidState(TokenResponseError):
+class InvalidGrant(TokenResponseError):
     pass
 
 
@@ -47,6 +61,19 @@ class AccessDenied(TokenResponseError):
 
 
 class UnauthorizedClient(TokenResponseError):
+    pass
+
+
+class RevocationError(OAuth2Error):
+    def __init__(
+        self, error: str, description: Optional[str] = None, uri: Optional[str] = None
+    ):
+        self.error = error
+        self.description = description
+        self.uri = uri
+
+
+class UnsupportedTokenType(RevocationError):
     pass
 
 
@@ -80,3 +107,50 @@ class InvalidJWT(ValueError):
 
 class InvalidIdToken(InvalidJWT):
     pass
+
+
+class AuthorizationResponseError(Exception):
+    def __init__(
+        self, error: str, description: Optional[str] = None, uri: Optional[str] = None
+    ):
+        self.error = error
+        self.description = description
+        self.uri = uri
+
+
+class InteractionRequired(AuthorizationResponseError):
+    pass
+
+
+class LoginRequired(InteractionRequired):
+    pass
+
+
+class AccountSelectionRequired(InteractionRequired):
+    pass
+
+
+class SessionSelectionRequired(InteractionRequired):
+    pass
+
+
+class ConsentRequired(InteractionRequired):
+    pass
+
+
+class InvalidAuthResponse(OAuth2Error):
+    """
+    Base class for errors due to Auth Responses that don't obey the standard (e.g. missing mandatory params)
+    """
+
+
+class MissingAuthCode(InvalidAuthResponse):
+    """
+    Raised when the authorization code is missing from the auth response and no error is returned.
+    """
+
+
+class MismatchingState(InvalidAuthResponse):
+    """
+    Raised when an auth response contains a state parameter that doesn't match the expected state.
+    """

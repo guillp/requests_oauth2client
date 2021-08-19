@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 import requests
 
 from .client import OAuth2Client
-from .client_authentication import ClientSecretBasic, ClientSecretPost, PublicApp
+from .client_authentication import ClientSecretBasic, ClientSecretPost, client_auth_factory
 from .exceptions import (AuthorizationPending, DeviceAuthorizationError,
                          InvalidDeviceAuthorizationResponse, SlowDown, UnauthorizedClient)
 from .tokens import BearerToken
@@ -27,7 +27,7 @@ class DeviceAuthorizationResponse:
         interval: Optional[int] = None,
         **kwargs: Any,
     ):
-        self.device_code = (device_code,)
+        self.device_code = device_code
         self.user_code = user_code
         self.verification_uri = verification_uri
         self.verification_uri_complete = verification_uri_complete
@@ -43,8 +43,8 @@ class DeviceAuthorizationResponse:
 
     def is_expired(self) -> Optional[bool]:
         """
-        Returns true if the access token is expired at the time of the call.
-        :return:
+        Returns True if the device_code within this response is expired at the time of the call.
+        :return: True if the device_code is expired, False if it is still valid, None if there is no expires_in hint.
         """
         if self.expires_at:
             return datetime.now() > self.expires_at
@@ -76,16 +76,7 @@ class DeviceAuthorizationClient:
     ):
         self.device_authorization_endpoint = device_authorization_endpoint
         self.session = session or requests.Session()
-        if isinstance(auth, requests.auth.AuthBase):
-            self.auth = auth
-        elif isinstance(auth, tuple) and len(auth) == 2:
-            client_id, client_secret = auth
-            self.auth = default_auth_handler(client_id, client_secret)
-        elif isinstance(auth, str):
-            client_id = auth
-            self.auth = PublicApp(client_id)
-        else:
-            raise ValueError("An Auth Handler is required")
+        self.auth = client_auth_factory(auth, default_auth_handler)
 
     def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
         """
@@ -103,7 +94,11 @@ class DeviceAuthorizationClient:
             )
             return device_authorization_response
 
-        # error handling
+        return self.on_device_authorization_error(response)
+
+    def on_device_authorization_error(
+        self, response: requests.Response
+    ) -> DeviceAuthorizationResponse:
         error_json = response.json()
         error = error_json.get("error")
         error_description = error_json.get("error_description")

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 from uuid import uuid4
 
 import furl  # type: ignore[import]
@@ -204,3 +204,33 @@ class PublicApp(ClientAuthenticationMethod):
         data.set([("client_id", self.client_id)])
         request.prepare_body(data.params, files=None)
         return request
+
+
+def client_auth_factory(
+    auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+    default_auth_handler: Union[
+        Type[ClientSecretPost], Type[ClientSecretBasic]
+    ] = ClientSecretPost,
+):
+    if isinstance(auth, requests.auth.AuthBase):
+        return auth
+    elif isinstance(auth, tuple) and len(auth) == 2:
+        client_id, credential = auth
+        if isinstance(credential, dict) and "kty" in credential:
+            private_key = credential
+            return PrivateKeyJWT(str(client_id), private_key)
+        else:
+            return default_auth_handler(str(client_id), credential)
+    elif isinstance(auth, str):
+        client_id = auth
+        return PublicApp(client_id)
+    else:
+        raise ValueError(
+            """Parameter 'auth' is required to define the Authentication Method that this Client will use when sending requests to the Token Endpoint.
+'auth' can be:
+- an instance of a requests.auth.AuthBase subclass, including ClientSecretPost, ClientSecretBasic, ClientSecretJWT, PrivateKeyJWT, PublicApp, 
+- a (client_id, client_secret) tuple, both as str, for ClientSecretPost,
+- a (client_id, private_key) tuple, with client_id as str and private_key as a dict in JWK format, for PrivateKeyJWT,
+- a client_id, as str, for PublicApp.
+"""
+        )

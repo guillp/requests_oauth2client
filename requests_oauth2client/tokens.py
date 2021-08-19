@@ -9,7 +9,7 @@ from jwcrypto.jwk import JWK, JWKSet  # type: ignore[import]
 from jwcrypto.jws import InvalidJWSObject, InvalidJWSSignature  # type: ignore[import]
 from jwcrypto.jwt import JWT  # type: ignore[import]
 
-from requests_oauth2client.exceptions import InvalidIdToken
+from requests_oauth2client.exceptions import ExpiredToken, InvalidIdToken
 
 
 class BearerToken:

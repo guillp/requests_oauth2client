@@ -1,11 +1,13 @@
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
 
-from .client_authentication import ClientSecretBasic, ClientSecretPost, PublicApp
+from .auth import BearerAuth
+from .client_authentication import ClientSecretBasic, ClientSecretPost, client_auth_factory
 from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
-                         InvalidGrant, InvalidScope, InvalidTokenResponse,
-                         SlowDown, TokenResponseError, UnauthorizedClient)
+                         InvalidGrant, InvalidScope, InvalidTarget,
+                         InvalidTokenResponse, RevocationError, ServerError, SlowDown,
+                         TokenResponseError, UnauthorizedClient, UnsupportedTokenType)
 from .tokens import BearerToken, IdToken
 from .utils import validate_url
 
@@ -16,18 +18,19 @@ class OAuth2Client:
     """
 
     exception_classes: Dict[str, Type[Exception]] = {
+        "server_error": ServerError,
         "invalid_scope": InvalidScope,
+        "invalid_target": InvalidTarget,
         "invalid_grant": InvalidGrant,
         "access_denied": AccessDenied,
         "unauthorized_client": UnauthorizedClient,
         "authorization_pending": AuthorizationPending,
         "slow_down": SlowDown,
         "expired_token": ExpiredDeviceCode,
+        "unsupported_token_type": UnsupportedTokenType,
     }
 
     default_exception_class = TokenResponseError
-
-    token_response_class: Type[BearerToken] = BearerToken
 
     def __init__(
         self,
@@ -40,6 +43,7 @@ class OAuth2Client:
         default_auth_handler: Union[
             Type[ClientSecretPost], Type[ClientSecretBasic]
         ] = ClientSecretPost,
+        token_response_class: Type[BearerToken] = BearerToken,
     ):
         """
         :param token_endpoint: the token endpoint where this client will get access tokens
@@ -56,18 +60,8 @@ class OAuth2Client:
         self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
-
-        self.auth: Optional[requests.auth.AuthBase]
-        if isinstance(auth, requests.auth.AuthBase):
-            self.auth = auth
-        elif isinstance(auth, tuple) and len(auth) == 2:
-            client_id, client_secret = auth
-            self.auth = default_auth_handler(client_id, client_secret)
-        elif isinstance(auth, str):
-            client_id = auth
-            self.auth = PublicApp(client_id)
-        else:
-            raise ValueError("An AuthHandler is required")
+        self.auth = client_auth_factory(auth, default_auth_handler)
+        self.token_response_class = token_response_class
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
@@ -89,10 +83,25 @@ class OAuth2Client:
             self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **requests_kwargs
         )
         if response.ok:
-            token_response = self.token_response_class(**response.json())
-            return token_response
+            try:
+                token_response = self.token_response_class(**response.json())
+                return token_response
+            except Exception as exc:
+                self.on_token_error(response, exc)
 
-        # error handling
+        return self.on_token_error(response)
+
+    def on_token_error(
+        self, response: requests.Response, exc: Optional[Exception] = None
+    ) -> BearerToken:
+        """
+        Excecuted when the token endpoint returns an error.
+        :param response: the token response
+        :param exc: if the token response is 20x but an exception occurred when creating the token_response_class,
+         this will contain the exception. Otherwise, this will be None.
+        :return: should return nothing and raise an exception instead. But a subclass can return a BearerToken
+         to implement a default behaviour if needed.
+        """
         error_json = response.json()
         error = error_json.get("error")
         error_description = error_json.get("error_description")
@@ -100,13 +109,16 @@ class OAuth2Client:
         if error:
             exception_class = self.exception_classes.get(error, self.default_exception_class)
             raise exception_class(error, error_description, error_uri)
-
-        raise InvalidTokenResponse(
-            "token endpoint returned an HTTP error without error message", error_json
-        )
+        else:
+            raise InvalidTokenResponse(
+                "token endpoint returned an HTTP error without error message", error_json
+            ) from exc
 
     def client_credentials(
-        self, requests_kwargs: Optional[Dict[str, Any]] = None, **token_kwargs: Any
+        self,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        scope: Optional[Union[str, Iterable[str]]] = None,
+        **token_kwargs: Any,
     ) -> BearerToken:
         """
         Sends a request to the token endpoint with the client_credentials grant.
@@ -116,7 +128,14 @@ class OAuth2Client:
         :return: a TokenResponse
         """
         requests_kwargs = requests_kwargs or {}
-        data = dict(grant_type="client_credentials", **token_kwargs)
+
+        if scope is not None and not isinstance(scope, str):
+            try:
+                scope = " ".join(scope)
+            except Exception as exc:
+                raise ValueError("Unsupported scope value") from exc
+
+        data = dict(grant_type="client_credentials", scope=scope, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
     def authorization_code(
@@ -213,7 +232,7 @@ class OAuth2Client:
                 "Cannot determine the kind of subject_token you provided."
                 "Please specify a subject_token_type."
             )
-        if actor_token:
+        if actor_token:  # pragma: no branch
             try:
                 actor_token_type = self.get_token_type(actor_token_type, actor_token)
             except ValueError:
@@ -281,7 +300,7 @@ class OAuth2Client:
                 )
         elif token_type == "access_token":
             if token is not None and not isinstance(token, (str, BearerToken)):
-                raise ValueError(
+                raise TypeError(
                     "The supplied token is not a BearerToken or a string representation of it",
                     type(token),
                 )
@@ -292,19 +311,17 @@ class OAuth2Client:
             return "urn:ietf:params:oauth:token-type:refresh_token"
         elif token_type == "id_token":
             if token is not None and not isinstance(token, (str, IdToken)):
-                raise ValueError(
+                raise TypeError(
                     "The supplied token is not an IdToken or a string representation of it",
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:id_token"
-        elif token_type == "saml1":
-            return "urn:ietf:params:oauth:token-type:saml1"
-        elif token_type == "saml2":
-            return "urn:ietf:params:oauth:token-type:saml2"
-        elif token_type == "jwt":
-            return "urn:ietf:params:oauth:token-type:jwt"
-
-        return token_type
+        else:
+            return {
+                "saml1": "urn:ietf:params:oauth:token-type:saml1",
+                "saml2": "urn:ietf:params:oauth:token-type:saml2",
+                "jwt": "urn:ietf:params:oauth:token-type:jwt",
+            }.get(token_type, token_type)
 
     def revoke_access_token(
         self,
@@ -318,17 +335,12 @@ class OAuth2Client:
         :param requests_kwargs: additional parameters for the underlying requests.post() call
         :param revoke_kwargs: additional parameters to pass to the revocation endpoint
         """
-        if not self.revocation_endpoint:
-            return False
-
-        requests_kwargs = requests_kwargs or {}
-        self.session.post(
-            self.revocation_endpoint,
-            data=dict(revoke_kwargs, token=str(access_token), token_type_hint="access_token"),
-            auth=self.auth,
-            **requests_kwargs,
-        ).raise_for_status()
-        return True
+        return self.revoke_token(
+            access_token,
+            token_type_hint="access_token",
+            requests_kwargs=requests_kwargs,
+            **revoke_kwargs,
+        )
 
     def revoke_refresh_token(
         self,
@@ -344,17 +356,77 @@ class OAuth2Client:
         :return: True if the revocation request is successful, False if this client has no configured revocation
         endpoint.
         """
+        return self.revoke_token(
+            refresh_token,
+            token_type_hint="refresh_token",
+            requests_kwargs=requests_kwargs,
+            **revoke_kwargs,
+        )
+
+    def revoke_token(
+        self,
+        token: Union[str, BearerToken],
+        token_type_hint: Optional[str] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **revoke_kwargs: Any,
+    ) -> bool:
+        """
+        Generic method to use the Revocation Endpoint.
+        :param token: the token to revoke.
+        :param token_type_hint: a token_type_hint to send to the revocation endpoint.
+        :param requests_kwargs: additional parameters to the underling call to requests.post()
+        :param revoke_kwargs: additional parameters to send to the revocation endpoint.
+        :return: True if the revocation succeeds,
+        False if no revocation endpoint is present or a non-standardised error is returned.
+        """
         if not self.revocation_endpoint:
             return False
 
         requests_kwargs = requests_kwargs or {}
-        self.session.post(
-            self.revocation_endpoint,
-            data=dict(revoke_kwargs, token=refresh_token, token_type_hint="refresh_token"),
-            auth=self.auth,
-            **requests_kwargs,
-        ).raise_for_status()
-        return True
+
+        data = dict(revoke_kwargs, token=str(token))
+        if token_type_hint:
+            data["token_type_hint"] = token_type_hint
+
+        response = self.session.post(
+            self.revocation_endpoint, data=data, auth=self.auth, **requests_kwargs,
+        )
+        if response.ok:
+            return True
+
+        return self.on_revocation_error(response)
+
+    def on_revocation_error(self, response: requests.Response) -> bool:
+        """
+        Executed when the revocation endpoint return an error.
+        :param response: the revocation response
+        :return: returns False to signal that an error occurred.
+        May raise exceptions instead depending on the revocation response.
+        """
+        try:
+            data = response.json()
+        except ValueError:
+            return False
+        error = data.get("error")
+        error_description = data.get("error_description")
+        error_uri = data.get("error_uri")
+        if error is not None:
+            exception_class = self.exception_classes.get(error, RevocationError)
+            raise exception_class(error, error_description, error_uri)
+        return False
+
+    def get_public_jwks(self) -> Dict[str, Any]:
+        if not self.jwks_uri:
+            raise ValueError("No jwks uri defined for this client")
+        jwks = self.session.get(self.jwks_uri, auth=None).json()
+        if (
+            not isinstance(jwks, dict)
+            or "keys" not in jwks
+            or not isinstance(jwks["keys"], list)
+            or any("kty" not in jwk for jwk in jwks["keys"])
+        ):
+            raise ValueError("Invalid JWKS returned by the server", jwks)
+        return jwks
 
     @classmethod
     def from_discovery_endpoint(

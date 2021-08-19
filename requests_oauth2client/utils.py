@@ -6,21 +6,56 @@ from furl import furl  # type: ignore
 from requests_oauth2client.exceptions import InvalidUrl
 
 
-def b64_encode(data: Union[bytes, str], encoding: str = "utf-8") -> str:
+def b64_encode(data: Union[bytes, str], encoding: str = "utf-8", padded: bool = True) -> str:
+    """
+    Encodes the string or bytes `data` using base64.
+    If data is a string, encode it to string using `encoding` before converting it to base64.
+    If padded is True (default), outputs includes a padding with = to make its length a multiple of 4. If False,
+    no padding is included.
+    :param data: a str or bytes to base64-encode.
+    :param encoding: if data is a str, use this encoding to convert it to bytes first.
+    :param padded: whether to include padding in the output
+    :return: a str with the base64-encoded data.
+    """
     if not isinstance(data, bytes):
         if not isinstance(data, str):
             data = str(data)
         data = data.encode(encoding)
 
     encoded = base64.b64encode(data)
-    return encoded.decode()
+    if not padded:
+        encoded = encoded.rstrip(b"=")
+    return encoded.decode("ascii")
 
 
-def b64u_encode(data: Union[bytes, str], encoding: str = "utf-8") -> str:
+def b64_decode(data: Union[str, bytes], encoding: Optional[str] = "utf-8") -> Union[str, bytes]:
+    """
+    Decodes a base64-encoded string or bytes.
+    :param data:
+    :param encoding:
+    :return:
+    """
+    if not isinstance(data, bytes):
+        if not isinstance(data, str):
+            data = str(data)
+        data = data.encode("ascii")
+
+    padding_len = len(data) % 4
+    if padding_len:
+        data = data + b"=" * padding_len
+
+    decoded = base64.urlsafe_b64decode(data)
+    if encoding:
+        return decoded.decode(encoding)
+    return decoded
+
+
+def b64u_encode(data: Union[bytes, str], encoding: str = "utf-8", padded: bool = False) -> str:
     """
     Encodes some data in Base64url.
     :param data: the data to encode. Can be bytes or str.
     :param encoding: if data is a string, the encoding to use to convert it as bytes
+    :param padded: if True, pad the output with = to make its length a multiple of 4
     :return: the base64url encoded data, as a string
     """
     if not isinstance(data, bytes):
@@ -28,8 +63,10 @@ def b64u_encode(data: Union[bytes, str], encoding: str = "utf-8") -> str:
             data = str(data)
         data = data.encode(encoding)
 
-    encoded = base64.urlsafe_b64encode(data).rstrip(b"=")
-    return encoded.decode()
+    encoded = base64.urlsafe_b64encode(data)
+    if not padded:
+        encoded = encoded.rstrip(b"=")
+    return encoded.decode("ascii")
 
 
 def b64u_decode(
@@ -45,7 +82,7 @@ def b64u_decode(
     if not isinstance(data, bytes):
         if not isinstance(data, str):
             data = str(data)
-        data = data.encode()
+        data = data.encode("ascii")
 
     padding_len = len(data) % 4
     if padding_len:
