@@ -5,6 +5,9 @@ tests:
 coverage-tests:
 	coverage run --rcfile=tests\.coveragerc -m pytest
 
+coverage-unittests:
+	coverage run --rcfile=tests\.coveragerc -m pytest tests/unit_tests
+
 coverage-report:
 	coverage report -m
 	coverage html

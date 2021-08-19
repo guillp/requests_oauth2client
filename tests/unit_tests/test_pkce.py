@@ -36,7 +36,7 @@ def test_unsupported_challenge_method():
 def test_challenge_method_plain():
     verifier = PkceUtils.generate_code_verifier()
     challenge = PkceUtils.derive_challenge(verifier, method="plain")
-    assert challenge == base64.urlsafe_b64encode(verifier.encode()).decode().rstrip("=")
+    assert challenge == verifier
 
 
 def test_invalid_verifier():

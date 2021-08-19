@@ -1,18 +1,13 @@
-import secrets
 from urllib.parse import parse_qs
 
 import requests
 
 from requests_oauth2client import ClientSecretPost, OAuth2Client, OAuth2ClientCredentialsAuth
 
-client_id = "TEST_CLIENT_ID"
-client_secret = "TEST_CLIENT_SECRET"
-token_endpoint = "https://test.com/token"
-api = "https://test.com/api"
 
-
-def test_client_credentials_get_token(requests_mock):
-    access_token = secrets.token_urlsafe()
+def test_client_credentials_get_token(
+    requests_mock, client_id, client_secret, token_endpoint, target_api, access_token
+):
     requests_mock.post(
         token_endpoint,
         json={"access_token": access_token, "token_type": "Bearer", "expires_in": 3600},
@@ -26,8 +21,9 @@ def test_client_credentials_get_token(requests_mock):
     assert params.get("grant_type")[0] == "client_credentials"
 
 
-def test_client_credentials_api(requests_mock):
-    access_token = secrets.token_urlsafe()
+def test_client_credentials_api(
+    requests_mock, access_token, token_endpoint, client_id, client_secret, target_api
+):
 
     client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     auth = OAuth2ClientCredentialsAuth(client)
@@ -36,8 +32,8 @@ def test_client_credentials_api(requests_mock):
         token_endpoint,
         json={"access_token": access_token, "token_type": "Bearer", "expires_in": 3600},
     )
-    requests_mock.get(api, request_headers={"Authorization": f"Bearer {access_token}"})
-    response = requests.get(api, auth=auth)
+    requests_mock.get(target_api, request_headers={"Authorization": f"Bearer {access_token}"})
+    response = requests.get(target_api, auth=auth)
     assert response.ok
     assert len(requests_mock.request_history) == 2
     token_request = requests_mock.request_history[0]

@@ -10,14 +10,16 @@ from requests_oauth2client.device_authorization import (DeviceAuthorizationClien
 from requests_oauth2client.exceptions import (DeviceAuthorizationError,
                                               InvalidDeviceAuthorizationResponse)
 
-client_id = "TEST_CLIENT_ID"
-client_secret = "TEST_CLIENT_SECRET"
-token_endpoint = "https://test.com/token"
-device_authorization_endpoint = "http://localhost/device_authorization"
-api = "https://test.com/api"
+
+@pytest.fixture(params=["device", "oauth/device"])
+def device_authorization_endpoint(request, issuer, join_url):
+    return join_url(issuer, request.param)
 
 
-def test_device_authorization(requests_mock):
+@pytest.mark.slow
+def test_device_authorization(
+    requests_mock, device_authorization_endpoint, token_endpoint, client_id, client_secret
+):
     device_code = secrets.token_urlsafe()
     user_code = secrets.token_urlsafe(6)
     verification_uri = "https://test.com/verify_device"
@@ -95,7 +97,7 @@ def test_device_authorization(requests_mock):
     assert not resp.is_expired()
 
 
-def test_auth_handler():
+def test_auth_handler(client_id, client_secret):
     auth = ClientSecretBasic(client_id, client_secret)
     da_client = DeviceAuthorizationClient(
         device_authorization_endpoint=device_authorization_endpoint, auth=auth,
@@ -110,7 +112,7 @@ def test_auth_handler():
     assert isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
 
 
-def test_invalid_response(requests_mock):
+def test_invalid_response(requests_mock, client_id, client_secret):
 
     da_client = DeviceAuthorizationClient(
         device_authorization_endpoint=device_authorization_endpoint,

@@ -11,21 +11,18 @@ from requests_oauth2client import BearerToken, ClientSecretPost, OAuth2Client
 from requests_oauth2client.authorization_request import AuthorizationRequest, PkceUtils
 from requests_oauth2client.discovery import oidc_discovery_document_url
 
-client_id = "TEST_CLIENT_ID"
-client_secret = "TEST_CLIENT_SECRET"
-issuer = "https://test.com"
-redirect_uri = "TEST_REDIRECT_URI"
-audience = "TEST_AUDIENCE"
-scope = "TEST_SCOPE"
 
-discovery_document = {
-    "authorization_endpoint": furl(issuer, path="/authorize").url,
-    "token_endpoint": furl(issuer, path="/token").url,
-}
-
-
-def test_authorization_code(session, requests_mock):
-
+def test_authorization_code(
+    session,
+    requests_mock,
+    issuer,
+    discovery_document,
+    client_id,
+    client_secret,
+    redirect_uri,
+    scope,
+    audience,
+):
     discovery_url = oidc_discovery_document_url(issuer)
     requests_mock.get(discovery_url, json=discovery_document)
     discovery = session.get(discovery_url).json()
@@ -90,7 +87,17 @@ def test_authorization_code(session, requests_mock):
     assert params.get("code") == [authorization_code]
 
 
-def test_authorization_code_pkce(session, requests_mock):
+def test_authorization_code_pkce(
+    session,
+    requests_mock,
+    issuer,
+    discovery_document,
+    client_id,
+    client_secret,
+    redirect_uri,
+    scope,
+    audience,
+):
     discovery_url = oidc_discovery_document_url(issuer)
     requests_mock.get(discovery_url, json=discovery_document)
     discovery = session.get(discovery_url).json()

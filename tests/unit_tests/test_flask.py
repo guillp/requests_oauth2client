@@ -44,7 +44,8 @@ def test_flask(requests_mock):
         assert resp.json == json_resp
         resp = client.get("/api")
         assert resp.json == json_resp
-        with client.session_transaction() as sess:  # api_client.auth.token = None doesn't work in a test session
+        api_client.auth.token = None  #  strangely this has no effect in a test session
+        with client.session_transaction() as sess:  # does what 'api_client.auth.token = None' should do
             sess.pop("session_key")
         resp = client.get("/api")
         assert resp.json == json_resp
