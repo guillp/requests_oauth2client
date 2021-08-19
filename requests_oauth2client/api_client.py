@@ -126,17 +126,25 @@ class ApiClient(requests.Session):
             response.raise_for_status()
         return response
 
-    def get(self, url: Optional[str] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def get(
+        self,
+        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        **kwargs: Any,
+    ) -> requests.Response:
         return self.request("GET", url, **kwargs)
 
-    def post(self, url: Optional[str] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def post(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         return self.request("POST", url, **kwargs)
 
-    def patch(self, url: Optional[str] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def patch(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         return self.request("PATCH", url, **kwargs)
 
-    def put(self, url: Optional[str] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def put(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         return self.request("PUT", url, **kwargs)
 
-    def delete(self, url: Optional[str] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def delete(
+        self,
+        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        **kwargs: Any,
+    ) -> requests.Response:
         return self.request("DELETE", url, **kwargs)
