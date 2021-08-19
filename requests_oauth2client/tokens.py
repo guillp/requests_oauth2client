@@ -26,6 +26,7 @@ class BearerToken:
         scope: Optional[str] = None,
         refresh_token: Optional[str] = None,
         token_type: str = "Bearer",
+        id_token: Optional[str] = None,
         **kwargs: Any,
     ):
         if token_type.title() != "Bearer":
@@ -40,12 +41,13 @@ class BearerToken:
             self.expires_at = None
         self.scope = scope
         self.refresh_token = refresh_token
+        self.id_token = IdToken(id_token) if id_token else None
         self.other = kwargs
 
     def is_expired(self) -> Optional[bool]:
         """
-        Returns true if the access token is expired at the time of the call.
-        :return:
+        Returns True if the access token is expired at the time of the call.
+        :return: True if the access token is expired, False if it is still valid, None if there is no expires_in hint.
         """
         if self.expires_at:
             return datetime.now() > self.expires_at
@@ -184,13 +186,20 @@ class TokenSerializer:
 class IdToken:
     def __init__(self, value: str):
         try:
-            self.jwt = JWT(jwt=value)
-        except InvalidJWSObject as exc:
+            self.jwt = JWT(jwt=value, check_claims=False)
+        except ValueError as exc:
             raise InvalidIdToken from exc
         self.value = value
         self.payload: Optional[Dict[str, Any]] = None
 
-    def validate(self, issuer: str, jwks: Dict[str, Any], nonce: Optional[str] = None) -> bool:
+    def validate(
+        self,
+        jwks: Dict[str, Any],
+        issuer: Optional[str] = None,
+        audience: Optional[str] = None,
+        nonce: Optional[str] = None,
+        check_exp: bool = True,
+    ) -> bool:
         if "keys" in jwks:
             validation_jwks = JWKSet()
             for jwk in jwks.get("keys", []):
@@ -204,19 +213,47 @@ class IdToken:
             raise ValueError(
                 "invalid token signature, or verification key is not matching the signature"
             ) from exc
-        issuer_from_token = self.get_claim("iss")
-        if not issuer_from_token:
-            raise ValueError("no issuer set in this token")
-        if issuer != issuer_from_token:
-            raise ValueError("unexpected issuer value")
-        if nonce:
+        if issuer:  # pragma: no branch
+            issuer_from_token = self.get_claim("iss")
+            if not issuer_from_token:  # pragma: no branch
+                raise ValueError("no issuer set in this token")
+            if issuer != issuer_from_token:
+                raise ValueError("unexpected issuer value", issuer_from_token)
+        if audience:  # pragma: no branch
+            audience_from_token = self.get_claim("aud")
+            if not audience_from_token:  # pragma: no branch
+                raise ValueError("no audience set in this token")
+            if audience != audience_from_token:  # pragma: no branch
+                raise ValueError("unexpected audience value", audience_from_token)
+        if nonce:  # pragma: no branch
             nonce_from_token = self.get_claim("nonce")
-            if nonce_from_token != nonce:
+            if nonce_from_token != nonce:  # pragma: no branch
                 raise ValueError(
                     "unexpected nonce value, this token may be intended for a different login transaction",
                     nonce_from_token,
                 )
+        if check_exp and self.is_expired():
+            raise ExpiredToken(self.expires_at)
         return True
+
+    def is_expired(self) -> Optional[bool]:
+        return self.expires_at < datetime.now()
+
+    @property
+    def expires_at(self) -> Optional[datetime]:
+        exp = self.get_claim("exp")
+        if not exp:
+            return None
+        exp_dt = datetime.fromtimestamp(exp)
+        return exp_dt
+
+    @property
+    def issued_at(self) -> Optional[datetime]:
+        iat = self.get_claim("iat")
+        if not iat:
+            return None
+        iat_dt = datetime.fromtimestamp(iat)
+        return iat_dt
 
     @property
     def alg(self) -> str:
@@ -232,6 +269,9 @@ class IdToken:
     def get_claim(self, key: str) -> Any:
         if self.payload:
             return self.payload.get(key)
+        raise RuntimeError(
+            "Claims cannot be accessed before the IdToken is validated using .validate()"
+        )
 
     def __getattr__(self, item: str) -> Any:
         return self.get_claim(item)

@@ -6,7 +6,6 @@ from ..api_client import ApiClient
 from ..auth import OAuth2ClientCredentialsAuth
 from ..client import OAuth2Client
 from ..client_authentication import ClientSecretBasic, ClientSecretPost
-from ..oidc import OpenIdConnectClient
 
 
 class Auth0Client(OAuth2Client):
@@ -29,31 +28,6 @@ class Auth0Client(OAuth2Client):
         self.tenant = tenant
         token_endpoint = f"https://{tenant}/oauth/token"
         revocation_endpoint = f"https://{tenant}/oauth/revoke"
-        super().__init__(
-            token_endpoint=token_endpoint,
-            revocation_endpoint=revocation_endpoint,
-            auth=auth,
-            session=session,
-            default_auth_handler=default_auth_handler,
-        )
-
-
-class Auth0OIDCClient(OpenIdConnectClient):
-    def __init__(
-        self,
-        tenant: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
-        session: Optional[requests.Session] = None,
-    ):
-        if (
-            "." not in tenant
-            or tenant.endswith(".eu")
-            or tenant.endswith(".us")
-            or tenant.endswith(".au")
-        ):
-            tenant = f"{tenant}.auth0.com"
-        token_endpoint = f"https://{tenant}/oauth/token"
-        revocation_endpoint = f"https://{tenant}/oauth/revoke"
         userinfo_endpoint = f"https://{tenant}/userinfo"
         jwks_uri = f"https://{tenant}/.well-known/jwks.json"
         super().__init__(
@@ -63,6 +37,7 @@ class Auth0OIDCClient(OpenIdConnectClient):
             jwks_uri=jwks_uri,
             auth=auth,
             session=session,
+            default_auth_handler=default_auth_handler,
         )
 
 

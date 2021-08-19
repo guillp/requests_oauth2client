@@ -34,6 +34,8 @@ class OAuth2Client:
         token_endpoint: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         revocation_endpoint: Optional[str] = None,
+        userinfo_endpoint: Optional[str] = None,
+        jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
         default_auth_handler: Union[
             Type[ClientSecretPost], Type[ClientSecretBasic]
@@ -51,6 +53,8 @@ class OAuth2Client:
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
+        self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
+        self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
 
         self.auth: Optional[requests.auth.AuthBase]
@@ -229,6 +233,26 @@ class OAuth2Client:
         )
         return self.token_request(data, **requests_kwargs)
 
+    def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
+        """
+        Calls the userinfo endpoint with the specified access_token and returns the result.
+        :param access_token: the access token to use
+        :return: the requests Response returned by the userinfo endpoint.
+        """
+        if not self.userinfo_endpoint:
+            raise ValueError("No userinfo endpoint defined for this client")
+        response = self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token))
+        return self.parse_userinfo_response(response)
+
+    def parse_userinfo_response(self, resp: requests.Response) -> Any:
+        """
+        Given a response obtained from the userinfo endpoint, extracts its JSON content.
+        A subclass may implement the signature validation and/or decryption of a userinfo JWT response.
+        :param resp: a response obtained from the userinfo endpoint
+        :return: the parsed JSON content from this response
+        """
+        return resp.json()
+
     @classmethod
     def get_token_type(
         cls,
@@ -336,36 +360,46 @@ class OAuth2Client:
     def from_discovery_endpoint(
         cls,
         url: str,
+        issuer: Optional[str],
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
     ) -> "OAuth2Client":
         """
-        Initialise an OAuth20Client, retrieving server metadata from a discovery document.
+        Initialise an OAuth2Client, retrieving server metadata from a discovery document.
         :param url: the url where the server metadata will be retrieved
         :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
-        :return: a OAuth20Client
+        :param issuer: if an issuer is given, check that it matches the one from the retrieved document
+        :return: a OAuth2Client
         """
         session = session or requests.Session()
         discovery = session.get(url).json()
-        return cls.from_discovery_document(discovery, auth=auth, session=session)
+
+        return cls.from_discovery_document(discovery, issuer=issuer, auth=auth, session=session)
 
     @classmethod
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
+        issuer: Optional[str],
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
         https: bool = True,
     ) -> "OAuth2Client":
         """
-        Initialise an OAuth20Client, based on the server metadata from `discovery`.
+        Initialise an OAuth2Client, based on the server metadata from `discovery`.
         :param discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
+        :param issuer: if an issuer is given, check that it matches the one mentioneed in the document
         :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
         :param https: if True, validates that urls in the discovery document use the https scheme
         :return: an OAuth2Client
         """
+        if issuer:  # pragma: no branch
+            issuer_from_doc = discovery.get("issuer")
+            if issuer_from_doc != issuer:
+                raise ValueError("issuer mismatch!", issuer_from_doc)
+
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
@@ -373,10 +407,18 @@ class OAuth2Client:
         revocation_endpoint = discovery.get("revocation_endpoint")
         if revocation_endpoint is not None:
             validate_url(revocation_endpoint, https=https)
+        userinfo_endpoint = discovery.get("userinfo_endpoint")
+        if userinfo_endpoint is not None:
+            validate_url(userinfo_endpoint, https=https)
+        jwks_uri = discovery.get("jwks_uri")
+        if jwks_uri is not None:
+            validate_url(userinfo_endpoint, https=https)
 
         return cls(
             token_endpoint=token_endpoint,
             revocation_endpoint=revocation_endpoint,
+            userinfo_endpoint=userinfo_endpoint,
+            jwks_uri=jwks_uri,
             auth=auth,
             session=session,
         )
