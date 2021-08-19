@@ -4,10 +4,10 @@ import requests
 
 from .auth import BearerAuth
 from .client_authentication import ClientSecretBasic, ClientSecretPost, client_auth_factory
-from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
-                         InvalidGrant, InvalidScope, InvalidTarget,
-                         InvalidTokenResponse, RevocationError, ServerError, SlowDown,
-                         TokenResponseError, UnauthorizedClient, UnsupportedTokenType)
+from .exceptions import (AccessDenied, AuthorizationPending, EndpointError,
+                         ExpiredDeviceCode, IntrospectionError, InvalidGrant, InvalidScope,
+                         InvalidTarget, InvalidTokenResponse, RevocationError, ServerError,
+                         SlowDown, UnauthorizedClient, UnsupportedTokenType)
 from .tokens import BearerToken, IdToken
 from .utils import validate_url
 
@@ -30,7 +30,7 @@ class OAuth2Client:
         "unsupported_token_type": UnsupportedTokenType,
     }
 
-    default_exception_class = TokenResponseError
+    default_exception_class = EndpointError
 
     def __init__(
         self,

@@ -7,7 +7,7 @@ class OAuth2Error(Exception):
     """
 
 
-class TokenResponseError(OAuth2Error):
+class EndpointError(OAuth2Error):
     """
     Base class for exceptions raised when a token endpoint returns a standardised error.
     """
@@ -32,52 +32,57 @@ class ExpiredToken(OAuth2Error):
     """
 
 
-class UnknownTokenResponseError(TokenResponseError):
+class UnknownEndpointError(EndpointError):
     """
     Raised when an otherwise unknown error is returned by the token endpoint.
     """
 
 
-class ServerError(TokenResponseError):
+class ServerError(EndpointError):
     """
     Raised when the token endpoint returns error = server_error
     """
 
 
-class InvalidScope(TokenResponseError):
+class TokenEndpointError(EndpointError):
+    """
+    Base class for errors that are specific to the token endpoint.
+    """
+
+
+class InvalidScope(TokenEndpointError):
     pass
 
 
-class InvalidTarget(TokenResponseError):
+class InvalidTarget(TokenEndpointError):
     pass
 
 
-class InvalidGrant(TokenResponseError):
+class InvalidGrant(TokenEndpointError):
     pass
 
 
-class AccessDenied(TokenResponseError):
+class AccessDenied(EndpointError):
     pass
 
 
-class UnauthorizedClient(TokenResponseError):
+class UnauthorizedClient(EndpointError):
     pass
 
 
-class RevocationError(OAuth2Error):
-    def __init__(
-        self, error: str, description: Optional[str] = None, uri: Optional[str] = None
-    ):
-        self.error = error
-        self.description = description
-        self.uri = uri
+class RevocationError(EndpointError):
+    pass
 
 
 class UnsupportedTokenType(RevocationError):
     pass
 
 
-class DeviceAuthorizationError(TokenResponseError):
+class IntrospectionError(EndpointError):
+    pass
+
+
+class DeviceAuthorizationError(EndpointError):
     pass
 
 
