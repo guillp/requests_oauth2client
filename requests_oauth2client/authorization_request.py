@@ -1,10 +1,13 @@
 import hashlib
 import re
 import secrets
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 from furl import furl  # type: ignore[import]
 
+from .exceptions import (AuthorizationResponseError, ConsentRequired,
+                         InteractionRequired, LoginRequired, MismatchingState,
+                         MissingAuthCode, SessionSelectionRequired)
 from .utils import b64u_encode
 
 
@@ -79,6 +82,15 @@ class AuthorizationRequest:
     and validates the response received as callback.
     """
 
+    exception_classes: Dict[str, Type[Exception]] = {
+        "interaction_required": InteractionRequired,
+        "login_required": LoginRequired,
+        "session_selection_required": SessionSelectionRequired,
+        "consent_required": ConsentRequired,
+    }
+
+    default_exception_class = AuthorizationResponseError
+
     def __init__(
         self,
         authorization_endpoint: str,
@@ -101,7 +113,7 @@ class AuthorizationRequest:
         elif nonce is False:
             nonce = None
 
-        if not isinstance(scope, str):
+        if scope is not None and not isinstance(scope, str):
             scope = "+".join(str(s) for s in scope)
 
         if not code_challenge_method:
@@ -111,6 +123,7 @@ class AuthorizationRequest:
                 code_verifier = PkceUtils.generate_code_verifier()
             code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
 
+        self.redirect_uri = redirect_uri
         self.state = state
         self.nonce = nonce
         self.code_verifier = code_verifier
@@ -135,18 +148,32 @@ class AuthorizationRequest:
         )
 
     def validate_callback(self, response: str) -> str:
-        response_url = furl(response)
+        try:
+            response_url = furl(response)
+        except ValueError:
+            return self.on_response_error(response)
+
+        error = response_url.args.get("error")
+        if error:
+            return self.on_response_error(response)
+
         requested_state = self.state
         if requested_state:
             received_state = response_url.args.get("state")
             if requested_state != received_state:
-                raise ValueError(
-                    f"mismatching state values! (expected '{requested_state}', got '{received_state}')"
-                )
+                raise MismatchingState(requested_state, received_state)
         code: str = response_url.args.get("code")
         if code is None:
-            raise ValueError("missing code in callback!")
+            raise MissingAuthCode()
         return code
+
+    def on_response_error(self, response: str) -> str:
+        response_url = furl(response)
+        error = response_url.args.get("error")
+        error_description = response_url.args.get("error_description")
+        error_uri = response_url.args.get("error_uri")
+        exception_class = self.exception_classes.get(error, self.default_exception_class)
+        raise exception_class(error, error_description, error_uri)
 
     def __repr__(self) -> str:
         return str(self.request)
