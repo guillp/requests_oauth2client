@@ -13,12 +13,16 @@ def auth_request_kwargs(request):
     return request.param or {}
 
 
-@pytest.fixture(params=[None, "state", True],)
+@pytest.fixture(
+    params=[None, "state", True],
+)
 def state(request):
     return request.param
 
 
-@pytest.fixture(params=[None, "nonce", False],)
+@pytest.fixture(
+    params=[None, "nonce", False],
+)
 def nonce(request):
     return request.param
 

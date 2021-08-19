@@ -7,7 +7,7 @@ import requests
 from jwcrypto.jwk import JWK  # type: ignore[import]
 from jwcrypto.jwt import JWT  # type: ignore[import]
 
-from requests_oauth2client.utils import b64_encode, b64u_encode, sign_jwt
+from .utils import b64_encode, b64u_encode, sign_jwt
 
 
 class ClientAuthenticationMethod(requests.auth.AuthBase):
@@ -161,18 +161,10 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         self.private_jwk = private_jwk
         self.kid = kid
 
-    def client_assertion(
-        self, audience: str, lifetime: int = 60, jti: Optional[str] = None
-    ) -> str:
+    def client_assertion(self, audience: str) -> str:
         iat = int(datetime.now().timestamp())
-        exp = iat + lifetime
-        if jti is None:
-            jti = str(uuid4())
-        elif callable(jti):
-            jti = jti()
-
-        if not isinstance(jti, str):
-            jti = str(jti)
+        exp = iat + self.lifetime
+        jti = str(self.jti_gen())
 
         assertion = sign_jwt(
             claims={
@@ -211,7 +203,7 @@ def client_auth_factory(
     default_auth_handler: Union[
         Type[ClientSecretPost], Type[ClientSecretBasic]
     ] = ClientSecretPost,
-):
+) -> requests.auth.AuthBase:
     if isinstance(auth, requests.auth.AuthBase):
         return auth
     elif isinstance(auth, tuple) and len(auth) == 2:

@@ -11,11 +11,11 @@ from .discovery import (oauth2_discovery_document_url,
 from .exceptions import (AccessDenied, AccountSelectionRequired, AuthorizationPending,
                          AuthorizationResponseError, ConsentRequired, DeviceAuthorizationError,
                          EndpointError, ExpiredDeviceCode, ExpiredToken, InteractionRequired,
-                         InvalidDeviceAuthorizationResponse, InvalidGrant, InvalidIdToken,
-                         InvalidJWT, InvalidScope, InvalidTokenResponse, InvalidUrl,
-                         LoginRequired, OAuth2Error, ServerError, SessionSelectionRequired,
-                         SlowDown, UnauthorizedClient, UnknownEndpointError,
-                         UnsupportedTokenType)
-from .tokens import BearerToken, IdToken
+                         InvalidClaim, InvalidDeviceAuthorizationResponse, InvalidGrant,
+                         InvalidIdToken, InvalidJWT, InvalidScope, InvalidSignature,
+                         InvalidTokenResponse, InvalidUrl, LoginRequired, OAuth2Error,
+                         ServerError, SessionSelectionRequired, SlowDown, UnauthorizedClient,
+                         UnknownEndpointError, UnsupportedTokenType)
+from .tokens import BearerToken, BearerTokenSerializer, IdToken
 from .utils import (b64_encode, b64u_decode, b64u_encode,
                     generate_jwk_key_pair, sign_jwt, validate_url)

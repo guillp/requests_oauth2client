@@ -4,17 +4,22 @@ import requests
 
 from .auth import BearerAuth
 from .client_authentication import ClientSecretBasic, ClientSecretPost, client_auth_factory
-from .exceptions import (AccessDenied, AuthorizationPending, EndpointError,
-                         ExpiredDeviceCode, IntrospectionError, InvalidGrant, InvalidScope,
-                         InvalidTarget, InvalidTokenResponse, RevocationError, ServerError,
-                         SlowDown, UnauthorizedClient, UnsupportedTokenType)
+from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
+                         IntrospectionError, InvalidGrant, InvalidScope, InvalidTarget,
+                         InvalidTokenResponse, RevocationError, ServerError, SlowDown,
+                         TokenEndpointError, UnauthorizedClient,
+                         UnknownIntrospectionError, UnsupportedTokenType)
 from .tokens import BearerToken, IdToken
 from .utils import validate_url
 
 
 class OAuth2Client:
     """
-    An OAuth 2.0 client, able to obtain tokens from the Token Endpoint using one of the standardised Grant Types.
+    An OAuth 2.0 client, able to obtain tokens from the Token Endpoint using one of the standardised Grant Types,
+    and to communicate with the various backend endpoints like the Revocation, Introspection, and UserInfo Endpoint.
+
+    This class doesn't implement anything related to the end-user authentication or any request that goes in a browser.
+    For authentication requests, see :class`AuthorizationRequest`.
     """
 
     exception_classes: Dict[str, Type[Exception]] = {
@@ -29,8 +34,6 @@ class OAuth2Client:
         "expired_token": ExpiredDeviceCode,
         "unsupported_token_type": UnsupportedTokenType,
     }
-
-    default_exception_class = EndpointError
 
     def __init__(
         self,
@@ -54,7 +57,7 @@ class OAuth2Client:
         :param revocation_endpoint: the revocation endpoint url to use for revoking tokens, if any
         :param introspection_endpoint: the introspection endpoint url to get info about tokens, if any
         :param session: a requests Session to use when sending HTTP requests
-        :param default_auth_handler: if auth is a tuple (for example, a client_id and client_secret), init an object of
+        :param default_auth_handler: if auth is a tuple of (client_id, client_secret), init an object of
         this class with auth values as parameters.
         """
         self.token_endpoint = str(token_endpoint)
@@ -100,7 +103,7 @@ class OAuth2Client:
         self, response: requests.Response, exc: Optional[Exception] = None
     ) -> BearerToken:
         """
-        Excecuted when the token endpoint returns an error.
+        Executed when the token endpoint returns an error.
         :param response: the token response
         :param exc: if the token response is 20x but an exception occurred when creating the token_response_class,
          this will contain the exception. Otherwise, this will be None.
@@ -112,7 +115,7 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(error, self.default_exception_class)
+            exception_class = self.exception_classes.get(error, TokenEndpointError)
             raise exception_class(error, error_description, error_uri)
         else:
             raise InvalidTokenResponse(
@@ -127,6 +130,7 @@ class OAuth2Client:
     ) -> BearerToken:
         """
         Sends a request to the token endpoint with the client_credentials grant.
+        :param scope: the scope to send with the request. Can be a str, or an iterable of str.
         :param token_kwargs: additional parameters for the token endpoint, alongside grant_type. Common parameters
         to pass that way include scope, audience, resource, etc.
         :param requests_kwargs: additional parameters for the call to requests
@@ -264,7 +268,8 @@ class OAuth2Client:
         :return: the requests Response returned by the userinfo endpoint.
         """
         if not self.userinfo_endpoint:
-            raise ValueError("No userinfo endpoint defined for this client")
+            raise AttributeError("No userinfo endpoint defined for this client")
+
         response = self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token))
         return self.parse_userinfo_response(response)
 
@@ -440,10 +445,10 @@ class OAuth2Client:
         token_type_hint: Optional[str] = None,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **introspect_kwargs: Any,
-    ):
+    ) -> Any:
 
         if not self.introspection_endpoint:
-            return False
+            raise AttributeError("No introspection endpoint defined for this client")
 
         requests_kwargs = requests_kwargs or {}
 
@@ -467,18 +472,21 @@ class OAuth2Client:
 
         return self.on_introspection_error(response)
 
-    def on_introspection_error(self, response: requests.Response):
+    def on_introspection_error(self, response: requests.Response) -> Any:
         try:
             data = response.json()
         except ValueError:
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except Exception as exc:
+                raise UnknownIntrospectionError(response) from exc
         error = data.get("error")
         error_description = data.get("error_description")
         error_uri = data.get("error_uri")
         if error is not None:
             exception_class = self.exception_classes.get(error, IntrospectionError)
             raise exception_class(error, error_description, error_uri)
-        return False
+        raise UnknownIntrospectionError(response)
 
     def get_public_jwks(self) -> Dict[str, Any]:
         if not self.jwks_uri:
@@ -526,7 +534,7 @@ class OAuth2Client:
         """
         Initialise an OAuth2Client, based on the server metadata from `discovery`.
         :param discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
-        :param issuer: if an issuer is given, check that it matches the one mentioneed in the document
+        :param issuer: if an issuer is given, check that it matches the one mentioned in the document
         :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
         :param https: if True, validates that urls in the discovery document use the https scheme

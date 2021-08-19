@@ -82,6 +82,10 @@ class IntrospectionError(EndpointError):
     pass
 
 
+class UnknownIntrospectionError(OAuth2Error):
+    pass
+
+
 class DeviceAuthorizationError(EndpointError):
     pass
 
@@ -111,6 +115,14 @@ class InvalidJWT(ValueError):
 
 
 class InvalidIdToken(InvalidJWT):
+    pass
+
+
+class InvalidSignature(ValueError):
+    pass
+
+
+class InvalidClaim(ValueError):
     pass
 
 

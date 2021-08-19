@@ -117,5 +117,6 @@ def test_sign_jwt_no_alg():
     }
     with pytest.raises(ValueError):
         sign_jwt(
-            {"iss": "https://myas.local", "sub": "123456"}, private_jwk=private_jwk,
+            {"iss": "https://myas.local", "sub": "123456"},
+            private_jwk=private_jwk,
         )

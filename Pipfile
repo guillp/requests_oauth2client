@@ -16,6 +16,7 @@ mypy = "*"
 requests-mock = "*"
 autoflake = "*"
 flask = "*"
+types-requests = "*"
 
 [packages]
 requests = "*"

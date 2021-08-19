@@ -4,9 +4,8 @@ from urllib.parse import parse_qs
 import pytest
 import requests
 
-from requests_oauth2client import (
-    BearerAuth, BearerToken, ExpiredToken, OAuth2AccessTokenAuth, OAuth2AuthorizationCodeAuth,
-    OAuth2Client)
+from requests_oauth2client import (BearerAuth, BearerToken, ExpiredToken, OAuth2AccessTokenAuth,
+                                   OAuth2AuthorizationCodeAuth, OAuth2Client)
 
 
 @pytest.fixture()

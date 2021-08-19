@@ -126,7 +126,10 @@ def sign_jwt(
     if kid:
         headers["kid"] = kid
 
-    jwt = JWT(header=headers, claims=claims,)
+    jwt = JWT(
+        header=headers,
+        claims=claims,
+    )
 
     jwt.make_signed_token(jwk)
     assertion: str = jwt.serialize()

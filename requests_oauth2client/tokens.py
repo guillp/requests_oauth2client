@@ -1,15 +1,15 @@
-import base64
 import json
 import pprint
 import zlib
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, Type
 
+import jwcrypto  # type: ignore[import]
 from jwcrypto.jwk import JWK, JWKSet  # type: ignore[import]
 from jwcrypto.jws import InvalidJWSObject, InvalidJWSSignature  # type: ignore[import]
-from jwcrypto.jwt import JWT  # type: ignore[import]
 
-from requests_oauth2client.exceptions import ExpiredToken, InvalidIdToken
+from .exceptions import ExpiredToken, InvalidClaim, InvalidIdToken, InvalidSignature
+from .utils import b64u_decode, b64u_encode
 
 
 class BearerToken:
@@ -21,6 +21,7 @@ class BearerToken:
     def __init__(
         self,
         access_token: str,
+        *,
         expires_in: Optional[int] = None,
         expires_at: Optional[datetime] = None,
         scope: Optional[str] = None,
@@ -124,8 +125,17 @@ class BearerToken:
     def __repr__(self) -> str:
         return pprint.pformat(self.as_dict())
 
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, BearerToken)
+            and self.access_token == other.access_token
+            and self.refresh_token == other.refresh_token
+            and self.expires_at == other.expires_at
+            and self.token_type == other.token_type
+        )
 
-class TokenSerializer:
+
+class BearerTokenSerializer:
     def __init__(
         self,
         dumper: Optional[Callable[[BearerToken], str]] = None,
@@ -144,13 +154,11 @@ class TokenSerializer:
         :param token: the :class:`BearerToken` to serialize
         :return: the serialized value
         """
-        return base64.urlsafe_b64encode(
+        return b64u_encode(
             zlib.compress(
-                json.dumps(
-                    token.as_dict(True), default=lambda d: d.strftime("%Y-%m-%dT%H:%M:%S")
-                ).encode()
+                json.dumps(token.as_dict(True), default=lambda d: d.timestamp()).encode()
             )
-        ).decode()
+        )
 
     def default_loader(
         self, serialized: str, token_class: Type[BearerToken] = BearerToken
@@ -158,12 +166,12 @@ class TokenSerializer:
         """
         Default deserializer for tokens.
         :param serialized: the serialized token
-        :return: a
+        :return: a BearerToken
         """
-        attrs = json.loads(zlib.decompress(base64.urlsafe_b64decode(serialized)).decode())
+        attrs = json.loads(zlib.decompress(b64u_decode(serialized, encoding=None)))  # type: ignore
         expires_at = attrs.get("expires_at")
         if expires_at:
-            attrs["expires_at"] = datetime.strptime(expires_at, "%Y-%m-%dT%H:%M:%S")
+            attrs["expires_at"] = datetime.fromtimestamp(expires_at)
         return token_class(**attrs)
 
     def dumps(self, token: BearerToken) -> str:
@@ -183,10 +191,10 @@ class TokenSerializer:
         return self.loader(serialized)
 
 
-class IdToken:
+class JWT:
     def __init__(self, value: str):
         try:
-            self.jwt = JWT(jwt=value, check_claims=False)
+            self.jwt = jwcrypto.jwt.JWT(jwt=value, check_claims=False)
         except ValueError as exc:
             raise InvalidIdToken from exc
         self.value = value
@@ -197,9 +205,10 @@ class IdToken:
         jwks: Dict[str, Any],
         issuer: Optional[str] = None,
         audience: Optional[str] = None,
-        nonce: Optional[str] = None,
         check_exp: bool = True,
-    ) -> bool:
+        **kwargs: Any,
+    ) -> None:
+
         if "keys" in jwks:
             validation_jwks = JWKSet()
             for jwk in jwks.get("keys", []):
@@ -210,34 +219,38 @@ class IdToken:
             self.jwt.deserialize(self.value, validation_jwks)
             self.payload = json.loads(self.jwt.claims)
         except InvalidJWSSignature as exc:
-            raise ValueError(
+            raise InvalidSignature(
                 "invalid token signature, or verification key is not matching the signature"
             ) from exc
+
         if issuer:  # pragma: no branch
             issuer_from_token = self.get_claim("iss")
             if not issuer_from_token:  # pragma: no branch
-                raise ValueError("no issuer set in this token")
+                raise InvalidClaim("iss", "no issuer set in this token")
             if issuer != issuer_from_token:
-                raise ValueError("unexpected issuer value", issuer_from_token)
+                raise InvalidClaim("iss", "unexpected issuer value", issuer_from_token)
         if audience:  # pragma: no branch
             audience_from_token = self.get_claim("aud")
             if not audience_from_token:  # pragma: no branch
-                raise ValueError("no audience set in this token")
+                raise InvalidClaim("aud", "no audience set in this token")
             if audience != audience_from_token:  # pragma: no branch
-                raise ValueError("unexpected audience value", audience_from_token)
-        if nonce:  # pragma: no branch
-            nonce_from_token = self.get_claim("nonce")
-            if nonce_from_token != nonce:  # pragma: no branch
-                raise ValueError(
-                    "unexpected nonce value, this token may be intended for a different login transaction",
-                    nonce_from_token,
-                )
+                raise InvalidClaim("aud", "unexpected audience value", audience_from_token)
+
         if check_exp and self.is_expired():
             raise ExpiredToken(self.expires_at)
-        return True
+
+        for key, val in kwargs.items():
+            val_from_token = self.get_claim(key)
+            if not val_from_token:
+                raise InvalidClaim(key, "claim not found in this token")
+            if val_from_token != val:
+                raise InvalidClaim(key, "unexpected claim value", val_from_token)
 
     def is_expired(self) -> Optional[bool]:
-        return self.expires_at < datetime.now()
+        exp = self.expires_at
+        if exp is None:
+            return None
+        return exp < datetime.now()
 
     @property
     def expires_at(self) -> Optional[datetime]:
@@ -256,6 +269,14 @@ class IdToken:
         return iat_dt
 
     @property
+    def not_before(self) -> Optional[datetime]:
+        nbf = self.get_claim("nbf")
+        if not nbf:
+            return None
+        nbf_dt = datetime.fromtimestamp(nbf)
+        return nbf_dt
+
+    @property
     def alg(self) -> str:
         return self.get_header("alg")  # type: ignore
 
@@ -267,7 +288,7 @@ class IdToken:
         return self.jwt.token.jose_header.get(key)
 
     def get_claim(self, key: str) -> Any:
-        if self.payload:
+        if self.payload is not None:
             return self.payload.get(key)
         raise RuntimeError(
             "Claims cannot be accessed before the IdToken is validated using .validate()"
@@ -279,6 +300,30 @@ class IdToken:
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, str):
             return self.value == other
-        elif isinstance(other, IdToken):
+        elif isinstance(other, JWT):
             return self.value == other.value
         return super().__eq__(other)
+
+
+class IdToken(JWT):
+    def validate(
+        self,
+        jwks: Dict[str, Any],
+        issuer: Optional[str] = None,
+        audience: Optional[str] = None,
+        check_exp: bool = True,
+        nonce: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        super().validate(
+            jwks=jwks, issuer=issuer, audience=audience, check_exp=check_exp, **kwargs
+        )
+
+        if nonce:  # pragma: no branch
+            nonce_from_token = self.get_claim("nonce")
+            if nonce_from_token != nonce:  # pragma: no branch
+                raise InvalidClaim(
+                    "nonce",
+                    "unexpected nonce value, this token may be intended for a different login transaction",
+                    nonce_from_token,
+                )

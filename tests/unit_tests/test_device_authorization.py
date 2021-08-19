@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from requests_oauth2client import (BearerToken, ClientSecretPost, DeviceAuthorizationClient,
-                                   DeviceAuthorizationPoolingJob,
+                                   DeviceAuthorizationError, DeviceAuthorizationPoolingJob,
                                    InvalidDeviceAuthorizationResponse, OAuth2Client,
                                    UnauthorizedClient)
 from requests_oauth2client.device_authorization import DeviceAuthorizationResponse
@@ -159,6 +159,22 @@ def test_device_authorization_client_error(
         device_authorization_endpoint,
         status_code=400,
         json={
+            "error": "foo",
+        },
+    )
+
+    with pytest.raises(DeviceAuthorizationError):
+        device_authorization_client.authorize_device()
+    assert requests_mock.called_once
+    client_secret_post_auth_validator(
+        requests_mock.last_request, client_id=client_id, client_secret=client_secret
+    )
+
+    requests_mock.reset_mock()
+    requests_mock.post(
+        device_authorization_endpoint,
+        status_code=400,
+        json={
             "foo": "bar",
         },
     )
@@ -190,9 +206,20 @@ def test_device_authorization_pooling_job(
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
     assert job() is None
     assert requests_mock.called_once
+    assert job.interval == 1
     device_code_grant_validator(requests_mock.last_request, device_code=device_code)
 
+    requests_mock.reset_mock()
+    requests_mock.post(token_endpoint, status_code=401, json={"error": "slow_down"})
+    assert job() is None
+    assert requests_mock.called_once
+    assert job.interval == 1 + 5
+    device_code_grant_validator(requests_mock.last_request, device_code=device_code)
+
+    requests_mock.reset_mock()
+    job.interval = 1
     requests_mock.post(token_endpoint, json={"access_token": access_token})
     token = job()
+    assert requests_mock.called_once
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token

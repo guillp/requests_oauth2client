@@ -26,7 +26,7 @@ class ApiClient(requests.Session):
         self.auth = auth
         self.raise_for_status = raise_for_status
 
-    def request(
+    def request(  # type: ignore
         self,
         method: str,
         url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
@@ -46,7 +46,7 @@ class ApiClient(requests.Session):
             None,
             Tuple[str, str],
             requests.auth.AuthBase,
-            Callable[[requests.Request], requests.Request],
+            Callable[[requests.PreparedRequest], requests.PreparedRequest],
         ] = None,
         timeout: Union[None, float, Tuple[float, float], Tuple[float, None]] = None,
         allow_redirects: Optional[bool] = True,
@@ -126,7 +126,7 @@ class ApiClient(requests.Session):
             response.raise_for_status()
         return response
 
-    def get(
+    def get(  # type: ignore
         self,
         url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
         **kwargs: Any,
@@ -142,7 +142,7 @@ class ApiClient(requests.Session):
     def put(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         return self.request("PUT", url, **kwargs)
 
-    def delete(
+    def delete(  # type: ignore
         self,
         url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
         **kwargs: Any,

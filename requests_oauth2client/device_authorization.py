@@ -63,8 +63,6 @@ class DeviceAuthorizationClient:
         "unauthorized_client": UnauthorizedClient,
     }
 
-    default_exception_class = DeviceAuthorizationError
-
     def __init__(
         self,
         device_authorization_endpoint: str,
@@ -104,7 +102,7 @@ class DeviceAuthorizationClient:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(error, self.default_exception_class)
+            exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
             raise exception_class(error, error_description, error_uri)
 
         raise InvalidDeviceAuthorizationResponse(

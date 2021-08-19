@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 import pytest
 import requests
 from requests_mock import ANY
@@ -170,11 +168,3 @@ def test_private_key_jwt_missing_alg(client_id, private_jwk_no_alg):
 def test_private_key_jwt_missing_kid(client_id, private_jwk_no_kid):
     with pytest.raises(ValueError):
         PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk_no_kid)
-
-
-def test_jti(client_id, private_jwk):
-    auth = PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk)
-    jti = uuid4()
-    audience = "audience"
-    auth.client_assertion(jti=jti, audience=audience)
-    auth.client_assertion(jti=lambda: jti, audience=audience)

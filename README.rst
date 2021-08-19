@@ -1,12 +1,13 @@
 A Python OAuth 2.x client, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC compliant Authorization Server.
 
 It can act as an OAuth 2.0/2.1 client, to automatically get and renew access tokens,
-based on the Client Credentials, Authorization Code (+ Refresh token), or the Device Authorization grants.
+based on the Client Credentials, Authorization Code, Refresh token, or the Device Authorization grants.
 
 It comes with a `requests` add-on to handle OAuth 2.0 Bearer Token based authorization when accessing APIs.
 
-It also supports OpenID Connect, PKCE, Client Assertions, Token Exchange, using custom params to any endpoint,
-and other important features that are often overlooked in other client libraries.
+It also supports OpenID Connect, PKCE, Client Assertions, Token Revocation, Exchange, and Introspection,
+as well as using custom params to any endpoint, and other important features that are often overlooked in other
+client libraries.
 
 And it also includes a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
 
@@ -39,6 +40,12 @@ If you already managed to obtain an access token, you can simply use the `Bearer
 
     token = "an_access_token"
     resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
+
+
+Using an OAuth2Client
+=====================
+
+`OAuth2Client` implements all the
 
 Obtaining tokens with the Client Credentials grant
 ==================================================

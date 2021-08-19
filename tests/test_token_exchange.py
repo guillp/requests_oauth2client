@@ -108,7 +108,7 @@ def test_token_type():
     assert OAuth2Client.get_token_type("saml2") == "urn:ietf:params:oauth:token-type:saml2"
     assert OAuth2Client.get_token_type("jwt") == "urn:ietf:params:oauth:token-type:jwt"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         OAuth2Client.get_token_type(
             token_type="access_token",
             token=IdToken(
@@ -133,5 +133,5 @@ def test_token_type():
     with pytest.raises(ValueError):
         OAuth2Client.get_token_type(token_type="refresh_token", token=BearerToken("mytoken"))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         OAuth2Client.get_token_type(token_type="id_token", token=BearerToken("mytoken"))
