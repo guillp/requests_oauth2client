@@ -349,7 +349,7 @@ class OAuth2Client:
 
     def revoke_refresh_token(
         self,
-        refresh_token: str,
+        refresh_token: Union[str, BearerToken],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **revoke_kwargs: Any,
     ) -> bool:
@@ -361,6 +361,12 @@ class OAuth2Client:
         :return: True if the revocation request is successful, False if this client has no configured revocation
         endpoint.
         """
+
+        if isinstance(refresh_token, BearerToken):
+            if refresh_token.refresh_token is None:
+                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
+            refresh_token = refresh_token.refresh_token
+
         return self.revoke_token(
             refresh_token,
             token_type_hint="refresh_token",
@@ -389,12 +395,20 @@ class OAuth2Client:
 
         requests_kwargs = requests_kwargs or {}
 
+        if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
+            if token.refresh_token is None:
+                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
+            token = token.refresh_token
+
         data = dict(revoke_kwargs, token=str(token))
         if token_type_hint:
             data["token_type_hint"] = token_type_hint
 
         response = self.session.post(
-            self.revocation_endpoint, data=data, auth=self.auth, **requests_kwargs,
+            self.revocation_endpoint,
+            data=data,
+            auth=self.auth,
+            **requests_kwargs,
         )
         if response.ok:
             return True
