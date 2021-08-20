@@ -101,7 +101,7 @@ class OAuth2AccessTokenAuth(BearerAuth):
 
 class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
     """
-    A Requests Authentication handler that exchanges an authorization code for an access token,
+    A Requests Auth handler that exchanges an Authorization Code for an access token,
     then automatically refreshes it once it is expired.
     """
 
@@ -116,4 +116,39 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
             if self.code:  # pragma: no branch
                 self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
                 self.code = None
+        return super().__call__(request)
+
+
+class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
+    """
+    A Requests Auth handler that exchanges a Device Code for an access token,
+    then automatically refreshes it once it is expired.
+    """
+
+    def __init__(
+        self,
+        client: "OAuth2Client",
+        device_code: str,
+        interval: int = 5,
+        expires_in: int = 360,
+        **token_kwargs: Any,
+    ) -> None:
+        super().__init__(client, None)
+        self.device_code: Optional[str] = device_code
+        self.interval = interval
+        self.expires_in = expires_in
+        self.token_kwargs = token_kwargs
+
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        from .device_authorization import DeviceAuthorizationPoolingJob
+
+        token = self.token
+        if token is None or token.is_expired():
+            if self.device_code:  # pragma: no branch
+                pooling_job = DeviceAuthorizationPoolingJob(
+                    client=self.client, device_code=self.device_code, interval=self.interval
+                )
+                while self.token is None:
+                    self.token = pooling_job()
+                self.device_code = None
         return super().__call__(request)

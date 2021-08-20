@@ -4,8 +4,10 @@ from urllib.parse import parse_qs
 import pytest
 import requests
 
-from requests_oauth2client import (BearerAuth, BearerToken, ExpiredToken, OAuth2AccessTokenAuth,
-                                   OAuth2AuthorizationCodeAuth, OAuth2Client)
+from requests_oauth2client import (BearerAuth, BearerToken, DeviceAuthorizationClient,
+                                   ExpiredToken, OAuth2AccessTokenAuth,
+                                   OAuth2AuthorizationCodeAuth, OAuth2Client,
+                                   OAuth2DeviceCodeAuth)
 
 
 @pytest.fixture()
@@ -125,3 +127,70 @@ def test_authorization_code_auth(
     requests_mock.reset_mock()
     requests.post(target_api, auth=auth)
     assert len(requests_mock.request_history) == 1
+
+
+def test_device_code_auth(
+    requests_mock,
+    target_api,
+    device_authorization_endpoint,
+    token_endpoint,
+    client_id,
+    client_secret,
+    device_code,
+    user_code,
+    verification_uri,
+    verification_uri_complete,
+    access_token,
+    refresh_token,
+):
+
+    da_client = DeviceAuthorizationClient(
+        device_authorization_endpoint, auth=(client_id, client_secret)
+    )
+    requests_mock.post(
+        device_authorization_endpoint,
+        json={
+            "device_code": device_code,
+            "user_code": user_code,
+            "verification_uri": verification_uri,
+            "verification_uri_complete": verification_uri_complete,
+            "expires_in": 300,
+            "interval": 1,
+        },
+    )
+
+    da_resp = da_client.authorize_device()
+
+    requests_mock.reset_mock()
+    oauth2client = OAuth2Client(token_endpoint, (client_id, client_secret))
+    requests_mock.post(
+        token_endpoint,
+        json={"access_token": access_token, "expires_in": 60, "refresh_token": refresh_token},
+    )
+    requests_mock.post(target_api)
+
+    auth = OAuth2DeviceCodeAuth(
+        client=oauth2client, device_code=da_resp.device_code, interval=1, expires_in=60
+    )
+    assert requests.post(target_api, auth=auth)
+    assert len(requests_mock.request_history) == 2
+    device_code_request = requests_mock.request_history[0]
+    api_request = requests_mock.request_history[1]
+
+    assert device_code_request.url == token_endpoint
+    da_params = parse_qs(device_code_request.body)
+    assert da_params["grant_type"] == ["urn:ietf:params:oauth:grant-type:device_code"]
+    assert da_params["device_code"] == [device_code]
+    assert da_params["client_id"] == [client_id]
+    assert da_params["client_secret"] == [client_secret]
+
+    assert api_request.url == target_api
+    assert api_request.headers.get("Authorization") == f"Bearer {access_token}"
+
+    assert auth.token.access_token == access_token
+    assert auth.token.refresh_token == refresh_token
+
+    requests_mock.reset_mock()
+    requests.post(target_api, auth=auth)
+    assert len(requests_mock.request_history) == 1
+    assert requests_mock.last_request.url == target_api
