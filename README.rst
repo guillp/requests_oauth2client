@@ -41,38 +41,101 @@ If you already managed to obtain an access token, you can simply use the `Bearer
     token = "an_access_token"
     resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 
+This authentication handler will add an `Authorization` header in the request, with your access token according to RFC6750.
 
 Using an OAuth2Client
 =====================
 
-`OAuth2Client` implements all the
+`OAuth2Client` offers several methods that implement the communication to the various endpoints that are standardised
+by OAuth 2.0 and its extension. Those endpoints includes the Token Endpoint, and also the Revocation, Introspection
+and UserInfo Endpoint.
 
-Obtaining tokens with the Client Credentials grant
-==================================================
-To obtain tokens, you can do it the *manual* way, which is great for testing::
+To initialize an `OAuth2Client`, you only need a Token Endpoint URI, and the credentials for your application::
 
-    token_endpoint = "https://my.as/token"
-    client = OAuth2Client(token_endpoint, ClientSecretPost("client_id", "client_secret"))
-    token = client.client_credentials(scope="myscope") # you may pass additional kw params such as resource, audience, or whatever your AS needs
+    oauth2client = OAuth2Client("https://myas.local/token_endpoint", ("client_id", "client_secret"))
 
-Or the *automated* way, for actual applications, with a custom requests Auth Handler that will automatically
-obtain an access token before accessing the API, and will get a new one once it is expired::
+The Token Endpoint is the only Endpoint that is mandatory to obtain tokens. Credentials are used to authenticate the
+client everytime it sends a request to its Authorization Server. Usually, those are a static Client ID and Secret, which
+are the direct equivalent of an username and a password, but for an application instead of for an human user.
+The default authentication method used by OAuth2Client is *Client Secret Post*, but other standardised methods such as
+*Private Key JWT* are supported as well. See below.
 
-    token_endpoint = "https://my.as/token"
-    client = OAuth2Client(token_endpoint, ClientSecretPost("client_id", "client_secret"))
-    auth = OAuth2ClientCredentialsAuth(client, audience=audience) # you may add additional kw params such as scope, resource, audience or whatever param the AS uses to grant you access
-    response = requests.get("https://my.protected.api/endpoint", auth=auth)
+Obtaining tokens
+================
+`OAuth2Client` has methods to send requests to the Token Endpoint using the different standardised (and/or custom) grants.
+Since the token endpoint and authentication method are already declared for the client, the only required parameters
+are those that will be sent in the request to the Token Endpoint.
 
-Obtaining tokens with the Authorization Code Grant
-==================================================
+Those methods directly return a `BearerToken` if the request is successful, or raise an exception if it fails.
+`BearerToken` will manage the token expiration, will contain the eventual refresh
+token that matches the access token, and will keep track of other associated metadata as well. You can create such a
+`BearerToken` yourself if you need::
+
+    bearer_token = BearerToken(access_token="an_access_token", expires_in=60)
+    print(bearer_token)
+    > {'access_token': 'an_access_token', 'expires_in': 55, 'token_type': 'Bearer'}
+    print(bearer_token.expires_at)
+    > datetime.datetime(2021, 8, 20, 9, 56, 59, 498793)
+
+Note that the "expires_in" indicator here is not static. It keeps track of the token lifetime and is calculated as the
+time flies. You can check if a token is expired with `bearer_token.is_expired()`.
+
+You can use a `BearerToken` instance everywhere you can supply an access_token as string.
+
+Using OAuth2Client as a requests Auth Handler
+---------------------------------------------
+
+While using OAuth2Client directly is great for testing or debugging OAuth2.0 flows, it is not a viable option for actual
+applications where tokens must be obtained, used during their lifetime then obtained again or refreshed.
+`requests_oauth2client` contains `requests` compatible Auth Handler (subclasses of `requests.auth.AuthBase`), that will
+take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
+ones (or refresh them, when possible), once the initial token is expired.
+Those are best used with a `requests.Session`, or an `ApiClient` which is a Session Subclass with a few enhancements as
+described below.
+
+Client Credentials grant
+------------------------
+
+To send a request using the Client Credentials grant, use the aptly named `.client_credentials()` method::
+
+    token = oauth2client.client_credentials(
+        scope="myscope",
+        resource="https://myapi.local"
+        # you may pass additional kw params such as audience, or whatever your AS needs
+    )
+
+As Auth Handler
+^^^^^^^^^^^^^^^
+You can use the `OAuth2ClientCredentials` auth handler. It takes an OAuth2Client as parameter, and the additional kwargs
+to pass to the token endpoint::
+
+    api_client = ApiClient(
+        'https://myapi.local/resource',
+        auth=OAuth2ClientCredentials(oauth2client, scope='myscope', resource="https://myapi.local")
+    )
+
+    resp = api_client.get() # when you send your first request to the API, it will fetch an access token first.
+
+
+Authorization Code Grant
+------------------------
 
 Obtaining tokens with the Authorization code grant is made in 3 steps.
-First you must send the user to a specific url called the *Authentication Request*,
-then obtain and validate the *Authorization Response*, which contains an *Authorization Code*,
-then exchange it for an *Access Token*.
+
+#. your application must open specific url called the *Authentication Request* in a browser.
+
+#. your application must obtain and validate the *Authorization Response*, which is a redirection
+back to your application that contains an *Authorization Code* as parameter.
+
+#. your application must then exchange this Authorization Code for an *Access Token*,
+with a request to the Token Endpoint.
+
+`OAuth2Client` doesn't implement anything that is related to the Authorization Request or Response. It is only able to
+exchange the Authorization Code for a Token in step 3. But `requests_oauth2client` has other classes to help you with
+steps 1 and 2.
 
 Generating Authorization Requests
-*********************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 You can generate valid authorization requests with the `AuthorizationRequest` class::
 
     auth_request = AuthorizationRequest(
@@ -97,11 +160,14 @@ This request will look like, with line breaks for display purposes only::
     &code_challenge_method=S256
     &resource=https%3A%2F%2Fmy.resource.local%2Fapi
 
+AuthorizationRequest supports PKCE and uses it by default. You can avoid it by passing `code_challenge_method=None` to `AuthenticationRequest`.
+You can obtain the generated code_verifier from `auth_request.code_verifier`.
+
 Redirecting or otherwise sending the user to this url is your application responsibility,
 as well as obtaining the Authorization Response url.
 
 Validating the Authorization Response
-*************************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once the user is successfully authenticated and authorized, the AS will respond with a redirection to your redirect_uri.
 That is the *Authorization Response*. It contains several parameters that must be retrieved by your client.
@@ -111,30 +177,34 @@ You can do this with::
     params = input("Please enter the full url and/or params obtained on the redirect_uri: ")
     code = auth_request.validate_callback(params)
 
-    # initialize a OAuth2Client, same way as before
-    client = OAuth2Client(token_endpoint, auth=ClientSecretPost(client_id, client_secret))
-
-AuthorizationRequest supports PKCE and uses it by default. You can avoid it by passing `code_challenge_method=None` to `AuthenticationRequest`.
-You can obtain the generated code_verifier from `auth_request.code_verifier`.
-
 Exchanging code for tokens
-**************************
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To exchange a code for Access and/or ID tokens, once again you can have the "manual" way::
+To exchange a code for Access and/or ID tokens, use the `.authorization_code()` method from `OAuth2Client`::
 
-    token = client.authorization_code(code=code, code_verifier=auth_request.code_verifier, redirect_uri=redirect_uri) # add any other params as needed
-    resp = requests.post("https://your.protected.api/endpoint", auth=BearerAuthorization(token))
+    token = oauth2client.authorization_code(
+        code=code,
+        code_verifier=auth_request.code_verifier,
+        redirect_uri=redirect_uri) # redirect_uri is not always mandatory, but some AS still requires it
 
-Or the "automated" way::
+As Auth Handler
+^^^^^^^^^^^^^^^
+The `OAuth2AuthorizationCodeAuth` handler takes an OAuth2Client and an authorization code as parameter, plus whatever
+additional keyword parameters are required by your Authorization Server::
 
-    auth = OAuth2AuthorizationCodeAuth(client, code, redirect_uri=redirect_uri)  # add any other params as needed
-    resp = requests.post("https://your.protected.api/endpoint", auth=auth)
+    api_client = ApiClient(
+        "https://your.protected.api/endpoint",
+        auth=OAuth2AuthorizationCodeAuth(
+            client, code,
+            code_verifier=auth_request.code_verifier, redirect_uri=redirect_uri)
 
-`OAuth2AuthorizationCodeAuth` will take care of refreshing the token automatically once it is expired, using the refresh token, if available.
+    resp = api_client.post(data={...}) # first call will exchange the code for an initial access/refresh tokens
 
+`OAuth2AuthorizationCodeAuth` will take care of refreshing the token automatically once it is expired, using the
+refresh token, if available.
 
 Device Authorization Grant
-==========================
+--------------------------
 
 Helpers for the Device Authorization Grant are also included. To get device and user codes::
 
@@ -183,6 +253,19 @@ To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this:
 
 `DeviceAuthorizationPoolingJob` will automatically obey the pooling period. Everytime you call pool_job(), it will wait the appropriate number of seconds as indicated by the AS, and will apply slow_down requests.
 
+As Auth Handler
+^^^^^^^^^^^^^^^
+
+Use `OAuth2DeviceCodeAuth` as auth handler to exchange a device code for an access token::
+
+    api_client = ApiClient(
+        "https://your.protected.api/endpoint",
+        auth=OAuth2DeviceCodeAuth(
+            client, device_auth_resp.device_code,
+            interval=device_auth_resp.interval, expires_in=device_auth_resp.expires_in
+        )
+
+    resp = api_client.post(data={...}) # first call will hang until the user authorizes your app and the token endpoint returns a token.
 
 Supported Client Authentication Methods
 =======================================
@@ -253,6 +336,75 @@ Or to make it even easier, types can be guessed based on the supplied subject or
         subject_token=BearerToken('your_token_value'),  # subject_token_type will be "urn:ietf:params:oauth:token-type:access_token"
         actor_token=IdToken('your_actor_token'), # actor_token_type will be "urn:ietf:params:oauth:token-type:id_token"
     )
+
+
+Token Revocation
+================
+
+`OAuth2Client` can send revocation requests to a Revocation Endpoint. You need to provide a Revocation Endpoint URI when
+creating the `OAuth2Client`::
+
+    oauth2client = OAuth2Client(
+        token_endpoint,
+        revocation_endpoint=revocation_endpoint,
+        auth=ClientSecretJWT("client_id", "client_secret"))
+
+The `.revoke_token()` method and its specialized aliases `.revoke_access_token()` and `.revoke_refresh_token()` are
+then available::
+
+    oauth2client.revoke_token("mytoken", token_type_hint="access_token")
+    oauth2client.revoke_access_token("mytoken") # will automatically add token_type_hint=access_token
+    oauth2client.revoke_refresh_token("mytoken") # will automatically add token_type_hint=refresh_token
+
+Because Revocation Endpoints usually don't return meaningful responses, those methods return a boolean.
+This boolean indicates that a request was successfully sent and no error was returned.
+If the Authorization Server actually returns a standardised error, an exception will be raised instead.
+
+
+Token Introspection
+===================
+
+`OAuth2Client` can send requests to a Token Introspection Endpoint. You need to provide an Introspection Endpoint URI
+when creating the `OAuth2Client`::
+
+     oauth2client = OAuth2Client(
+        token_endpoint,
+        introspection_endpoint=introspection_endpoint,
+        auth=ClientSecretJWT("client_id", "client_secret"))
+
+The `.introspect_token()` method is then available::
+
+    resp = oauth2client.introspect_token("mytoken", token_type_hint="access_token")
+
+It returns whatever data is returned by the introspection endpoint (if it is a JSON, it's content is returned decoded).
+
+
+UserInfo Requests
+=================
+
+`OAuth2Client` can send requests to an UserInfo Endpoint. You need to provide an UserInfo Endpoint URI
+when creating the `OAuth2Client`::
+
+     oauth2client = OAuth2Client(
+        token_endpoint,
+        userinfo_endpoint=userinfo_endpoint,
+        auth=ClientSecretJWT("client_id", "client_secret"))
+
+The `.userinfo()` method is then available::
+
+    resp = oauth2client.userinfo("mytoken")
+
+It returns whatever data is returned by the userinfo endpoint (if it is a JSON, it's content is returned decoded).
+
+Initializing an OAuth2Client from a discovery document
+======================================================
+
+You can initialize an OAuth2Client with the endpoint URIs mentionned in a standardised discovery document::
+
+    oauth2client = OAuth2Client.from_discovery_endpoint("https://myas.local/.well-known/openid-configuration")
+
+This will fetch the document from the specified URI, then will decode it and initialize an OAuth2Client pointing to
+the appropriate endpoint URIs.
 
 Specialized API Client
 ======================
