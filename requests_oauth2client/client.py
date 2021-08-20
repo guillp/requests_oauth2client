@@ -91,13 +91,19 @@ class OAuth2Client:
             self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **requests_kwargs
         )
         if response.ok:
-            try:
-                token_response = self.token_response_class(**response.json())
-                return token_response
-            except Exception as exc:
-                self.on_token_error(response, exc)
+            return self.parse_token_response(response)
 
         return self.on_token_error(response)
+
+    def parse_token_response(self, response: requests.Response) -> BearerToken:
+        try:
+            token_response = self.token_response_class(**response.json())
+            return token_response
+        except Exception as response_class_exc:
+            try:
+                return self.on_token_error(response)
+            except Exception as token_error_exc:
+                raise token_error_exc from response_class_exc
 
     def on_token_error(
         self, response: requests.Response, exc: Optional[Exception] = None
@@ -120,7 +126,7 @@ class OAuth2Client:
         else:
             raise InvalidTokenResponse(
                 "token endpoint returned an HTTP error without error message", error_json
-            ) from exc
+            )
 
     def client_credentials(
         self,
@@ -280,7 +286,10 @@ class OAuth2Client:
         :param resp: a response obtained from the userinfo endpoint
         :return: the parsed JSON content from this response
         """
-        return resp.json()
+        try:
+            return resp.json()
+        except ValueError:
+            return resp.text
 
     @classmethod
     def get_token_type(
@@ -468,9 +477,15 @@ class OAuth2Client:
             **requests_kwargs,
         )
         if response.ok:
-            return response.json()
+            return self.parse_introspection_response(response)
 
         return self.on_introspection_error(response)
+
+    def parse_introspection_response(self, response: requests.Response) -> Any:
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
 
     def on_introspection_error(self, response: requests.Response) -> Any:
         try:

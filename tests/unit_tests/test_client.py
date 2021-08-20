@@ -516,6 +516,18 @@ def test_userinfo(
     bearer_auth_validator(requests_mock.last_request, access_token)
 
 
+def test_userinfo_jwt(
+    requests_mock, oauth2client, userinfo_endpoint, bearer_auth_validator, access_token, sub
+):
+    """.userinfo_endpoint() sends a requests to the Userinfo Endpoint and returns a JSON."""
+    userinfo = "This.ShouldBe.aJWT"
+    requests_mock.post(userinfo_endpoint, text=userinfo)
+    resp = oauth2client.userinfo(access_token)
+    assert requests_mock.called_once
+    assert resp == userinfo
+    bearer_auth_validator(requests_mock.last_request, access_token)
+
+
 def test_userinfo_no_uri(token_endpoint, client_id):
     """When userinfo_endpoint is not known, .userinfo() raises an exception."""
     client = OAuth2Client(token_endpoint, auth=client_id)
@@ -1112,6 +1124,20 @@ def test_introspection_error(
     )
     with pytest.raises(UnauthorizedClient):
         oauth2client.introspect_token("access_token")
+
+    assert requests_mock.called_once
+    introspection_request_validator(requests_mock.last_request, token="access_token")
+
+
+def test_introspection_jwt(
+    requests_mock,
+    oauth2client,
+    introspection_endpoint,
+    introspection_request_validator,
+):
+    introspection = "This.ShouldBe.aJWT"
+    requests_mock.post(introspection_endpoint, text=introspection)
+    assert oauth2client.introspect_token("access_token") == introspection
 
     assert requests_mock.called_once
     introspection_request_validator(requests_mock.last_request, token="access_token")
