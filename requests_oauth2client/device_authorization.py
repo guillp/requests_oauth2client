@@ -16,13 +16,13 @@ class DeviceAuthorizationResponse:
     A response returned by the device Authorization Endpoint (as defined in RFC8628)
     """
 
+    @accepts_expires_in
     def __init__(
         self,
         device_code: str,
         user_code: str,
         verification_uri: str,
         verification_uri_complete: Optional[str] = None,
-        expires_in: Optional[int] = None,
         expires_at: Optional[datetime] = None,
         interval: Optional[int] = None,
         **kwargs: Any,
@@ -31,13 +31,7 @@ class DeviceAuthorizationResponse:
         self.user_code = user_code
         self.verification_uri = verification_uri
         self.verification_uri_complete = verification_uri_complete
-        self.expires_at: Optional[datetime]
-        if expires_at:
-            self.expires_at = expires_at
-        elif expires_in:
-            self.expires_at = datetime.now() + timedelta(seconds=expires_in)
-        else:
-            self.expires_at = None
+        self.expires_at = expires_at
         self.interval = interval
         self.other = kwargs
 

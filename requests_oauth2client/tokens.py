@@ -1,7 +1,7 @@
 import json
 import pprint
 import zlib
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Callable, Dict, Optional, Type
 
 import jwcrypto  # type: ignore[import]
@@ -18,11 +18,11 @@ class BearerToken:
     as returned by an OAuth20 or OIDC Token Endpoint.
     """
 
+    @accepts_expires_in
     def __init__(
         self,
         access_token: str,
         *,
-        expires_in: Optional[int] = None,
         expires_at: Optional[datetime] = None,
         scope: Optional[str] = None,
         refresh_token: Optional[str] = None,
@@ -33,13 +33,7 @@ class BearerToken:
         if token_type.title() != "Bearer":
             raise ValueError("This is not a Bearer Token!", token_type)
         self.access_token = access_token
-        self.expires_at: Optional[datetime]
-        if expires_at:
-            self.expires_at = expires_at
-        elif expires_in:
-            self.expires_at = datetime.now() + timedelta(seconds=expires_in)
-        else:
-            self.expires_at = None
+        self.expires_at = expires_at
         self.scope = scope
         self.refresh_token = refresh_token
         self.id_token = IdToken(id_token) if id_token else None

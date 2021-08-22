@@ -1,5 +1,7 @@
 import base64
-from typing import Any, Dict, Optional, Tuple, Union
+from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from furl import furl  # type: ignore
 
@@ -149,3 +151,20 @@ def validate_url(
             raise ValueError("url has no path")
     except ValueError as exc:
         raise InvalidUrl(value) from exc
+
+
+def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(f)
+    def decorator(
+        *args: Any,
+        expires_in: Optional[int] = None,
+        expires_at: Optional[datetime] = None,
+        **kwargs: Any,
+    ) -> Any:
+        if expires_in is None and expires_at is None:
+            return f(*args, **kwargs)
+        if expires_in and isinstance(expires_in, int) and expires_in >= 1:
+            expires_at = datetime.now() + timedelta(seconds=expires_in)
+        return f(*args, expires_at=expires_at, **kwargs)
+
+    return decorator
