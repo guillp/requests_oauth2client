@@ -1,11 +1,10 @@
-from typing import Optional, Tuple, Type, Union
+from typing import Optional, Tuple, Union
 
 import requests
 
 from ..api_client import ApiClient
 from ..auth import OAuth2ClientCredentialsAuth
 from ..client import OAuth2Client
-from ..client_authentication import ClientSecretBasic, ClientSecretPost
 
 
 class Auth0Client(OAuth2Client):
@@ -14,9 +13,6 @@ class Auth0Client(OAuth2Client):
         tenant: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
-        default_auth_handler: Union[
-            Type[ClientSecretPost], Type[ClientSecretBasic]
-        ] = ClientSecretPost,
     ):
         if (
             "." not in tenant
@@ -37,7 +33,6 @@ class Auth0Client(OAuth2Client):
             jwks_uri=jwks_uri,
             auth=auth,
             session=session,
-            default_auth_handler=default_auth_handler,
         )
 
 

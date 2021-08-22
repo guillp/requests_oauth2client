@@ -44,10 +44,6 @@ class OAuth2Client:
         userinfo_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
-        default_auth_handler: Union[
-            Type[ClientSecretPost], Type[ClientSecretBasic]
-        ] = ClientSecretPost,
-        token_response_class: Type[BearerToken] = BearerToken,
     ):
         """
         :param token_endpoint: the token endpoint where this client will get access tokens
@@ -57,8 +53,6 @@ class OAuth2Client:
         :param revocation_endpoint: the revocation endpoint url to use for revoking tokens, if any
         :param introspection_endpoint: the introspection endpoint url to get info about tokens, if any
         :param session: a requests Session to use when sending HTTP requests
-        :param default_auth_handler: if auth is a tuple of (client_id, client_secret), init an object of
-        this class with auth values as parameters.
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
@@ -68,8 +62,7 @@ class OAuth2Client:
         self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
-        self.auth = client_auth_factory(auth, default_auth_handler)
-        self.token_response_class = token_response_class
+        self.auth = client_auth_factory(auth, ClientSecretPost)
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
@@ -97,7 +90,7 @@ class OAuth2Client:
 
     def parse_token_response(self, response: requests.Response) -> BearerToken:
         try:
-            token_response = self.token_response_class(**response.json())
+            token_response = BearerToken(**response.json())
             return token_response
         except Exception as response_class_exc:
             try:
