@@ -34,9 +34,7 @@ def test_client_secret_post_auth(token_endpoint, client_id, client_secret):
 
 def test_client_secret_basic_auth(token_endpoint, client_id, client_secret):
     """Passing a (client_id, client_secret) tuple  as `auth` and ClientSecretBasic as `default_auth_handler` uses ClientSecretBasic authentication."""
-    client = OAuth2Client(
-        token_endpoint, auth=(client_id, client_secret), default_auth_handler=ClientSecretBasic
-    )
+    client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
     assert isinstance(client.auth, ClientSecretBasic)
     assert client.auth.client_id == client_id
     assert client.auth.client_secret == client_secret
@@ -1184,3 +1182,17 @@ def test_introspection_with_bearer_token_as_param(
     bearer_no_refresh = BearerToken(access_token, refresh_token=None)
     with pytest.raises(ValueError):
         oauth2client.introspect_token(bearer_no_refresh, "refresh_token")
+
+
+def test_ciba(
+    requests_mock,
+    oauth2client,
+    auth_req_id,
+    token_endpoint,
+    access_token,
+    ciba_request_validator,
+):
+    requests_mock.post(token_endpoint, json={"access_token": access_token, "expires_in": 60})
+    token = oauth2client.ciba(auth_req_id=auth_req_id)
+    assert requests_mock.called_once
+    ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)

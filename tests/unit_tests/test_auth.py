@@ -4,10 +4,9 @@ from urllib.parse import parse_qs
 import pytest
 import requests
 
-from requests_oauth2client import (BearerAuth, BearerToken, DeviceAuthorizationClient,
-                                   ExpiredToken, OAuth2AccessTokenAuth,
-                                   OAuth2AuthorizationCodeAuth, OAuth2Client,
-                                   OAuth2DeviceCodeAuth)
+from requests_oauth2client import (BearerAuth, BearerToken, ExpiredAccessToken,
+                                   OAuth2AccessTokenAuth, OAuth2AuthorizationCodeAuth,
+                                   OAuth2Client, OAuth2DeviceCodeAuth)
 
 
 @pytest.fixture()
@@ -33,7 +32,7 @@ def test_bearer_auth_none(requests_mock, target_api):
 def test_expired_token(minutes_ago):
     token = BearerToken(access_token="foo", expires_at=minutes_ago)
     auth = BearerAuth(token)
-    with pytest.raises(ExpiredToken):
+    with pytest.raises(ExpiredAccessToken):
         requests.post("http://localhost/test", auth=auth)
 
 
@@ -144,8 +143,10 @@ def test_device_code_auth(
     refresh_token,
 ):
 
-    da_client = DeviceAuthorizationClient(
-        device_authorization_endpoint, auth=(client_id, client_secret)
+    oauth2client = OAuth2Client(
+        token_endpoint=token_endpoint,
+        device_authorization_endpoint=device_authorization_endpoint,
+        auth=(client_id, client_secret),
     )
     requests_mock.post(
         device_authorization_endpoint,
@@ -159,10 +160,9 @@ def test_device_code_auth(
         },
     )
 
-    da_resp = da_client.authorize_device()
+    da_resp = oauth2client.authorize_device()
 
     requests_mock.reset_mock()
-    oauth2client = OAuth2Client(token_endpoint, (client_id, client_secret))
     requests_mock.post(
         token_endpoint,
         json={"access_token": access_token, "expires_in": 60, "refresh_token": refresh_token},

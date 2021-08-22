@@ -171,3 +171,11 @@ class MismatchingState(InvalidAuthResponse):
     """
     Raised when an auth response contains a state parameter that doesn't match the expected state.
     """
+
+
+class BackChannelAuthenticationError(EndpointError):
+    pass
+
+
+class InvalidBackChannelAuthenticationResponse(OAuth2Error):
+    pass

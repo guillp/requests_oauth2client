@@ -1,14 +1,11 @@
-import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Tuple, Type, Union
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-import requests
+from .pooling import TokenEndpointPoolingJob
+from .utils import accepts_expires_in
 
-from .client import OAuth2Client
-from .client_authentication import ClientSecretBasic, ClientSecretPost, client_auth_factory
-from .exceptions import (AuthorizationPending, DeviceAuthorizationError,
-                         InvalidDeviceAuthorizationResponse, SlowDown, UnauthorizedClient)
-from .tokens import BearerToken
+if TYPE_CHECKING:  # pragma: no cover
+    from .client import OAuth2Client
 
 
 class DeviceAuthorizationResponse:
@@ -45,94 +42,28 @@ class DeviceAuthorizationResponse:
         return None
 
 
-class DeviceAuthorizationClient:
-    """
-    A client for the Device Authorization Endpoint (RFC8628)
-    This client can send requests to a Device Authorization Endpoint
-    """
-
-    device_authorization_response_class = DeviceAuthorizationResponse
-
-    exception_classes: Dict[str, Type[Exception]] = {
-        "unauthorized_client": UnauthorizedClient,
-    }
+class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
+    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow."""
 
     def __init__(
         self,
-        device_authorization_endpoint: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
-        session: Optional[requests.Session] = None,
-        default_auth_handler: Union[
-            Type[ClientSecretPost], Type[ClientSecretBasic]
-        ] = ClientSecretPost,
-    ):
-        self.device_authorization_endpoint = device_authorization_endpoint
-        self.session = session or requests.Session()
-        self.auth = client_auth_factory(auth, default_auth_handler)
-
-    def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
-        """
-        Sends a Device Authorization Request.
-        :param data: additional data to send to the Device Authorization Endpoint
-        :return: a Device Authorization Response
-        """
-        response = self.session.post(
-            self.device_authorization_endpoint, data=data, auth=self.auth
-        )
-
-        if response.ok:
-            device_authorization_response = self.device_authorization_response_class(
-                **response.json()
-            )
-            return device_authorization_response
-
-        return self.on_device_authorization_error(response)
-
-    def on_device_authorization_error(
-        self, response: requests.Response
-    ) -> DeviceAuthorizationResponse:
-        error_json = response.json()
-        error = error_json.get("error")
-        error_description = error_json.get("error_description")
-        error_uri = error_json.get("error_uri")
-        if error:
-            exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
-            raise exception_class(error, error_description, error_uri)
-
-        raise InvalidDeviceAuthorizationResponse(
-            "device authorization endpoint returned an HTTP error without an error message",
-            error_json,
-        )
-
-
-class DeviceAuthorizationPoolingJob:
-    """
-    A pooling job for checking if the user has finished with his authorization.
-
-    """
-
-    def __init__(
-        self,
-        client: OAuth2Client,
+        client: "OAuth2Client",
         device_code: str,
         interval: Optional[int] = None,
+        slow_down_interval: int = 5,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ):
-        self.client = client
+        super().__init__(
+            client=client,
+            interval=interval,
+            slow_down_interval=slow_down_interval,
+            requests_kwargs=requests_kwargs,
+            **token_kwargs,
+        )
         self.device_code = device_code
-        self.interval = interval or 5
-        self.requests_kwargs = requests_kwargs
-        self.token_kwargs = token_kwargs
 
-    def __call__(self) -> Optional[BearerToken]:
-        time.sleep(self.interval)
-        try:
-            return self.client.device_code(
-                self.device_code, requests_kwargs=self.requests_kwargs, **self.token_kwargs
-            )
-        except SlowDown:
-            self.interval += 5
-        except AuthorizationPending:
-            pass
-        return None
+    def pool(self):
+        return self.client.device_code(
+            self.device_code, requests_kwargs=self.requests_kwargs, **self.token_kwargs
+        )

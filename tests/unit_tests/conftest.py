@@ -92,6 +92,11 @@ def device_authorization_endpoint(issuer, join_url):
 
 
 @pytest.fixture()
+def backchannel_authentication_endpoint(issuer, join_url):
+    return join_url(issuer, "bc_authorize")
+
+
+@pytest.fixture()
 def client_id():
     return "client_id"
 
@@ -279,6 +284,11 @@ def audience():
 @pytest.fixture()
 def scope():
     return "openid profile email"
+
+
+@pytest.fixture()
+def auth_req_id():
+    return "auth_request_id"
 
 
 @pytest.fixture

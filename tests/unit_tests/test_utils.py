@@ -1,11 +1,12 @@
 import string
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
 
 from requests_oauth2client import (InvalidUrl, b64_encode, b64u_decode, b64u_encode,
                                    generate_jwk_key_pair, validate_url)
-from requests_oauth2client.utils import b64_decode, sign_jwt
+from requests_oauth2client.utils import accepts_expires_in, b64_decode, sign_jwt
 
 clear_text = string.printable
 b64 = "MDEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVohIiMkJSYnKCkqKywtLi86Ozw9Pj9AW1xdXl9ge3x9fiAJCg0LDA=="
@@ -120,3 +121,15 @@ def test_sign_jwt_no_alg():
             {"iss": "https://myas.local", "sub": "123456"},
             private_jwk=private_jwk,
         )
+
+
+def test_accepts_expires_in():
+    @accepts_expires_in
+    def foo(expires_at=None):
+        return expires_at
+
+    now = datetime.now()
+    assert foo(expires_at=now) == now
+    assert foo(now) == now
+    assert isinstance(foo(expires_in=10), datetime)
+    assert foo() is None

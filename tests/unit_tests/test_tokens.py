@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from requests_oauth2client import (BearerToken, BearerTokenSerializer, ExpiredToken,
+from requests_oauth2client import (BearerToken, BearerTokenSerializer, ExpiredAccessToken,
                                    IdToken, InvalidClaim, InvalidIdToken, InvalidSignature)
 from requests_oauth2client.tokens import JWT
 
@@ -155,7 +155,7 @@ def test_id_token():
         public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=False, acr="2"
     )
 
-    with pytest.raises(ExpiredToken):
+    with pytest.raises(ExpiredAccessToken):
         assert id_token.validate(
             public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=True
         )

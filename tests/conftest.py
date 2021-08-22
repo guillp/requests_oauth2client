@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from urllib.parse import parse_qs
 
+import jwcrypto
 import pytest
 import requests
 from furl import furl
@@ -246,6 +247,67 @@ def token_exchange_grant_validator():
         assert params.get("subject_token") == [subject_token]
         for key, val in kwargs.items():
             assert params.get(key) == [val]
+
+    return validator
+
+
+@pytest.fixture(scope="session")
+def ciba_request_validator():
+    def validator(req, *, auth_req_id, **kwargs):
+        params = parse_qs(req.text)
+        assert params.get("grant_type") == ["urn:openid:params:grant-type:ciba"]
+        assert params.get("auth_req_id") == [auth_req_id]
+        for key, val in kwargs.items():
+            assert params.get(key) == [val]
+
+    return validator
+
+
+@pytest.fixture()
+def backchannel_auth_request_validator():
+    def validator(req, *, scope, **kwargs):
+        params = parse_qs(req.text)
+        if isinstance(scope, str):
+            assert params.get("scope") == [scope]
+        else:
+            assert params.get("scope") == [" ".join(scope)]
+        login_hint = params.get("login_hint")
+        login_hint_token = params.get("login_hint_token")
+        id_token_hint = params.get("id_token_hint")
+        assert login_hint or login_hint_token or id_token_hint
+        assert (
+            not (login_hint and login_hint_token)
+            and not (login_hint and id_token_hint)
+            and not (login_hint_token and id_token_hint)
+        )
+        for key, val in kwargs.items():
+            assert params.get(key) == [val]
+
+    return validator
+
+
+@pytest.fixture()
+def backchannel_auth_request_jwt_validator():
+    def validator(req, *, public_jwk, alg, scope, **kwargs):
+        params = parse_qs(req.text)
+        request = params.get("request")[0]
+        jwt = jwcrypto.jwt.JWT(jwt=request, key=JWK(**public_jwk))
+        claims = json.loads(jwt.claims)
+        if isinstance(scope, str):
+            assert claims.get("scope") == scope
+        else:
+            assert claims.get("scope") == " ".join(scope)
+        login_hint = claims.get("login_hint")
+        login_hint_token = claims.get("login_hint_token")
+        id_token_hint = claims.get("id_token_hint")
+        assert login_hint or login_hint_token or id_token_hint
+        assert (
+            not (login_hint and login_hint_token)
+            and not (login_hint and id_token_hint)
+            and not (login_hint_token and id_token_hint)
+        )
+        for key, val in kwargs.items():
+            assert claims.get(key) == val
 
     return validator
 

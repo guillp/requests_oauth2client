@@ -3,13 +3,18 @@ from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 import requests
 
 from .auth import BearerAuth
+from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
-from .exceptions import (AccessDenied, AuthorizationPending, ExpiredToken, IntrospectionError,
-                         InvalidGrant, InvalidScope, InvalidTarget, InvalidTokenResponse,
-                         RevocationError, ServerError, SlowDown, TokenEndpointError,
-                         UnauthorizedClient, UnknownIntrospectionError, UnsupportedTokenType)
+from .device_authorization import DeviceAuthorizationResponse
+from .exceptions import (AccessDenied, AuthorizationPending, BackChannelAuthenticationError,
+                         DeviceAuthorizationError, ExpiredToken, IntrospectionError,
+                         InvalidBackChannelAuthenticationResponse,
+                         InvalidDeviceAuthorizationResponse, InvalidGrant, InvalidScope,
+                         InvalidTarget, InvalidTokenResponse, RevocationError, ServerError,
+                         SlowDown, TokenEndpointError, UnauthorizedClient,
+                         UnknownIntrospectionError, UnsupportedTokenType)
 from .tokens import BearerToken, IdToken
-from .utils import validate_url
+from .utils import sign_jwt, validate_url
 
 
 class OAuth2Client:
@@ -41,6 +46,8 @@ class OAuth2Client:
         revocation_endpoint: Optional[str] = None,
         introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
+        backchannel_authentication_endpoint: Optional[str] = None,
+        device_authorization_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
     ):
@@ -59,6 +66,14 @@ class OAuth2Client:
             str(introspection_endpoint) if introspection_endpoint else None
         )
         self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
+        self.backchannel_authentication_endpoint = (
+            str(backchannel_authentication_endpoint)
+            if backchannel_authentication_endpoint
+            else None
+        )
+        self.device_authorization_endpoint = (
+            str(device_authorization_endpoint) if device_authorization_endpoint else None
+        )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
         self.auth = client_auth_factory(auth, ClientSecretPost)
@@ -212,6 +227,20 @@ class OAuth2Client:
         data = dict(
             grant_type="urn:ietf:params:oauth:grant-type:device_code",
             device_code=device_code,
+            **token_kwargs,
+        )
+        return self.token_request(data, **requests_kwargs)
+
+    def ciba(
+        self,
+        auth_req_id: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
+        requests_kwargs = requests_kwargs or {}
+        data = dict(
+            grant_type="urn:openid:params:grant-type:ciba",
+            auth_req_id=auth_req_id,
             **token_kwargs,
         )
         return self.token_request(data, **requests_kwargs)
@@ -490,6 +519,135 @@ class OAuth2Client:
             exception_class = self.exception_classes.get(error, IntrospectionError)
             raise exception_class(error, error_description, error_uri)
         raise UnknownIntrospectionError(response)
+
+    def backchannel_authentication_request(
+        self,
+        scope: Union[str, Iterable[str]],
+        client_notification_token: Optional[str] = None,
+        acr_values: Optional[str] = None,
+        login_hint_token: Optional[str] = None,
+        id_token_hint: Optional[str] = None,
+        login_hint: Optional[str] = None,
+        binding_message: Optional[str] = None,
+        user_code: Optional[str] = None,
+        requested_expiry: Optional[int] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        private_jwk: Optional[Dict[str, Any]] = None,
+        alg: Optional[str] = None,
+        kid: Optional[str] = None,
+        **ciba_kwargs: Any,
+    ) -> BackChannelAuthenticationResponse:
+        """
+        Sends a CIBA Authentication Request.
+        :return: a BackChannelAuthenticationResponse
+        """
+        requests_kwargs = requests_kwargs or {}
+
+        if not isinstance(scope, str):
+            try:
+                scope = " ".join(scope)
+            except Exception as exc:
+                raise ValueError("Unsupported scope value") from exc
+
+        if not (login_hint or login_hint_token or id_token_hint):
+            raise ValueError(
+                "One of `login_hint`, `login_hint_token` or `ìd_token_hint` must be provided"
+            )
+
+        if (
+            (login_hint_token and id_token_hint)
+            or (login_hint and id_token_hint)
+            or (login_hint_token and login_hint)
+        ):
+            raise ValueError(
+                "Only one of `login_hint`, `login_hint_token` or `ìd_token_hint` must be provided"
+            )
+
+        data = dict(
+            ciba_kwargs,
+            scope=scope,
+            client_notification_token=client_notification_token,
+            acr_values=acr_values,
+            login_hint_token=login_hint_token,
+            id_token_hint=id_token_hint,
+            login_hint=login_hint,
+            binding_message=binding_message,
+            user_code=user_code,
+            requested_expiry=requested_expiry,
+        )
+
+        if private_jwk:
+            data = {"request": sign_jwt(data, private_jwk=private_jwk, alg=alg, kid=kid)}
+
+        response = self.session.post(
+            self.backchannel_authentication_endpoint,
+            data=data,
+            auth=self.auth,
+            **requests_kwargs,
+        )
+
+        if response.ok:
+            return self.parse_backchannel_authentication_response(response)
+
+        return self.on_backchannel_authentication_error(response)
+
+    def parse_backchannel_authentication_response(self, response: requests.Response):
+        try:
+            return BackChannelAuthenticationResponse(**response.json())
+        except TypeError as exc:
+            raise InvalidBackChannelAuthenticationResponse(response) from exc
+
+    def on_backchannel_authentication_error(
+        self, response: requests.Response
+    ) -> BackChannelAuthenticationResponse:
+        try:
+            error_json = response.json()
+        except ValueError as exc:
+            raise InvalidBackChannelAuthenticationResponse from exc
+
+        error = error_json.get("error")
+        error_description = error_json.get("error_description")
+        error_uri = error_json.get("error_uri")
+        if error:
+            exception_class = self.exception_classes.get(error, BackChannelAuthenticationError)
+            raise exception_class(error, error_description, error_uri)
+
+        raise InvalidBackChannelAuthenticationResponse(response)
+
+    def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
+        """
+        Sends a Device Authorization Request.
+        :param data: additional data to send to the Device Authorization Endpoint
+        :return: a Device Authorization Response
+        """
+        response = self.session.post(
+            self.device_authorization_endpoint, data=data, auth=self.auth
+        )
+
+        if response.ok:
+            return self.parse_device_authorization_response(response)
+
+        return self.on_device_authorization_error(response)
+
+    def parse_device_authorization_response(self, response: requests.Response):
+        device_authorization_response = DeviceAuthorizationResponse(**response.json())
+        return device_authorization_response
+
+    def on_device_authorization_error(
+        self, response: requests.Response
+    ) -> DeviceAuthorizationResponse:
+        error_json = response.json()
+        error = error_json.get("error")
+        error_description = error_json.get("error_description")
+        error_uri = error_json.get("error_uri")
+        if error:
+            exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
+            raise exception_class(error, error_description, error_uri)
+
+        raise InvalidDeviceAuthorizationResponse(
+            "device authorization endpoint returned an HTTP error without an error message",
+            error_json,
+        )
 
     def get_public_jwks(self) -> Dict[str, Any]:
         if not self.jwks_uri:

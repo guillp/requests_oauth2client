@@ -2,8 +2,8 @@ from datetime import datetime
 
 import pytest
 
-from requests_oauth2client import (BearerToken, ClientSecretPost, DeviceAuthorizationClient,
-                                   DeviceAuthorizationError, DeviceAuthorizationPoolingJob,
+from requests_oauth2client import (BearerToken, ClientSecretPost, DeviceAuthorizationError,
+                                   DeviceAuthorizationPoolingJob,
                                    InvalidDeviceAuthorizationResponse, OAuth2Client,
                                    UnauthorizedClient)
 from requests_oauth2client.device_authorization import DeviceAuthorizationResponse
@@ -77,9 +77,10 @@ def test_device_authorization_response_no_expiration(
 
 @pytest.fixture()
 def device_authorization_client(
-    device_authorization_endpoint, client_id, client_secret, device_code
+    token_endpoint, device_authorization_endpoint, client_id, client_secret, device_code
 ):
-    client = DeviceAuthorizationClient(
+    client = OAuth2Client(
+        token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,
         auth=(client_id, client_secret),
     )

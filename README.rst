@@ -1,13 +1,13 @@
 A Python OAuth 2.x client, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC compliant Authorization Server.
 
 It can act as an OAuth 2.0/2.1 client, to automatically get and renew access tokens,
-based on the Client Credentials, Authorization Code, Refresh token, or the Device Authorization grants.
+based on the Client Credentials, Authorization Code, Refresh token, the Device Authorization grants, or CIBA.
 
 It comes with a `requests` add-on to handle OAuth 2.0 Bearer Token based authorization when accessing APIs.
 
 It also supports OpenID Connect, PKCE, Client Assertions, Token Revocation, Exchange, and Introspection,
-as well as using custom params to any endpoint, and other important features that are often overlooked in other
-client libraries.
+Backchannel Authentication requests, as well as using custom params to any endpoint, and other important features
+that are often overlooked in other client libraries.
 
 And it also includes a wrapper around `requests.Session` that makes it super easy to use REST-style APIs.
 
@@ -208,33 +208,29 @@ Device Authorization Grant
 
 Helpers for the Device Authorization Grant are also included. To get device and user codes::
 
-    da_client = DeviceAuthorizationClient(
+    client = OAuth2Client(
+        token_endpoint="https://myas.local/token",
         device_authorization_endpoint="https://myas.local/device",
         auth=(client_id, client_secret),
     )
 
-    device_auth_resp = da_client.authorize_device()
+    da_resp = client.authorize_device()
 
-`device_auth_resp` contains the Device Code, User Code, Verification URI and other info returned by the AS::
+`da_resp` contains the Device Code, User Code, Verification URI and other info returned by the AS::
 
-    device_auth_resp.device_code
-    device_auth_resp.user_code
-    device_auth_resp.verification_uri
-    device_auth_resp.verification_uri_complete
-    device_auth_resp.expires_at # this is a datetime
-    device_auth_resp.interval
+    da_resp.device_code
+    da_resp.user_code
+    da_resp.verification_uri
+    da_resp.verification_uri_complete
+    da_resp.expires_at # just like for BearerToken, expiration is tracked by requests_oauth2client
+    da_resp.interval
 
 Send/show the Verification Uri and User Code to the user. He must use a browser to visit that url, authenticate and input the User Code.
 You can then request the Token endpoint to check if the user successfully authorized you using an `OAuth2Client`::
 
-    client = OAuth2Client(
-        token_endpoint="https://myas.local/token",
-        auth=(client_id, client_secret)
-    )
+    token = client.device_code(da_resp.device_code)
 
-    token = client.device_code(device_auth_resp.device_code)
-
-This will raise an exception, either `AuthorizationPending`, `SlowDown` or `ExpiredDeviceCode`, `AccessDenied` if the user did not yet finish authorizing your device,
+This will raise an exception, either `AuthorizationPending`, `SlowDown`, `ExpiredDeviceCode`, or `AccessDenied` if the user did not yet finish authorizing your device,
 if you should increase your pooling period, or if the device code is no longer valid, or the user finally denied your access, respectively. Other exceptions may be raised depending on the error code that the AS responds with.
 If the user did finish authorizing successfully, `token` will contain your access token.
 
@@ -246,10 +242,11 @@ To make pooling easier, you can use a `DeviceAuthorizationPoolingJob` like this:
         interval=device_auth_resp.interval
     )
 
-    while True:
+    resp = None
+    while resp is None:
         resp = pool_job()
-        if resp is not None:
-            break
+
+    assert isinstance(resp, BearerToken)
 
 `DeviceAuthorizationPoolingJob` will automatically obey the pooling period. Everytime you call pool_job(), it will wait the appropriate number of seconds as indicated by the AS, and will apply slow_down requests.
 
@@ -266,6 +263,46 @@ Use `OAuth2DeviceCodeAuth` as auth handler to exchange a device code for an acce
         )
 
     resp = api_client.post(data={...}) # first call will hang until the user authorizes your app and the token endpoint returns a token.
+
+Client-Initiated Backchannel Authentication (CIBA)
+==================================================
+
+To initiate a Backchannel Authentication against the dedicated endpoint::
+
+    client = OAuth2Client(
+        token_endpoint="https://myas.local/token",
+        backchannel_authentication_endpoint="https://myas.local/backchannel_authorize",
+        auth=(client_id, client_secret)
+    )
+
+    ba_resp = client.backchannel_authentication_request(
+        scope="openid email profile",
+        login_hint="user@example.net",
+    )
+
+`ba_resp` will contain the response attributes as returned by the AS, including an `auth_req_id`::
+
+    ba_resp.auth_req_id
+    ba_resp.expires_in # decreases as times fly
+    ba_resp.expires_at # a datetime to keep track of the expiration date, based on the "expires_in" returned by the AS
+    ba_resp.interval # the pooling interval indicated by the AS
+    ba_resp.custom # if the AS respond with additional attributes, they are also accessible
+
+To pool the Token Endpoint until the end-user successfully authenticates::
+
+    pool_job = BackChannelAuthenticationPoolingJob(
+        client=client,
+        auth_req_id=ba_resp.auth_req_id,
+        interval=bca_resp.interval,
+    )
+
+    resp = None
+    while resp is None:
+        resp = pool_job()
+
+    assert isinstance(resp, BearerToken)
+
+
 
 Supported Client Authentication Methods
 =======================================
