@@ -10,7 +10,7 @@ from .discovery import (oauth2_discovery_document_url,
                         oidc_discovery_document_url, well_known_uri)
 from .exceptions import (AccessDenied, AccountSelectionRequired, AuthorizationPending,
                          AuthorizationResponseError, ConsentRequired, DeviceAuthorizationError,
-                         EndpointError, ExpiredDeviceCode, ExpiredToken, InteractionRequired,
+                         EndpointError, ExpiredAccessToken, ExpiredToken, InteractionRequired,
                          InvalidClaim, InvalidDeviceAuthorizationResponse, InvalidGrant,
                          InvalidIdToken, InvalidJWT, InvalidScope, InvalidSignature,
                          InvalidTokenResponse, InvalidUrl, LoginRequired, OAuth2Error,

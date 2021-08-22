@@ -8,8 +8,8 @@ import jwcrypto  # type: ignore[import]
 from jwcrypto.jwk import JWK, JWKSet  # type: ignore[import]
 from jwcrypto.jws import InvalidJWSObject, InvalidJWSSignature  # type: ignore[import]
 
-from .exceptions import ExpiredToken, InvalidClaim, InvalidIdToken, InvalidSignature
-from .utils import b64u_decode, b64u_encode
+from .exceptions import ExpiredAccessToken, InvalidClaim, InvalidIdToken, InvalidSignature
+from .utils import accepts_expires_in, b64u_decode, b64u_encode
 
 
 class BearerToken:
@@ -237,7 +237,7 @@ class JWT:
                 raise InvalidClaim("aud", "unexpected audience value", audience_from_token)
 
         if check_exp and self.is_expired():
-            raise ExpiredToken(self.expires_at)
+            raise ExpiredAccessToken(self.expires_at)
 
         for key, val in kwargs.items():
             val_from_token = self.get_claim(key)

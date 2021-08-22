@@ -3,12 +3,11 @@ from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 import requests
 
 from .auth import BearerAuth
-from .client_authentication import ClientSecretBasic, ClientSecretPost, client_auth_factory
-from .exceptions import (AccessDenied, AuthorizationPending, ExpiredDeviceCode,
-                         IntrospectionError, InvalidGrant, InvalidScope, InvalidTarget,
-                         InvalidTokenResponse, RevocationError, ServerError, SlowDown,
-                         TokenEndpointError, UnauthorizedClient,
-                         UnknownIntrospectionError, UnsupportedTokenType)
+from .client_authentication import ClientSecretPost, client_auth_factory
+from .exceptions import (AccessDenied, AuthorizationPending, ExpiredToken, IntrospectionError,
+                         InvalidGrant, InvalidScope, InvalidTarget, InvalidTokenResponse,
+                         RevocationError, ServerError, SlowDown, TokenEndpointError,
+                         UnauthorizedClient, UnknownIntrospectionError, UnsupportedTokenType)
 from .tokens import BearerToken, IdToken
 from .utils import validate_url
 
@@ -31,7 +30,7 @@ class OAuth2Client:
         "unauthorized_client": UnauthorizedClient,
         "authorization_pending": AuthorizationPending,
         "slow_down": SlowDown,
-        "expired_token": ExpiredDeviceCode,
+        "expired_token": ExpiredToken,
         "unsupported_token_type": UnsupportedTokenType,
     }
 
@@ -98,14 +97,10 @@ class OAuth2Client:
             except Exception as token_error_exc:
                 raise token_error_exc from response_class_exc
 
-    def on_token_error(
-        self, response: requests.Response, exc: Optional[Exception] = None
-    ) -> BearerToken:
+    def on_token_error(self, response: requests.Response) -> BearerToken:
         """
         Executed when the token endpoint returns an error.
         :param response: the token response
-        :param exc: if the token response is 20x but an exception occurred when creating the token_response_class,
-         this will contain the exception. Otherwise, this will be None.
         :return: should return nothing and raise an exception instead. But a subclass can return a BearerToken
          to implement a default behaviour if needed.
         """

@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import requests
 
-from .exceptions import ExpiredToken
+from .exceptions import ExpiredAccessToken
 from .tokens import BearerToken
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -36,7 +36,7 @@ class BearerAuth(requests.auth.AuthBase):
         if self.token is None:
             return request
         if self.token.is_expired():
-            raise ExpiredToken(self.token)
+            raise ExpiredAccessToken(self.token)
         request.headers["Authorization"] = self.token.authorization_header()
         return request
 

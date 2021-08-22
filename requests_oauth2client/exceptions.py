@@ -26,9 +26,9 @@ class InvalidTokenResponse(OAuth2Error):
     """
 
 
-class ExpiredToken(OAuth2Error):
+class ExpiredAccessToken(OAuth2Error):
     """
-    Raised when an expired token is used.
+    Raised when an expired access token is used.
     """
 
 
@@ -90,15 +90,15 @@ class DeviceAuthorizationError(EndpointError):
     pass
 
 
-class AuthorizationPending(DeviceAuthorizationError):
+class AuthorizationPending(TokenEndpointError):
     pass
 
 
-class SlowDown(DeviceAuthorizationError):
+class SlowDown(TokenEndpointError):
     pass
 
 
-class ExpiredDeviceCode(DeviceAuthorizationError):
+class ExpiredToken(TokenEndpointError):
     pass
 
 
