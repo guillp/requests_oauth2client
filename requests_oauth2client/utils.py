@@ -1,7 +1,8 @@
 import base64
+import json
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 from furl import furl  # type: ignore
 
@@ -96,25 +97,25 @@ def b64u_decode(
     return decoded
 
 
-def generate_jwk_key_pair(
-    kty: str = "RSA", **kwargs: Any
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    from jwcrypto.jwk import JWK  # type: ignore
+def _default_json_encode(data):
+    if isinstance(data, datetime):
+        return datetime.timestamp()
 
-    jwk = JWK.generate(kty=kty, **kwargs)
-    private_jwk = jwk.export_private(as_dict=True)
-    public_jwk = jwk.export_public(as_dict=True)
-    return private_jwk, public_jwk
+
+def json_encode(obj: Dict[str, Any], compact=True):
+    separators = (",", ":") if compact else (", ", ": ")
+
+    return json.dumps(obj, separators=separators, default=_default_json_encode)
 
 
 def sign_jwt(
     claims: Dict[str, Any],
     private_jwk: Dict[str, Any],
-    extra_headers: Optional[Dict[str, Any]] = None,
     alg: Optional[str] = None,
     kid: Optional[str] = None,
+    extra_headers: Optional[Dict[str, Any]] = None,
 ) -> str:
-    from jwcrypto.jwk import JWK
+    from jwcrypto.jwk import JWK  # type: ignore
     from jwcrypto.jwt import JWT  # type: ignore
 
     jwk = JWK(**private_jwk)
@@ -134,6 +135,37 @@ def sign_jwt(
     )
 
     jwt.make_signed_token(jwk)
+    assertion: str = jwt.serialize()
+    return assertion
+
+
+def enc_jwt(
+    data,
+    private_jwk: Dict[str, Any],
+    alg: Optional[str] = None,
+    kid: Optional[str] = None,
+    extra_headers: Optional[Dict[str, Any]] = None,
+):
+    from jwcrypto.jwk import JWK  # type: ignore
+    from jwcrypto.jwt import JWT  # type: ignore
+
+    jwk = JWK(**private_jwk)
+    alg = alg or private_jwk.get("alg")
+    kid = kid or private_jwk.get("kid")
+
+    if alg is None:
+        raise ValueError("a signing alg is required")
+
+    headers = dict(extra_headers or {}, alg=alg)
+    if kid:
+        headers["kid"] = "kid"
+
+    jwt = JWT(
+        header=headers,
+        claims=data,
+    )
+    jwt.make_encrypted_token(jwk)
+
     assertion: str = jwt.serialize()
     return assertion
 

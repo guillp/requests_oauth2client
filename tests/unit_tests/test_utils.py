@@ -4,8 +4,7 @@ from uuid import uuid4
 
 import pytest
 
-from requests_oauth2client import (InvalidUrl, b64_encode, b64u_decode, b64u_encode,
-                                   generate_jwk_key_pair, validate_url)
+from requests_oauth2client import InvalidUrl, b64_encode, b64u_decode, b64u_encode, validate_url
 from requests_oauth2client.utils import accepts_expires_in, b64_decode, sign_jwt
 
 clear_text = string.printable
@@ -49,11 +48,6 @@ def test_b64u():
             return b64u_encode(uuid)
 
     assert b64u_decode(Str(), encoding=None) == str(uuid).encode()
-
-
-def test_generate_jwk_key_pair():
-    private, public = generate_jwk_key_pair()
-    assert private.get("kty") == "RSA"
 
 
 def test_validate_url():

@@ -17,5 +17,4 @@ from .exceptions import (AccessDenied, AccountSelectionRequired, AuthorizationPe
                          ServerError, SessionSelectionRequired, SlowDown, UnauthorizedClient,
                          UnknownEndpointError, UnsupportedTokenType)
 from .tokens import BearerToken, BearerTokenSerializer, IdToken
-from .utils import (b64_encode, b64u_decode, b64u_encode,
-                    generate_jwk_key_pair, sign_jwt, validate_url)
+from .utils import b64_encode, b64u_decode, b64u_encode, sign_jwt, validate_url
