@@ -56,14 +56,14 @@ def test_private_key_jwt(
     access_token,
     token_endpoint,
     client_id,
-    private_jwk_no_kid,
+    private_jwk,
     kid,
     private_key_jwt_auth_validator,
     public_jwk,
 ):
 
     client = OAuth2Client(
-        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk_no_kid, kid=kid)
+        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk, kid=kid)
     )
 
     requests_mock.post(
@@ -160,11 +160,13 @@ def test_invalid_request(requests_mock, client_id, client_secret):
         requests.get("http://localhost", auth=ClientSecretBasic(client_id, client_secret))
 
 
-def test_private_key_jwt_missing_alg(client_id, private_jwk_no_alg):
+def test_private_key_jwt_missing_alg(client_id, private_jwk):
+    private_jwk.pop("alg")
     with pytest.raises(ValueError):
-        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk_no_alg, alg=None)
+        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk, alg=None)
 
 
-def test_private_key_jwt_missing_kid(client_id, private_jwk_no_kid):
+def test_private_key_jwt_missing_kid(client_id, private_jwk):
+    private_jwk.pop("kid")
     with pytest.raises(ValueError):
-        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk_no_kid)
+        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk)

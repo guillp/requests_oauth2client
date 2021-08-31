@@ -1,8 +1,12 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from .pooling import TokenEndpointPoolingJob
+from .tokens import BearerToken
 from .utils import accepts_expires_in
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .client import OAuth2Client
 
 
 class BackChannelAuthenticationResponse:
@@ -64,7 +68,7 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
         )
         self.auth_req_id = auth_req_id
 
-    def pool(self):
+    def pool(self) -> BearerToken:
         return self.client.ciba(
             self.auth_req_id, requests_kwargs=self.requests_kwargs, **self.token_kwargs
         )

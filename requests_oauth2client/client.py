@@ -13,8 +13,9 @@ from .exceptions import (AccessDenied, AuthorizationPending, BackChannelAuthenti
                          InvalidTarget, InvalidTokenResponse, RevocationError, ServerError,
                          SlowDown, TokenEndpointError, UnauthorizedClient,
                          UnknownIntrospectionError, UnsupportedTokenType)
+from .jwskate import Jwk, Jwt
 from .tokens import BearerToken, IdToken
-from .utils import sign_jwt, validate_url
+from .utils import validate_url
 
 
 class OAuth2Client:
@@ -532,7 +533,7 @@ class OAuth2Client:
         user_code: Optional[str] = None,
         requested_expiry: Optional[int] = None,
         requests_kwargs: Optional[Dict[str, Any]] = None,
-        private_jwk: Optional[Dict[str, Any]] = None,
+        private_jwk: Union[Jwk, Dict[str, Any], None] = None,
         alg: Optional[str] = None,
         kid: Optional[str] = None,
         **ciba_kwargs: Any,
@@ -541,6 +542,12 @@ class OAuth2Client:
         Sends a CIBA Authentication Request.
         :return: a BackChannelAuthenticationResponse
         """
+
+        if not self.backchannel_authentication_endpoint:
+            raise AttributeError(
+                "No backchannel authentication endpoint defined for this client"
+            )
+
         requests_kwargs = requests_kwargs or {}
 
         if not isinstance(scope, str):
@@ -576,8 +583,8 @@ class OAuth2Client:
             requested_expiry=requested_expiry,
         )
 
-        if private_jwk:
-            data = {"request": sign_jwt(data, private_jwk=private_jwk, alg=alg, kid=kid)}
+        if private_jwk is not None:
+            data = {"request": str(Jwt.sign(data, jwk=private_jwk, alg=alg, kid=kid))}
 
         response = self.session.post(
             self.backchannel_authentication_endpoint,
@@ -591,7 +598,9 @@ class OAuth2Client:
 
         return self.on_backchannel_authentication_error(response)
 
-    def parse_backchannel_authentication_response(self, response: requests.Response):
+    def parse_backchannel_authentication_response(
+        self, response: requests.Response
+    ) -> BackChannelAuthenticationResponse:
         try:
             return BackChannelAuthenticationResponse(**response.json())
         except TypeError as exc:
@@ -620,6 +629,9 @@ class OAuth2Client:
         :param data: additional data to send to the Device Authorization Endpoint
         :return: a Device Authorization Response
         """
+        if self.device_authorization_endpoint is None:
+            raise AttributeError("No device authorization endpoint defined for this client")
+
         response = self.session.post(
             self.device_authorization_endpoint, data=data, auth=self.auth
         )
@@ -629,7 +641,9 @@ class OAuth2Client:
 
         return self.on_device_authorization_error(response)
 
-    def parse_device_authorization_response(self, response: requests.Response):
+    def parse_device_authorization_response(
+        self, response: requests.Response
+    ) -> DeviceAuthorizationResponse:
         device_authorization_response = DeviceAuthorizationResponse(**response.json())
         return device_authorization_response
 

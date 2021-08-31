@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from .pooling import TokenEndpointPoolingJob
+from .tokens import BearerToken
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -63,7 +64,7 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         )
         self.device_code = device_code
 
-    def pool(self):
+    def pool(self) -> BearerToken:
         return self.client.device_code(
             self.device_code, requests_kwargs=self.requests_kwargs, **self.token_kwargs
         )

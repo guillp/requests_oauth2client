@@ -1,17 +1,14 @@
 import base64
-import json
 from datetime import datetime
 from urllib.parse import parse_qs
 
-import jwcrypto
 import pytest
 import requests
 from furl import furl
-from jwcrypto.jwk import JWK
-from jwcrypto.jwt import JWT
 
 from requests_oauth2client import (ApiClient, BearerAuth, ClientSecretBasic,
                                    ClientSecretJWT, ClientSecretPost, PublicApp)
+from requests_oauth2client.jwskate import Jwt, SymetricJwk
 
 
 @pytest.fixture()
@@ -151,13 +148,10 @@ def client_secret_jwt_auth_validator():
         params = parse_qs(req.text)
         assert params.get("client_id") == [client_id]
         client_assertion = params.get("client_assertion")[0]
-        jwk = JWK(
-            kty="oct",
-            alg="HS256",
-            k=base64.urlsafe_b64encode(client_secret.encode()).decode().rstrip("="),
-        )
-        jwt = JWT(jwt=client_assertion, key=jwk)
-        claims = json.loads(jwt.claims)
+        jwk = SymetricJwk.from_bytes(client_secret)
+        jwt = Jwt(client_assertion)
+        jwt.verify_signature(jwk, alg="HS256")
+        claims = jwt.claims
         now = int(datetime.now().timestamp())
         assert now - 10 <= claims["iat"] <= now, "unexpected iat"
         assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
@@ -176,8 +170,9 @@ def private_key_jwt_auth_validator():
         assert params.get("client_id") == [client_id], "invalid client_id"
         client_assertion = params.get("client_assertion")[0]
         assert client_assertion, "missing client_assertion"
-        jwt = JWT(jwt=client_assertion, key=JWK(**public_jwk))
-        claims = json.loads(jwt.claims)
+        jwt = Jwt(client_assertion)
+        jwt.verify_signature(public_jwk)
+        claims = jwt.claims
         now = int(datetime.now().timestamp())
         assert now - 10 <= claims["iat"] <= now, "Unexpected iat"
         assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
@@ -291,8 +286,9 @@ def backchannel_auth_request_jwt_validator():
     def validator(req, *, public_jwk, alg, scope, **kwargs):
         params = parse_qs(req.text)
         request = params.get("request")[0]
-        jwt = jwcrypto.jwt.JWT(jwt=request, key=JWK(**public_jwk))
-        claims = json.loads(jwt.claims)
+        jwt = Jwt(request)
+        jwt.verify_signature(public_jwk)
+        claims = jwt.claims
         if isinstance(scope, str):
             assert claims.get("scope") == scope
         else:

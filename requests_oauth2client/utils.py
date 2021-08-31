@@ -97,77 +97,15 @@ def b64u_decode(
     return decoded
 
 
-def _default_json_encode(data):
+def _default_json_encode(data: Any) -> Any:
     if isinstance(data, datetime):
-        return datetime.timestamp()
+        return data.timestamp()
 
 
-def json_encode(obj: Dict[str, Any], compact=True):
+def json_encode(obj: Dict[str, Any], compact: bool = True) -> str:
     separators = (",", ":") if compact else (", ", ": ")
 
     return json.dumps(obj, separators=separators, default=_default_json_encode)
-
-
-def sign_jwt(
-    claims: Dict[str, Any],
-    private_jwk: Dict[str, Any],
-    alg: Optional[str] = None,
-    kid: Optional[str] = None,
-    extra_headers: Optional[Dict[str, Any]] = None,
-) -> str:
-    from jwcrypto.jwk import JWK  # type: ignore
-    from jwcrypto.jwt import JWT  # type: ignore
-
-    jwk = JWK(**private_jwk)
-    alg = alg or private_jwk.get("alg")
-    kid = kid or private_jwk.get("kid")
-
-    if alg is None:
-        raise ValueError("a signing alg is required")
-
-    headers = dict(extra_headers or {}, alg=alg)
-    if kid:
-        headers["kid"] = kid
-
-    jwt = JWT(
-        header=headers,
-        claims=claims,
-    )
-
-    jwt.make_signed_token(jwk)
-    assertion: str = jwt.serialize()
-    return assertion
-
-
-def enc_jwt(
-    data,
-    private_jwk: Dict[str, Any],
-    alg: Optional[str] = None,
-    kid: Optional[str] = None,
-    extra_headers: Optional[Dict[str, Any]] = None,
-):
-    from jwcrypto.jwk import JWK  # type: ignore
-    from jwcrypto.jwt import JWT  # type: ignore
-
-    jwk = JWK(**private_jwk)
-    alg = alg or private_jwk.get("alg")
-    kid = kid or private_jwk.get("kid")
-
-    if alg is None:
-        raise ValueError("a signing alg is required")
-
-    headers = dict(extra_headers or {}, alg=alg)
-    if kid:
-        headers["kid"] = "kid"
-
-    jwt = JWT(
-        header=headers,
-        claims=data,
-    )
-    jwt.make_encrypted_token(jwk)
-
-    assertion: str = jwt.serialize()
-    return assertion
 
 
 def validate_url(

@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Any, Callable, Optional, Tuple, Type, Union
 from uuid import uuid4
 
 import furl  # type: ignore[import]
 import requests
-from jwcrypto.jwk import JWK  # type: ignore[import]
-from jwcrypto.jwt import JWT  # type: ignore[import]
 
-from .utils import b64_encode, b64u_encode, sign_jwt
+from .jwskate import Jwk, Jwt, SymetricJwk
+from .utils import b64_encode
 
 
 class ClientAuthenticationMethod(requests.auth.AuthBase):
@@ -115,9 +114,9 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 
-        jwk = {"kty": "oct", "k": b64u_encode(self.client_secret)}
+        jwk = SymetricJwk.from_bytes(self.client_secret.encode())
 
-        jwt = sign_jwt(
+        jwt = Jwt.sign(
             claims={
                 "iss": self.client_id,
                 "sub": self.client_id,
@@ -126,10 +125,10 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
-            private_jwk=jwk,
+            jwk=jwk,
             alg=self.alg,
         )
-        return jwt
+        return str(jwt)
 
 
 class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
@@ -140,7 +139,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
     def __init__(
         self,
         client_id: str,
-        private_jwk: Dict[str, Any],
+        private_jwk: Jwk,
         alg: str = "RS256",
         lifetime: int = 60,
         kid: Optional[str] = None,
@@ -166,7 +165,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 
-        assertion = sign_jwt(
+        jwt = Jwt.sign(
             claims={
                 "iss": self.client_id,
                 "sub": self.client_id,
@@ -175,11 +174,11 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
-            private_jwk=self.private_jwk,
+            jwk=self.private_jwk,
             alg=self.alg,
             kid=self.kid,
         )
-        return assertion
+        return str(jwt)
 
 
 class PublicApp(ClientAuthenticationMethod):
@@ -208,9 +207,9 @@ def client_auth_factory(
         return auth
     elif isinstance(auth, tuple) and len(auth) == 2:
         client_id, credential = auth
-        if isinstance(credential, dict) and "kty" in credential:
-            private_key = credential
-            return PrivateKeyJWT(str(client_id), private_key)
+        if isinstance(credential, Jwk):
+            private_jwk = credential
+            return PrivateKeyJWT(str(client_id), private_jwk)
         else:
             return default_auth_handler(str(client_id), credential)
     elif isinstance(auth, str):

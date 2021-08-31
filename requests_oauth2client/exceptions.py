@@ -118,14 +118,6 @@ class InvalidIdToken(InvalidJWT):
     pass
 
 
-class InvalidSignature(ValueError):
-    pass
-
-
-class InvalidClaim(ValueError):
-    pass
-
-
 class AuthorizationResponseError(Exception):
     def __init__(
         self, error: str, description: Optional[str] = None, uri: Optional[str] = None

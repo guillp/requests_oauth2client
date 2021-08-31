@@ -8,6 +8,7 @@ from furl import furl  # type: ignore[import]
 from .exceptions import (AuthorizationResponseError, ConsentRequired,
                          InteractionRequired, LoginRequired, MismatchingState,
                          MissingAuthCode, SessionSelectionRequired)
+from .jwskate import Jwk, Jwt
 from .utils import b64u_encode
 
 
@@ -123,29 +124,58 @@ class AuthorizationRequest:
                 code_verifier = PkceUtils.generate_code_verifier()
             code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
 
+        self.authorization_endpoint = authorization_endpoint
+        self.client_id = client_id
         self.redirect_uri = redirect_uri
+        self.response_type = response_type
+        self.scope = scope
         self.state = state
         self.nonce = nonce
         self.code_verifier = code_verifier
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
+        self.kwargs = kwargs
 
         self.args = dict(
             client_id=client_id,
             redirect_uri=redirect_uri,
             response_type=response_type,
+            scope=scope,
             state=state,
             nonce=nonce,
-            scope=scope,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
             **kwargs,
         )
 
-        self.request = furl(
-            authorization_endpoint,
-            args={key: value for key, value in self.args.items() if value is not None},
+    def sign(
+        self, jwk: Jwk, alg: Optional[str] = None, kid: Optional[str] = None
+    ) -> "AuthorizationRequest":
+        request = Jwt.sign(
+            claims={key: val for key, val in self.args.items() if val is not None},
+            jwk=jwk,
+            alg=alg,
+            kid=kid,
         )
+        self.args = {"request": str(request)}
+        return self
+
+    def sign_and_encrypt(
+        self,
+        sign_private_jwk: Jwk,
+        enc_public_jwk: Jwk,
+        sign_alg: Optional[str] = None,
+        enc_alg: Optional[str] = None,
+    ) -> "AuthorizationRequest":
+        enc_request = Jwt.sign_and_encrypt(
+            claims={key: val for key, val in self.args.items() if val is not None},
+            sign_jwk=sign_private_jwk,
+            sign_alg=sign_alg,
+            enc_jwk=enc_public_jwk,
+            enc_alg=enc_alg,
+        )
+        self.args = {"request": str(enc_request)}
+        return self
 
     def validate_callback(self, response: str) -> str:
         try:
@@ -174,6 +204,15 @@ class AuthorizationRequest:
         error_uri = response_url.args.get("error_uri")
         exception_class = self.exception_classes.get(error, self.default_exception_class)
         raise exception_class(error, error_description, error_uri)
+
+    @property
+    def request(self) -> str:
+        return str(
+            furl(
+                self.authorization_endpoint,
+                args={key: value for key, value in self.args.items() if value is not None},
+            ).url
+        )
 
     def __repr__(self) -> str:
         return str(self.request)

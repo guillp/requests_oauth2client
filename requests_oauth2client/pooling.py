@@ -1,8 +1,11 @@
 import time
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from .exceptions import AuthorizationPending, SlowDown
 from .tokens import BearerToken
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .client import OAuth2Client
 
 
 class TokenEndpointPoolingJob:
@@ -31,3 +34,6 @@ class TokenEndpointPoolingJob:
         except AuthorizationPending:
             pass
         return None
+
+    def pool(self) -> BearerToken:
+        raise NotImplementedError

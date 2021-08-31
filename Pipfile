@@ -21,7 +21,7 @@ types-requests = "*"
 [packages]
 requests = "*"
 furl = "*"
-jwcrypto = "*"
+cryptography = "*"
 
 [requires]
 python_version = "3.6"

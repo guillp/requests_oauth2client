@@ -6,6 +6,7 @@ from furl import furl
 
 from requests_oauth2client import AuthorizationRequest, AuthorizationResponseError
 from requests_oauth2client.exceptions import MismatchingState, MissingAuthCode
+from requests_oauth2client.jwskate import Jwt, SignedJwt
 
 
 @pytest.fixture(params=[None, {"foo": "bar"}])
@@ -144,6 +145,25 @@ def test_validate(authorization_request, authorization_code):
         args={"code": authorization_code, "state": authorization_request.state}
     )
     assert authorization_request.validate_callback(auth_response) == authorization_code
+
+
+def test_authorization_url(authorization_request):
+    url = furl(str(authorization_request))
+    assert dict(url.args) == {
+        key: val for key, val in authorization_request.args.items() if val is not None
+    }
+
+
+def test_authorization_signed_request(authorization_request, private_jwk, public_jwk):
+    args = {
+        key: value for key, value in authorization_request.args.items() if value is not None
+    }
+    url = furl(str(authorization_request.sign(private_jwk)))
+    request = url.args.get("request")
+    jwt = Jwt(request)
+    assert isinstance(jwt, SignedJwt)
+    assert jwt.verify_signature(public_jwk)
+    assert jwt.claims == args
 
 
 @pytest.fixture(params=["consent_required"])
