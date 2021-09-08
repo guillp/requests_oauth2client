@@ -3,8 +3,12 @@ from requests_oauth2client.vendor_specific import Auth0Client, Auth0ManagementAp
 
 def test_auth0_management():
     auth0api = Auth0ManagementApiClient("test.eu", ("client_id", "client_secret"))
-    assert auth0api.auth.client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
-    assert auth0api.auth.token_kwargs == {"audience": "https://test.eu.auth0.com/api/v2/"}
+    assert (
+        auth0api.auth.client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
+    )
+    assert auth0api.auth.token_kwargs == {
+        "audience": "https://test.eu.auth0.com/api/v2/"
+    }
 
 
 def test_auth0_client():

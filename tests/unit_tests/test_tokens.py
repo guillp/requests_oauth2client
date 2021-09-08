@@ -2,8 +2,17 @@ from datetime import datetime
 
 import pytest
 
-from requests_oauth2client import (BearerToken, BearerTokenSerializer, ExpiredToken, IdToken,
-                                   InvalidClaim, InvalidJwt, InvalidSignature, Jwk, Jwt, ExpiredJwt)
+from requests_oauth2client import (
+    BearerToken,
+    BearerTokenSerializer,
+    ExpiredJwt,
+    IdToken,
+    InvalidClaim,
+    InvalidJwt,
+    InvalidSignature,
+    Jwk,
+    Jwt,
+)
 
 ID_TOKEN = (
     "eyJhbGciOiJSUzI1NiIsImtpZCI6Im15X2tleSJ9.eyJhY3IiOiIyIiwiYW1yIjpbInB3ZCIsIm90cCJdLCJhdWQiOiJjbGllbnRfaWQiL"
@@ -118,9 +127,15 @@ def test_jwt_iat_exp_nbf():
     }
 
     assert jwt.verify_signature(public_jwk, alg="RS256")
-    assert jwt.issued_at == datetime(year=2021, month=8, day=19, hour=16, minute=55, second=28)
-    assert jwt.expires_at == datetime(year=2021, month=8, day=19, hour=16, minute=56, second=28)
-    assert jwt.not_before == datetime(year=2021, month=8, day=19, hour=16, minute=54, second=28)
+    assert jwt.issued_at == datetime(
+        year=2021, month=8, day=19, hour=16, minute=55, second=28
+    )
+    assert jwt.expires_at == datetime(
+        year=2021, month=8, day=19, hour=16, minute=56, second=28
+    )
+    assert jwt.not_before == datetime(
+        year=2021, month=8, day=19, hour=16, minute=54, second=28
+    )
 
     assert jwt.iat == 1629384928
     assert jwt.exp == 1629384988
@@ -149,7 +164,12 @@ def test_id_token():
         id_token.not_found
 
     id_token.validate(
-        public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=False, acr="2"
+        public_jwk,
+        issuer=issuer,
+        audience=audience,
+        nonce=nonce,
+        check_exp=False,
+        acr=acr,
     )
 
     with pytest.raises(ExpiredJwt):
@@ -222,7 +242,12 @@ def test_invalid_jwt():
     # invalid claim
     with pytest.raises(InvalidClaim):
         id_token.validate(
-            public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=False, acr="4"
+            public_jwk,
+            issuer=issuer,
+            audience=audience,
+            nonce=nonce,
+            check_exp=False,
+            acr="4",
         )
 
     # missing claim

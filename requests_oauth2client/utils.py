@@ -6,10 +6,10 @@ from typing import Any, Callable, Dict, Optional, Union
 
 from furl import furl  # type: ignore
 
-from requests_oauth2client.exceptions import InvalidUrl
 
-
-def b64_encode(data: Union[bytes, str], encoding: str = "utf-8", padded: bool = True) -> str:
+def b64_encode(
+    data: Union[bytes, str], encoding: str = "utf-8", padded: bool = True
+) -> str:
     """
     Encodes the string or bytes `data` using base64.
     If data is a string, encode it to string using `encoding` before converting it to base64.
@@ -31,7 +31,7 @@ def b64_encode(data: Union[bytes, str], encoding: str = "utf-8", padded: bool = 
     return encoded.decode("ascii")
 
 
-def b64_decode(data: Union[str, bytes], encoding: Optional[str] = "utf-8") -> Union[str, bytes]:
+def b64_decode(data: Union[str, bytes]) -> bytes:
     """
     Decodes a base64-encoded string or bytes.
     :param data:
@@ -48,12 +48,12 @@ def b64_decode(data: Union[str, bytes], encoding: Optional[str] = "utf-8") -> Un
         data = data + b"=" * padding_len
 
     decoded = base64.urlsafe_b64decode(data)
-    if encoding:
-        return decoded.decode(encoding)
     return decoded
 
 
-def b64u_encode(data: Union[bytes, str], encoding: str = "utf-8", padded: bool = False) -> str:
+def b64u_encode(
+    data: Union[bytes, str], encoding: str = "utf-8", padded: bool = False
+) -> str:
     """
     Encodes some data in Base64url.
     :param data: the data to encode. Can be bytes or str.
@@ -73,8 +73,8 @@ def b64u_encode(data: Union[bytes, str], encoding: str = "utf-8", padded: bool =
 
 
 def b64u_decode(
-    data: Union[str, bytes], encoding: Optional[str] = "utf-8"
-) -> Union[str, bytes]:
+    data: Union[str, bytes],
+) -> bytes:
     """
     Decodes a base64encoded string or bytes.
     :param data: the data to decode. Can be bytes or str
@@ -92,14 +92,13 @@ def b64u_decode(
         data = data + b"=" * padding_len
 
     decoded = base64.urlsafe_b64decode(data)
-    if encoding:
-        return decoded.decode(encoding)
     return decoded
 
 
 def _default_json_encode(data: Any) -> Any:
     if isinstance(data, datetime):
-        return data.timestamp()
+        return int(data.timestamp())
+    return str(data)
 
 
 def json_encode(obj: Dict[str, Any], compact: bool = True) -> str:
@@ -108,19 +107,16 @@ def json_encode(obj: Dict[str, Any], compact: bool = True) -> str:
     return json.dumps(obj, separators=separators, default=_default_json_encode)
 
 
-def validate_url(
+def validate_uri(
     value: str, https: bool = True, no_fragment: bool = True, path: bool = True
 ) -> None:
-    try:
-        url = furl(value)
-        if https and url.scheme != "https":
-            raise ValueError("url must use https")
-        if no_fragment and url.fragment:
-            raise ValueError("url must not contain a fragment")
-        if path and not url.path:
-            raise ValueError("url has no path")
-    except ValueError as exc:
-        raise InvalidUrl(value) from exc
+    url = furl(value)
+    if https and url.scheme != "https":
+        raise ValueError("url must use https")
+    if no_fragment and url.fragment:
+        raise ValueError("url must not contain a fragment")
+    if path and not url.path:
+        raise ValueError("url has no path")
 
 
 def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:

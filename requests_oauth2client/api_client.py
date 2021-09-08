@@ -1,4 +1,14 @@
-from typing import IO, Any, Callable, Iterable, Mapping, MutableMapping, Optional, Tuple, Union
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+)
 from urllib.parse import urljoin
 
 import requests
@@ -8,6 +18,15 @@ from requests.cookies import RequestsCookieJar
 class ApiClient(requests.Session):
     """
     A Wrapper around :class:`requests.Session` to simplify Rest API calls.
+    This allows setting a root url at creation time, then passing relative urls at request time.
+    It may also raise exceptions instead of returning error responses.
+
+    Basic usage:
+
+        from requests_oauth2client import ApiClient
+        api = ApiClient("https://myapi.local/resource")
+        resp = api.get("/myid") # this will send a GET request to https://myapi.local/resource/myid
+
     """
 
     def __init__(
@@ -17,8 +36,10 @@ class ApiClient(requests.Session):
         raise_for_status: bool = True,
     ):
         """
-        :param url: the base api url
-        :param auth: the :class:`requests.auth.AuthBase` to use for authentication
+        :param url: the base api url. This url will serve as root for relative urls passed to :method:`ApiClient.request()`, :method:`ApiClient.get()`, etc.
+        :param auth: the :class:`requests.auth.AuthBase` to use as authentication handler.
+        :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
+        This parameter may be overridden at request time.
         """
         super(ApiClient, self).__init__()
 
@@ -68,9 +89,9 @@ class ApiClient(requests.Session):
     ) -> requests.Response:
         """
         A customized request method to handle a path instead of a full url.
-        :param method: the method to use
-        :param url: the url to send the request to. Can be a path instead of a full url; that path will be joined to the
-        configured API url.
+        :param method: the HTTP method to use
+        :param url: the url where the request will be sent to. Can be a path instead of a full url; that path will be
+        joined to the configured API url.
         :return: a :class:`requests.Response` as returned by requests
         """
         if self.url:
@@ -129,22 +150,75 @@ class ApiClient(requests.Session):
     def get(  # type: ignore
         self,
         url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        raise_for_status: Optional[bool] = None,
         **kwargs: Any,
     ) -> requests.Response:
-        return self.request("GET", url, **kwargs)
+        """
+        Sends a GET request. Returns :class:`Response` object.
+        The passed `url` may be relative to the url passed at initialization time.
 
-    def post(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
-        return self.request("POST", url, **kwargs)
+        :param url: a url where the request will be sent.
+        :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+        :param kwargs: Optional arguments that ``request`` takes.
+        :return: a :class:`requests.Response` object.
+        :raises: a :class:`requests.HTTPError` if `raise_for_status` is True (in this request or at initialization time)
+        and an error response is returned.
+        """
+        return self.request("GET", url, raise_for_status=raise_for_status, **kwargs)
 
-    def patch(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
-        return self.request("PATCH", url, **kwargs)
+    def post(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+        """
+        Sends a POST request. Returns :class:`Response` object.
+        The passed `url` may be relative to the url passed at initialization time.
 
-    def put(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, **kwargs: Any) -> requests.Response:  # type: ignore
-        return self.request("PUT", url, **kwargs)
+        :param url: a url where the request will be sent.
+        :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+        :param kwargs: Optional arguments that ``request`` takes.
+        :return: a :class:`requests.Response` object.
+        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        """
+        return self.request("POST", url, raise_for_status=raise_for_status, **kwargs)
+
+    def patch(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+        """
+        Sends a PATCH request. Returns :class:`Response` object.
+        The passed `url` may be relative to the url passed at initialization time.
+
+        :param url: a url where the request will be sent.
+        :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+        :param kwargs: Optional arguments that ``request`` takes.
+        :return: a :class:`requests.Response` object.
+        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        """
+        return self.request("PATCH", url, raise_for_status=raise_for_status, **kwargs)
+
+    def put(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+        """
+        Sends a PUT request. Returns :class:`Response` object.
+        The passed `url` may be relative to the url passed at initialization time.
+
+        :param url: a url where the request will be sent.
+        :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+        :param kwargs: Optional arguments that ``request`` takes.
+        :return: a :class:`requests.Response` object.
+        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        """
+        return self.request("PUT", url, raise_for_status=raise_for_status, **kwargs)
 
     def delete(  # type: ignore
         self,
         url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        raise_for_status: Optional[bool] = None,
         **kwargs: Any,
     ) -> requests.Response:
-        return self.request("DELETE", url, **kwargs)
+        """
+        Sends a DELETE request. Returns :class:`Response` object.
+        The passed `url` may be relative to the url passed at initialization time.
+
+        :param url: a url where the request will be sent.
+        :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+        :param kwargs: Optional arguments that ``request`` takes.
+        :return: a :class:`requests.Response` object.
+        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        """
+        return self.request("DELETE", url, raise_for_status=raise_for_status, **kwargs)

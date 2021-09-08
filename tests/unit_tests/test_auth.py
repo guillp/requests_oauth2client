@@ -4,9 +4,15 @@ from urllib.parse import parse_qs
 import pytest
 import requests
 
-from requests_oauth2client import (BearerAuth, BearerToken, ExpiredAccessToken,
-                                   OAuth2AccessTokenAuth, OAuth2AuthorizationCodeAuth,
-                                   OAuth2Client, OAuth2DeviceCodeAuth)
+from requests_oauth2client import (
+    BearerAuth,
+    BearerToken,
+    ExpiredAccessToken,
+    OAuth2AccessTokenAuth,
+    OAuth2AuthorizationCodeAuth,
+    OAuth2Client,
+    OAuth2DeviceCodeAuth,
+)
 
 
 @pytest.fixture()
@@ -18,7 +24,10 @@ def test_bearer_auth(requests_mock, target_api, bearer_auth, access_token):
     requests_mock.post(target_api)
     response = requests.post(target_api, auth=bearer_auth)
     assert response.ok
-    assert requests_mock.last_request.headers.get("Authorization") == f"Bearer {access_token}"
+    assert (
+        requests_mock.last_request.headers.get("Authorization")
+        == f"Bearer {access_token}"
+    )
 
 
 def test_bearer_auth_none(requests_mock, target_api):
@@ -165,7 +174,11 @@ def test_device_code_auth(
     requests_mock.reset_mock()
     requests_mock.post(
         token_endpoint,
-        json={"access_token": access_token, "expires_in": 60, "refresh_token": refresh_token},
+        json={
+            "access_token": access_token,
+            "expires_in": 60,
+            "refresh_token": refresh_token,
+        },
     )
     requests_mock.post(target_api)
 

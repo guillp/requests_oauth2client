@@ -4,9 +4,14 @@ import hashlib
 import pytest
 from furl import furl
 
-from requests_oauth2client import AuthorizationRequest, AuthorizationResponseError
-from requests_oauth2client.exceptions import MismatchingState, MissingAuthCode
-from requests_oauth2client.jwskate import Jwt, SignedJwt
+from requests_oauth2client import (
+    AuthorizationRequest,
+    AuthorizationResponseError,
+    Jwt,
+    MismatchingState,
+    MissingAuthCode,
+    SignedJwt,
+)
 
 
 @pytest.fixture(params=[None, {"foo": "bar"}])
@@ -37,7 +42,8 @@ def scope(request):
 
 
 @pytest.fixture(
-    params=[None, "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"], ids=["None", "rfc7636"]
+    params=[None, "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"],
+    ids=["None", "rfc7636"],
 )
 def code_verifier(request):
     return request.param
@@ -49,6 +55,7 @@ def code_challenge_method(request):
 
 
 @pytest.fixture()
+@pytest.mark.slow
 def authorization_request(
     authorization_endpoint,
     client_id,
@@ -84,11 +91,11 @@ def authorization_request(
         **auth_request_kwargs,
     )
 
-    if nonce is None or nonce is True:
+    if nonce is True:
         generated_nonce = args.pop("nonce")
         assert isinstance(generated_nonce, str)
         assert len(generated_nonce) > 20
-    elif nonce is False:
+    elif nonce is False or nonce is None:
         assert "nonce" not in args
     elif isinstance(nonce, str):
         assert args.pop("nonce") == nonce
@@ -108,7 +115,9 @@ def authorization_request(
         assert "scope" not in args
         del expected_args["scope"]
     elif isinstance(scope, list):
-        expected_args["scope"] = "+".join(scope)
+        expected_args["scope"] = " ".join(scope)
+    if isinstance(scope, str):
+        expected_args["scope"] = scope
 
     if code_challenge_method is None:
         assert "code_challenge_method" not in args
@@ -156,7 +165,9 @@ def test_authorization_url(authorization_request):
 
 def test_authorization_signed_request(authorization_request, private_jwk, public_jwk):
     args = {
-        key: value for key, value in authorization_request.args.items() if value is not None
+        key: value
+        for key, value in authorization_request.args.items()
+        if value is not None
     }
     url = furl(str(authorization_request.sign(private_jwk)))
     request = url.args.get("request")
@@ -184,13 +195,17 @@ def test_missing_code(authorization_request, authorization_code):
         args={"state": authorization_request.state}
     )
     with pytest.raises(MissingAuthCode):
-        assert authorization_request.validate_callback(auth_response) == authorization_code
+        assert (
+            authorization_request.validate_callback(auth_response) == authorization_code
+        )
 
 
 def test_not_an_url(authorization_request, authorization_code):
     auth_response = "https://...$cz\\1.3ada////:@+++++z/"
     with pytest.raises(ValueError):
-        assert authorization_request.validate_callback(auth_response) == authorization_code
+        assert (
+            authorization_request.validate_callback(auth_response) == authorization_code
+        )
 
 
 def test_mismatching_state(authorization_request, authorization_code, state):
@@ -199,7 +214,10 @@ def test_mismatching_state(authorization_request, authorization_code, state):
     )
     if state:
         with pytest.raises(MismatchingState):
-            assert authorization_request.validate_callback(auth_response) == authorization_code
+            assert (
+                authorization_request.validate_callback(auth_response)
+                == authorization_code
+            )
 
 
 def test_missing_state(authorization_request, authorization_code, state):
@@ -208,4 +226,7 @@ def test_missing_state(authorization_request, authorization_code, state):
     )
     if state:
         with pytest.raises(MismatchingState):
-            assert authorization_request.validate_callback(auth_response) == authorization_code
+            assert (
+                authorization_request.validate_callback(auth_response)
+                == authorization_code
+            )

@@ -6,8 +6,14 @@ import pytest
 import requests
 from furl import furl
 
-from requests_oauth2client import (ApiClient, BearerAuth, ClientSecretBasic,
-                                   ClientSecretJWT, ClientSecretPost, PublicApp)
+from requests_oauth2client import (
+    ApiClient,
+    BearerAuth,
+    ClientSecretBasic,
+    ClientSecretJWT,
+    ClientSecretPost,
+    PublicApp,
+)
 from requests_oauth2client.jwskate import Jwt, SymetricJwk
 
 
@@ -99,7 +105,9 @@ def client_secret(request):
     return request.param
 
 
-@pytest.fixture(params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT])
+@pytest.fixture(
+    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT]
+)
 def client_auth_method_handler(request):
     return request.param
 
@@ -226,7 +234,9 @@ def refresh_token_grant_validator():
 def device_code_grant_validator():
     def validator(req, device_code, **kwargs):
         params = parse_qs(req.text)
-        assert params.get("grant_type") == ["urn:ietf:params:oauth:grant-type:device_code"]
+        assert params.get("grant_type") == [
+            "urn:ietf:params:oauth:grant-type:device_code"
+        ]
         assert params.get("device_code") == [device_code]
         for key, val in kwargs.items():
             assert params.get(key) == val
@@ -238,7 +248,9 @@ def device_code_grant_validator():
 def token_exchange_grant_validator():
     def validator(req, subject_token, **kwargs):
         params = parse_qs(req.text)
-        assert params.get("grant_type") == ["urn:ietf:params:oauth:grant-type:token-exchange"]
+        assert params.get("grant_type") == [
+            "urn:ietf:params:oauth:grant-type:token-exchange"
+        ]
         assert params.get("subject_token") == [subject_token]
         for key, val in kwargs.items():
             assert params.get(key) == [val]

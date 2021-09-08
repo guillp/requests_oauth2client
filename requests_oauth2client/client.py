@@ -6,16 +6,30 @@ from .auth import BearerAuth
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
-from .exceptions import (AccessDenied, AuthorizationPending, BackChannelAuthenticationError,
-                         DeviceAuthorizationError, ExpiredToken, IntrospectionError,
-                         InvalidBackChannelAuthenticationResponse,
-                         InvalidDeviceAuthorizationResponse, InvalidGrant, InvalidScope,
-                         InvalidTarget, InvalidTokenResponse, RevocationError, ServerError,
-                         SlowDown, TokenEndpointError, UnauthorizedClient,
-                         UnknownIntrospectionError, UnsupportedTokenType)
+from .exceptions import (
+    AccessDenied,
+    AuthorizationPending,
+    BackChannelAuthenticationError,
+    DeviceAuthorizationError,
+    ExpiredToken,
+    IntrospectionError,
+    InvalidBackChannelAuthenticationResponse,
+    InvalidDeviceAuthorizationResponse,
+    InvalidGrant,
+    InvalidScope,
+    InvalidTarget,
+    InvalidTokenResponse,
+    RevocationError,
+    ServerError,
+    SlowDown,
+    UnauthorizedClient,
+    UnknownIntrospectionError,
+    UnknownTokenEndpointError,
+    UnsupportedTokenType,
+)
 from .jwskate import Jwk, Jwt
 from .tokens import BearerToken, IdToken
-from .utils import validate_url
+from .utils import validate_uri
 
 
 class OAuth2Client:
@@ -62,7 +76,9 @@ class OAuth2Client:
         :param session: a requests Session to use when sending HTTP requests
         """
         self.token_endpoint = str(token_endpoint)
-        self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
+        self.revocation_endpoint = (
+            str(revocation_endpoint) if revocation_endpoint else None
+        )
         self.introspection_endpoint = (
             str(introspection_endpoint) if introspection_endpoint else None
         )
@@ -73,7 +89,9 @@ class OAuth2Client:
             else None
         )
         self.device_authorization_endpoint = (
-            str(device_authorization_endpoint) if device_authorization_endpoint else None
+            str(device_authorization_endpoint)
+            if device_authorization_endpoint
+            else None
         )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
@@ -96,7 +114,11 @@ class OAuth2Client:
         }
 
         response = self.session.post(
-            self.token_endpoint, auth=self.auth, data=data, timeout=timeout, **requests_kwargs
+            self.token_endpoint,
+            auth=self.auth,
+            data=data,
+            timeout=timeout,
+            **requests_kwargs,
         )
         if response.ok:
             return self.parse_token_response(response)
@@ -125,11 +147,14 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(error, TokenEndpointError)
+            exception_class = self.exception_classes.get(
+                error, UnknownTokenEndpointError
+            )
             raise exception_class(error, error_description, error_uri)
         else:
             raise InvalidTokenResponse(
-                "token endpoint returned an HTTP error without error message", error_json
+                "token endpoint returned an HTTP error without error message",
+                error_json,
             )
 
     def client_credentials(
@@ -158,7 +183,10 @@ class OAuth2Client:
         return self.token_request(data, **requests_kwargs)
 
     def authorization_code(
-        self, code: str, requests_kwargs: Optional[Dict[str, Any]] = None, **token_kwargs: Any
+        self,
+        code: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
     ) -> BearerToken:
         """
         Sends a request to the token endpoint with the authorization_code grant.
@@ -208,7 +236,9 @@ class OAuth2Client:
         :return: a BearerToken
         """
         requests_kwargs = requests_kwargs or {}
-        data = dict(grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs)
+        data = dict(
+            grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs
+        )
         return self.token_request(data, **requests_kwargs)
 
     def device_code(
@@ -248,14 +278,29 @@ class OAuth2Client:
 
     def token_exchange(
         self,
-        subject_token: Union[str, BearerToken],
+        subject_token: Union[str, BearerToken, IdToken],
         subject_token_type: Optional[str] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
         actor_token: Union[None, str, BearerToken, IdToken] = None,
         actor_token_type: Optional[str] = None,
         requested_token_type: Optional[str] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
+        """
+        Sends a Token Exchange request, which is actually a request to the Token Endpoint with a
+        grant_type `urn:ietf:params:oauth:grant-type:token-exchange`.
+
+        :param subject_token: the subject token to exchange for a new token.
+        :param subject_token_type: a token type identifier for the subject_token, mandatory if it cannot be guessed based
+        on `type(subject_token)`.
+        :param actor_token: the actor token to include in the request, if any.
+        :param actor_token_type: a token type identifier for the actor_token, mandatory if it cannot be guessed based
+        on `type(actor_token)`.
+        :param requested_token_type: a token type identifier for the requested token.
+        :param requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
+        :param token_kwargs: additional parameters to include in the request body.
+        :return: a BearerToken as returned by the Authorization Server.
+        """
         requests_kwargs = requests_kwargs or {}
 
         try:
@@ -294,7 +339,9 @@ class OAuth2Client:
         if not self.userinfo_endpoint:
             raise AttributeError("No userinfo endpoint defined for this client")
 
-        response = self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token))
+        response = self.session.post(
+            self.userinfo_endpoint, auth=BearerAuth(access_token)
+        )
         return self.parse_userinfo_response(response)
 
     def parse_userinfo_response(self, resp: requests.Response) -> Any:
@@ -343,8 +390,14 @@ class OAuth2Client:
                 )
             return "urn:ietf:params:oauth:token-type:access_token"
         elif token_type == "refresh_token":
-            if token is not None and isinstance(token, BearerToken) and not token.refresh_token:
-                raise ValueError("The supplied BearerToken doesn't have a refresh_token")
+            if (
+                token is not None
+                and isinstance(token, BearerToken)
+                and not token.refresh_token
+            ):
+                raise ValueError(
+                    "The supplied BearerToken doesn't have a refresh_token"
+                )
             return "urn:ietf:params:oauth:token-type:refresh_token"
         elif token_type == "id_token":
             if token is not None and not isinstance(token, (str, IdToken)):
@@ -396,7 +449,9 @@ class OAuth2Client:
 
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None:
-                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
+                raise ValueError(
+                    "The supplied BearerToken doesn't have a refresh token."
+                )
             refresh_token = refresh_token.refresh_token
 
         return self.revoke_token(
@@ -429,7 +484,9 @@ class OAuth2Client:
 
         if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
             if token.refresh_token is None:
-                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
+                raise ValueError(
+                    "The supplied BearerToken doesn't have a refresh token."
+                )
             token = token.refresh_token
 
         data = dict(revoke_kwargs, token=str(token))
@@ -481,7 +538,9 @@ class OAuth2Client:
 
         if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
             if token.refresh_token is None:
-                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
+                raise ValueError(
+                    "The supplied BearerToken doesn't have a refresh token."
+                )
             token = token.refresh_token
 
         data = dict(introspect_kwargs, token=str(token))
@@ -535,7 +594,6 @@ class OAuth2Client:
         requests_kwargs: Optional[Dict[str, Any]] = None,
         private_jwk: Union[Jwk, Dict[str, Any], None] = None,
         alg: Optional[str] = None,
-        kid: Optional[str] = None,
         **ciba_kwargs: Any,
     ) -> BackChannelAuthenticationResponse:
         """
@@ -584,7 +642,7 @@ class OAuth2Client:
         )
 
         if private_jwk is not None:
-            data = {"request": str(Jwt.sign(data, jwk=private_jwk, alg=alg, kid=kid))}
+            data = {"request": str(Jwt.sign(data, jwk=private_jwk, alg=alg))}
 
         response = self.session.post(
             self.backchannel_authentication_endpoint,
@@ -612,13 +670,15 @@ class OAuth2Client:
         try:
             error_json = response.json()
         except ValueError as exc:
-            raise InvalidBackChannelAuthenticationResponse from exc
+            raise InvalidBackChannelAuthenticationResponse(response) from exc
 
         error = error_json.get("error")
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(error, BackChannelAuthenticationError)
+            exception_class = self.exception_classes.get(
+                error, BackChannelAuthenticationError
+            )
             raise exception_class(error, error_description, error_uri)
 
         raise InvalidBackChannelAuthenticationResponse(response)
@@ -630,7 +690,9 @@ class OAuth2Client:
         :return: a Device Authorization Response
         """
         if self.device_authorization_endpoint is None:
-            raise AttributeError("No device authorization endpoint defined for this client")
+            raise AttributeError(
+                "No device authorization endpoint defined for this client"
+            )
 
         response = self.session.post(
             self.device_authorization_endpoint, data=data, auth=self.auth
@@ -655,7 +717,9 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
+            exception_class = self.exception_classes.get(
+                error, DeviceAuthorizationError
+            )
             raise exception_class(error, error_description, error_uri)
 
         raise InvalidDeviceAuthorizationResponse(
@@ -695,7 +759,9 @@ class OAuth2Client:
         session = session or requests.Session()
         discovery = session.get(url).json()
 
-        return cls.from_discovery_document(discovery, issuer=issuer, auth=auth, session=session)
+        return cls.from_discovery_document(
+            discovery, issuer=issuer, auth=auth, session=session
+        )
 
     @classmethod
     def from_discovery_document(
@@ -723,19 +789,19 @@ class OAuth2Client:
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
-        validate_url(token_endpoint, https=https)
+        validate_uri(token_endpoint, https=https)
         revocation_endpoint = discovery.get("revocation_endpoint")
         if revocation_endpoint is not None:
-            validate_url(revocation_endpoint, https=https)
+            validate_uri(revocation_endpoint, https=https)
         introspection_endpoint = discovery.get("introspection_endpoint")
         if introspection_endpoint is not None:
-            validate_url(introspection_endpoint, https=https)
+            validate_uri(introspection_endpoint, https=https)
         userinfo_endpoint = discovery.get("userinfo_endpoint")
         if userinfo_endpoint is not None:
-            validate_url(userinfo_endpoint, https=https)
+            validate_uri(userinfo_endpoint, https=https)
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri is not None:
-            validate_url(userinfo_endpoint, https=https)
+            validate_uri(userinfo_endpoint, https=https)
 
         return cls(
             token_endpoint=token_endpoint,

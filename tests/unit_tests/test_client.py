@@ -2,11 +2,21 @@ import secrets
 
 import pytest
 
-from requests_oauth2client import (BearerToken, ClientSecretBasic, ClientSecretJWT,
-                                   ClientSecretPost, IdToken, InvalidTokenResponse,
-                                   OAuth2Client, PrivateKeyJWT, PublicApp, ServerError,
-                                   UnauthorizedClient, oidc_discovery_document_url)
-from requests_oauth2client.exceptions import UnknownIntrospectionError
+from requests_oauth2client import (
+    BearerToken,
+    ClientSecretBasic,
+    ClientSecretJWT,
+    ClientSecretPost,
+    IdToken,
+    InvalidTokenResponse,
+    OAuth2Client,
+    PrivateKeyJWT,
+    PublicApp,
+    ServerError,
+    UnauthorizedClient,
+    UnknownIntrospectionError,
+    oidc_discovery_document_url,
+)
 
 
 def test_public_client_auth(token_endpoint, client_id):
@@ -34,7 +44,9 @@ def test_client_secret_post_auth(token_endpoint, client_id, client_secret):
 
 def test_client_secret_basic_auth(token_endpoint, client_id, client_secret):
     """Passing a (client_id, client_secret) tuple  as `auth` and ClientSecretBasic as `default_auth_handler` uses ClientSecretBasic authentication."""
-    client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
+    client = OAuth2Client(
+        token_endpoint, auth=ClientSecretBasic(client_id, client_secret)
+    )
     assert isinstance(client.auth, ClientSecretBasic)
     assert client.auth.client_id == client_id
     assert client.auth.client_secret == client_secret
@@ -84,11 +96,15 @@ def test_client_credentials_grant(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -144,11 +160,15 @@ def test_client_credentials_grant_with_scope_list(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -203,17 +223,23 @@ def test_authorization_code_grant(
     oauth2client.authorization_code(code=authorization_code)
 
     assert requests_mock.called_once
-    authorization_code_grant_validator(requests_mock.last_request, code=authorization_code)
+    authorization_code_grant_validator(
+        requests_mock.last_request, code=authorization_code
+    )
 
     if client_auth_method_handler == PublicApp:
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -261,7 +287,9 @@ def test_authorization_code_pkce_grant(
         },
     )
 
-    oauth2client.authorization_code_pkce(code=authorization_code, code_verifier=code_verifier)
+    oauth2client.authorization_code_pkce(
+        code=authorization_code, code_verifier=code_verifier
+    )
 
     assert requests_mock.called_once
     authorization_code_grant_validator(
@@ -272,11 +300,15 @@ def test_authorization_code_pkce_grant(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -329,17 +361,23 @@ def test_refresh_token_grant(
     assert token_resp.access_token == new_access_token
     assert token_resp.refresh_token == new_refresh_token
 
-    refresh_token_grant_validator(requests_mock.last_request, refresh_token=refresh_token)
+    refresh_token_grant_validator(
+        requests_mock.last_request, refresh_token=refresh_token
+    )
 
     if client_auth_method_handler == PublicApp:
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -398,11 +436,15 @@ def test_device_code_grant(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -470,11 +512,15 @@ def test_token_exchange_grant(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -503,7 +549,12 @@ def test_token_exchange_invalid_tokens(oauth2client):
 
 
 def test_userinfo(
-    requests_mock, oauth2client, userinfo_endpoint, bearer_auth_validator, access_token, sub
+    requests_mock,
+    oauth2client,
+    userinfo_endpoint,
+    bearer_auth_validator,
+    access_token,
+    sub,
 ):
     """.userinfo_endpoint() sends a requests to the Userinfo Endpoint and returns a JSON."""
     userinfo = {"sub": sub}
@@ -515,7 +566,12 @@ def test_userinfo(
 
 
 def test_userinfo_jwt(
-    requests_mock, oauth2client, userinfo_endpoint, bearer_auth_validator, access_token, sub
+    requests_mock,
+    oauth2client,
+    userinfo_endpoint,
+    bearer_auth_validator,
+    access_token,
+    sub,
 ):
     """.userinfo_endpoint() sends a requests to the Userinfo Endpoint and returns a JSON."""
     userinfo = "This.ShouldBe.aJWT"
@@ -598,7 +654,9 @@ def test_from_discovery_document_test_issuer(token_endpoint, client_id):
         )
 
 
-def test_from_discovery_endpoint(requests_mock, issuer, discovery_document, client_auth_method):
+def test_from_discovery_endpoint(
+    requests_mock, issuer, discovery_document, client_auth_method
+):
     discovery_url = oidc_discovery_document_url(issuer)
 
     requests_mock.get(discovery_url, json=discovery_document)
@@ -621,7 +679,9 @@ def test_invalid_token_response(requests_mock, token_endpoint, client_id):
 
     requests_mock.reset_mock()
     requests_mock.post(
-        token_endpoint, status_code=500, json={"error_description": "this shouldn't happen"}
+        token_endpoint,
+        status_code=500,
+        json={"error_description": "this shouldn't happen"},
     )
     with pytest.raises(InvalidTokenResponse):
         client.authorization_code("mycode")
@@ -637,7 +697,9 @@ def test_invalid_token_response_200(requests_mock, token_endpoint, client_id):
 
     requests_mock.reset_mock()
     requests_mock.post(
-        token_endpoint, status_code=200, json={"error_description": "this shouldn't happen"}
+        token_endpoint,
+        status_code=200,
+        json={"error_description": "this shouldn't happen"},
     )
     with pytest.raises(InvalidTokenResponse):
         client.authorization_code("mycode")
@@ -679,11 +741,15 @@ def test_revoke_access_token(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -733,11 +799,15 @@ def test_revoke_refresh_token(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -774,7 +844,9 @@ def test_revoke_refresh_token_with_bearer_token_as_param(
 
     assert requests_mock.called_once
     revocation_request_validator(
-        requests_mock.last_request, token=bearer.refresh_token, type_hint="refresh_token"
+        requests_mock.last_request,
+        token=bearer.refresh_token,
+        type_hint="refresh_token",
     )
 
     bearer_no_refresh = BearerToken(access_token)
@@ -814,11 +886,15 @@ def test_revoke_token(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -883,7 +959,9 @@ def test_revoke_token_error(
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
-    requests_mock.post(revocation_endpoint, status_code=400, json={"error": "server_error"})
+    requests_mock.post(
+        revocation_endpoint, status_code=400, json={"error": "server_error"}
+    )
 
     with pytest.raises(ServerError):
         client.revoke_token(refresh_token)
@@ -895,11 +973,15 @@ def test_revoke_token_error(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -965,7 +1047,9 @@ def test_server_jwks_no_jwks_uri(token_endpoint):
 def test_server_jwks_not_json(requests_mock, token_endpoint, jwks_uri):
     """If JWKS URI is not known, get_public_jwks() raises an exception."""
     requests_mock.get(jwks_uri, text="Hello World!")
-    client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
+    client = OAuth2Client(
+        token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar")
+    )
     with pytest.raises(ValueError):
         assert client.get_public_jwks()
     assert requests_mock.called_once
@@ -974,7 +1058,9 @@ def test_server_jwks_not_json(requests_mock, token_endpoint, jwks_uri):
 def test_server_jwks_invalid_doc(requests_mock, token_endpoint, jwks_uri):
     """If JWKS URI is not known, get_public_jwks() raises an exception."""
     requests_mock.get(jwks_uri, json={"foo": "bar"})
-    client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
+    client = OAuth2Client(
+        token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar")
+    )
     with pytest.raises(ValueError):
         assert client.get_public_jwks()
     assert requests_mock.called_once
@@ -1078,11 +1164,15 @@ def test_introspection(
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
     elif client_auth_method_handler == ClientSecretPost:
         client_secret_post_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretBasic:
         client_secret_basic_auth_validator(
-            requests_mock.last_request, client_id=client_id, client_secret=client_credential
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
         )
     elif client_auth_method_handler == ClientSecretJWT:
         client_secret_jwt_auth_validator(
@@ -1192,7 +1282,10 @@ def test_ciba(
     access_token,
     ciba_request_validator,
 ):
-    requests_mock.post(token_endpoint, json={"access_token": access_token, "expires_in": 60})
+    requests_mock.post(
+        token_endpoint, json={"access_token": access_token, "expires_in": 60}
+    )
     token = oauth2client.ciba(auth_req_id=auth_req_id)
+    assert isinstance(token, BearerToken)
     assert requests_mock.called_once
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)

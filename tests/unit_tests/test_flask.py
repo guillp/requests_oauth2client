@@ -16,7 +16,9 @@ external_api = "https://myapi.local/foo"
 
 
 def test_flask(requests_mock):
-    oauth_client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
+    oauth_client = OAuth2Client(
+        token_endpoint, ClientSecretPost(client_id, client_secret)
+    )
     api_client = ApiClient(
         auth=FlaskOAuth2ClientCredentialsAuth(
             oauth_client, session_key=session_key, scope=scope
@@ -44,7 +46,7 @@ def test_flask(requests_mock):
         assert resp.json == json_resp
         resp = client.get("/api")
         assert resp.json == json_resp
-        api_client.auth.token = None  #  strangely this has no effect in a test session
+        api_client.auth.token = None  # strangely this has no effect in a test session
         with client.session_transaction() as sess:  # does what 'api_client.auth.token = None' should do
             sess.pop("session_key")
         resp = client.get("/api")

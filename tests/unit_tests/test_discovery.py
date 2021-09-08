@@ -1,5 +1,8 @@
-from requests_oauth2client import (oauth2_discovery_document_url,
-                                   oidc_discovery_document_url, well_known_uri)
+from requests_oauth2client import (
+    oauth2_discovery_document_url,
+    oidc_discovery_document_url,
+    well_known_uri,
+)
 
 
 def test_well_known_uri():

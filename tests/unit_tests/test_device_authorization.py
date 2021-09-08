@@ -2,11 +2,16 @@ from datetime import datetime
 
 import pytest
 
-from requests_oauth2client import (BearerToken, ClientSecretPost, DeviceAuthorizationError,
-                                   DeviceAuthorizationPoolingJob,
-                                   InvalidDeviceAuthorizationResponse, OAuth2Client,
-                                   UnauthorizedClient)
-from requests_oauth2client.device_authorization import DeviceAuthorizationResponse
+from requests_oauth2client import (
+    BearerToken,
+    ClientSecretPost,
+    DeviceAuthorizationError,
+    DeviceAuthorizationPoolingJob,
+    DeviceAuthorizationResponse,
+    InvalidDeviceAuthorizationResponse,
+    OAuth2Client,
+    UnauthorizedClient,
+)
 
 
 def test_device_authorization_response(
@@ -148,7 +153,7 @@ def test_device_authorization_client_error(
     )
 
 
-def test_device_authorization_client_error(
+def test_device_authorization_invalid_errors(
     requests_mock,
     device_authorization_client,
     device_authorization_endpoint,
@@ -204,7 +209,9 @@ def test_device_authorization_pooling_job(
         interval=1,
     )
 
-    requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
+    requests_mock.post(
+        token_endpoint, status_code=401, json={"error": "authorization_pending"}
+    )
     assert job() is None
     assert requests_mock.called_once
     assert job.interval == 1
@@ -224,3 +231,9 @@ def test_device_authorization_pooling_job(
     assert requests_mock.called_once
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token
+
+
+def test_no_device_authorization_endpoint(token_endpoint, client_id, client_secret):
+    client = OAuth2Client(token_endpoint, (client_id, client_secret))
+    with pytest.raises(AttributeError):
+        client.authorize_device()

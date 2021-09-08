@@ -2,8 +2,13 @@ import pytest
 import requests
 from requests_mock import ANY
 
-from requests_oauth2client import (ClientSecretBasic, ClientSecretJWT,
-                                   ClientSecretPost, OAuth2Client, PrivateKeyJWT)
+from requests_oauth2client import (
+    ClientSecretBasic,
+    ClientSecretJWT,
+    ClientSecretPost,
+    OAuth2Client,
+    PrivateKeyJWT,
+)
 
 
 def test_client_secret_post(
@@ -63,7 +68,7 @@ def test_private_key_jwt(
 ):
 
     client = OAuth2Client(
-        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk, kid=kid)
+        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk)
     )
 
     requests_mock.post(
@@ -90,7 +95,9 @@ def test_private_key_jwt_with_kid(
     private_key_jwt_auth_validator,
     public_jwk,
 ):
-    client = OAuth2Client(token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk))
+    client = OAuth2Client(
+        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk)
+    )
 
     requests_mock.post(
         token_endpoint,
@@ -157,7 +164,9 @@ def test_public_client(
 def test_invalid_request(requests_mock, client_id, client_secret):
     requests_mock.get(ANY)
     with pytest.raises(RuntimeError):
-        requests.get("http://localhost", auth=ClientSecretBasic(client_id, client_secret))
+        requests.get(
+            "http://localhost", auth=ClientSecretBasic(client_id, client_secret)
+        )
 
 
 def test_private_key_jwt_missing_alg(client_id, private_jwk):

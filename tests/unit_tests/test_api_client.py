@@ -100,7 +100,9 @@ def test_delete(
     bearer_auth_validator(requests_mock.last_request, access_token)
 
 
-def test_fail(requests_mock, api, access_token, bearer_auth, target_api, bearer_auth_validator):
+def test_fail(
+    requests_mock, api, access_token, bearer_auth, target_api, bearer_auth_validator
+):
     requests_mock.get(target_api, status_code=400)
     with pytest.raises(HTTPError):
         api.get()

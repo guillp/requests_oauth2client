@@ -47,11 +47,11 @@ def test_authorization_code(
         redirect_uri, query={"code": authorization_code, "state": state}
     ).url
     requests_mock.get(
-        authorization_request.request.url,
+        authorization_request.uri,
         status_code=302,
         headers={"Location": authorization_response},
     )
-    resp = requests.get(authorization_request.request.url, allow_redirects=False)
+    resp = requests.get(authorization_request.uri, allow_redirects=False)
     assert resp.status_code == 302
     location = resp.headers.get("Location")
     assert location == authorization_response
@@ -122,11 +122,11 @@ def test_authorization_code_pkce(
         redirect_uri, query={"code": authorization_code, "state": state}
     ).url
     requests_mock.get(
-        authorization_request.request.url,
+        authorization_request.uri,
         status_code=302,
         headers={"Location": authorization_response},
     )
-    resp = requests.get(authorization_request.request.url, allow_redirects=False)
+    resp = requests.get(authorization_request.uri, allow_redirects=False)
     assert resp.status_code == 302
     location = resp.headers.get("Location")
     assert location == authorization_response
@@ -139,7 +139,9 @@ def test_authorization_code_pkce(
     code_challenge_method = requests_mock.last_request.qs.get("code_challenge_method")
     assert code_challenge_method == ["S256"]
     assert (
-        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b"=")
+        base64.urlsafe_b64encode(
+            hashlib.sha256(code_verifier.encode()).digest()
+        ).rstrip(b"=")
         == code_challenge.encode()
     )
 
@@ -161,7 +163,11 @@ def test_authorization_code_pkce(
     assert not token.is_expired()
     now = datetime.now()
     assert 3598 <= token.expires_in <= 3600
-    assert now + timedelta(seconds=3598) <= token.expires_at <= now + timedelta(seconds=3600)
+    assert (
+        now + timedelta(seconds=3598)
+        <= token.expires_at
+        <= now + timedelta(seconds=3600)
+    )
     params = parse_qs(requests_mock.last_request.text)
     assert params.get("client_id")[0] == client_id
     assert params.get("client_secret")[0] == client_secret

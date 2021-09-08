@@ -114,7 +114,9 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
         token = self.token
         if token is None or token.is_expired():
             if self.code:  # pragma: no branch
-                self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
+                self.token = self.client.authorization_code(
+                    code=self.code, **self.token_kwargs
+                )
                 self.code = None
         return super().__call__(request)
 
@@ -146,7 +148,9 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
         if token is None or token.is_expired():
             if self.device_code:  # pragma: no branch
                 pooling_job = DeviceAuthorizationPoolingJob(
-                    client=self.client, device_code=self.device_code, interval=self.interval
+                    client=self.client,
+                    device_code=self.device_code,
+                    interval=self.interval,
                 )
                 while self.token is None:
                     self.token = pooling_job()

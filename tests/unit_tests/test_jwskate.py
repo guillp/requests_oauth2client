@@ -1,8 +1,21 @@
 import base64
 from datetime import datetime
 
-from requests_oauth2client.jwskate import (ECJwk, Jwk, JwkSet, JwsCompact, Jwt,
-                                           OKPJwk, RSAJwk, SignedJwt, SymetricJwk)
+import pytest
+
+from requests_oauth2client import (
+    ECJwk,
+    InvalidJwk,
+    Jwk,
+    JwkSet,
+    JwsCompact,
+    Jwt,
+    JwtSigner,
+    OKPJwk,
+    RSAJwk,
+    SignedJwt,
+    SymetricJwk,
+)
 
 RSA_PRIVATE_JWK = {
     "kty": "RSA",
@@ -31,9 +44,7 @@ def test_jwk():
     assert jwk.dq == RSA_PRIVATE_JWK["dq"]
     assert jwk.qi == RSA_PRIVATE_JWK["qi"]
 
-    assert (
-        jwk.thumbprint() == "Qfq9DOLKNRyptzTJBhCFlzccbA0ac7Ag9GVFL11GAfM"
-    )  # TODO: check this value
+    assert jwk.thumbprint() == "Qfq9DOLKNRyptzTJBhCFlzccbA0ac7Ag9GVFL11GAfM"
 
     signature = jwk.sign(b"Hello World!")
     assert (
@@ -54,6 +65,30 @@ def test_jwk():
     assert public_jwk.verify(b"Hello World!", signature, alg="RS256")
 
 
+def test_invalid_jwk():
+    with pytest.raises(ValueError):
+        Jwk({"kty": 1.5})
+
+    with pytest.raises(ValueError):
+        Jwk({"kty": "caesar13"})
+
+    with pytest.raises(InvalidJwk):
+        Jwk({"kty": "RSA"})
+
+    with pytest.raises(InvalidJwk):
+        Jwk({"kty": "RSA", "x": "$+!"})
+
+    with pytest.raises(InvalidJwk):
+        Jwk(
+            {
+                "kty": "RSA",
+                "n": "oRHn4oGv23ylRL3RSsL4p_e6Ywinnj2N2tT5OLe5pEZTg-LFBhjFxcJaB-p1dh6XX47EtSfa-JHffU0o5ZRK2ySyNDtlrFAkOpAHH6U83ayE2QPYGzrFrrvHDa8wIMUWymzxpPwGgKBwZZqtTT6d-iy4Ux3AWV-bUv6Z7WijHnOy7aVzZ4dFERLVf2FaaYXDET7GO4v-oQ5ss_guYdmewN039jxkjz_KrA-0Fyhalf9hL8IHfpdpSlHosrmjORG5y9LkYK0J6zxSBF5ZvLIBK33BTzPPiCMwKLyAcV6qdcAcvV4kthKO0iUKBK4eE8D0N8HcSPvA9F_PpLS_k5F2lw",
+                "e": "AQAB",
+                "p": "0mzP9sbFxU5YxNNLgUEdRQSO-ojqWrzbI02PfQLGyzXumvOh_Qr73OpHStU8CAAcUBaQdRGidsVdb5cq6JG2zvbEEYiX-dCHqTJs8wfktGCL7eV-ZVh7fhJ1sYVBN20yv8aSH63uUPZnJXR1AUyrvRumuerdPxp8X951PESrJd0",
+            }
+        )
+
+
 def test_jwk_symetric():
     jwk = SymetricJwk.generate(24, kid="myoctkey")
     assert jwk.kty == "oct"
@@ -67,13 +102,23 @@ def test_jwk_rsa():
     jwk = RSAJwk.generate(kid="myrsakey")
     assert jwk.kty == "RSA"
     assert jwk.kid == "myrsakey"
-    assert jwk.n
-    assert jwk.d
-    assert jwk.p
-    assert jwk.q
-    assert jwk.dp
-    assert jwk.dq
-    assert jwk.qi
+    assert "n" in jwk
+    assert "d" in jwk
+    assert "p" in jwk
+    assert "q" in jwk
+    assert "dp" in jwk
+    assert "dq" in jwk
+    assert "qi" in jwk
+
+    public_jwk = jwk.public_jwk()
+    assert public_jwk.kty == "RSA"
+    assert public_jwk.kid == "myrsakey"
+    assert "d" not in public_jwk
+    assert "p" not in public_jwk
+    assert "q" not in public_jwk
+    assert "dp" not in public_jwk
+    assert "dq" not in public_jwk
+    assert "qi" not in public_jwk
 
 
 def test_jwk_ec():
@@ -81,9 +126,16 @@ def test_jwk_ec():
     assert jwk.kty == "EC"
     assert jwk.kid == "myeckey"
     assert jwk.crv == "P-256"
-    assert jwk.x
-    assert jwk.y
-    assert jwk.d
+    assert "x" in jwk
+    assert "y" in jwk
+    assert "d" in jwk
+
+    public_jwk = jwk.public_jwk()
+    assert public_jwk.kty == "EC"
+    assert public_jwk.kid == "myeckey"
+    assert public_jwk.crv == "P-256"
+    assert "x" in public_jwk
+    assert "y" in public_jwk
 
 
 def test_jwk_okp():
@@ -155,3 +207,14 @@ def test_jwt():
             }
         )
     )
+
+
+def test_jwt_signer(issuer, private_jwk):
+    signer = JwtSigner(issuer, private_jwk)
+    now = datetime.now()
+    jwt = signer.sign(subject="some_id", audience="some_audience")
+    assert isinstance(jwt, Jwt)
+    assert jwt.subject == "some_id"
+    assert jwt.audience == ["some_audience"]
+    assert pytest.approx(jwt.iat, now)
+    assert jwt.expires_at > now

@@ -1,5 +1,7 @@
 from typing import Optional
 
+from requests_oauth2client.jwskate import InvalidJwt
+
 
 class OAuth2Error(Exception):
     """
@@ -32,7 +34,7 @@ class ExpiredAccessToken(OAuth2Error):
     """
 
 
-class UnknownEndpointError(EndpointError):
+class UnknownTokenEndpointError(EndpointError):
     """
     Raised when an otherwise unknown error is returned by the token endpoint.
     """
@@ -51,74 +53,100 @@ class TokenEndpointError(EndpointError):
 
 
 class InvalidScope(TokenEndpointError):
-    pass
+    """
+    Raised when the Token Endpoint returns error = invalid_scope
+    """
 
 
 class InvalidTarget(TokenEndpointError):
-    pass
+    """
+    Raised when the Token Endpoint returns error = invalid_target
+    """
 
 
 class InvalidGrant(TokenEndpointError):
-    pass
+    """
+    Raised when the Token Endpoint returns error = invalid_grant
+    """
 
 
 class AccessDenied(EndpointError):
-    pass
+    """
+    Raised when the Authorization Server returns error = access_denied
+    """
 
 
 class UnauthorizedClient(EndpointError):
-    pass
+    """
+    Raised when the Authorization Server returns error = unauthorized_client
+    """
 
 
 class RevocationError(EndpointError):
-    pass
+    """
+    Base class for Revocation Endpoint errors.
+    """
 
 
 class UnsupportedTokenType(RevocationError):
-    pass
+    """
+    Raised when the Revocation endpoint returns error = "unsupported_token_type"
+    """
 
 
 class IntrospectionError(EndpointError):
-    pass
+    """
+    Base class for Introspection Endpoint errors.
+    """
 
 
 class UnknownIntrospectionError(OAuth2Error):
-    pass
+    """
+    Raised when the Introspection Endpoint retuns a non-standard error.
+    """
 
 
 class DeviceAuthorizationError(EndpointError):
-    pass
+    """
+    Base class for Device Authorization Endpoint errors.
+    """
 
 
 class AuthorizationPending(TokenEndpointError):
-    pass
+    """
+    Raised when the Token Endpoint returns `error = authorization_pending`.
+    """
 
 
 class SlowDown(TokenEndpointError):
-    pass
+    """
+    Raised when the Token Endpoint returns `error = slow_down`.
+    """
 
 
 class ExpiredToken(TokenEndpointError):
-    pass
+    """
+    Raised when the Token Endpoint returns `error = expired_token`.
+    """
 
 
 class InvalidDeviceAuthorizationResponse(OAuth2Error):
-    pass
+    """
+    Raised when the Device Authorization Endpoint returns a non-standard error response.
+    """
 
 
-class InvalidUrl(ValueError):
-    pass
-
-
-class InvalidJWT(ValueError):
-    pass
-
-
-class InvalidIdToken(InvalidJWT):
-    pass
+class InvalidIdToken(InvalidJwt):
+    """
+    Raised when trying to validate an invalid Id Token value.
+    """
 
 
 class AuthorizationResponseError(Exception):
+    """
+    Base class for error responses returned by the Authorization endpoint.
+    """
+
     def __init__(
         self, error: str, description: Optional[str] = None, uri: Optional[str] = None
     ):
@@ -128,23 +156,33 @@ class AuthorizationResponseError(Exception):
 
 
 class InteractionRequired(AuthorizationResponseError):
-    pass
+    """
+    Raised when the Authorization Endpoint returns `error = interaction_required`.
+    """
 
 
 class LoginRequired(InteractionRequired):
-    pass
+    """
+    Raised when the Authorization Endpoint returns `error = login_required`.
+    """
 
 
 class AccountSelectionRequired(InteractionRequired):
-    pass
+    """
+    Raised when the Authorization Endpoint returns `error = account_selection_required`.
+    """
 
 
 class SessionSelectionRequired(InteractionRequired):
-    pass
+    """
+    Raised when the Authorization Endpoint returns `error = session_selection_required`.
+    """
 
 
 class ConsentRequired(InteractionRequired):
-    pass
+    """
+    Raised when the Authorization Endpoint returns `error = consent_required`.
+    """
 
 
 class InvalidAuthResponse(OAuth2Error):
@@ -166,8 +204,12 @@ class MismatchingState(InvalidAuthResponse):
 
 
 class BackChannelAuthenticationError(EndpointError):
-    pass
+    """
+    Base class for errors returned by the BackChannel Authentication endpoint.
+    """
 
 
 class InvalidBackChannelAuthenticationResponse(OAuth2Error):
-    pass
+    """
+    Raised when the BackChannel Authentication endpoint returns non-standardised errors.
+    """

@@ -146,7 +146,9 @@ class BearerTokenSerializer:
         """
         return b64u_encode(
             zlib.compress(
-                json.dumps(token.as_dict(True), default=lambda d: d.timestamp()).encode()
+                json.dumps(
+                    token.as_dict(True), default=lambda d: d.timestamp()
+                ).encode()
             )
         )
 
@@ -158,7 +160,7 @@ class BearerTokenSerializer:
         :param serialized: the serialized token
         :return: a BearerToken
         """
-        attrs = json.loads(zlib.decompress(b64u_decode(serialized, encoding=None)))  # type: ignore
+        attrs = json.loads(zlib.decompress(b64u_decode(serialized)))
         expires_at = attrs.get("expires_at")
         if expires_at:
             attrs["expires_at"] = datetime.fromtimestamp(expires_at)

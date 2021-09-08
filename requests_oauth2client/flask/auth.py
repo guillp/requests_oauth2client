@@ -13,7 +13,9 @@ class FlaskSessionAuthMixin:
     This way, each user of a Flask application has a different access token.
     """
 
-    def __init__(self, session_key: str, serializer: Optional[BearerTokenSerializer] = None):
+    def __init__(
+        self, session_key: str, serializer: Optional[BearerTokenSerializer] = None
+    ):
         self.serializer = serializer or BearerTokenSerializer()
         self.session_key = session_key
 
@@ -33,7 +35,9 @@ class FlaskSessionAuthMixin:
             session.pop(self.session_key, None)
 
 
-class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth):
+class FlaskOAuth2ClientCredentialsAuth(
+    FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth
+):
     """
     A Requests Authentication handler that automatically gets access tokens from an OAuth20 Token Endpoint
     with the Client Credentials grant (and can get a new one once it is expired),

@@ -36,4 +36,4 @@ class TokenEndpointPoolingJob:
         return None
 
     def pool(self) -> BearerToken:
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover

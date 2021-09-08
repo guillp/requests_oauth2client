@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Callable, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Tuple, Type, Union
 from uuid import uuid4
 
 import furl  # type: ignore[import]
@@ -36,7 +36,9 @@ class ClientSecretBasic(ClientAuthenticationMethod):
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         request = super().__call__(request)
-        b64encoded_credentials = b64_encode(":".join((self.client_id, self.client_secret)))
+        b64encoded_credentials = b64_encode(
+            ":".join((self.client_id, self.client_secret))
+        )
         request.headers["Authorization"] = f"Basic {b64encoded_credentials}"
         return request
 
@@ -64,7 +66,9 @@ class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
     Base class for assertion based client authentication methods.
     """
 
-    def __init__(self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]):
+    def __init__(
+        self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]
+    ):
         self.client_id = str(client_id)
         self.alg = alg
         self.lifetime = lifetime
@@ -139,18 +143,20 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
     def __init__(
         self,
         client_id: str,
-        private_jwk: Jwk,
+        private_jwk: Union[Jwk, Dict[str, Any]],
         alg: str = "RS256",
         lifetime: int = 60,
-        kid: Optional[str] = None,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
     ) -> None:
-        alg = private_jwk.get("alg", alg)
+        if not isinstance(private_jwk, Jwk):
+            private_jwk = Jwk(private_jwk)
+
+        alg = private_jwk.alg or alg
         if not alg:
             raise ValueError(
                 "Asymmetric signing requires an alg, either as part of the private JWK, or passed as parameter"
             )
-        kid = private_jwk.get("kid", kid)
+        kid = private_jwk.get("kid")
         if not kid:
             raise ValueError(
                 "Asymmetric signing requires a kid, either as part of the private JWK, or passed as parameter"
@@ -158,7 +164,6 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
 
         super().__init__(client_id, alg, lifetime, jti_gen)
         self.private_jwk = private_jwk
-        self.kid = kid
 
     def client_assertion(self, audience: str) -> str:
         iat = int(datetime.now().timestamp())
@@ -176,7 +181,6 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
             },
             jwk=self.private_jwk,
             alg=self.alg,
-            kid=self.kid,
         )
         return str(jwt)
 
@@ -219,7 +223,7 @@ def client_auth_factory(
         raise ValueError(
             """Parameter 'auth' is required to define the Authentication Method that this Client will use when sending requests to the Token Endpoint.
 'auth' can be:
-- an instance of a requests.auth.AuthBase subclass, including ClientSecretPost, ClientSecretBasic, ClientSecretJWT, PrivateKeyJWT, PublicApp, 
+- an instance of a requests.auth.AuthBase subclass, including ClientSecretPost, ClientSecretBasic, ClientSecretJWT, PrivateKeyJWT, PublicApp,
 - a (client_id, client_secret) tuple, both as str, for ClientSecretPost,
 - a (client_id, private_key) tuple, with client_id as str and private_key as a dict in JWK format, for PrivateKeyJWT,
 - a client_id, as str, for PublicApp.

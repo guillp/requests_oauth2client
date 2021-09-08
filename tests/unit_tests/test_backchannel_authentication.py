@@ -2,10 +2,14 @@ from datetime import datetime
 
 import pytest
 
-from requests_oauth2client import BearerToken, OAuth2Client, UnauthorizedClient
-from requests_oauth2client.backchannel_authentication import (
-    BackChannelAuthenticationPoolingJob, BackChannelAuthenticationResponse)
-from requests_oauth2client.exceptions import InvalidBackChannelAuthenticationResponse
+from requests_oauth2client import (
+    BackChannelAuthenticationPoolingJob,
+    BackChannelAuthenticationResponse,
+    BearerToken,
+    InvalidBackChannelAuthenticationResponse,
+    OAuth2Client,
+    UnauthorizedClient,
+)
 
 
 def test_backchannel_authentication_response(auth_req_id):
@@ -43,7 +47,10 @@ def bca_client(token_endpoint, backchannel_authentication_endpoint, client_auth_
         backchannel_authentication_endpoint=backchannel_authentication_endpoint,
         auth=client_auth_method,
     )
-    assert bca_client.backchannel_authentication_endpoint == backchannel_authentication_endpoint
+    assert (
+        bca_client.backchannel_authentication_endpoint
+        == backchannel_authentication_endpoint
+    )
     assert bca_client.auth == client_auth_method
 
     return bca_client
@@ -238,11 +245,18 @@ def test_backchannel_authentication_missing_hint(bca_client, scope):
 
 def test_backchannel_authentication_invalid_scope(bca_client):
     with pytest.raises(ValueError):
-        bca_client.backchannel_authentication_request(scope=1.44, login_hint="user@example.net")
+        bca_client.backchannel_authentication_request(
+            scope=1.44, login_hint="user@example.net"
+        )
 
 
 def test_pooling_job(
-    requests_mock, bca_client, token_endpoint, auth_req_id, ciba_request_validator, access_token
+    requests_mock,
+    bca_client,
+    token_endpoint,
+    auth_req_id,
+    ciba_request_validator,
+    access_token,
 ):
     job = BackChannelAuthenticationPoolingJob(
         client=bca_client,
@@ -250,7 +264,9 @@ def test_pooling_job(
         interval=1,
     )
 
-    requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
+    requests_mock.post(
+        token_endpoint, status_code=401, json={"error": "authorization_pending"}
+    )
     assert job() is None
     assert requests_mock.called_once
     assert job.interval == 1
@@ -271,3 +287,11 @@ def test_pooling_job(
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token
+
+
+def test_missing_backchannel_authentication_endpoint(
+    token_endpoint, client_id, client_secret
+):
+    client = OAuth2Client(token_endpoint, (client_id, client_secret))
+    with pytest.raises(AttributeError):
+        client.backchannel_authentication_request("openid")

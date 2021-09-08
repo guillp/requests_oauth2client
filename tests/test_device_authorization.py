@@ -5,10 +5,11 @@ import pytest
 
 from requests_oauth2client import ClientSecretBasic, OAuth2Client
 from requests_oauth2client.client_authentication import PublicApp
-from requests_oauth2client.device_authorization import (DeviceAuthorizationClient,
-                                                        DeviceAuthorizationPoolingJob)
-from requests_oauth2client.exceptions import (DeviceAuthorizationError,
-                                              InvalidDeviceAuthorizationResponse)
+from requests_oauth2client.device_authorization import DeviceAuthorizationPoolingJob
+from requests_oauth2client.exceptions import (
+    DeviceAuthorizationError,
+    InvalidDeviceAuthorizationResponse,
+)
 
 
 @pytest.fixture(params=["device", "oauth/device"])
@@ -18,13 +19,18 @@ def device_authorization_endpoint(request, issuer, join_url):
 
 @pytest.mark.slow
 def test_device_authorization(
-    requests_mock, device_authorization_endpoint, token_endpoint, client_id, client_secret
+    requests_mock,
+    device_authorization_endpoint,
+    token_endpoint,
+    client_id,
+    client_secret,
 ):
     device_code = secrets.token_urlsafe()
     user_code = secrets.token_urlsafe(6)
     verification_uri = "https://test.com/verify_device"
 
-    da_client = DeviceAuthorizationClient(
+    client = OAuth2Client(
+        token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,
         auth=(client_id, client_secret),
     )
@@ -38,7 +44,7 @@ def test_device_authorization(
             "expires_in": 3600,
         },
     )
-    device_auth_resp = da_client.authorize_device()
+    device_auth_resp = client.authorize_device()
     assert device_auth_resp.device_code
     assert device_auth_resp.user_code
     assert device_auth_resp.verification_uri
@@ -65,7 +71,6 @@ def test_device_authorization(
         ],
     )
 
-    client = OAuth2Client(token_endpoint, (client_id, client_secret))
     pool_job = DeviceAuthorizationPoolingJob(
         client, device_auth_resp.device_code, interval=device_auth_resp.interval
     )
@@ -97,28 +102,38 @@ def test_device_authorization(
     assert not resp.is_expired()
 
 
-def test_auth_handler(device_authorization_endpoint, client_id, client_secret):
+def _test_auth_handler(
+    token_endpoint, device_authorization_endpoint, client_id, client_secret
+):
     auth = ClientSecretBasic(client_id, client_secret)
-    da_client = DeviceAuthorizationClient(
+    da_client = OAuth2Client(
+        token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,
         auth=auth,
     )
 
     assert da_client.auth == auth
 
-    da_client = DeviceAuthorizationClient(
+    da_client = OAuth2Client(
         device_authorization_endpoint=device_authorization_endpoint,
         auth=client_id,
     )
 
-    assert isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
+    assert (
+        isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
+    )
 
 
 def test_invalid_response(
-    requests_mock, device_authorization_endpoint, client_id, client_secret
+    requests_mock,
+    token_endpoint,
+    device_authorization_endpoint,
+    client_id,
+    client_secret,
 ):
 
-    da_client = DeviceAuthorizationClient(
+    da_client = OAuth2Client(
+        token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,
         auth=(client_id, client_secret),
     )
@@ -126,7 +141,7 @@ def test_invalid_response(
     requests_mock.post(
         device_authorization_endpoint,
         status_code=500,
-        json={"error": "server_error"},
+        json={"error": "unknown_error"},
     )
     with pytest.raises(DeviceAuthorizationError):
         da_client.authorize_device()

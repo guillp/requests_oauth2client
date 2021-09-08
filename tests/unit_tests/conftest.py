@@ -7,8 +7,16 @@ import pytest
 import requests
 from furl import furl
 
-from requests_oauth2client import (ApiClient, BearerAuth, ClientSecretBasic, ClientSecretJWT,
-                                   ClientSecretPost, OAuth2Client, PrivateKeyJWT, PublicApp)
+from requests_oauth2client import (
+    ApiClient,
+    BearerAuth,
+    ClientSecretBasic,
+    ClientSecretJWT,
+    ClientSecretPost,
+    OAuth2Client,
+    PrivateKeyJWT,
+    PublicApp,
+)
 from requests_oauth2client.jwskate import Jwk, Jwt, SymetricJwk
 
 
@@ -100,7 +108,9 @@ def client_id():
     return "client_id"
 
 
-@pytest.fixture(params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT])
+@pytest.fixture(
+    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT]
+)
 def client_auth_method_handler(request):
     return request.param
 
@@ -143,7 +153,11 @@ def client_secret():
 def client_credential(client_auth_method_handler, client_secret, private_jwk):
     if client_auth_method_handler == PublicApp:
         return None
-    elif client_auth_method_handler in (ClientSecretPost, ClientSecretBasic, ClientSecretJWT):
+    elif client_auth_method_handler in (
+        ClientSecretPost,
+        ClientSecretBasic,
+        ClientSecretJWT,
+    ):
         return client_secret
     elif client_auth_method_handler == PrivateKeyJWT:
         return private_jwk
@@ -157,7 +171,9 @@ def client_auth_method(client_auth_method_handler, client_id, client_credential)
 
 
 @pytest.fixture()
-def client_auth_validator(client_auth_method_handler, client_id, client_credential, public_jwk):
+def client_auth_validator(
+    client_auth_method_handler, client_id, client_credential, public_jwk
+):
     if client_auth_method_handler == PublicApp:
 
         def validator(req):
@@ -171,7 +187,9 @@ def client_auth_validator(client_auth_method_handler, client_id, client_credenti
             encoded_username_password = base64.b64encode(
                 f"{client_id}:{client_secret}".encode("ascii")
             ).decode()
-            assert req.headers.get("Authorization") == f"Basic {encoded_username_password}"
+            assert (
+                req.headers.get("Authorization") == f"Basic {encoded_username_password}"
+            )
             assert "client_secret" not in req.text
 
     elif client_auth_method_handler == ClientSecretPost:
