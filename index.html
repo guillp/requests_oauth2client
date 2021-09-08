@@ -894,7 +894,7 @@ that makes it super easy to use REST-style APIs, with or without OAuth 2.0.</p>
 </td></tr></table>
 <h3 id="calling-apis-with-an-access-token">Calling APIs with an access token<a class="headerlink" href="#calling-apis-with-an-access-token" title="Permanent link">&para;</a></h3>
 <p>If you already managed to obtain an access token, you can simply use the
-<a href="/api/#requests_oauth2client.auth.BearerAuth">BearerAuth</a> Auth Handler for <code>requests</code>:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.BearerAuth">BearerAuth</a> Auth Handler for <code>requests</code>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>token = &quot;an_access_token&quot;
 resp = requests.get(&quot;https://my.protected.api/endpoint&quot;, auth=BearerAuth(token))
@@ -903,10 +903,10 @@ resp = requests.get(&quot;https://my.protected.api/endpoint&quot;, auth=BearerAu
 <p>This authentication handler will add a properly formatted <code>Authorization</code>
 header in the request, with your access token according to RFC6750.</p>
 <h3 id="using-an-oauth2client">Using an OAuth2Client<a class="headerlink" href="#using-an-oauth2client" title="Permanent link">&para;</a></h3>
-<p><a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> offers several methods that implement the
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> offers several methods that implement the
 communication to the various endpoints that are standardised by OAuth
 2.0 and its extensions. Those endpoints include the Token Endpoint, the Revocation, Introspection, UserInfo, BackChannel Authentication and Device Authorization Endpoints.</p>
-<p>To initialize an <a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a>, you only need a Token
+<p>To initialize an <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a>, you only need a Token
 Endpoint URI, and the credentials for your application, which are often a <code>client_id</code> and a <code>client_secret</code>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>oauth2client = OAuth2Client(&quot;https://myas.local/token_endpoint&quot;, (&quot;client_id&quot;, &quot;client_secret&quot;))
 </code></pre></div>
@@ -920,17 +920,17 @@ default authentication method used by OAuth2Client is <em>Client Secret
 Post</em>, but other standardised methods such as <em>Client Secret Basic</em>,
 <em>Client Secret JWT</em> or <em>Private Key JWT</em> are supported as well. See below.</p>
 <h3 id="obtaining-tokens">Obtaining tokens<a class="headerlink" href="#obtaining-tokens" title="Permanent link">&para;</a></h3>
-<p><a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> has methods to send requests to the Token
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> has methods to send requests to the Token
 Endpoint using the different standardised (and/or custom) grants. Since
 the token endpoint and authentication method are already declared for
 the client, the only required parameters are those that will be sent in
 the request to the Token Endpoint.</p>
-<p>Those methods directly return a <a href="http://127.0.0.1:8000/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> if the request
+<p>Those methods directly return a <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> if the request
 is successful, or raise an exception if it fails.
-<a href="http://127.0.0.1:8000/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> will manage the token expiration, will contain
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> will manage the token expiration, will contain
 the eventual refresh token that matches the access token, and will keep
 track of other associated metadata as well. You can create such a
-<a href="http://127.0.0.1:8000/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> yourself if you need:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> yourself if you need:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -945,11 +945,11 @@ print(bearer_token.expires_at)
 <p>Note that the <code>expires_in</code> indicator here is not static. It keeps
 track of the token lifetime and is calculated as the time flies. You can
 check if a token is expired with
-<a href="/api/#requests_oauth2client.tokens.BearerToken.is_expired">bearer_token.is_expired()</a>.</p>
-<p>You can use a <a href="http://127.0.0.1:8000/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> instance everywhere you can
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken.is_expired">bearer_token.is_expired()</a>.</p>
+<p>You can use a <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken">BearerToken</a> instance everywhere you can
 supply an access_token as string.</p>
 <h4 id="using-oauth2client-as-a-requests-auth-handler">Using OAuth2Client as a requests Auth Handler<a class="headerlink" href="#using-oauth2client-as-a-requests-auth-handler" title="Permanent link">&para;</a></h4>
-<p>While using <a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> directly is great for testing or debugging
+<p>While using <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> directly is great for testing or debugging
 OAuth2.0 flows, it is not a viable option for actual applications where
 tokens must be obtained, used during their lifetime then obtained again
 or refreshed once they are expired. <code>requests_oauth2client</code> contains
@@ -958,11 +958,11 @@ several <a href="https://docs.python-requests.org/en/master/">requests</a> compa
 tokens when required, then will cache those tokens until they are
 expired, and will obtain new ones (or refresh them, when possible), once
 the initial token is expired. Those are best used with a
-[requests.Session], or an <a href="/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> which is a
+[requests.Session], or an <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> which is a
 Session Subclass with a few enhancements as described below.</p>
 <h4 id="client-credentials-grant">Client Credentials grant<a class="headerlink" href="#client-credentials-grant" title="Permanent link">&para;</a></h4>
 <p>To send a request using the Client Credentials grant, use the aptly
-named <a href="/api/#requests_oauth2client.client.OAuth2Client.client_credentials">.client_credentials()</a> method:</p>
+named <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.client_credentials">.client_credentials()</a> method:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -975,8 +975,8 @@ named <a href="/api/#requests_oauth2client.client.OAuth2Client.client_credential
 </code></pre></div>
 </td></tr></table>
 <h5 id="as-auth-handler">As Auth Handler<a class="headerlink" href="#as-auth-handler" title="Permanent link">&para;</a></h5>
-<p>You can use the <a href="/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth">OAuth2ClientCredentials</a> auth handler. It
-takes an <a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> as parameter, and the additional kwargs to pass to
+<p>You can use the <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth">OAuth2ClientCredentials</a> auth handler. It
+takes an <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> as parameter, and the additional kwargs to pass to
 the token endpoint:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -1008,14 +1008,14 @@ an <em>Authorization Code</em> as parameter.</p>
 <em>Access Token</em>, with a request to the Token Endpoint.</p>
 </li>
 </ol>
-<p><a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> doesn't implement anything that is related
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> doesn't implement anything that is related
 to the Authorization Request or Response. It is only able to exchange
 the Authorization Code for a Token in step 3. But
 <code>requests_oauth2client</code> has other classes to help you with
 steps 1 and 2, as described below:</p>
 <h5 id="generating-authorization-requests">Generating Authorization Requests<a class="headerlink" href="#generating-authorization-requests" title="Permanent link">&para;</a></h5>
 <p>You can generate valid authorization requests with the
-<a href="http://127.0.0.1:8000/api/#requests_oauth2client.authorization_request.AuthorizationRequest">AuthorizationRequest</a> class:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.authorization_request.AuthorizationRequest">AuthorizationRequest</a> class:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -1076,7 +1076,7 @@ code = auth_request.validate_callback(params)
 </td></tr></table>
 <h5 id="exchanging-code-for-tokens">Exchanging code for tokens<a class="headerlink" href="#exchanging-code-for-tokens" title="Permanent link">&para;</a></h5>
 <p>To exchange a code for Access and/or ID tokens, use the
-<a href="/api/#requests_oauth2client.client.OAuth2Client.authorization_code">OAuth2Client.authorization_code()</a> method:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.authorization_code">OAuth2Client.authorization_code()</a> method:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -1087,8 +1087,8 @@ code = auth_request.validate_callback(params)
 </code></pre></div>
 </td></tr></table>
 <h5 id="as-auth-handler_1">As Auth Handler<a class="headerlink" href="#as-auth-handler_1" title="Permanent link">&para;</a></h5>
-<p>The <a href="/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth">OAuth2AuthorizationCodeAuth</a> handler takes an
-<a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> and an authorization code as parameter, plus whatever
+<p>The <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth">OAuth2AuthorizationCodeAuth</a> handler takes an
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> and an authorization code as parameter, plus whatever
 additional keyword parameters are required by your Authorization Server:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -1105,7 +1105,7 @@ additional keyword parameters are required by your Authorization Server:</p>
 resp = api_client.post(data={...}) # first call will exchange the code for an initial access/refresh tokens
 </code></pre></div>
 </td></tr></table>
-<p><a href="/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth">OAuth2AuthorizationCodeAuth</a> will take care of refreshing
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth">OAuth2AuthorizationCodeAuth</a> will take care of refreshing
 the token automatically once it is expired, using the refresh token, if
 available.</p>
 <h4 id="device-authorization-grant">Device Authorization Grant<a class="headerlink" href="#device-authorization-grant" title="Permanent link">&para;</a></h4>
@@ -1148,16 +1148,16 @@ authorized you using an `OAuth2Client`:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>token = client.device_code(da_resp.device_code)
 </code></pre></div>
 </td></tr></table>
-<p>This will raise an exception, either <a href="/api/#requests_oauth2client.exceptions.AuthorizationPending">AuthorizationPending</a>,
-<a href="/api/#requests_oauth2client.exceptions.SlowDown">SlowDown</a>, <a href="/api/#requests_oauth2client.exceptions.ExpiredToken">ExpiredToken</a>, or
-<a href="/api/#requests_oauth2client.exceptions.AccessDenied">AccessDenied</a> if the user did not yet finish authorizing
+<p>This will raise an exception, either <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.exceptions.AuthorizationPending">AuthorizationPending</a>,
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.exceptions.SlowDown">SlowDown</a>, <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.exceptions.ExpiredToken">ExpiredToken</a>, or
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.exceptions.AccessDenied">AccessDenied</a> if the user did not yet finish authorizing
 your device, if you should increase your pooling period, or if the
 device code is no longer valid, or the user finally denied your access,
 respectively. Other exceptions may be raised depending on the error code
 that the AS responds with. If the user did finish authorizing
 successfully, <code>token</code> will contain your access token.</p>
 <p>To make pooling easier, you can use a
-<a href="/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPoolingJob">DeviceAuthorizationPoolingJob</a> like this:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPoolingJob">DeviceAuthorizationPoolingJob</a> like this:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
 <span class="normal"> 3</span>
@@ -1181,12 +1181,12 @@ while resp is None:
 assert isinstance(resp, BearerToken)
 </code></pre></div>
 </td></tr></table>
-<p><a href="/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPoolingJob">DeviceAuthorizationPoolingJob</a> will automatically obey the
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPoolingJob">DeviceAuthorizationPoolingJob</a> will automatically obey the
 pooling period. Everytime you call pool_job(), it will wait the
 appropriate number of seconds as indicated by the AS, and will apply
 slow_down requests.</p>
 <h5 id="as-auth-handler_2">As Auth Handler<a class="headerlink" href="#as-auth-handler_2" title="Permanent link">&para;</a></h5>
-<p>Use <a href="/api/#requests_oauth2client.auth.OAuth2DeviceCodeAuth">OAuth2DeviceCodeAuth</a> as auth handler to exchange a
+<p>Use <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2DeviceCodeAuth">OAuth2DeviceCodeAuth</a> as auth handler to exchange a
 device code for an access token:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
@@ -1270,7 +1270,7 @@ assert isinstance(resp, BearerToken)
 <p><code>requests_oauth2client</code> supports multiple client
 authentication methods, as defined in multiple OAuth2.x standards. You
 select the appropriate method to use when initializing your
-<a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a>, with the <code>auth</code> parameter. Once initialized, a
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a>, with the <code>auth</code> parameter. Once initialized, a
 client will automatically use the configured authentication method every
 time it sends a requested to an endpoint that requires client
 authentication. You don't have anything else to do afterwards.</p>
@@ -1278,7 +1278,7 @@ authentication. You don't have anything else to do afterwards.</p>
 <li>
 <p><strong>client_secret_basic</strong>: client_id and client_secret are included in
     clear-text in the Authorization header. To use it, just pass a
-    <a href="/api/#requests_oauth2client.client_authentication.ClientSecretBasic">ClientSecretBasic(client_id, client_secret)</a>} as <code>auth</code> parameter:</p>
+    <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretBasic">ClientSecretBasic(client_id, client_secret)</a>} as <code>auth</code> parameter:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
 </code></pre></div>
 </td></tr></table>
@@ -1286,7 +1286,7 @@ authentication. You don't have anything else to do afterwards.</p>
 <li>
 <p><strong>client_secret_post</strong>: client_id and client_secret are included as
     part of the body form data. To use it, pass a
-    <a href="/api/#requests_oauth2client.client_authentication.ClientSecretPost">ClientSecretPost(client_id, client_secret)</a> as <code>auth</code>
+    <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretPost">ClientSecretPost(client_id, client_secret)</a> as <code>auth</code>
     parameter. This also what is being used as default when you pass a
     tuple <code>(client_id, client_secret)</code> as <code>auth</code>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -1301,7 +1301,7 @@ client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
 <p><strong>client_secret_jwt</strong>: client generates an ephemeral JWT assertion
     including information about itself (client_id), the AS (url of the
     endpoint), and expiration date. To use it, pass a
-    <a href="/api/#requests_oauth2client.client_authentication.ClientSecretJWT">ClientSecretJWT(client_id, client_secret)</a> as <code>auth</code>
+    <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretJWT">ClientSecretJWT(client_id, client_secret)</a> as <code>auth</code>
     parameter. Assertion generation is entirely automatic, you don't
     have anything to do:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>client = OAuth2Client(token_endpoint, auth=ClientSecretJWT(client_id, client_secret))
@@ -1314,7 +1314,7 @@ client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
     it, you need a private signing key, in a <code>dict</code> that
     matches the JWK format. The matching public key must be registered
     for your client on AS side. Once you have that, using this auth
-    method is as simple with the <a href="/api/#requests_oauth2client.client_authentication.PrivateKeyJWT">PrivateKeyJWT(client_id, private_jwk)</a> auth
+    method is as simple with the <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PrivateKeyJWT">PrivateKeyJWT(client_id, private_jwk)</a> auth
     handler:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 1</span>
 <span class="normal"> 2</span>
@@ -1343,7 +1343,7 @@ client = OAuth2Client(
 <li>
 <p><strong>none</strong>: client only presents its client_id in body form data to
     the AS, without any authentication credentials. Use
-    <a href="/api/#requests_oauth2client.client_authentication.PublicApp">PublicApp(client_id)</a>:</p>
+    <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PublicApp">PublicApp(client_id)</a>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>client = OAuth2Client(token_endpoint, auth=PublicApp(client_id, client_secret))
 </code></pre></div>
 </td></tr></table>
@@ -1351,7 +1351,7 @@ client = OAuth2Client(
 </ul>
 <h3 id="token-exchange">Token Exchange<a class="headerlink" href="#token-exchange" title="Permanent link">&para;</a></h3>
 <p>To send a token exchange request, use the
-<a href="/api/#requests_oauth2client.client.OAuth2Client.token_exchange">OAuth2Client.token_exchange()</a> method:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.token_exchange">OAuth2Client.token_exchange()</a> method:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -1394,7 +1394,7 @@ subject or actor token:</p>
 </code></pre></div>
 </td></tr></table>
 <h3 id="token-revocation">Token Revocation<a class="headerlink" href="#token-revocation" title="Permanent link">&para;</a></h3>
-<p><a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> can send revocation requests to a Revocation
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> can send revocation requests to a Revocation
 Endpoint. You need to provide a Revocation Endpoint URI when creating
 the `OAuth2Client`:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -1406,9 +1406,9 @@ the `OAuth2Client`:</p>
     auth=ClientSecretJWT(&quot;client_id&quot;, &quot;client_secret&quot;))
 </code></pre></div>
 </td></tr></table>
-<p>The <a href="/api/#requests_oauth2client.client.OAuth2Client.revoke_token">OAuth2Client.revoke_token()</a> method and its specialized aliases
-<a href="/api/#requests_oauth2client.client.OAuth2Client.revoke_access_token">.revoke_access_token()</a> and
-<a href="/api/#requests_oauth2client.client.OAuth2Client.revoke_refresh_token">.revoke_refresh_token()</a> are then available:</p>
+<p>The <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.revoke_token">OAuth2Client.revoke_token()</a> method and its specialized aliases
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.revoke_access_token">.revoke_access_token()</a> and
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.revoke_refresh_token">.revoke_refresh_token()</a> are then available:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>oauth2client.revoke_token(&quot;mytoken&quot;, token_type_hint=&quot;access_token&quot;)
@@ -1422,7 +1422,7 @@ was successfully sent and no error was returned. If the Authorization
 Server actually returns a standardised error, an exception will be
 raised instead.</p>
 <h3 id="token-introspection">Token Introspection<a class="headerlink" href="#token-introspection" title="Permanent link">&para;</a></h3>
-<p><a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> can send requests to a Token Introspection
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> can send requests to a Token Introspection
 Endpoint. You need to provide an Introspection Endpoint URI when
 creating the <code>OAuth2Client</code>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -1434,14 +1434,14 @@ creating the <code>OAuth2Client</code>:</p>
    auth=ClientSecretJWT(&quot;client_id&quot;, &quot;client_secret&quot;))
 </code></pre></div>
 </td></tr></table>
-<p>The <a href="/api/#requests_oauth2client.client.OAuth2Client.instrospect_token()">OAuth2Client.introspect_token()</a> method is then available:</p>
+<p>The <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.instrospect_token()">OAuth2Client.introspect_token()</a> method is then available:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>resp = oauth2client.introspect_token(&quot;mytoken&quot;, token_type_hint=&quot;access_token&quot;)
 </code></pre></div>
 </td></tr></table>
 <p>It returns whatever data is returned by the introspection endpoint (if
 it is a JSON, its content is returned decoded).</p>
 <h3 id="userinfo-requests">UserInfo Requests<a class="headerlink" href="#userinfo-requests" title="Permanent link">&para;</a></h3>
-<p><a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> can send requests to an UserInfo Endpoint.
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> can send requests to an UserInfo Endpoint.
 You need to provide an UserInfo Endpoint URI when creating the
 <code>OAuth2Client</code>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
@@ -1453,20 +1453,20 @@ You need to provide an UserInfo Endpoint URI when creating the
    auth=ClientSecretJWT(&quot;client_id&quot;, &quot;client_secret&quot;))
 </code></pre></div>
 </td></tr></table>
-<p>The <a href="/api/#requests_oauth2client.client.OAuth2Client.userinfo">OAuth2Client.userinfo()</a>) method is then available:</p>
+<p>The <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.userinfo">OAuth2Client.userinfo()</a>) method is then available:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>resp = oauth2client.userinfo(&quot;mytoken&quot;)
 </code></pre></div>
 </td></tr></table>
 <p>It returns whatever data is returned by the userinfo endpoint (if it is
 a JSON, its content is returned decoded).</p>
 <h3 id="initializing-an-oauth2client-from-a-discovery-document">Initializing an OAuth2Client from a discovery document<a class="headerlink" href="#initializing-an-oauth2client-from-a-discovery-document" title="Permanent link">&para;</a></h3>
-<p>You can initialize an <a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> with the endpoint URIs mentioned in
-a standardised discovery document with the <a href="/api/#requests_oauth2client.client.OAuth2Client.from_discovery_document">OAuth2Client.from_discovery_endpoint()</a> class method:</p>
+<p>You can initialize an <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> with the endpoint URIs mentioned in
+a standardised discovery document with the <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.from_discovery_document">OAuth2Client.from_discovery_endpoint()</a> class method:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code>oauth2client = OAuth2Client.from_discovery_endpoint(&quot;https://myas.local/.well-known/openid-configuration&quot;)
 </code></pre></div>
 </td></tr></table>
 <p>This will fetch the document from the specified URI, then will decode it
-and initialize an <a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> pointing to the appropriate endpoint
+and initialize an <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> pointing to the appropriate endpoint
 URIs.</p>
 <h3 id="specialized-api-client">Specialized API Client<a class="headerlink" href="#specialized-api-client" title="Permanent link">&para;</a></h3>
 <p>Using APIs usually involves multiple endpoints under the same root url,
@@ -1475,7 +1475,7 @@ with a common authentication method. To make it easier,
 [requests.Session] subclass called ApiClient, which takes a
 root url as parameter on initialization. You can then send requests to
 different endpoints by passing their relative path instead of the full
-url. <a href="/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> also accepts an <code>auth</code> parameter with an
+url. <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> also accepts an <code>auth</code> parameter with an
 AuthHandler. You can pass any of the OAuth2 Auth Handler from this
 module, or any <a href="https://docs.python-requests.org/en/master/">requests</a>-compatible
 <a href="https://docs.python-requests.org/en/master/user/advanced/#custom-authentication">Authentication Handler</a>. Which makes it very easy to call APIs that
@@ -1487,7 +1487,7 @@ api = ApiClient(&quot;https://myapi.local/root&quot;, auth=OAuth2ClientCredentia
 resp = api.get(&quot;/resource/foo&quot;) # will actually send a GET to https://myapi.local/root/resource/foo
 </code></pre></div>
 </td></tr></table>
-<p>Note that <a href="/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> will never send requests "outside"
+<p>Note that <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> will never send requests "outside"
 its configured root url, unless you specifically give it full url at
 request time. The leading <code>/</code> in <code>/resource</code> above is
 optional. A leading <code>/</code> will not "reset" the url path to root, which
@@ -1504,10 +1504,10 @@ url path:</p>
 api.get([&quot;users&quot;, 1234, &quot;details&quot;]) # will actually send a GET to https://myapi.local/root/users/1234/details
 </code></pre></div>
 </td></tr></table>
-<p><a href="/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> will, by default, raise exceptions whenever a
+<p><a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> will, by default, raise exceptions whenever a
 request returns an error status. You can disable that by passing
 <code>raise_for_status=False</code> when initializing your
-<a href="/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a>:</p>
+<a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a>:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1</span>
 <span class="normal">2</span>
 <span class="normal">3</span>
@@ -1527,7 +1527,7 @@ resp = api.get(&quot;500&quot;) # without raise_for_status=False, this would rai
 <p><code>requests_oauth2client</code> being flexible enough to handle most
 use cases, you should be able to use any AS by any vendor as long as it
 supports OAuth 2.0.</p>
-<p>You can however create a subclass of <a href="/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> or <a href="/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> to make it easier to
+<p>You can however create a subclass of <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client">OAuth2Client</a> or <a href="https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient">ApiClient</a> to make it easier to
 use with specific Authorization Servers or APIs.
 The sub-module <code>requests_oauth2client.vendor_specific</code> includes such
 classes for Auth0:</p>
