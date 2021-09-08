@@ -1182,13 +1182,13 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 
 [extras]
 dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml"]
-doc = ["mkdocs", "mkdocs-include-markdown-plugin", "mkdocs-material", "mkdocstrings", "mkdocs-autorefs", "livereload"]
-test = ["pytest", "black", "isort", "flake8", "flake8-docstrings", "pytest-cov", "mypy", "types-requests", "types-cryptography", "requests-mock", "flask"]
+doc = ["mkdocs", "mkdocs-include-markdown-plugin", "mkdocs-material", "mkdocstrings", "mkdocs-material-extensions", "mkdocs-autorefs", "livereload"]
+test = ["pytest", "black", "isort", "flake8", "flake8-docstrings", "flake8-rst-docstrings", "pytest-cov", "mypy", "types-requests", "types-cryptography", "requests-mock", "flask"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "a933a8403235c727c8a6ac2440a00de1c2efa9d3900168052239d51e9d84e941"
+content-hash = "111461ccdc59fcf454906e8033766dec480765c12f7f117abde5505b8f2bd85d"
 
 [metadata.files]
 astunparse = [
