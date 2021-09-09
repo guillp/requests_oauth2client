@@ -1553,6 +1553,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#requests_oauth2client.utils.accepts_expires_in" class="md-nav__link">
+    accepts_expires_in()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#requests_oauth2client.utils.b64_decode" class="md-nav__link">
     b64_decode()
   </a>
@@ -1576,6 +1583,20 @@
           <li class="md-nav__item">
   <a href="#requests_oauth2client.utils.b64u_encode" class="md-nav__link">
     b64u_encode()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requests_oauth2client.utils.json_encode" class="md-nav__link">
+    json_encode()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requests_oauth2client.utils.validate_endpoint_uri" class="md-nav__link">
+    validate_endpoint_uri()
   </a>
   
 </li>
@@ -2837,6 +2858,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#requests_oauth2client.utils.accepts_expires_in" class="md-nav__link">
+    accepts_expires_in()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#requests_oauth2client.utils.b64_decode" class="md-nav__link">
     b64_decode()
   </a>
@@ -2860,6 +2888,20 @@
           <li class="md-nav__item">
   <a href="#requests_oauth2client.utils.b64u_encode" class="md-nav__link">
     b64u_encode()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requests_oauth2client.utils.json_encode" class="md-nav__link">
+    json_encode()
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#requests_oauth2client.utils.validate_endpoint_uri" class="md-nav__link">
+    validate_endpoint_uri()
   </a>
   
 </li>
@@ -3105,6 +3147,21 @@ The passed <code>url</code> may be relative to the url passed at initialization 
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>requests.HTTPError</code></td>
+        <td><p>if <code>raises_for_status</code> is True (in this request or at initialization time) and an error response is returned.</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\api_client.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">delete</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
@@ -3121,7 +3178,7 @@ The passed <code>url</code> may be relative to the url passed at initialization 
 <span class="sd">    :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.</span>
 <span class="sd">    :param kwargs: Optional arguments that ``request`` takes.</span>
 <span class="sd">    :return: a :class:`requests.Response` object.</span>
-<span class="sd">    :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
+<span class="sd">    :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;DELETE&quot;</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="o">=</span><span class="n">raise_for_status</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div>
@@ -3193,6 +3250,21 @@ The passed <code>url</code> may be relative to the url passed at initialization 
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>requests.HTTPError</code></td>
+        <td><p>if <code>raises_for_status</code> is True (in this request or at initialization time) and an error response is returned. and an error response is returned.</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\api_client.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">get</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
@@ -3209,7 +3281,7 @@ The passed <code>url</code> may be relative to the url passed at initialization 
 <span class="sd">    :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.</span>
 <span class="sd">    :param kwargs: Optional arguments that ``request`` takes.</span>
 <span class="sd">    :return: a :class:`requests.Response` object.</span>
-<span class="sd">    :raises: a :class:`requests.HTTPError` if `raise_for_status` is True (in this request or at initialization time)</span>
+<span class="sd">    :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
 <span class="sd">    and an error response is returned.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="o">=</span><span class="n">raise_for_status</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -3282,6 +3354,21 @@ The passed <code>url</code> may be relative to the url passed at initialization 
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>requests.HTTPError</code></td>
+        <td><p>if <code>raises_for_status</code> is True (in this request or at initialization time) and an error response is returned.</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\api_client.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">patch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">requests</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
@@ -3293,7 +3380,7 @@ The passed <code>url</code> may be relative to the url passed at initialization 
 <span class="sd">    :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.</span>
 <span class="sd">    :param kwargs: Optional arguments that ``request`` takes.</span>
 <span class="sd">    :return: a :class:`requests.Response` object.</span>
-<span class="sd">    :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
+<span class="sd">    :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;PATCH&quot;</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="o">=</span><span class="n">raise_for_status</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div>
@@ -3365,6 +3452,21 @@ The passed <code>url</code> may be relative to the url passed at initialization 
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>requests.HTTPError</code></td>
+        <td><p>if <code>raises_for_status</code> is True (in this request or at initialization time) and an error response is returned.</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\api_client.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">requests</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
@@ -3376,7 +3478,7 @@ The passed <code>url</code> may be relative to the url passed at initialization 
 <span class="sd">    :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.</span>
 <span class="sd">    :param kwargs: Optional arguments that ``request`` takes.</span>
 <span class="sd">    :return: a :class:`requests.Response` object.</span>
-<span class="sd">    :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
+<span class="sd">    :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;POST&quot;</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="o">=</span><span class="n">raise_for_status</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div>
@@ -3448,6 +3550,21 @@ The passed <code>url</code> may be relative to the url passed at initialization 
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>requests.HTTPError</code></td>
+        <td><p>if <code>raises_for_status</code> is True (in this request or at initialization time) and an error response is returned.</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\api_client.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">]]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">requests</span><span class="o">.</span><span class="n">Response</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
@@ -3459,7 +3576,7 @@ The passed <code>url</code> may be relative to the url passed at initialization 
 <span class="sd">    :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.</span>
 <span class="sd">    :param kwargs: Optional arguments that ``request`` takes.</span>
 <span class="sd">    :return: a :class:`requests.Response` object.</span>
-<span class="sd">    :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
+<span class="sd">    :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">(</span><span class="s2">&quot;PUT&quot;</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">raise_for_status</span><span class="o">=</span><span class="n">raise_for_status</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div>
@@ -4896,6 +5013,21 @@ Allows <code>token_response.expires_in</code> or <code>token_response.any_custom
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>AttributeError</code></td>
+        <td><p>if the attribute is not present in the response</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\backchannel_authentication.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -4904,7 +5036,7 @@ Allows <code>token_response.expires_in</code> or <code>token_response.any_custom
 <span class="sd">    Allows `token_response.expires_in` or `token_response.any_custom_attribute`</span>
 <span class="sd">    :param key: a key</span>
 <span class="sd">    :return: the associated value in this token response</span>
-<span class="sd">    :raises:</span>
+<span class="sd">    :raises AttributeError: if the attribute is not present in the response</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;expires_in&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expires_at</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -5821,19 +5953,19 @@ This is just an alias to <code>authorization_code()</code> with code_verifier as
     <span class="n">token_endpoint</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;token_endpoint&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">token_endpoint</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;token_endpoint not found in that discovery document&quot;</span><span class="p">)</span>
-    <span class="n">validate_uri</span><span class="p">(</span><span class="n">token_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
+    <span class="n">validate_endpoint_uri</span><span class="p">(</span><span class="n">token_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
     <span class="n">revocation_endpoint</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;revocation_endpoint&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">revocation_endpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">validate_uri</span><span class="p">(</span><span class="n">revocation_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
+        <span class="n">validate_endpoint_uri</span><span class="p">(</span><span class="n">revocation_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
     <span class="n">introspection_endpoint</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;introspection_endpoint&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">introspection_endpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">validate_uri</span><span class="p">(</span><span class="n">introspection_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
+        <span class="n">validate_endpoint_uri</span><span class="p">(</span><span class="n">introspection_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
     <span class="n">userinfo_endpoint</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;userinfo_endpoint&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">userinfo_endpoint</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">validate_uri</span><span class="p">(</span><span class="n">userinfo_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
+        <span class="n">validate_endpoint_uri</span><span class="p">(</span><span class="n">userinfo_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
     <span class="n">jwks_uri</span> <span class="o">=</span> <span class="n">discovery</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;jwks_uri&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">jwks_uri</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">validate_uri</span><span class="p">(</span><span class="n">userinfo_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
+        <span class="n">validate_endpoint_uri</span><span class="p">(</span><span class="n">userinfo_endpoint</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="n">https</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
         <span class="n">token_endpoint</span><span class="o">=</span><span class="n">token_endpoint</span><span class="p">,</span>
@@ -9627,6 +9759,21 @@ Allows <code>token_response.expires_in</code> or <code>token_response.any_custom
     </tr>
   </tbody>
 </table>
+<p><strong>Exceptions:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>AttributeError</code></td>
+        <td><p>if the attribute is not found in this response.</p></td>
+      </tr>
+  </tbody>
+</table>
         <details class="quote">
           <summary>Source code in <code>requests_oauth2client\tokens.py</code></summary>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -9635,7 +9782,7 @@ Allows <code>token_response.expires_in</code> or <code>token_response.any_custom
 <span class="sd">    Allows `token_response.expires_in` or `token_response.any_custom_attribute`</span>
 <span class="sd">    :param key: a key</span>
 <span class="sd">    :return: the associated value in this token response</span>
-<span class="sd">    :raises:</span>
+<span class="sd">    :raises AttributeError: if the attribute is not found in this response.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;expires_in&quot;</span><span class="p">:</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expires_at</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -10159,6 +10306,88 @@ with expiration date represented as expires_at.</p>
 
 
 
+  <div class="doc doc-object doc-function">
+
+
+
+<h3 id="requests_oauth2client.utils.accepts_expires_in" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">accepts_expires_in</span><span class="p">(</span><span class="n">f</span><span class="p">)</span></code>
+
+
+<a href="#requests_oauth2client.utils.accepts_expires_in" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+      <p>A decorator that allows any method that takes an <code>expires_at</code> datetime parameter
+to also accept an <code>expires_in</code> integer parameter. This will be converted
+to a datetime with <code>expires_in</code> seconds in the future.</p>
+
+<p><strong>Parameters:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>f</code></td>
+        <td><code>Callable[..., Any]</code></td>
+        <td><p>the method to decorate, with an <code>expires_at</code> parameter</p></td>
+        <td><em>required</em></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>Callable[..., Any]</code></td>
+      <td><p>a decorated method that accepts either <code>expires_in</code> or <code>expires_at</code>.</p></td>
+    </tr>
+  </tbody>
+</table>
+        <details class="quote">
+          <summary>Source code in <code>requests_oauth2client\utils.py</code></summary>
+          <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">accepts_expires_in</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A decorator that allows any method that takes an `expires_at` datetime parameter</span>
+<span class="sd">    to also accept an `expires_in` integer parameter. This will be converted</span>
+<span class="sd">    to a datetime with `expires_in` seconds in the future.</span>
+<span class="sd">    :param f: the method to decorate, with an `expires_at` parameter</span>
+<span class="sd">    :return: a decorated method that accepts either `expires_in` or `expires_at`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span>
+        <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+        <span class="n">expires_in</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">expires_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">expires_in</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">expires_at</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">expires_in</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expires_in</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">and</span> <span class="n">expires_in</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">expires_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">expires_in</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">expires_at</span><span class="o">=</span><span class="n">expires_at</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">decorator</span>
+</code></pre></div>
+        </details>
+    </div>
+
+  </div>
+
+
 
   <div class="doc doc-object doc-function">
 
@@ -10188,13 +10417,7 @@ with expiration date represented as expires_at.</p>
       <tr>
         <td><code>data</code></td>
         <td><code>Union[str, bytes]</code></td>
-        <td></td>
-        <td><em>required</em></td>
-      </tr>
-      <tr>
-        <td><code>encoding</code></td>
-        <td><code></code></td>
-        <td></td>
+        <td><p>the data to base64-decode</p></td>
         <td><em>required</em></td>
       </tr>
   </tbody>
@@ -10210,7 +10433,7 @@ with expiration date represented as expires_at.</p>
   <tbody>
     <tr>
       <td><code>bytes</code></td>
-      <td></td>
+      <td><p>the decoded data, as bytes</p></td>
     </tr>
   </tbody>
 </table>
@@ -10219,9 +10442,8 @@ with expiration date represented as expires_at.</p>
           <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">b64_decode</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Decodes a base64-encoded string or bytes.</span>
-<span class="sd">    :param data:</span>
-<span class="sd">    :param encoding:</span>
-<span class="sd">    :return:</span>
+<span class="sd">    :param data: the data to base64-decode</span>
+<span class="sd">    :return: the decoded data, as bytes</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
@@ -10254,9 +10476,9 @@ with expiration date represented as expires_at.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Encodes the string or bytes <code>data</code> using base64.
-If data is a string, encode it to string using <code>encoding</code> before converting it to base64.
-If padded is True (default), outputs includes a padding with = to make its length a multiple of 4. If False,
+      <p>Encodes the string or bytes <code>data</code> using Base64.
+If <code>data</code> is a string, encode it to bytes using <code>encoding</code> before converting it to Base64.
+If <code>padded</code> is <code>True</code> (default), outputs includes a padding with <code>=</code> to make its length a multiple of 4. If <code>False</code>,
 no padding is included.</p>
 
 <p><strong>Parameters:</strong></p>
@@ -10273,13 +10495,13 @@ no padding is included.</p>
       <tr>
         <td><code>data</code></td>
         <td><code>Union[bytes, str]</code></td>
-        <td><p>a str or bytes to base64-encode.</p></td>
+        <td><p>value to base64-encode.</p></td>
         <td><em>required</em></td>
       </tr>
       <tr>
         <td><code>encoding</code></td>
         <td><code>str</code></td>
-        <td><p>if data is a str, use this encoding to convert it to bytes first.</p></td>
+        <td><p>if <code>data</code> is a <code>str</code>, use this encoding to convert it to <code>bytes</code> first.</p></td>
         <td><code>&#39;utf-8&#39;</code></td>
       </tr>
       <tr>
@@ -10301,7 +10523,7 @@ no padding is included.</p>
   <tbody>
     <tr>
       <td><code>str</code></td>
-      <td><p>a str with the base64-encoded data.</p></td>
+      <td><p>a <code>str</code> with the base64-encoded data.</p></td>
     </tr>
   </tbody>
 </table>
@@ -10311,14 +10533,14 @@ no padding is included.</p>
     <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">padded</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Encodes the string or bytes `data` using base64.</span>
-<span class="sd">    If data is a string, encode it to string using `encoding` before converting it to base64.</span>
-<span class="sd">    If padded is True (default), outputs includes a padding with = to make its length a multiple of 4. If False,</span>
+<span class="sd">    Encodes the string or bytes `data` using Base64.</span>
+<span class="sd">    If `data` is a string, encode it to bytes using `encoding` before converting it to Base64.</span>
+<span class="sd">    If `padded` is `True` (default), outputs includes a padding with `=` to make its length a multiple of 4. If `False`,</span>
 <span class="sd">    no padding is included.</span>
-<span class="sd">    :param data: a str or bytes to base64-encode.</span>
-<span class="sd">    :param encoding: if data is a str, use this encoding to convert it to bytes first.</span>
+<span class="sd">    :param data: value to base64-encode.</span>
+<span class="sd">    :param encoding: if `data` is a `str`, use this encoding to convert it to `bytes` first.</span>
 <span class="sd">    :param padded: whether to include padding in the output</span>
-<span class="sd">    :return: a str with the base64-encoded data.</span>
+<span class="sd">    :return: a `str` with the base64-encoded data.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
@@ -10349,7 +10571,7 @@ no padding is included.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Decodes a base64encoded string or bytes.</p>
+      <p>Decodes a base64url-encoded data.</p>
 
 <p><strong>Parameters:</strong></p>
 <table>
@@ -10365,13 +10587,7 @@ no padding is included.</p>
       <tr>
         <td><code>data</code></td>
         <td><code>Union[str, bytes]</code></td>
-        <td><p>the data to decode. Can be bytes or str</p></td>
-        <td><em>required</em></td>
-      </tr>
-      <tr>
-        <td><code>encoding</code></td>
-        <td><code></code></td>
-        <td><p>the encoding to use when converting the decoded data to str. If None, no decoding will be done and data will be decoded as bytes.</p></td>
+        <td><p>the data to decode.</p></td>
         <td><em>required</em></td>
       </tr>
   </tbody>
@@ -10387,7 +10603,7 @@ no padding is included.</p>
   <tbody>
     <tr>
       <td><code>bytes</code></td>
-      <td><p>the decoded data as a string, or bytes if <code>encoding</code> is None.</p></td>
+      <td><p>the decoded data as bytes.</p></td>
     </tr>
   </tbody>
 </table>
@@ -10397,11 +10613,9 @@ no padding is included.</p>
     <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">],</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Decodes a base64encoded string or bytes.</span>
-<span class="sd">    :param data: the data to decode. Can be bytes or str</span>
-<span class="sd">    :param encoding: the encoding to use when converting the decoded data to str. If None, no decoding will</span>
-<span class="sd">    be done and data will be decoded as bytes.</span>
-<span class="sd">    :return: the decoded data as a string, or bytes if `encoding` is None.</span>
+<span class="sd">    Decodes a base64url-encoded data.</span>
+<span class="sd">    :param data: the data to decode.</span>
+<span class="sd">    :return: the decoded data as bytes.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
@@ -10434,7 +10648,10 @@ no padding is included.</p>
 
     <div class="doc doc-contents ">
 
-      <p>Encodes some data in Base64url.</p>
+      <p>Encodes some data using Base64url.
+If <code>data</code> is a string, encode it to bytes using <code>encoding</code> before converting it to Base64.
+If <code>padded</code> is <code>False</code> (default), no padding is added. If <code>True</code>, outputs includes a padding with <code>=</code> to make
+its length a multiple of 4.</p>
 
 <p><strong>Parameters:</strong></p>
 <table>
@@ -10450,19 +10667,19 @@ no padding is included.</p>
       <tr>
         <td><code>data</code></td>
         <td><code>Union[bytes, str]</code></td>
-        <td><p>the data to encode. Can be bytes or str.</p></td>
+        <td><p>the data to encode.</p></td>
         <td><em>required</em></td>
       </tr>
       <tr>
         <td><code>encoding</code></td>
         <td><code>str</code></td>
-        <td><p>if data is a string, the encoding to use to convert it as bytes</p></td>
+        <td><p>if <code>data</code> is a string, the encoding to use to convert it to <code>bytes</code></p></td>
         <td><code>&#39;utf-8&#39;</code></td>
       </tr>
       <tr>
         <td><code>padded</code></td>
         <td><code>bool</code></td>
-        <td><p>if True, pad the output with = to make its length a multiple of 4</p></td>
+        <td><p>if <code>True</code>, pad the output with <code>=</code> to make its length a multiple of 4</p></td>
         <td><code>False</code></td>
       </tr>
   </tbody>
@@ -10488,10 +10705,13 @@ no padding is included.</p>
     <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">encoding</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;utf-8&quot;</span><span class="p">,</span> <span class="n">padded</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Encodes some data in Base64url.</span>
-<span class="sd">    :param data: the data to encode. Can be bytes or str.</span>
-<span class="sd">    :param encoding: if data is a string, the encoding to use to convert it as bytes</span>
-<span class="sd">    :param padded: if True, pad the output with = to make its length a multiple of 4</span>
+<span class="sd">    Encodes some data using Base64url.</span>
+<span class="sd">    If `data` is a string, encode it to bytes using `encoding` before converting it to Base64.</span>
+<span class="sd">    If `padded` is `False` (default), no padding is added. If `True`, outputs includes a padding with `=` to make</span>
+<span class="sd">    its length a multiple of 4.</span>
+<span class="sd">    :param data: the data to encode.</span>
+<span class="sd">    :param encoding: if `data` is a string, the encoding to use to convert it to `bytes`</span>
+<span class="sd">    :param padded: if `True`, pad the output with `=` to make its length a multiple of 4</span>
 <span class="sd">    :return: the base64url encoded data, as a string</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
@@ -10510,6 +10730,201 @@ no padding is included.</p>
   </div>
 
 
+
+  <div class="doc doc-object doc-function">
+
+
+
+<h3 id="requests_oauth2client.utils.json_encode" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">json_encode</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">compact</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">default_encoder</span><span class="o">=&lt;</span><span class="n">function</span> <span class="n">_default_json_encode</span> <span class="n">at</span> <span class="mh">0x000001B0D8B32700</span><span class="o">&gt;</span><span class="p">)</span></code>
+
+
+<a href="#requests_oauth2client.utils.json_encode" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+      <p>Encodes an object to JSON. By default, this produces a compact output (no extra whitespaces), and datetimes are
+converted to epoch-style integers. Any unhandled value is stringified using <code>str()</code>. You can override this with the
+parameters <code>compact</code> and <code>default_encoder</code>.</p>
+
+<p><strong>Parameters:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>obj</code></td>
+        <td><code>Dict[str, Any]</code></td>
+        <td><p>the data to JSON-encode.</p></td>
+        <td><em>required</em></td>
+      </tr>
+      <tr>
+        <td><code>compact</code></td>
+        <td><code>bool</code></td>
+        <td><p>if <code>True</code> (default), produces a compact output.</p></td>
+        <td><code>True</code></td>
+      </tr>
+      <tr>
+        <td><code>default_encoder</code></td>
+        <td><code>Callable[[Any], Any]</code></td>
+        <td><p>the default encoder to use for types that the default <code>json</code> module doesn't handle.</p></td>
+        <td><code>&lt;function _default_json_encode at 0x000001B0D8B32700&gt;</code></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>str</code></td>
+      <td><p>the JSON-encoded data.</p></td>
+    </tr>
+  </tbody>
+</table>
+        <details class="quote">
+          <summary>Source code in <code>requests_oauth2client\utils.py</code></summary>
+          <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">json_encode</span><span class="p">(</span>
+    <span class="n">obj</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">compact</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">default_encoder</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">_default_json_encode</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Encodes an object to JSON. By default, this produces a compact output (no extra whitespaces), and datetimes are</span>
+<span class="sd">    converted to epoch-style integers. Any unhandled value is stringified using `str()`. You can override this with the</span>
+<span class="sd">    parameters `compact` and `default_encoder`.</span>
+<span class="sd">    :param obj: the data to JSON-encode.</span>
+<span class="sd">    :param compact: if `True` (default), produces a compact output.</span>
+<span class="sd">    :param default_encoder: the default encoder to use for types that the default `json` module doesn&#39;t handle.</span>
+<span class="sd">    :return: the JSON-encoded data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">separators</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">compact</span> <span class="k">else</span> <span class="p">(</span><span class="s2">&quot;, &quot;</span><span class="p">,</span> <span class="s2">&quot;: &quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="n">separators</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">default_encoder</span><span class="p">)</span>
+</code></pre></div>
+        </details>
+    </div>
+
+  </div>
+
+
+
+  <div class="doc doc-object doc-function">
+
+
+
+<h3 id="requests_oauth2client.utils.validate_endpoint_uri" class="doc doc-heading">
+<code class="highlight language-python"><span class="n">validate_endpoint_uri</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">https</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">no_fragment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+
+<a href="#requests_oauth2client.utils.validate_endpoint_uri" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+      <p>Validates that an URI is suitable as an endpoint URI.
+It checks:</p>
+<ul>
+<li>that the scheme is <code>https</code></li>
+<li>that no fragment is included</li>
+<li>that a path is present</li>
+</ul>
+<p>Those check can be individually disabled using the parameters <code>https</code>, <code>no_fragment</code> and <code>path</code>.</p>
+
+<p><strong>Parameters:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+      <th>Default</th>
+    </tr>
+  </thead>
+  <tbody>
+      <tr>
+        <td><code>value</code></td>
+        <td><code>str</code></td>
+        <td></td>
+        <td><em>required</em></td>
+      </tr>
+      <tr>
+        <td><code>https</code></td>
+        <td><code>bool</code></td>
+        <td></td>
+        <td><code>True</code></td>
+      </tr>
+      <tr>
+        <td><code>no_fragment</code></td>
+        <td><code>bool</code></td>
+        <td></td>
+        <td><code>True</code></td>
+      </tr>
+      <tr>
+        <td><code>path</code></td>
+        <td><code>bool</code></td>
+        <td></td>
+        <td><code>True</code></td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Returns:</strong></p>
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>None</code></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+        <details class="quote">
+          <summary>Source code in <code>requests_oauth2client\utils.py</code></summary>
+          <div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">validate_endpoint_uri</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">no_fragment</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validates that an URI is suitable as an endpoint URI.</span>
+<span class="sd">    It checks:</span>
+
+<span class="sd">    - that the scheme is `https`</span>
+<span class="sd">    - that no fragment is included</span>
+<span class="sd">    - that a path is present</span>
+
+<span class="sd">    Those check can be individually disabled using the parameters `https`, `no_fragment` and `path`.</span>
+<span class="sd">    :param value:</span>
+<span class="sd">    :param https:</span>
+<span class="sd">    :param no_fragment:</span>
+<span class="sd">    :param path:</span>
+<span class="sd">    :return:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">furl</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">https</span> <span class="ow">and</span> <span class="n">url</span><span class="o">.</span><span class="n">scheme</span> <span class="o">!=</span> <span class="s2">&quot;https&quot;</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;url must use https&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">no_fragment</span> <span class="ow">and</span> <span class="n">url</span><span class="o">.</span><span class="n">fragment</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;url must not contain a fragment&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="ow">or</span> <span class="n">url</span><span class="o">.</span><span class="n">path</span> <span class="o">==</span> <span class="s2">&quot;/&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;url has no path&quot;</span><span class="p">)</span>
+</code></pre></div>
+        </details>
+    </div>
+
+  </div>
 
 
 
