@@ -1,4 +1,5 @@
 [run]
+source = requests_oauth2client
 # uncomment the following to omit files during running
 #omit =
 [report]
