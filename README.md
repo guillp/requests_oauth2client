@@ -1,5 +1,5 @@
-A Python OAuth 2.x client, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC compliant Authorization
-Server.
+`requests_oauth2client` is a Python OAuth 2.x client, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC
+compliant Authorization Server. It sits upon and extends the famous [requests] HTTP client module.
 
 It can act as an [OAuth 2.0](https://tools.ietf.org/html/rfc6749) /
 [2.1](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1) client, to automatically get and renew access tokens,
@@ -10,9 +10,6 @@ based on the
 [Device Authorization](https://datatracker.ietf.org/doc/html/rfc8628), or
 [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
 
-It sits upon and extend the famous [requests] library to handle
-[OAuth 2.0 Bearer Token based authorization when accessing APIs.](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-02.html#name-accessing-protected-resourc)
-
 It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-core-1_0.html),
 [PKCE](https://tools.ietf.org/html/rfc7636), [Client Assertions](https://datatracker.ietf.org/doc/html/rfc7523), Token
 [Revocation](https://www.rfc-editor.org/rfc/rfc7009.html), [Exchange](https://datatracker.ietf.org/doc/html/rfc8693),
@@ -21,9 +18,8 @@ and [Introspection](https://datatracker.ietf.org/doc/html/rfc7662),
 as well as using custom params to any endpoint, and other important features that are often overlooked in other client
 libraries.
 
-And it also includes a [wrapper][apiclient] around
-[requests.Session](https://docs.python-requests.org/en/master/api/#request-sessions) that makes it super easy to use
-REST-style APIs, with or without OAuth 2.x.
+And it also includes a [wrapper][apiclient] around [requests.Session] that makes it super easy to use REST-style APIs,
+with or without OAuth 2.x.
 
 # Installation
 
@@ -44,7 +40,7 @@ import requests
 
 ## Calling APIs with Access Tokens
 
-If you already managed to obtain an access token, you can simply use the [BearerAuth] Auth Handler for `requests`:
+If you already managed to obtain an access token, you can simply use the [BearerAuth] Auth Handler for [requests]:
 
 ```python
 token = "an_access_token"
@@ -54,7 +50,7 @@ resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 This authentication handler will add a properly formatted `Authorization` header in the request, with your access token
 according to RFC6750.
 
-## Using an `OAuth2Client`
+## Using an OAuth2Client
 
 [OAuth2Client] offers several methods that implement the communication to the various endpoints that are standardised by
 OAuth 2.0 and its extensions. Those endpoints include the Token Endpoint, the Revocation, Introspection, UserInfo,
@@ -91,9 +87,9 @@ from requests_oauth2client import BearerToken
 
 bearer_token = BearerToken(access_token="an_access_token", expires_in=60)
 print(bearer_token)
-# > {'access_token': 'an_access_token',
-#   'expires_in': 55,
-#   'token_type': 'Bearer'}
+# {'access_token': 'an_access_token',
+#  'expires_in': 55,
+#  'token_type': 'Bearer'}
 print(bearer_token.expires_at)
 # datetime.datetime(2021, 8, 20, 9, 56, 59, 498793)
 assert not bearer_token.is_expired()
@@ -112,8 +108,8 @@ actual applications where tokens must be obtained, used during their lifetime th
 are expired. `requests_oauth2client` contains several [requests] compatible Auth Handler (as subclasses of
 [requests.auth.AuthBase](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication), that will
 take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
-ones (or refresh them, when possible), once the initial token is expired. Those are best used with a
-\[requests.Session\], or an [ApiClient] which is a Session Subclass with a few enhancements as described below.
+ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session],
+or an [ApiClient] which is a Session Subclass with a few enhancements as described below.
 
 ### Client Credentials grant
 
@@ -197,7 +193,7 @@ https://myas.local/authorize
 ```
 
 [AuthorizationRequest] supports PKCE and uses it by default. You can avoid it by passing `code_challenge_method=None` to
-\[AuthenticationRequest\]. You can obtain the generated code_verifier from `auth_request.code_verifier`.
+[AuthorizationRequest]. You can obtain the generated code_verifier from `auth_request.code_verifier`.
 
 Redirecting or otherwise sending the user to this url is your application responsibility, as well as obtaining the
 Authorization Response url.
@@ -337,7 +333,7 @@ resp = api_client.post(
 )  # first call will hang until the user authorizes your app and the token endpoint returns a token.
 ```
 
-## Client-Initiated BackChannel Authentication (CIBA)
+### Client-Initiated BackChannel Authentication (CIBA)
 
 To initiate a BackChannel Authentication against the dedicated endpoint:
 
@@ -380,9 +376,51 @@ while resp is None:
 assert isinstance(resp, BearerToken)
 ```
 
+Hints by the AS to slow down pooling will automatically be obeyed.
+
+### Token Exchange
+
+To send a token exchange request, use the
+[OAuth2Client.token_exchange()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.token_exchange)
+method:
+
+```python
+client = OAuth2Client(token_endpoint, auth=...)
+token = client.token_exchange(
+    subject_token="your_token_value",
+    subject_token_type="urn:ietf:params:oauth:token-type:access_token",
+)
+```
+
+As with the other grant-type specific methods, you may specify additional keyword parameters, that will be passed to the
+token endpoint, including any standardised attribute like `actor_token` or `actor_token_type`, or any custom parameter.
+There are short names for token types, that will be automatically translated to standardised types:
+
+```python
+token = client.token_exchange(
+    subject_token="your_token_value",
+    subject_token_type="access_token",  # will be automatically replaced by "urn:ietf:params:oauth:token-type:access_token"
+    actor_token="your_actor_token",
+    actor_token_type="id_token",  # will be automatically replaced by "urn:ietf:params:oauth:token-type:id_token"
+)
+```
+
+Or to make it even easier, types can be guessed based on the supplied subject or actor token:
+
+```python
+token = client.token_exchange(
+    subject_token=BearerToken(
+        "your_token_value"
+    ),  # subject_token_type will be "urn:ietf:params:oauth:token-type:access_token"
+    actor_token=IdToken(
+        "your_actor_token"
+    ),  # actor_token_type will be "urn:ietf:params:oauth:token-type:id_token"
+)
+```
+
 ## Supported Client Authentication Methods
 
-`requests_oauth2client` supports multiple client authentication methods, as defined in multiple OAuth2.x standards. You
+`requests_oauth2client` supports several client authentication methods, as defined in multiple OAuth2.x standards. You
 select the appropriate method to use when initializing your [OAuth2Client], with the `auth` parameter. Once initialized,
 a client will automatically use the configured authentication method every time it sends a requested to an endpoint that
 requires client authentication. You don't have anything else to do afterwards.
@@ -447,46 +485,6 @@ requires client authentication. You don't have anything else to do afterwards.
   ```python
   client = OAuth2Client(token_endpoint, auth=PublicApp(client_id, client_secret))
   ```
-
-## Token Exchange
-
-To send a token exchange request, use the
-[OAuth2Client.token_exchange()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.token_exchange)
-method:
-
-```python
-client = OAuth2Client(token_endpoint, auth=...)
-token = client.token_exchange(
-    subject_token="your_token_value",
-    subject_token_type="urn:ietf:params:oauth:token-type:access_token",
-)
-```
-
-As with the other grant-type specific methods, you may specify additional keyword parameters, that will be passed to the
-token endpoint, including any standardised attribute like `actor_token` or `actor_token_type`, or any custom parameter.
-There are short names for token types, that will be automatically translated to standardised types:
-
-```python
-token = client.token_exchange(
-    subject_token="your_token_value",
-    subject_token_type="access_token",  # will be automatically replaced by "urn:ietf:params:oauth:token-type:access_token"
-    actor_token="your_actor_token",
-    actor_token_type="id_token",  # will be automatically replaced by "urn:ietf:params:oauth:token-type:id_token"
-)
-```
-
-Or to make it even easier, types can be guessed based on the supplied subject or actor token:
-
-```python
-token = client.token_exchange(
-    subject_token=BearerToken(
-        "your_token_value"
-    ),  # subject_token_type will be "urn:ietf:params:oauth:token-type:access_token"
-    actor_token=IdToken(
-        "your_actor_token"
-    ),  # actor_token_type will be "urn:ietf:params:oauth:token-type:id_token"
-)
-```
 
 ## Token Revocation
 
@@ -587,7 +585,7 @@ the appropriate endpoint URIs.
 ## Specialized API Client
 
 Using APIs usually involves multiple endpoints under the same root url, with a common authentication method. To make it
-easier, `requests_oauth2client` includes a specialized \[requests.Session\] subclass called [ApiClient], which takes the
+easier, `requests_oauth2client` includes a specialized [requests.Session] subclass called [ApiClient], which takes the
 root API url as parameter on initialization. You can then send requests to different endpoints by passing their relative
 path instead of the full url. [ApiClient] also accepts an `auth` parameter with an AuthHandler. You can pass any of the
 OAuth2 Auth Handler from this module, or any [requests]-compatible
@@ -671,3 +669,4 @@ myusers = a0mgmt.get("users")
 [bearertoken]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken
 [oauth2client]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client
 [requests]: https://docs.python-requests.org/en/master/
+[requests.session]: https://docs.python-requests.org/en/master/api/#request-sessions

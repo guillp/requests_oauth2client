@@ -84,5 +84,5 @@ from .utils import (
     b64u_decode,
     b64u_encode,
     json_encode,
-    validate_uri,
+    validate_endpoint_uri,
 )

@@ -161,7 +161,7 @@ class ApiClient(requests.Session):
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
         :return: a :class:`requests.Response` object.
-        :raises: a :class:`requests.HTTPError` if `raise_for_status` is True (in this request or at initialization time)
+        :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         and an error response is returned.
         """
         return self.request("GET", url, raise_for_status=raise_for_status, **kwargs)
@@ -175,7 +175,7 @@ class ApiClient(requests.Session):
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
         :return: a :class:`requests.Response` object.
-        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("POST", url, raise_for_status=raise_for_status, **kwargs)
 
@@ -188,7 +188,7 @@ class ApiClient(requests.Session):
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
         :return: a :class:`requests.Response` object.
-        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("PATCH", url, raise_for_status=raise_for_status, **kwargs)
 
@@ -201,7 +201,7 @@ class ApiClient(requests.Session):
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
         :return: a :class:`requests.Response` object.
-        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("PUT", url, raise_for_status=raise_for_status, **kwargs)
 
@@ -219,6 +219,6 @@ class ApiClient(requests.Session):
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
         :return: a :class:`requests.Response` object.
-        :raises: a :class:`requests.HTTPError` if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
+        :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("DELETE", url, raise_for_status=raise_for_status, **kwargs)

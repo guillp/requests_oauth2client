@@ -84,7 +84,7 @@ class BearerToken:
         Allows `token_response.expires_in` or `token_response.any_custom_attribute`
         :param key: a key
         :return: the associated value in this token response
-        :raises:
+        :raises AttributeError: if the attribute is not found in this response.
         """
         if key == "expires_in":
             if self.expires_at is None:

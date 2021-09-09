@@ -12,7 +12,7 @@ from requests_oauth2client import (
     b64u_decode,
     b64u_encode,
     json_encode,
-    validate_uri,
+    validate_endpoint_uri,
 )
 
 clear_text = string.printable
@@ -59,13 +59,13 @@ def test_b64u():
 
 
 def test_validate_uri():
-    validate_uri("https://myas.local/token")
+    validate_endpoint_uri("https://myas.local/token")
     with pytest.raises(ValueError):
-        validate_uri("http://myas.local/token")
+        validate_endpoint_uri("http://myas.local/token")
     with pytest.raises(ValueError):
-        validate_uri("https://myas.local")
+        validate_endpoint_uri("https://myas.local")
     with pytest.raises(ValueError):
-        validate_uri("https://myas.local/token#foo")
+        validate_endpoint_uri("https://myas.local/token#foo")
 
 
 def test_accepts_expires_in():

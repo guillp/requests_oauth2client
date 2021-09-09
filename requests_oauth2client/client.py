@@ -29,7 +29,7 @@ from .exceptions import (
 )
 from .jwskate import Jwk, Jwt
 from .tokens import BearerToken, IdToken
-from .utils import validate_uri
+from .utils import validate_endpoint_uri
 
 
 class OAuth2Client:
@@ -789,19 +789,19 @@ class OAuth2Client:
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
-        validate_uri(token_endpoint, https=https)
+        validate_endpoint_uri(token_endpoint, https=https)
         revocation_endpoint = discovery.get("revocation_endpoint")
         if revocation_endpoint is not None:
-            validate_uri(revocation_endpoint, https=https)
+            validate_endpoint_uri(revocation_endpoint, https=https)
         introspection_endpoint = discovery.get("introspection_endpoint")
         if introspection_endpoint is not None:
-            validate_uri(introspection_endpoint, https=https)
+            validate_endpoint_uri(introspection_endpoint, https=https)
         userinfo_endpoint = discovery.get("userinfo_endpoint")
         if userinfo_endpoint is not None:
-            validate_uri(userinfo_endpoint, https=https)
+            validate_endpoint_uri(userinfo_endpoint, https=https)
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri is not None:
-            validate_uri(userinfo_endpoint, https=https)
+            validate_endpoint_uri(userinfo_endpoint, https=https)
 
         return cls(
             token_endpoint=token_endpoint,
