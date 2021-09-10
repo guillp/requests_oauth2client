@@ -108,3 +108,13 @@ exclude = '''
   | dist
 )/
 '''
+
+[mypy]
+strict = true
+show_error_context = true
+show_column_numbers = true
+show_error_codes = true
+pretty = true
+warn_unused_configs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
