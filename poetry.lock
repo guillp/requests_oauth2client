@@ -301,7 +301,7 @@ dev = ["twine", "markdown", "flake8"]
 
 [[package]]
 name = "identify"
-version = "2.2.13"
+version = "2.2.14"
 description = "File identification library for Python"
 category = "main"
 optional = true
@@ -511,7 +511,7 @@ mkdocs = ">=1.1,<2.0"
 
 [[package]]
 name = "mkdocs-include-markdown-plugin"
-version = "3.2.2"
+version = "3.2.3"
 description = "Mkdocs Markdown includer plugin."
 category = "main"
 optional = true
@@ -1188,7 +1188,7 @@ test = ["pytest", "black", "isort", "flake8", "flake8-docstrings", "flake8-rst-d
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<4.0"
-content-hash = "111461ccdc59fcf454906e8033766dec480765c12f7f117abde5505b8f2bd85d"
+content-hash = "5f66b2c651a19ebdc51a3131d334e851d29c0b24f620786ee408ea0a4f993e48"
 
 [metadata.files]
 astunparse = [
@@ -1399,8 +1399,8 @@ ghp-import = [
     {file = "ghp-import-2.0.1.tar.gz", hash = "sha256:753de2eace6e0f7d4edfb3cce5e3c3b98cd52aadb80163303d1d036bda7b4483"},
 ]
 identify = [
-    {file = "identify-2.2.13-py2.py3-none-any.whl", hash = "sha256:7199679b5be13a6b40e6e19ea473e789b11b4e3b60986499b1f589ffb03c217c"},
-    {file = "identify-2.2.13.tar.gz", hash = "sha256:7bc6e829392bd017236531963d2d937d66fc27cadc643ac0aba2ce9f26157c79"},
+    {file = "identify-2.2.14-py2.py3-none-any.whl", hash = "sha256:113a76a6ba614d2a3dd408b3504446bcfac0370da5995aa6a17fd7c6dffde02d"},
+    {file = "identify-2.2.14.tar.gz", hash = "sha256:32f465f3c48083f345ad29a9df8419a4ce0674bf4a8c3245191d65c83634bdbf"},
 ]
 idna = [
     {file = "idna-3.2-py3-none-any.whl", hash = "sha256:14475042e284991034cb48e06f6851428fb14c4dc953acd9be9a5e95c7b6dd7a"},
@@ -1498,8 +1498,8 @@ mkdocs-autorefs = [
     {file = "mkdocs_autorefs-0.2.1-py3-none-any.whl", hash = "sha256:f301b983a34259df90b3fcf7edc234b5e6c7065bd578781e66fd90b8cfbe76be"},
 ]
 mkdocs-include-markdown-plugin = [
-    {file = "mkdocs_include_markdown_plugin-3.2.2-py3-none-any.whl", hash = "sha256:c573b87e82d8d6c10ed09b809181efd91aa22fe251a82d01d4454783433069cc"},
-    {file = "mkdocs_include_markdown_plugin-3.2.2.tar.gz", hash = "sha256:14494c246259d5b58cc6d843ce81f9f2caaf732e25f7aba56038e10cccf54c66"},
+    {file = "mkdocs_include_markdown_plugin-3.2.3-py3-none-any.whl", hash = "sha256:5a8b0c60d8981225c012b8f657b6557910997e46dacae4aff039b181487236cf"},
+    {file = "mkdocs_include_markdown_plugin-3.2.3.tar.gz", hash = "sha256:64dd8c408a1b5b7422d4a5a826c434e5372af2fb7bd244dd5c87e09ff8f13302"},
 ]
 mkdocs-material = [
     {file = "mkdocs-material-7.2.6.tar.gz", hash = "sha256:4bdeff63904680865676ceb3193216934de0b33fa5b2446e0a84ade60929ee54"},

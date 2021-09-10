@@ -46,6 +46,9 @@ from requests_oauth2client import *
 import requests
 ```
 
+# Documentation
+Full module documentation is available at https://guillp.github.io/requests_oauth2client/
+
 ## Calling APIs with Access Tokens
 
 If you already managed to obtain an access token, you can simply use the [BearerAuth] Auth Handler for [requests]:
