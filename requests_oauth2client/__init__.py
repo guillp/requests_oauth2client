@@ -1,3 +1,5 @@
+import requests  # type: ignore
+
 from .api_client import ApiClient
 from .auth import (
     BearerAuth,

@@ -43,8 +43,9 @@ Import it like this:
 
 ```python
 from requests_oauth2client import *
-import requests
 ```
+
+Note that this automatically imports `requests`, so no need to import it yourself.
 
 # Documentation
 Full module documentation is available at https://guillp.github.io/requests_oauth2client/
