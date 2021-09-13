@@ -29,6 +29,10 @@ with or without OAuth 2.x.
 [![GitHub commits](https://badgen.net/github/commits/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
 [![GitHub latest commit](https://badgen.net/github/last-commit/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
 
+# Documentation
+
+Full module documentation is available at https://guillp.github.io/requests_oauth2client/
+
 # Installation
 
 As easy as:
@@ -47,9 +51,6 @@ from requests_oauth2client import *
 
 Note that this automatically imports `requests`, so no need to import it yourself.
 
-# Documentation
-Full module documentation is available at https://guillp.github.io/requests_oauth2client/
-
 ## Calling APIs with Access Tokens
 
 If you already managed to obtain an access token, you can simply use the [BearerAuth] Auth Handler for [requests]:
@@ -60,7 +61,7 @@ resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 ```
 
 This authentication handler will add a properly formatted `Authorization` header in the request, with your access token
-according to RFC6750.
+according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
 
 ## Using an OAuth2Client
 
@@ -82,7 +83,8 @@ The Token Endpoint is the only Endpoint that is mandatory to obtain tokens. Cred
 client everytime it sends a request to its Authorization Server. Usually, those are a static Client ID and Secret, which
 are the direct equivalent of a username and a password, but meant for an application instead of for a human user. The
 default authentication method used by OAuth2Client is *Client Secret Post*, but other standardised methods such as
-*Client Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See below.
+*Client Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See
+[more about client authentication methods below](#supported-client-authentication-methods).
 
 ## Obtaining tokens
 
