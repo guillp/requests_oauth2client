@@ -249,15 +249,16 @@ class AuthorizationRequest:
         except ValueError:
             return self.on_response_error(response)
 
-        error = response_url.args.get("error")
-        if error:
-            return self.on_response_error(response)
-
         requested_state = self.state
         if requested_state:
             received_state = response_url.args.get("state")
             if requested_state != received_state:
                 raise MismatchingState(requested_state, received_state)
+
+        error = response_url.args.get("error")
+        if error:
+            return self.on_response_error(response)
+
         code: str = response_url.args.get("code")
         if code is None:
             raise MissingAuthCode()
