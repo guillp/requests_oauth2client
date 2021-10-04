@@ -120,6 +120,11 @@ def json_encode(
     return json.dumps(obj, separators=separators, default=default_encoder)
 
 
+def b64u_encode_json(j: Dict[str, Any], encoder=json_encode) -> str:
+    encoded_json = encoder(j)
+    return b64u_encode(encoded_json)
+
+
 def validate_endpoint_uri(
     value: str, https: bool = True, no_fragment: bool = True, path: bool = True
 ) -> None:
