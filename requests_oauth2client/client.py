@@ -27,7 +27,7 @@ from .exceptions import (
     UnknownTokenEndpointError,
     UnsupportedTokenType,
 )
-from .jwskate import Jwk, Jwt
+from .jwskate import Jwk, JwkSet, Jwt
 from .tokens import BearerToken, IdToken
 from .utils import validate_endpoint_uri
 
@@ -727,18 +727,15 @@ class OAuth2Client:
             error_json,
         )
 
-    def get_public_jwks(self) -> Dict[str, Any]:
+    def get_public_jwks(self) -> JwkSet:
+        """
+        Fetches and parse the public keys from the JWKS endpoint.
+        :return:
+        """
         if not self.jwks_uri:
             raise ValueError("No jwks uri defined for this client")
         jwks = self.session.get(self.jwks_uri, auth=None).json()
-        if (
-            not isinstance(jwks, dict)
-            or "keys" not in jwks
-            or not isinstance(jwks["keys"], list)
-            or any("kty" not in jwk for jwk in jwks["keys"])
-        ):
-            raise ValueError("Invalid JWKS returned by the server", jwks)
-        return jwks
+        return JwkSet(jwks)
 
     @classmethod
     def from_discovery_endpoint(

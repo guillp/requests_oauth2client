@@ -9,6 +9,7 @@ from requests_oauth2client import (
     ClientSecretPost,
     IdToken,
     InvalidTokenResponse,
+    JwkSet,
     OAuth2Client,
     PrivateKeyJWT,
     PublicApp,
@@ -1033,7 +1034,7 @@ def test_revoke_token_no_revocation_endpoint(token_endpoint, client_id):
 def test_server_jwks(requests_mock, oauth2client, jwks_uri, server_public_jwks):
     """get_public_jwks() fetches the AS public JWKS from its JWKS URI"""
     requests_mock.get(jwks_uri, json=server_public_jwks)
-    assert oauth2client.get_public_jwks() == server_public_jwks
+    assert oauth2client.get_public_jwks() == JwkSet(server_public_jwks)
     assert requests_mock.called_once
 
 
@@ -1056,14 +1057,14 @@ def test_server_jwks_not_json(requests_mock, token_endpoint, jwks_uri):
 
 
 def test_server_jwks_invalid_doc(requests_mock, token_endpoint, jwks_uri):
-    """If JWKS URI is not known, get_public_jwks() raises an exception."""
+    """If JWKS URI is an invalid document, get_public_jwks() raises an exception."""
     requests_mock.get(jwks_uri, json={"foo": "bar"})
     client = OAuth2Client(
         token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar")
     )
-    with pytest.raises(ValueError):
-        assert client.get_public_jwks()
+    jwks = client.get_public_jwks()
     assert requests_mock.called_once
+    assert not jwks.jwks
 
 
 def test_get_token_type():
