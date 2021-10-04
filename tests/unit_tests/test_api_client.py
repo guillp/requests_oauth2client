@@ -186,3 +186,10 @@ def test_url_type(target_api):
     api = ApiClient(target_api)
     with pytest.raises(TypeError):
         api.get(True)
+
+
+def test_additional_kwargs(target_api):
+    proxies = {"https": "http://localhost:8888"}
+    api = ApiClient(target_api, proxies=proxies, timeout=10)
+    assert api.proxies == proxies
+    assert api.timeout == 10

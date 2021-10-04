@@ -20,11 +20,13 @@ class ApiClient(requests.Session):
     A Wrapper around :class:`requests.Session` to simplify Rest API calls.
     This allows setting a root url at creation time, then passing relative urls at request time.
     It may also raise exceptions instead of returning error responses.
+    You can also pass additional kwargs at init time, which will be used to configure the Session,
+    instead of setting them later.
 
     Basic usage:
 
         from requests_oauth2client import ApiClient
-        api = ApiClient("https://myapi.local/resource")
+        api = ApiClient("https://myapi.local/resource", timeout=10)
         resp = api.get("/myid") # this will send a GET request to https://myapi.local/resource/myid
 
     """
@@ -34,11 +36,13 @@ class ApiClient(requests.Session):
         url: Optional[str] = None,
         auth: Optional[requests.auth.AuthBase] = None,
         raise_for_status: bool = True,
+        **kwargs: Any,
     ):
         """
         :param url: the base api url. This url will serve as root for relative urls passed to :method:`ApiClient.request()`, :method:`ApiClient.get()`, etc.
         :param auth: the :class:`requests.auth.AuthBase` to use as authentication handler.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
+        :param kwargs: additional kwargs to configure this session
         This parameter may be overridden at request time.
         """
         super(ApiClient, self).__init__()
@@ -46,6 +50,9 @@ class ApiClient(requests.Session):
         self.url = url
         self.auth = auth
         self.raise_for_status = raise_for_status
+
+        for key, val in kwargs.items():
+            setattr(self, key, val)
 
     def request(  # type: ignore
         self,
