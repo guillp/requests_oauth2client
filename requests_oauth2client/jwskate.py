@@ -249,27 +249,35 @@ class Jwk(_BaseJwk):
         aad: Optional[bytes] = None,
         alg: Optional[str] = None,
         iv: Optional[bytes] = None,
-    ) -> Tuple[bytes, bytes]:
+    ) -> Tuple[bytes, bytes, bytes]:
         """
-        Encrypts a data using this Jwk, and returns the encrypted result.
-        This is implemented by subclasses.
-        :param data: the data to encrypt
-        :param alg: the alg to use for encryption
-        :return: the enrypted data
+        Encrypts a plaintext, with an optional Additional Authenticated Data (AAD) using this JWK, and returns
+        the Encrypted Data, the Authentication Tag and the used Initialization Vector.
+        :param plaintext: the data to encrypt.
+        :param aad: the Additional Authenticated Data (AAD) to include in the authentication tag
+        :param alg: the alg to use to encrypt the data
+        :param iv: the Initialization Vector that was used to encrypt the data. If `iv` is passed as parameter, this
+        will return that same value. Otherwise, an IV is generated.
+        :return: a tuple (cyphertext, authentication_tag, iv)
         """
+
         raise NotImplementedError  # pragma: no cover
 
     def decrypt(
         self,
         cyphertext: bytes,
+        tag: bytes,
         iv: bytes,
-        tag: Optional[bytes] = None,
+        aad: Optional[bytes] = None,
         alg: Optional[str] = None,
     ) -> bytes:
         """
         Decrypts an encrypted data using this Jwk, and returns the encrypted result.
         This is implemented by subclasses.
-        :param data: the data to decrypt
+        :param cyphertext: the data to decrypt
+        :param iv: the Initialization Vector (IV) that was used for encryption
+        :param tag: the Authentication Tag that will be verified while decrypting data
+        :param aad: the Additional Authentication Data (AAD) to verify the Tag against
         :param alg: the alg to use for decryption
         :return: the clear-text data
         """
@@ -342,6 +350,7 @@ class SymetricJwk(Jwk):
         if alg in cls.ENCRYPTION_ALGORITHMS:
             _, _, key_size, _, _ = cls.ENCRYPTION_ALGORITHMS[alg]
             return cls.generate(key_size, alg=alg, **params)
+        raise ValueError("Unsupported alg", alg)
 
     @property
     def key(self) -> bytes:
@@ -406,7 +415,7 @@ class SymetricJwk(Jwk):
         aad: Optional[bytes] = None,
         alg: Optional[str] = None,
         iv: Optional[bytes] = None,
-    ) -> Tuple[bytes, bytes]:
+    ) -> Tuple[bytes, bytes, bytes]:
         alg = self.alg or alg
         if alg is None:
             raise ValueError("An encryption alg is required")
@@ -432,13 +441,13 @@ class SymetricJwk(Jwk):
         cyphertext = cyphertext_with_tag[:-tag_size]
         tag = cyphertext_with_tag[-tag_size:]
 
-        return cyphertext, tag
+        return cyphertext, tag, iv
 
     def decrypt(
         self,
         cyphertext: bytes,
+        tag: bytes,
         iv: bytes,
-        tag: Optional[bytes] = None,
         aad: Optional[bytes] = None,
         alg: Optional[str] = None,
     ) -> bytes:
@@ -460,7 +469,8 @@ class SymetricJwk(Jwk):
             )
 
         alg_key = alg_class(self.key)
-        plaintext = alg_key.decrypt(iv, cyphertext + tag, aad)
+        cyphertext_with_tag = cyphertext + tag
+        plaintext = alg_key.decrypt(iv, cyphertext_with_tag, aad)
 
         return plaintext
 
@@ -1393,23 +1403,26 @@ class JweCompact:
             jwk = Jwk(jwk)
 
         alg = jwk.alg or alg
+        if alg is None:
+            raise ValueError("A Key Management Alg is required (in parameter 'alg')")
         enc = jwk.enc or enc
+        if enc is None:
+            raise ValueError("An Encryption Alg is required (in parameter 'enc')")
 
         headers = dict(extra_headers or {}, alg=alg, enc=enc)
 
         if cek is None:
-            cek = SymetricJwk.generate_for_alg(enc)
+            cek_jwk = SymetricJwk.generate_for_alg(enc)
         else:
-            cek = SymetricJwk.from_bytes(cek, alg=enc)
+            cek_jwk = SymetricJwk.from_bytes(cek, alg=enc)
 
-        enc_cek = jwk.encrypt_cek(cek.key, alg)
-
-        if iv is None:
-            iv = secrets.token_bytes(96)
+        enc_cek = jwk.encrypt_cek(cek_jwk.key, alg)
 
         aad = b64u_encode_json(headers).encode()
 
-        cyphertext, tag = cek.encrypt(plaintext=plaintext, aad=aad, iv=iv, alg=enc)
+        cyphertext, tag, iv = cek_jwk.encrypt(
+            plaintext=plaintext, aad=aad, iv=iv, alg=enc
+        )
 
         return cls.from_parts(headers, enc_cek, iv, cyphertext, tag)
 
@@ -1488,9 +1501,9 @@ class Jwt:
         if isinstance(other, Jwt):
             return self.value == other.value
         if isinstance(other, str):
-            return self.value == other
+            return self.value.decode() == other
         if isinstance(other, bytes):
-            return self.value.encode() == other
+            return self.value == other
         return super().__eq__(other)
 
     def get_header(self, name: str) -> Any:
@@ -1566,14 +1579,16 @@ class SignedJwt(Jwt):
     Represents a Signed Json Web Token (JWT), as defined in RFC7519.
     """
 
-    def __init__(self, value: str):
-        if value.count(".") != 2:
+    def __init__(self, value: Union[bytes, str]):
+        super().__init__(value)
+
+        if self.value.count(b".") != 2:
             raise InvalidJwt(
                 "A JWT must contain a header, a payload and a signature, separated by dots",
                 value,
             )
 
-        header, payload, signature = value.split(".")
+        header, payload, signature = self.value.split(b".")
         try:
             self.headers = json.loads(b64u_decode(header))
         except ValueError:
@@ -1595,11 +1610,9 @@ class SignedJwt(Jwt):
                 "Invalid JWT signature: it must be a Base64URL-encoded binary data (bytes)"
             )
 
-        self.value = value
-
     @property
-    def signed_part(self) -> str:
-        return ".".join(self.value.split(".", 2)[:2])
+    def signed_part(self) -> bytes:
+        return b".".join(self.value.split(b".", 2)[:2])
 
     def verify_signature(
         self,
@@ -1609,7 +1622,7 @@ class SignedJwt(Jwt):
         if not isinstance(jwk, Jwk):
             jwk = Jwk(jwk)
 
-        return jwk.verify(self.signed_part.encode(), self.signature, alg)
+        return jwk.verify(self.signed_part, self.signature, alg)
 
     def is_expired(self) -> Optional[bool]:
         exp = self.expires_at
@@ -1701,6 +1714,9 @@ class SignedJwt(Jwt):
         return value
 
     def __str__(self) -> str:
+        return self.value.decode()
+
+    def __bytes__(self) -> bytes:
         return self.value
 
     def validate(
