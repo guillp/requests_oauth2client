@@ -582,37 +582,28 @@ class OAuth2Client:
 
     def backchannel_authentication_request(
         self,
-        scope: Union[str, Iterable[str]],
+        scope: Union[str, Iterable[str]] = "openid",
         client_notification_token: Optional[str] = None,
-        acr_values: Optional[str] = None,
+        acr_values: Union[None, str, Iterable[str]] = None,
         login_hint_token: Optional[str] = None,
         id_token_hint: Optional[str] = None,
         login_hint: Optional[str] = None,
         binding_message: Optional[str] = None,
         user_code: Optional[str] = None,
         requested_expiry: Optional[int] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
         private_jwk: Union[Jwk, Dict[str, Any], None] = None,
         alg: Optional[str] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
         **ciba_kwargs: Any,
     ) -> BackChannelAuthenticationResponse:
         """
         Sends a CIBA Authentication Request.
         :return: a BackChannelAuthenticationResponse
         """
-
         if not self.backchannel_authentication_endpoint:
             raise AttributeError(
                 "No backchannel authentication endpoint defined for this client"
             )
-
-        requests_kwargs = requests_kwargs or {}
-
-        if not isinstance(scope, str):
-            try:
-                scope = " ".join(scope)
-            except Exception as exc:
-                raise ValueError("Unsupported scope value") from exc
 
         if not (login_hint or login_hint_token or id_token_hint):
             raise ValueError(
@@ -627,6 +618,20 @@ class OAuth2Client:
             raise ValueError(
                 "Only one of `login_hint`, `login_hint_token` or `ìd_token_hint` must be provided"
             )
+
+        requests_kwargs = requests_kwargs or {}
+
+        if scope is not None and not isinstance(scope, str):
+            try:
+                scope = " ".join(scope)
+            except Exception as exc:
+                raise ValueError("Unsupported `scope` value") from exc
+
+        if acr_values is not None and not isinstance(acr_values, str):
+            try:
+                acr_values = " ".join(acr_values)
+            except Exception as exc:
+                raise ValueError("Unsupported `acr_values`") from exc
 
         data = dict(
             ciba_kwargs,
