@@ -42,6 +42,7 @@ def test_device_authorization(
             "user_code": user_code,
             "verification_uri": verification_uri,
             "expires_in": 3600,
+            "interval": 1,
         },
     )
     device_auth_resp = client.authorize_device()
@@ -72,7 +73,10 @@ def test_device_authorization(
     )
 
     pool_job = DeviceAuthorizationPoolingJob(
-        client, device_auth_resp.device_code, interval=device_auth_resp.interval
+        client,
+        device_auth_resp.device_code,
+        interval=device_auth_resp.interval,
+        slow_down_interval=2,
     )
 
     # 1st attempt: authorization_pending
@@ -81,7 +85,7 @@ def test_device_authorization(
     assert params.get("client_id")[0] == client_id
     assert params.get("client_secret")[0] == client_secret
 
-    assert pool_job.interval == 5
+    assert pool_job.interval == 1
     assert resp is None
 
     # 2nd attempt: slow down
@@ -90,7 +94,7 @@ def test_device_authorization(
     assert params.get("client_id") == [client_id]
     assert params.get("client_secret") == [client_secret]
 
-    assert pool_job.interval == 10
+    assert pool_job.interval == 3
     assert resp is None
 
     # 3rd attempt: access token delivered

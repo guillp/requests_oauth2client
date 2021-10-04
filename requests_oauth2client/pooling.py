@@ -30,7 +30,7 @@ class TokenEndpointPoolingJob:
         try:
             return self.pool()
         except SlowDown:
-            self.interval += 5
+            self.interval += self.slow_down_interval
         except AuthorizationPending:
             pass
         return None
