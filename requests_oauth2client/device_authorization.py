@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from .pooling import TokenEndpointPoolingJob
@@ -33,13 +33,13 @@ class DeviceAuthorizationResponse:
         self.interval = interval
         self.other = kwargs
 
-    def is_expired(self) -> Optional[bool]:
+    def is_expired(self, leeway: int = 0) -> Optional[bool]:
         """
         Returns True if the device_code within this response is expired at the time of the call.
         :return: True if the device_code is expired, False if it is still valid, None if there is no expires_in hint.
         """
         if self.expires_at:
-            return datetime.now() > self.expires_at
+            return datetime.now() - timedelta(seconds=leeway) > self.expires_at
         return None
 
 

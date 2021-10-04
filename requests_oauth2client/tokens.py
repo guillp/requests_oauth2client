@@ -1,7 +1,7 @@
 import json
 import pprint
 import zlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, Type
 
 from .jwskate import SignedJwt
@@ -35,13 +35,15 @@ class BearerToken:
         self.id_token = IdToken(id_token) if id_token else None
         self.other = kwargs
 
-    def is_expired(self) -> Optional[bool]:
+    def is_expired(self, leeway: int = 0) -> Optional[bool]:
         """
-        Returns True if the access token is expired at the time of the call.
-        :return: True if the access token is expired, False if it is still valid, None if there is no expires_in hint.
+        Returns `True` if the access token is expired at the time of the call.
+        :param leeway: If the token expires in the next given number of seconds, then consider it expired already.
+        :return: `True` if the access token is expired, `False` if it is still valid, `None` if there is no expires_in
+        hint.
         """
         if self.expires_at:
-            return datetime.now() > self.expires_at
+            return datetime.now() - timedelta(seconds=leeway) > self.expires_at
         return None
 
     def authorization_header(self) -> str:
