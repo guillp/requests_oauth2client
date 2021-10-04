@@ -35,8 +35,9 @@ from cryptography.hazmat.primitives.asymmetric import (
     x448,
     x25519,
 )
+from cryptography.hazmat.primitives.ciphers import aead
 
-from .utils import b64u_decode, b64u_encode, json_encode
+from .utils import b64u_decode, b64u_encode, b64u_encode_json, json_encode
 
 
 class ExpiredJwt(ValueError):
@@ -71,6 +72,10 @@ class Jwk(_BaseJwk):
     Represents a Json Web Key (JWK), as specified in RFC7517.
     A JWK is a JSON object that represents a cryptographic key.  The members of the object
     represent properties of the key, including its value.
+    Just like a parsed JSON object, a :class:`Jwk` is a dict, so you can do with a Jwk anything you can do with a `dict`.
+    In addition, all keys parameters are exposed as attributes.
+    There are subclasses of `Jwk` for each specific Key Type, but you shouldn't have to use the subclasses directly
+    since they all present a common interface.
     """
 
     kty: str
@@ -79,11 +84,22 @@ class Jwk(_BaseJwk):
     subclasses: Dict[str, Type["Jwk"]] = {}
     """A dict of subclasses implementing each specific Key Type"""
 
+    PARAMS: Dict[str, Tuple[str, bool, bool, str]]
+    """A dict of parameters. Key is parameter name, value is a tuple (description, is_private, is_required, kind)"""
+
     def __init_subclass__(cls) -> None:
-        """Automatically add subclasses to the registry. This allows __new__ to pick the appropriate subclass when creating a Jwk"""
+        """
+        Automatically add subclasses to the registry.
+        This allows __new__ to pick the appropriate subclass when creating a Jwk
+        """
         Jwk.subclasses[cls.kty] = cls
 
     def __new__(cls, jwk: Dict[str, Any]):  # type: ignore
+        """
+        Overrided `__new__` to allow Jwk to accept a `dict` with the parsed Jwk content
+        and return the appropriate subclass based on its `kty`.
+        :param jwk:
+        """
         if cls == Jwk:
             if jwk.get("keys"):  # if this is a JwkSet
                 jwks = JwkSet(jwk)
@@ -98,6 +114,13 @@ class Jwk(_BaseJwk):
         return super().__new__(cls)
 
     def __init__(self, params: Dict[str, Any], kid: Optional[str] = None):
+        """
+        Initialize a Jwk. Accepts a `dict` with the parsed Jwk contents, and an optional kid if it isn't already part
+        of the dict.
+        If no `kid` is supplied either way, a default kid is generated based on the key thumbprint (defined in RFC7638)
+        :param params: a dict with the parsed Jwk parameters.
+        :param kid: a Key Id to use if no `kid` parameters is present in `params`.
+        """
         self.data = dict(params)
         self.is_private = False
         self._validate()
@@ -105,12 +128,21 @@ class Jwk(_BaseJwk):
             self.data["kid"] = kid or self.thumbprint()
 
     def __getattr__(self, item: str) -> Any:
+        """
+        Allows access to key parameters as attributes, like `jwk.kid`, `jwk.kty`, instead of `jwk['kid']`, `jwk['kty']`, etc.
+        :param item:
+        :return:
+        """
         return self.data.get(item)
 
-    def __getitem__(self, item: str) -> Any:
-        return getattr(self, item)
-
     def public_jwk(self) -> "Jwk":
+        """
+        Returns the public Jwk associated with this private Jwk.
+        :return: a Jwk containing only the public parameters.
+        """
+        if not self.is_private:
+            return self
+
         params = {
             name: self.data.get(name)
             for name, (description, private, required, kind) in self.PARAMS.items()
@@ -145,6 +177,10 @@ class Jwk(_BaseJwk):
         return b64u_encode(digest.digest())
 
     def _validate(self) -> None:
+        """
+        Internal method used to validate a Jwk. It checks that all required parameters are present and well-formed.
+        If the key is private, it sets the `is_private` flag to `True`.
+        """
         is_private = False
         for name, (description, private, required, kind) in self.PARAMS.items():
 
@@ -185,57 +221,146 @@ class Jwk(_BaseJwk):
         self.is_private = is_private
 
     def sign(self, data: bytes, alg: Optional[str]) -> bytes:
+        """
+        Signs a data using this Jwk, and returns the signature.
+        This is implemented by subclasses.
+        :param data: the data to sign
+        :param alg: the alg to use (if this key doesn't have an `alg` parameter).
+        :return: the generated signature.
+        """
         raise NotImplementedError  # pragma: no cover
 
     def verify(
         self, data: bytes, signature: bytes, alg: Union[str, Iterable[str], None]
     ) -> bool:
+        """
+        Verifies a signature using this Jwk, and returns `True` if valid.
+        This is implemented by subclasses.
+        :param data: the data to verify
+        :param signature: the signature to verify
+        :param alg: the alg to use to verify the signature (if this key doesn't have an `alg` parameter)
+        :return: `True` if the signature matches, `False` otherwise
+        """
         raise NotImplementedError  # pragma: no cover
 
-    def encrypt(self, data: bytes, alg: Optional[str]) -> bytes:
+    def encrypt(
+        self,
+        plaintext: bytes,
+        aad: Optional[bytes] = None,
+        alg: Optional[str] = None,
+        iv: Optional[bytes] = None,
+    ) -> Tuple[bytes, bytes]:
+        """
+        Encrypts a data using this Jwk, and returns the encrypted result.
+        This is implemented by subclasses.
+        :param data: the data to encrypt
+        :param alg: the alg to use for encryption
+        :return: the enrypted data
+        """
         raise NotImplementedError  # pragma: no cover
 
-    def decrypt(self, data: bytes, alg: Optional[str]) -> bytes:
+    def decrypt(
+        self,
+        cyphertext: bytes,
+        iv: bytes,
+        tag: Optional[bytes] = None,
+        alg: Optional[str] = None,
+    ) -> bytes:
+        """
+        Decrypts an encrypted data using this Jwk, and returns the encrypted result.
+        This is implemented by subclasses.
+        :param data: the data to decrypt
+        :param alg: the alg to use for decryption
+        :return: the clear-text data
+        """
         raise NotImplementedError  # pragma: no cover
 
     @property
     def supported_signing_algorithms(self) -> List[str]:
+        """
+        Returns a list of signing algs that are compatible for use with this Jwk.
+        :return: a list of signing algs
+        """
         raise NotImplementedError  # pragma: no cover
 
 
 class SymetricJwk(Jwk):
+    """
+    Implement Symetric keys, with `"kty": "oct"`.
+    """
+
     kty = "oct"
     PARAMS = {
-        # name: ("Description", private, required, kind),
+        # name: ("Description", is_private, is_required, "kind"),
         "k": ("Key Value", True, True, "b64u"),
     }
 
-    ALGORITHMS = {
-        # name: (MAC, alg)
-        "HS256": (hmac.HMAC, hashes.SHA256()),
-        "HS384": (hmac.HMAC, hashes.SHA384()),
-        "HS512": (hmac.HMAC, hashes.SHA512()),
+    SIGNATURE_ALGORITHMS = {
+        # name: (MAC, alg, min_key_size)
+        "HS256": (hmac.HMAC, hashes.SHA256(), 256),
+        "HS384": (hmac.HMAC, hashes.SHA384(), 384),
+        "HS512": (hmac.HMAC, hashes.SHA512(), 512),
+    }
+
+    ENCRYPTION_ALGORITHMS = {
+        # name: (description, alg, key_size, iv_size, tag_size),
+        "A128CBC-HS256": ("AES_128_CBC_HMAC_SHA_256", aead.AESCCM, 128, 96, 16),
+        "A192CBC-HS384": ("AES_192_CBC_HMAC_SHA_384", aead.AESCCM, 192, 96, 24),
+        "A256CBC-HS512": ("AES_128_CBC_HMAC_SHA_256", aead.AESCCM, 256, 96, 32),
+        "A128GCM": ("AES GCM using 128-bit key", aead.AESGCM, 128, 96, 16),
+        "A192GCM": ("AES GCM using 192-bit key", aead.AESGCM, 192, 96, 16),
+        "A256GCM": ("AES GCM using 256-bit key", aead.AESGCM, 256, 96, 16),
     }
 
     @classmethod
-    def from_bytes(cls, k: bytes, **params: str) -> "SymetricJwk":
+    def from_bytes(cls, k: Union[bytes, str], **params: str) -> "SymetricJwk":
+        """
+        Initializes a SymetricJwk from a raw secret key.
+        The provided secret key is encoded and used as the `k` parameter for the returned SymetricKey.
+        :param k: the key to use
+        :param params: additional parameters for the returned Jwk
+        :return: a SymetricJwk
+        """
         return cls(dict(key="oct", k=b64u_encode(k), **params))
 
     @classmethod
-    def generate(cls, size: int, **params: str) -> "SymetricJwk":
+    def generate(cls, size: int = 128, **params: str) -> "SymetricJwk":
+        """
+        Generates a random SymetricJwk, with a given key size.
+        :param size: the size of the generated key, in bytes.
+        :param params: additional parameters for the returned Jwk
+        :return: a SymetricJwk with a random key
+        """
         key = secrets.token_bytes(size)
         return cls.from_bytes(key, **params)
 
+    @classmethod
+    def generate_for_alg(cls, alg: str, **params: str) -> "SymetricJwk":
+        if alg in cls.SIGNATURE_ALGORITHMS:
+            _, _, min_key_size = cls.SIGNATURE_ALGORITHMS[alg]
+            return cls.generate(min_key_size, alg=alg, **params)
+        if alg in cls.ENCRYPTION_ALGORITHMS:
+            _, _, key_size, _, _ = cls.ENCRYPTION_ALGORITHMS[alg]
+            return cls.generate(key_size, alg=alg, **params)
+
     @property
     def key(self) -> bytes:
+        """
+        Returns the raw symetric key.
+        :return: the key from the `k` parameter, base64u-decoded.
+        """
         return b64u_decode(self.k)
+
+    @property
+    def key_size(self) -> int:
+        return len(self.key) * 8
 
     def sign(self, data: bytes, alg: Optional[str] = "HS256") -> bytes:
         alg = self.alg or alg
         if alg is None:
             raise ValueError("a signing alg is required")
         try:
-            mac, hashalg = self.ALGORITHMS[alg]
+            mac, hashalg, min_key_size = self.SIGNATURE_ALGORITHMS[alg]
         except KeyError:
             raise ValueError("Unsupported signing alg", alg)
 
@@ -259,7 +384,7 @@ class SymetricJwk(Jwk):
 
         for alg in algs:
             try:
-                mac, hashalg = self.ALGORITHMS[alg]
+                mac, hashalg, min_key_size = self.SIGNATURE_ALGORITHMS[alg]
             except KeyError:
                 raise ValueError("Unsupported signing alg", alg)
 
@@ -273,14 +398,82 @@ class SymetricJwk(Jwk):
 
     @property
     def supported_signing_algorithms(self) -> List[str]:
-        return list(self.ALGORITHMS.keys())
+        return list(self.SIGNATURE_ALGORITHMS.keys())
+
+    def encrypt(
+        self,
+        plaintext: bytes,
+        aad: Optional[bytes] = None,
+        alg: Optional[str] = None,
+        iv: Optional[bytes] = None,
+    ) -> Tuple[bytes, bytes]:
+        alg = self.alg or alg
+        if alg is None:
+            raise ValueError("An encryption alg is required")
+
+        (
+            description,
+            alg_class,
+            key_size,
+            iv_size,
+            tag_size,
+        ) = self.ENCRYPTION_ALGORITHMS[alg]
+
+        if self.key_size != key_size:
+            raise ValueError(
+                f"This key size of {self.key_size} doesn't match the expected keysize for {description} of {key_size} bits"
+            )
+
+        if iv is None:
+            iv = secrets.token_bytes(iv_size)
+
+        alg_key = alg_class(self.key)
+        cyphertext_with_tag = alg_key.encrypt(iv, plaintext, aad)
+        cyphertext = cyphertext_with_tag[:-tag_size]
+        tag = cyphertext_with_tag[-tag_size:]
+
+        return cyphertext, tag
+
+    def decrypt(
+        self,
+        cyphertext: bytes,
+        iv: bytes,
+        tag: Optional[bytes] = None,
+        aad: Optional[bytes] = None,
+        alg: Optional[str] = None,
+    ) -> bytes:
+        alg = self.alg or alg
+        if alg is None:
+            raise ValueError("An encryption alg is required")
+
+        (
+            description,
+            alg_class,
+            key_size,
+            iv_size,
+            tag_size,
+        ) = self.ENCRYPTION_ALGORITHMS[alg]
+
+        if self.key_size != key_size:
+            raise ValueError(
+                f"This key size of {self.key_size} doesn't match the expected keysize for {description} of {key_size} bits"
+            )
+
+        alg_key = alg_class(self.key)
+        plaintext = alg_key.decrypt(iv, cyphertext + tag, aad)
+
+        return plaintext
 
 
 class RSAJwk(Jwk):
+    """
+    Represents a RSA Jwk, with `"kid": "RSA"`.
+    """
+
     kty = "RSA"
 
     PARAMS = {
-        # name: ("Description", private, required, kind),
+        # name: ("Description", is_private, is_required, "kind"),
         "n": ("Modulus", False, True, "b64u"),
         "e": ("Exponent", False, True, "b64u"),
         "d": ("Private Exponent", True, True, "b64u"),
@@ -292,7 +485,7 @@ class RSAJwk(Jwk):
         "oth": ("Other Primes Info", True, False, "unsupported"),
     }
 
-    SIGNING_ALGORITHMS = {
+    SIGNATURE_ALGORITHMS = {
         # name : (description, padding_alg, hash_alg)
         "RS256": (
             "RSASSA-PKCS1-v1_5 using SHA-256",
@@ -311,24 +504,65 @@ class RSAJwk(Jwk):
         ),
     }
 
+    KEY_MANAGEMENT_ALGORITHMS = {
+        # name: ("description", alg)
+        "RSA1_5": ("RSAES-PKCS1-v1_5", padding.PKCS1v15()),
+        "RSA-OAEP": (
+            "RSAES OAEP using default parameters",
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA1()),
+                algorithm=hashes.SHA1(),
+                label=None,
+            ),
+        ),
+        "RSA-OAEP-256": (
+            "RSAES OAEP using SHA-256 and MGF1 with with SHA-256",
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        ),
+    }
+
     @property
     def modulus(self) -> int:
+        """
+        Returns the modulus from this Jwk.
+        :return: the key modulus (from parameter `n`)
+        """
         return b64u_to_int(self.n)
 
     @property
     def exponent(self) -> int:
+        """
+        Returns the exponent from this Jwk.
+        :return: the key exponent (from parameter `e`)
+        """
         return b64u_to_int(self.e)
 
     @property
     def private_exponent(self) -> int:
+        """
+        Returns the private exponent from this Jwk.
+        :return: the key private exponent (from parameter `d`)
+        """
         return b64u_to_int(self.d)
 
     @property
     def first_prime_factor(self) -> int:
+        """
+        Returns the first prime factor from this Jwk.
+        :return: the first prime factor (from parameter `p`)
+        """
         return b64u_to_int(self.p)
 
     @property
     def second_prime_factor(self) -> int:
+        """
+        Returns the second prime factor from this Jwk.
+        :return: the second prime factor (from parameter `q`)
+        """
         return b64u_to_int(self.q)
 
     @property
@@ -341,10 +575,21 @@ class RSAJwk(Jwk):
 
     @property
     def first_crt_coefficient(self) -> int:
+        """
+        Returns the first CRT coefficient from this Jwk
+        :return: he first CRT coefficient (from parameter `qi`)
+        """
         return b64u_to_int(self.qi)
 
     @classmethod
     def public(cls, n: int, e: int, **params: str) -> "RSAJwk":
+        """
+        Initialize a Public RsaJwk from a modulus and an exponent.
+        :param n: the modulus
+        :param e: the exponent
+        :param params: additional parameters for the return RSAJwk
+        :return: a RsaJwk
+        """
         return cls(dict(kty="RSA", n=int_to_b64u(n), e=int_to_b64u(e), **params))
 
     @classmethod
@@ -360,6 +605,19 @@ class RSAJwk(Jwk):
         qi: int,
         **params: str,
     ) -> "RSAJwk":
+        """
+        Initializes a Private RsaJwk from its required parameters.
+        :param n: the modulus
+        :param e: the exponent
+        :param d: the private exponent
+        :param p: the first prime factor
+        :param q: the second prime factor
+        :param dp: the first factor CRT exponent
+        :param dq: the second factor CRT exponent
+        :param qi: the first CRT coefficient
+        :param params: additional parameters for the return RSAJwk
+        :return:
+        """
         return cls(
             dict(
                 kty="RSA",
@@ -377,6 +635,12 @@ class RSAJwk(Jwk):
 
     @classmethod
     def generate(cls, key_size: int = 4096, **params: str) -> "RSAJwk":
+        """
+        Generates a new random Private RSAJwk.
+        :param key_size: the key size to use for the generated key.
+        :param params: additional parameters for the generated RSAJwk
+        :return: a generated RSAJwk
+        """
         private_key = rsa.generate_private_key(65537, key_size=key_size)
         pn = private_key.private_numbers()
         return cls.private(
@@ -409,7 +673,7 @@ class RSAJwk(Jwk):
             rsa.RSAPublicNumbers(self.exponent, self.modulus),
         ).private_key()
         try:
-            description, padding, hashing = self.SIGNING_ALGORITHMS[alg]
+            description, padding, hashing = self.SIGNATURE_ALGORITHMS[alg]
         except KeyError:
             raise ValueError("Unsupported signing alg", alg)
 
@@ -435,7 +699,7 @@ class RSAJwk(Jwk):
 
         for alg in algs:
             try:
-                description, padding, hashing = self.SIGNING_ALGORITHMS[alg]
+                description, padding, hashing = self.SIGNATURE_ALGORITHMS[alg]
             except KeyError:
                 raise ValueError("Unsupported signing alg", alg)
 
@@ -454,14 +718,50 @@ class RSAJwk(Jwk):
 
     @property
     def supported_signing_algorithms(self) -> List[str]:
-        return list(self.SIGNING_ALGORITHMS.keys())
+        return list(self.SIGNATURE_ALGORITHMS.keys())
+
+    def encrypt_cek(self, cek: bytes, alg: Optional[str] = None) -> bytes:
+        alg = self.alg or alg
+        if alg is None:
+            raise ValueError("an encryption alg is required")
+        description, padding_alg = self.KEY_MANAGEMENT_ALGORITHMS[alg]
+
+        public_key = rsa.RSAPublicNumbers(e=self.exponent, n=self.modulus).public_key()
+
+        cyphertext = public_key.encrypt(cek, padding_alg)
+
+        return cyphertext
+
+    def decrypt_cek(self, enc_cek, alg: Optional[str] = None) -> bytes:
+        alg = self.alg or alg
+        if alg is None:
+            raise ValueError("an encryption alg is required")
+        description, padding_alg = self.KEY_MANAGEMENT_ALGORITHMS[alg]
+
+        key = rsa.RSAPrivateNumbers(
+            self.first_prime_factor,
+            self.second_prime_factor,
+            self.private_exponent,
+            self.first_factor_crt_exponent,
+            self.second_factor_crt_exponent,
+            self.first_crt_coefficient,
+            rsa.RSAPublicNumbers(self.exponent, self.modulus),
+        ).private_key()
+
+        plaintext = key.decrypt(enc_cek, padding_alg)
+
+        return plaintext
 
 
 class ECJwk(Jwk):
+    """
+    Represents an Elliptic Curve Jwk, with `"kty": "EC"`.
+    """
+
     kty = "EC"
 
     PARAMS = {
-        # name : (description, private, required, kind),
+        # name : ("description", is_private, is_required, "kind"),
         "crv": ("Curve", False, True, "name"),
         "x": ("X Coordinate", False, True, "b64u"),
         "y": ("Y Coordinate", False, True, "b64u"),
@@ -469,13 +769,14 @@ class ECJwk(Jwk):
     }
 
     CURVES = {
+        # name: curve
         "P-256": ec.SECP256R1(),
         "P-384": ec.SECP384R1(),
         "P-521": ec.SECP521R1(),
         "secp256k1": ec.SECP256K1(),
     }
 
-    SIGNING_ALGORITHMS = {
+    SIGNATURE_ALGORITHMS = {
         # name : (description, hash_alg)
         "ES256": ("ECDSA using P-256 and SHA-256", hashes.SHA256()),
         "ES384": ("ECDSA using P-384 and SHA-384", hashes.SHA384()),
@@ -484,14 +785,37 @@ class ECJwk(Jwk):
 
     @classmethod
     def public(cls, crv: str, x: str, y: str, **params: str) -> "ECJwk":
+        """
+        Initializes a public ECJwk from its public paramters.
+        :param crv: the curve to use
+        :param x: the x coordinate
+        :param y: the y coordinate
+        :param params: additional parameters for the returned ECJwk
+        :return: an ECJwk initialized with the supplied parameters
+        """
         return cls(dict(key="EC", crv=crv, x=x, y=y, **params))
 
     @classmethod
     def private(cls, crv: str, x: str, y: str, d: str, **params: str) -> "ECJwk":
+        """
+        Initializes a private ECJwk from its private parameters.
+        :param crv: the curve to use
+        :param x: the x coordinate
+        :param y: the y coordinate
+        :param d: the elliptic curve private key
+        :param params: additional parameters for the returned ECJwk
+        :return: an ECJWk initialized with the supplied parameters
+        """
         return cls(dict(key="EC", crv=crv, x=x, y=y, d=d, **params))
 
     @classmethod
     def generate(cls, crv: str = "P-256", **params: str) -> "ECJwk":
+        """
+        Generates a random ECJwk.
+        :param crv: the curve to use
+        :param params: additional parameters for the returned ECJwk
+        :return: a generated ECJwk
+        """
         curve = cls.CURVES.get(crv)
         if curve is None:
             raise ValueError("Unsupported curve", crv)
@@ -519,7 +843,7 @@ class ECJwk(Jwk):
             ),
         ).private_key()
         try:
-            description, hashing = self.SIGNING_ALGORITHMS[alg]
+            description, hashing = self.SIGNATURE_ALGORITHMS[alg]
         except KeyError:
             raise ValueError("Unsupported signing alg", alg)
 
@@ -541,7 +865,7 @@ class ECJwk(Jwk):
 
         for alg in algs:
             try:
-                description, hashing = self.SIGNING_ALGORITHMS[alg]
+                description, hashing = self.SIGNATURE_ALGORITHMS[alg]
             except KeyError:
                 raise ValueError("Unsupported signing alg", alg)
 
@@ -565,22 +889,38 @@ class ECJwk(Jwk):
 
     @property
     def x_coordinate(self) -> int:
-        pass
+        """
+        Returns the x coordinate from this ECJwk
+        :return: the x coordinate (from parameter `x`)
+        """
+        return b64u_to_int(self.x)
 
     @property
     def y_coordinate(self) -> int:
-        pass
+        """
+        Returns the y coordinate from this ECJwk
+        :return: the y coordinate (from parameter `y`)
+        """
+        return b64u_to_int(self.y)
 
     @property
     def ecc_private_key(self) -> int:
-        pass
+        """
+        Returns the ECC private key from this ECJwk
+        :return: the ECC private key (from parameter `d`)
+        """
+        return b64u_to_int(self.d)
 
     @property
     def supported_signing_algorithms(self) -> List[str]:
-        return list(self.SIGNING_ALGORITHMS.keys())
+        return list(self.SIGNATURE_ALGORITHMS.keys())
 
 
 class OKPJwk(Jwk):
+    """
+    Represents an OKP Jwk (with `"kty": "OKP"`)
+    """
+
     kty = "OKP"
 
     PARAMS = {
@@ -597,7 +937,7 @@ class OKPJwk(Jwk):
         "X448": x448.X448PrivateKey.generate,
     }
 
-    SIGNING_ALGORITHMS: Dict[str, Tuple[str, hashes.HashAlgorithm]] = {
+    SIGNATURE_ALGORITHMS: Dict[str, Tuple[str, hashes.HashAlgorithm]] = {
         # name : (description, hash_alg)
     }
 
@@ -627,10 +967,17 @@ class OKPJwk(Jwk):
 
     @property
     def supported_signing_algorithms(self) -> List[str]:
-        return list(self.SIGNING_ALGORITHMS.keys())
+        return list(self.SIGNATURE_ALGORITHMS.keys())
 
 
 def int_to_b64u(i: int, length: Optional[int] = None) -> str:
+    """
+    Encodes an integer to the base64url encoding of the octet string representation of that integer, as defined in
+    Section 2.3.5 of SEC1 [SEC1].
+    :param i: the integer to encode
+    :param length: the length of the encoding (left padding the integer if necessary)
+    :return: the encoded representation
+    """
     if length is None:
         length = (i.bit_length() + 7) // 8
     data = i.to_bytes(length, "big", signed=False)
@@ -638,12 +985,20 @@ def int_to_b64u(i: int, length: Optional[int] = None) -> str:
 
 
 def b64u_to_int(b: str) -> int:
+    """
+    Decodes a base64url encoding of the octet string representation of an integer.
+    :param b: the encoded integer
+    :return: the decoded integer
+    """
     return int.from_bytes(b64u_decode(b), "big", signed=False)
 
 
 class JwkSet(_BaseJwk):
     """
     A set of JWK keys, with methods for easy management of keys.
+    A JwkSet is a dict subclass, so you can do anything with a JwkSet that you can do with a dict.
+    In addition, it provides a few helpers methods to get the keys, add or remove keys, and verify signatures using keys
+    from this set.
     """
 
     def __init__(
@@ -651,8 +1006,17 @@ class JwkSet(_BaseJwk):
         jwks: Optional[Dict[str, Any]] = None,
         keys: Optional[Iterable[Jwk]] = None,
     ):
+        """
+        Intiializes a JwkSet. Multiple inputs can be provided:
+        - a `dict` from the parsed JSON object representing this JwkSet (in paramter `jwks`)
+        - a list of `Jwk` (in parameter `keys`
+        - nothing, to initialize an empty JwkSet
+        :param jwks: a dict, containing the JwkSet, parsed as a JSON object.
+        :param keys: a list of Jwk, that will be added to this JwkSet
+        """
         if jwks is not None and keys is not None:
-            raise ValueError("Please supply either `jwks` or `keys`")
+            keys = []
+
         if jwks is not None:
             keys = jwks.pop("keys", [])
             super().__init__(
@@ -667,15 +1031,28 @@ class JwkSet(_BaseJwk):
 
     @property
     def jwks(self) -> List[Jwk]:
+        """
+        Returns the list of keys from this JwkSet, as `Jwk` instances
+        :return: a list of `Jwk`
+        """
         return self.data.get("keys", [])
 
     def get_jwk_by_kid(self, kid: str) -> Optional[Jwk]:
+        """
+        Returns a Jwk from this JwkSet, based on its kid.
+        :param kid:
+        :return:
+        """
         jwk = next(filter(lambda jwk: jwk.get("kid") == kid, self.jwks), None)
         if isinstance(jwk, Jwk):
             return jwk
         return None
 
     def __len__(self) -> int:
+        """
+        Returns the number of Jwk in this JwkSet.
+        :return: the number of keys
+        """
         return len(self.jwks)
 
     def add_jwk(
@@ -684,6 +1061,13 @@ class JwkSet(_BaseJwk):
         kid: Optional[str] = None,
         use: Optional[str] = None,
     ) -> str:
+        """
+        Adds a Jwk in this JwkSet
+        :param jwk: the Jwk to add (either a `Jwk` instance, or a dict containing the Jwk parameters)
+        :param kid: the kid to use, if `jwk` doesn't contain one
+        :param use: the defined use for the added Jwk
+        :return: the kid from the added Jwk (it may be generated if no kid is provided)
+        """
         if not isinstance(jwk, Jwk):
             jwk = Jwk(jwk)
 
@@ -698,9 +1082,14 @@ class JwkSet(_BaseJwk):
         if use:
             jwk["use"] = use
         self.jwks.append(jwk)
+
         return kid
 
     def remove_jwk(self, kid: str) -> None:
+        """
+        Removes a Jwk from this JwkSet, based on a `kid`.
+        :param kid: the `kid` from the key to be removed.
+        """
         jwk = self.get_jwk_by_kid(kid)
         if jwk is not None:
             self.jwks.remove(jwk)
@@ -712,31 +1101,48 @@ class JwkSet(_BaseJwk):
         alg: Union[str, Iterable[str]],
         kid: Optional[str] = None,
     ) -> bool:
+        """
+        Verifies a signature with the key from this key set. It implements multiple techniques to avoid trying all keys:
+        If a `kid` is provided, only the key with this `kid` will be tried.
+        Otherwise, if an `alg` if provided, only keys that are compatible with the supplied `alg` will be tried.
+        Otherwise,
+        :param data: the signed data to verify
+        :param signature: the signature to verify against the signed data
+        :param alg: one or several algs to verify the signature
+        :param kid: the kid of the Jwk that will be used to validate the signature. If no kid is provided, multiple keys
+        from this key set may be tried.
+        :return: `True` if the signature validates with any of the tried keys, `False` otherwise
+        """
+
+        # if a kid is provided, try only the key matching `kid`
         if kid is not None:
             jwk = self.get_jwk_by_kid(kid)
             if jwk is not None:
                 return jwk.verify(data, signature, alg)
 
+        # if one or several alg are provided, try only the keys that are compatible with one of the provided alg(s)
         algs = [alg] if isinstance(alg, str) else alg
-
         if algs:
-            for jwk in filter(lambda jwk: jwk.alg in algs, self.jwks):
+            for jwk in (jwk for jwk in self.jwks if jwk.alg in algs):
                 if jwk.verify(data, signature, alg):
                     return True
 
-        for jwk in filter(lambda jwk: jwk.use == "verify", self.jwks):
+        # if no kid and no alg are provided, try first the keys flagged for signature verification (`"use": "verify"`)
+        for jwk in (jwk for jwk in self.jwks if jwk.use == "verify"):
             if jwk.verify(data, signature, alg):
                 return True
 
-        for jwk in filter(lambda jwk: jwk.use is None, self.jwks):
+        # then with the keys that have no defined `use`
+        for jwk in (jwk for jwk in self.jwks if jwk.use is None):
             if jwk.verify(data, signature, alg):
                 return True
 
+        # no key matches, so consider the signature invalid
         return False
 
 
 class InvalidJws(ValueError):
-    pass
+    """Raised when an invalid Jws is parsed"""
 
 
 class JwsCompact:
@@ -745,6 +1151,10 @@ class JwsCompact:
     """
 
     def __init__(self, value: Union[bytes, str]):
+        """
+        Initializes a Jws, from its compact representation.
+        :param value: the Jws value
+        """
         if not isinstance(value, bytes):
             value = value.encode("ascii")
 
@@ -778,6 +1188,11 @@ class JwsCompact:
         self.value = value
 
     def get_header(self, name: str) -> Any:
+        """
+        Gets an header from this Jws
+        :param name: the header name
+        :return: the header value
+        """
         return self.headers.get(name)
 
     @classmethod
@@ -785,9 +1200,17 @@ class JwsCompact:
         cls,
         payload: bytes,
         jwk: Union[Jwk, Dict[str, Any]],
-        extra_headers: Optional[Dict[str, Any]] = None,
         alg: Optional[str] = None,
+        extra_headers: Optional[Dict[str, Any]] = None,
     ) -> "JwsCompact":
+        """
+        Signs a payload into a Jws and returns the resulting JwsCompact
+        :param payload: the payload to sign
+        :param jwk: the jwk to use to sign this payload
+        :param alg: the alg to use
+        :param extra_headers: additional headers to add to the Jws Headers
+        :return: a JwsCompact
+        """
         if not isinstance(jwk, Jwk):
             jwk = Jwk(jwk)
 
@@ -804,35 +1227,77 @@ class JwsCompact:
         if kid:
             headers["kid"] = kid
 
-        header = b64u_encode(json.dumps(headers, separators=(",", ":")))
-        signed_value = ".".join((header, b64u_encode(payload)))
-        signature = b64u_encode(jwk.sign(signed_value.encode(), alg=alg))
-        return cls(".".join((signed_value, signature)))
+        signed_part = cls.assemble_signed_part(headers, payload)
+        signature = jwk.sign(signed_part.encode(), alg=alg)
+        return cls.from_parts(signed_part, signature)
+
+    @classmethod
+    def assemble_signed_part(
+        cls, headers: Dict[str, Any], payload: Union[bytes, str]
+    ) -> str:
+        return ".".join((b64u_encode_json(headers), b64u_encode(payload)))
+
+    @classmethod
+    def from_parts(
+        cls, signed_part: Union[bytes, str], signature: Union[bytes, str]
+    ) -> "JwsCompact":
+        if not isinstance(signed_part, bytes):
+            signed_part = signed_part.encode("ascii")
+
+        return cls(b".".join((signed_part, b64u_encode(signature).encode())))
 
     def __str__(self) -> str:
+        """
+        Returns the `str` representation of this JwsCompact
+        :return: a `str`
+        """
         return self.value.decode()
 
     def __bytes__(self) -> bytes:
+        """
+        Returns the `bytes` representation of this JwsCompact
+        :return:
+        """
         return self.value
 
     @property
     def signed_part(self) -> bytes:
+        """
+        Returns the signed part (header + payload) from this JwsCompact
+        :return:
+        """
         return b".".join(self.value.split(b".", 2)[:2])
 
     def verify_signature(self, jwk: Union[Jwk, Dict[str, Any]], alg: str) -> bool:
+        """
+        Verify the signature from this JwsCompact using a Jwk
+        :param jwk: the Jwk to use to validate this signature
+        :param alg: the alg to use
+        :return: `True` if the signature matches, `False` otherwise
+        """
         if not isinstance(jwk, Jwk):
             jwk = Jwk(jwk)
         return jwk.verify(self.signed_part, self.signature, alg)
 
 
 class InvalidJwe(ValueError):
-    pass
+    """Raised when an invalid Jwe is parsed"""
 
 
 class JweCompact:
+    """
+    Represents a Json Web Encryption object, as defined in RFC7516
+    """
+
     def __init__(self, value: Union[bytes, str]):
+        """
+        Initializes a Jwe based on its compact representation.
+        :param value: the compact representation for this Jwe
+        """
         if not isinstance(value, bytes):
             value = value.encode("ascii")
+
+        value = b"".join(value.split())
 
         if value.count(b".") != 4:
             raise InvalidJwe(
@@ -842,60 +1307,184 @@ class JweCompact:
         header, key, iv, cyphertext, auth_tag = value.split(b".")
         try:
             self.headers = json.loads(b64u_decode(header))
+            self.additional_authenticated_data = header
         except ValueError:
             raise InvalidJwe(
                 "Invalid JWE header: it must be a Base64URL-encoded JSON object"
             )
 
         try:
-            self.key = b64u_decode(key)
+            self.content_encryption_key = b64u_decode(key)
         except ValueError:
             raise InvalidJwe(
-                "Invalid JWE payload: it must be a Base64URL-encoded binary data (bytes)"
+                "Invalid JWE cek: it must be a Base64URL-encoded binary data (bytes)"
             )
 
         try:
-            self.iv = b64u_decode(iv)
+            self.initialization_vector = b64u_decode(iv)
         except ValueError:
             raise InvalidJwe(
                 "Invalid JWE iv: it must be a Base64URL-encoded binary data (bytes)"
             )
 
+        try:
+            self.cyphertext = b64u_decode(cyphertext)
+        except ValueError:
+            raise InvalidJwe(
+                "Invalid JWE cyphertext: it must be a Base64URL-encoded binary data (bytes)"
+            )
+
+        try:
+            self.authentication_tag = b64u_decode(auth_tag)
+        except ValueError:
+            raise InvalidJwe(
+                "Invalid JWE authentication tag: it must be a Base64URL-encoded binary data (bytes)"
+            )
+
         self.value = value
 
     def get_header(self, name: str) -> Any:
+        """
+        Returns an header from this Jwe
+        :param name: the header name
+        :return: the header value
+        """
         return self.headers.get(name)
 
-    def decrypt(
-        self, jwk: Union[Jwk, Dict[str, Any]], alg: Optional[str] = None
-    ) -> bytes:
+    def __str__(self):
+        return self.value.decode()
+
+    def __bytes__(self):
+        return self.value
+
+    @classmethod
+    def from_parts(
+        cls,
+        headers: Dict[str, Any],
+        cek: bytes,
+        iv: bytes,
+        cyphertext: bytes,
+        tag: bytes,
+    ):
+        return cls(
+            ".".join(
+                (
+                    b64u_encode_json(headers),
+                    b64u_encode(cek),
+                    b64u_encode(iv),
+                    b64u_encode(cyphertext),
+                    b64u_encode(tag),
+                )
+            )
+        )
+
+    @classmethod
+    def encrypt(
+        cls,
+        plaintext: bytes,
+        jwk: Union[Jwk, Dict[str, Any]],
+        alg: Optional[str] = None,
+        enc: Optional[str] = None,
+        extra_headers: Dict[str, Any] = None,
+        cek: bytes = None,
+        iv: bytes = None,
+    ):
         if not isinstance(jwk, Jwk):
             jwk = Jwk(jwk)
 
-        if alg not in jwk.supported_encryption_algorithms:
-            raise ValueError("this key type doesn't support this encryption algorithm")
+        alg = jwk.alg or alg
+        enc = jwk.enc or enc
 
-        raise NotImplementedError
+        headers = dict(extra_headers or {}, alg=alg, enc=enc)
+
+        if cek is None:
+            cek = SymetricJwk.generate_for_alg(enc)
+        else:
+            cek = SymetricJwk.from_bytes(cek, alg=enc)
+
+        enc_cek = jwk.encrypt_cek(cek.key, alg)
+
+        if iv is None:
+            iv = secrets.token_bytes(96)
+
+        aad = b64u_encode_json(headers).encode()
+
+        cyphertext, tag = cek.encrypt(plaintext=plaintext, aad=aad, iv=iv, alg=enc)
+
+        return cls.from_parts(headers, enc_cek, iv, cyphertext, tag)
+
+    def decrypt(
+        self,
+        jwk: Union[Jwk, Dict[str, Any]],
+        alg: Optional[str] = None,
+        enc: Optional[str] = None,
+    ) -> bytes:
+        """
+        Decrypts this Jwe using a Jwk
+        :param jwk: the Jwk to use to decrypt this Jwe
+        :param alg: the alg to use to decrypt this Jwe
+        :return: the decrypted payload
+        """
+        if not isinstance(jwk, Jwk):
+            jwk = Jwk(jwk)
+
+        alg = jwk.alg or alg
+        enc = jwk.enc or enc
+
+        raw_cek = jwk.decrypt_cek(self.content_encryption_key, alg)
+        cek = SymetricJwk.from_bytes(raw_cek)
+
+        plaintext = cek.decrypt(
+            cyphertext=self.cyphertext,
+            iv=self.initialization_vector,
+            tag=self.authentication_tag,
+            aad=self.additional_authenticated_data,
+            alg=enc,
+        )
+        return plaintext
 
 
 class InvalidJwt(ValueError):
+    """Raised when an invalid Jwt is parsed"""
+
     pass
 
 
 class Jwt:
-    def __new__(cls, value: str):  # type: ignore
+    """Represents a Json Web Token"""
+
+    def __new__(cls, value: Union[bytes, str]):  # type: ignore
+        """
+        Allows parsing both Signed and Encrypted Jwts. Returns the appropriate subclass.
+        :param value:
+        """
+        if not isinstance(value, bytes):
+            value = value.encode("ascii")
+
         if cls == Jwt:
-            if value.count(".") == 2:
+            if value.count(b".") == 2:
                 return super().__new__(SignedJwt)
-            elif value.count(".") == 3:
+            elif value.count(b".") == 3:
                 return super().__new__(EncryptedJwt)
         return super().__new__(cls)
 
-    def __init__(self, value: str):
+    def __init__(self, value: Union[bytes, str]):
+        """
+        Initializes an Jwt from its string representation.
+        :param value: the string or bytes representation of this Jwt
+        """
+        if not isinstance(value, bytes):
+            value = value.encode("ascii")
+
         self.value = value
-        self.headers: Dict[str, Any] = {}
+        self.headers: Dict[str, Any]
 
     def __eq__(self, other: Any) -> bool:
+        """
+        Checks that a Jwt is equals to another. Works with other instances of Jwt, or with string or bytes.
+        :param other: the other token to compare with
+        :return: True if the other token has the same representation, False otherwise
+        """
         if isinstance(other, Jwt):
             return self.value == other.value
         if isinstance(other, str):
@@ -905,6 +1494,11 @@ class Jwt:
         return super().__eq__(other)
 
     def get_header(self, name: str) -> Any:
+        """
+        Returns an header from this Jwt
+        :param name: the header name
+        :return: the header value
+        """
         return self.headers.get(name)
 
     @classmethod
@@ -915,6 +1509,14 @@ class Jwt:
         alg: Optional[str] = None,
         extra_headers: Optional[Dict[str, Any]] = None,
     ) -> "SignedJwt":
+        """
+        Signs a JSON payload with a Jwk and returns the resulting SignedJwt
+        :param claims: the payload to sign
+        :param jwk: the Jwk to use for signing
+        :param alg: the alg to use for signing
+        :param extra_headers: additional headers to include in the Jwt
+        :return: a SignedJwt
+        """
         if not isinstance(jwk, Jwk):
             jwk = Jwk(jwk)
 
@@ -944,7 +1546,18 @@ class Jwt:
         sign_alg: Optional[str],
         enc_jwk: Union[Jwk, Dict[str, Any]],
         enc_alg: Optional[str],
+        enc: Optional[str],
     ) -> "EncryptedJwt":
+        """
+        Sign then encrypts a payload with a Jwk and returns the resulting EncryptedJwt
+        :param claims: the payload to encrypt
+        :param sign_jwk: the Jwk to use for signature
+        :param sign_alg: the alg to use for signature
+        :param enc_jwk: the Jwk to use for encryption
+        :param enc_alg: the alg to use for CEK encryption
+        :param enc: the alg to use for payload encryption
+        :return: an EncryptedJwt
+        """
         raise NotImplementedError
 
 
@@ -1123,7 +1736,8 @@ class SignedJwt(Jwt):
 
 
 class EncryptedJwt(Jwt):
-    pass
+    def __init__(self, value: Union[bytes, str]):
+        raise NotImplementedError
 
 
 class JwtSigner:
