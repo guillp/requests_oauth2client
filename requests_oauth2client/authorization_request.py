@@ -24,6 +24,7 @@ class PkceUtils:
     """
 
     code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
+    """A regex that matches valid code verifiers."""
 
     @classmethod
     def generate_code_verifier(cls) -> str:
@@ -202,6 +203,12 @@ class AuthorizationRequest:
     def sign_request_jwt(
         self, jwk: Union[Jwk, Dict[str, Any]], alg: Optional[str] = None
     ) -> Jwt:
+        """
+        Signs the `request` object that matches this Authorization Request parameters.
+        :param jwk: the JWK to use to sign the request
+        :param alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
+        :return: a :class:`Jwt` that contains the signed request object.
+        """
         return Jwt.sign(
             claims={key: val for key, val in self.args.items() if val is not None},
             jwk=jwk,
@@ -211,6 +218,12 @@ class AuthorizationRequest:
     def sign(
         self, jwk: Union[Jwk, Dict[str, Any]], alg: Optional[str] = None
     ) -> "AuthorizationRequest":
+        """
+        Signs the current Authorization Request, replacing all its parameters with a signed `request` JWT.
+        :param jwk: the JWK to use to sign the request
+        :param alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
+        :return: the signed Authorization Request
+        """
         request_jwt = self.sign_request_jwt(jwk, alg)
         self.args = {"request": str(request_jwt)}
         return self
@@ -221,13 +234,24 @@ class AuthorizationRequest:
         enc_jwk: Union[Jwk, Dict[str, Any]],
         sign_alg: Optional[str] = None,
         enc_alg: Optional[str] = None,
+        enc: Optional[str] = None,
     ) -> Jwt:
+        """
+        Sign and Encrypt the `request` object that matches the current Authorization Request parameters.
+        :param sign_jwk: the JWK to use to sign the request
+        :param enc_jwk: the JWK to use to encrypt the request
+        :param sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
+        :param enc_alg: the alg to use to encrypt the request, if the passed `jwk` has no `alg` parameter.
+        :param enc: the encoding to use to encrypt the request, if the passed `jwk` has no `enc` parameter.
+        :return: the signed and encrypted request object, as a :class:`Jwt`
+        """
         return Jwt.sign_and_encrypt(
             claims={key: val for key, val in self.args.items() if val is not None},
             sign_jwk=sign_jwk,
             sign_alg=sign_alg,
             enc_jwk=enc_jwk,
             enc_alg=enc_alg,
+            enc=enc,
         )
 
     def sign_and_encrypt(
@@ -236,14 +260,38 @@ class AuthorizationRequest:
         enc_jwk: Union[Jwk, Dict[str, Any]],
         sign_alg: Optional[str] = None,
         enc_alg: Optional[str] = None,
+        enc: Optional[str] = None,
     ) -> "AuthorizationRequest":
+        """
+        Sign and encrypt the current Authorization Request,
+        replacing all its parameters with a matching `request` object.
+        :param sign_jwk: the JWK to use to sign the request
+        :param enc_jwk: the JWK to use to encrypt the request
+        :param sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
+        :param enc_alg: the alg to use to encrypt the request, if the passed `jwk` has no `alg` parameter.
+        :param enc: the encoding to use to encrypt the request, if the passed `jwk` has no `enc` parameter.
+        :return:
+        """
         request_jwt = self.sign_and_encrypt_request_jwt(
-            sign_jwk, enc_jwk, sign_alg, enc_alg
+            sign_jwk=sign_jwk,
+            enc_jwk=enc_jwk,
+            sign_alg=sign_alg,
+            enc_alg=enc_alg,
+            enc=enc,
         )
         self.args = {"request": str(request_jwt)}
         return self
 
     def validate_callback(self, response: str) -> str:
+        """
+        Validates a given Authorization Response URI against this Authorization Request.
+        This includes matching the `state` parameter, checking for returned errors, and extracting the returned `code`.
+        :param response: the Authorization Response URI. This can be the full URL, or just the query parameters.
+        :return: the extracted code, if the
+        :raises MismatchingState: if the response `state` does not match the expected value.
+        :raises OAuth2Error: if the response includes an error.
+        :raises MissingAuthCode: if the response does not contain a `code`.
+        """
         try:
             response_url = furl(response)
         except ValueError:
@@ -265,6 +313,12 @@ class AuthorizationRequest:
         return code
 
     def on_response_error(self, response: str) -> str:
+        """
+        Triggered by :method:`validate_callback` if the response contains an error.
+        :param response: the Authorization Response URI. This can be the full URL, or just the query parameters.
+        :return: may return a default code that will be returned by `validate_callback`. But this method will most
+        likely raise exceptions instead.
+        """
         response_url = furl(response)
         error = response_url.args.get("error")
         error_description = response_url.args.get("error_description")
@@ -276,6 +330,10 @@ class AuthorizationRequest:
 
     @property
     def uri(self) -> str:
+        """
+        Returns the Authorization Request URI, as a `str`.
+        :return: the Authorization Request URI.
+        """
         return str(
             furl(
                 self.authorization_endpoint,
@@ -286,9 +344,18 @@ class AuthorizationRequest:
         )
 
     def __repr__(self) -> str:
+        """
+        Returns the Authorization Request URI, as a `str`.
+        :return: the Authorization Request URI.
+        """
         return self.uri
 
     def __eq__(self, other: Any) -> bool:
+        """
+        Checks if this Authorization Request is the same as another one.
+        :param other:
+        :return:
+        """
         if isinstance(other, AuthorizationRequest):
             return (
                 self.authorization_endpoint == other.authorization_endpoint
@@ -298,7 +365,6 @@ class AuthorizationRequest:
                 and self.scope == other.scope
                 and self.state == other.state
                 and self.nonce == other.nonce
-                and self.code_verifier == other.code_verifier
                 and self.code_challenge == other.code_challenge
                 and self.code_challenge_method == other.code_challenge_method
                 and self.kwargs == other.kwargs

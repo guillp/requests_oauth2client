@@ -187,7 +187,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
 
 class PublicApp(ClientAuthenticationMethod):
     """
-    Handles the "none" authentication method (client only sends its client_id).
+    Handles the "none" authentication method for public apps (where the client only sends its client_id).
     """
 
     def __init__(self, client_id: str) -> None:
@@ -204,9 +204,19 @@ class PublicApp(ClientAuthenticationMethod):
 def client_auth_factory(
     auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
     default_auth_handler: Union[
-        Type[ClientSecretPost], Type[ClientSecretBasic]
+        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJWT]
     ] = ClientSecretPost,
 ) -> requests.auth.AuthBase:
+    """
+    An helper method that initializes a `ClientAuthenticationMethod` subclass based on the provided parameters.
+    :param auth: Can be a :class:`requests.auth.AuthBase` instance (which will be used directly), or a tuple
+    of (client_id, client_secret) which will initialize, by default, an instance of `default_auth_handler`,
+    a (client_id, jwk) to initialize a :class:`PrivateKeyJWK`, or a `client_id` which will use :class:`PublicApp`
+    authentication.
+    :param default_auth_handler: if auth is a tuple of two string, consider that they are a client_id and client_secret,
+    and initialize an instance of this class with those 2 parameters.
+    :return: an Auth Handler that will manage client authentication to the AS Token Endpoint or other backend endpoints.
+    """
     if isinstance(auth, requests.auth.AuthBase):
         return auth
     elif isinstance(auth, tuple) and len(auth) == 2:

@@ -95,10 +95,11 @@ class ApiClient(requests.Session):
         raise_for_status: Optional[bool] = None,
     ) -> requests.Response:
         """
-        A customized request method to handle a path instead of a full url.
+        A customized `request` method that can handle a relative path instead of a full url.
+
         :param method: the HTTP method to use
         :param url: the url where the request will be sent to. Can be a path instead of a full url; that path will be
-        joined to the configured API url.
+        joined to the configured API url. Can also be an iterable of path segments, that will be joined to the root url.
         :return: a :class:`requests.Response` as returned by requests
         """
         if self.url:
@@ -163,6 +164,7 @@ class ApiClient(requests.Session):
         """
         Sends a GET request. Returns :class:`Response` object.
         The passed `url` may be relative to the url passed at initialization time.
+        It takes the same parameters as :method:`ApiClient.request`.
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
@@ -177,6 +179,7 @@ class ApiClient(requests.Session):
         """
         Sends a POST request. Returns :class:`Response` object.
         The passed `url` may be relative to the url passed at initialization time.
+        It takes the same parameters as :method:`ApiClient.request`.
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
@@ -190,6 +193,7 @@ class ApiClient(requests.Session):
         """
         Sends a PATCH request. Returns :class:`Response` object.
         The passed `url` may be relative to the url passed at initialization time.
+        It takes the same parameters as :method:`ApiClient.request`.
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
@@ -203,6 +207,7 @@ class ApiClient(requests.Session):
         """
         Sends a PUT request. Returns :class:`Response` object.
         The passed `url` may be relative to the url passed at initialization time.
+        It takes the same parameters as :method:`ApiClient.request`.
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
@@ -221,6 +226,7 @@ class ApiClient(requests.Session):
         """
         Sends a DELETE request. Returns :class:`Response` object.
         The passed `url` may be relative to the url passed at initialization time.
+        It takes the same parameters as :method:`ApiClient.request`.
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.

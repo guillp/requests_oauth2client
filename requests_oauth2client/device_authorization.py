@@ -44,7 +44,21 @@ class DeviceAuthorizationResponse:
 
 
 class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
-    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow."""
+    """
+    A pooling job for checking if the user has finished with his authorization in a Device Authorization flow.
+
+    Usage:
+    ```python
+    client = OAuth2Client(
+        token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret")
+    )
+    pool_job = DeviceAuthorizationPoolingJob(client=client, device_code="my_device_code")
+
+    token = None
+    while token is None:
+        token = pool_job()
+    ```
+    """
 
     def __init__(
         self,

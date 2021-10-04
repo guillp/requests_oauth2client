@@ -10,6 +10,12 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class BackChannelAuthenticationResponse:
+    """
+    Represents a BackChannel Authentication Response.
+    This contains all the parameters taht are returned by the AS as a result of a BackChannel Authentication Request,
+    such as `auth_req_id`, `expires_at`, `interval`, and/or any custom parameters.
+    """
+
     @accepts_expires_in
     def __init__(
         self,
@@ -18,6 +24,14 @@ class BackChannelAuthenticationResponse:
         interval: Optional[int] = 20,
         **kwargs: Any,
     ):
+        """
+        Initializes a `BackChannelAuthenticationResponse`. Such a response MUST include an `auth_req_id`.
+        :param auth_req_id: the `auth_req_id` as returned by the AS.
+        :param expires_at: the date when the `auth_req_id` expires.
+        Note that this request also accepts an `expires_in` parameter, in seconds.
+        :param interval: the Token Endpoint pooling interval, in seconds, as returned by the AS.
+        :param kwargs: any additional custom parameters as returned by the AS.
+        """
         self.auth_req_id = auth_req_id
         self.expires_at = expires_at
         self.interval = interval
@@ -36,7 +50,7 @@ class BackChannelAuthenticationResponse:
     def __getattr__(self, key: str) -> Any:
         """
         Returns items from this Token Response.
-        Allows `token_response.expires_in` or `token_response.any_custom_attribute`
+        Allows accessing response parameters with `token_response.expires_in` or `token_response.any_custom_attribute`
         :param key: a key
         :return: the associated value in this token response
         :raises AttributeError: if the attribute is not present in the response
@@ -49,7 +63,22 @@ class BackChannelAuthenticationResponse:
 
 
 class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
-    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow."""
+    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow.
+
+    Usage:
+    ```python
+    client = OAuth2Client(
+        token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret")
+    )
+    pool_job = BackChannelAuthenticationPoolingJob(
+        client=client, auth_req_id="my_auth_req_id"
+    )
+
+    token = None
+    while token is None:
+        token = pool_job()
+    ```
+    """
 
     def __init__(
         self,

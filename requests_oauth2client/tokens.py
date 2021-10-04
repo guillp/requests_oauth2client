@@ -11,7 +11,7 @@ from .utils import accepts_expires_in, b64u_decode, b64u_encode
 class BearerToken:
     """
     A wrapper around a Bearer Token and associated expiration date and refresh token,
-    as returned by an OAuth20 or OIDC Token Endpoint.
+    as returned by an OAuth 2.x or OIDC 1.0 Token Endpoint.
     """
 
     @accepts_expires_in
@@ -48,7 +48,7 @@ class BearerToken:
 
     def authorization_header(self) -> str:
         """
-        Returns the Authorization Header value containing this access token, correctly formatted as per RFC6750.
+        Returns the Authorization Header value containing this access token, correctly formatted according to RFC6750.
         :return: the value to use in a HTTP Authorization Header
         """
         return f"Bearer {self.access_token}"
@@ -82,7 +82,7 @@ class BearerToken:
 
     def __getattr__(self, key: str) -> Any:
         """
-        Returns items from this Token Response.
+        Returns items from this BearerToken.
         Allows `token_response.expires_in` or `token_response.any_custom_attribute`
         :param key: a key
         :return: the associated value in this token response
@@ -128,6 +128,10 @@ class BearerToken:
 
 
 class BearerTokenSerializer:
+    """
+    An helper class to serialize Tokens. This may be used to store BearerTokens in session or cookies.
+    """
+
     def __init__(
         self,
         dumper: Optional[Callable[[BearerToken], str]] = None,
