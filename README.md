@@ -220,20 +220,35 @@ authorization code is one of those parameters, but you must also validate that t
 do this with:
 
 ```python
-params = input("Please enter the full url and/or params obtained on the redirect_uri: ")
-code = auth_request.validate_callback(params)
+response_uri = input(
+    "Please enter the full url and/or params obtained on the redirect_uri: "
+)
+auth_response = auth_request.validate_callback(response_uri)
 ```
 
 #### Exchanging code for tokens
 
 To exchange a code for Access and/or ID tokens, use the
 [OAuth2Client.authorization_code()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.authorization_code)
-method:
+method. If you have obtained an AuthorizationResponse as described above, you can simply do:
 
 ```python
 token = oauth2client.authorization_code(
-    code=code, code_verifier=auth_request.code_verifier, redirect_uri=redirect_uri
+    auth_response
 )  # redirect_uri is not always mandatory, but some AS still requires it
+```
+
+This will automatically include the `code`, `redirect_uri` and `code_verifier` parameters in the Token Request,
+as expected by the AS.
+
+If you managed another way to obtain an Authorization Code, you can manually pass those parameters like this:
+```python
+token = oauth2client.authorization_code(
+    code=code,
+    code_verifier=code_verifier,
+    redirect_uri=redirect_uri,
+    custom_param=custom_value,
+)
 ```
 
 #### As Auth Handler

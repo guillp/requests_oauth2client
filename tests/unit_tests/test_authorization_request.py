@@ -12,6 +12,7 @@ from requests_oauth2client import (
     MissingAuthCode,
     SignedJwt,
 )
+from requests_oauth2client.authorization_request import AuthorizationResponse
 
 
 @pytest.fixture(params=[None, {"foo": "bar"}])
@@ -149,11 +150,35 @@ def authorization_request(
     return azr
 
 
-def test_validate(authorization_request, authorization_code):
-    auth_response = furl(authorization_request.redirect_uri).add(
-        args={"code": authorization_code, "state": authorization_request.state}
-    )
-    assert authorization_request.validate_callback(auth_response) == authorization_code
+@pytest.fixture()
+def authorization_response_uri(
+    authorization_request,
+    redirect_uri,
+    code_verifier,
+    code_challenge_method,
+    authorization_code,
+):
+    auth_url = furl(redirect_uri).add(args={"code": authorization_code})
+    if state is not None:
+        auth_url.add(args={"state": authorization_request.state})
+
+    return auth_url.url
+
+
+def test_validate_callback(
+    authorization_request,
+    authorization_response_uri,
+    redirect_uri,
+    state,
+    code_challenge_method,
+    authorization_code,
+):
+    auth_response = authorization_request.validate_callback(authorization_response_uri)
+    assert isinstance(auth_response, AuthorizationResponse)
+    assert auth_response.code == authorization_code
+    assert auth_response.state == authorization_request.state
+    assert auth_response.redirect_uri == redirect_uri
+    assert auth_response.code_verifier == authorization_request.code_verifier
 
 
 def test_authorization_url(authorization_request):

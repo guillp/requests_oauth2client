@@ -3,6 +3,7 @@ from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 import requests
 
 from .auth import BearerAuth
+from .authorization_request import AuthorizationResponse
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
@@ -82,18 +83,14 @@ class OAuth2Client:
     ):
         """
         :param token_endpoint: the Token Endpoint URI where this client will get access tokens
-        :param auth: the authentication handler to use for client authentication on the token endpoint.  Can be a
-        :class:`requests.auth.AuthBase` instance (which will be used directly), or a tuple of (client_id, client_secret)
-        which will initialize an instance of :class:`ClientSecretPost`, a (client_id, jwk) to initialize
-        a :class:`PrivateKeyJWK`, or a `client_id` which will use :class:`PublicApp` authentication.
-        :param revocation_endpoint: the Revocation Endpoint URI to use for revoking tokens (optional)
-        :param introspection_endpoint: the Introspection Endpoint URI to use to get info about tokens (optional)
-        :param userinfo_endpoint: the Userinfo Endpoint URI to use to get information about the user (optional)
-        :param backchannel_authentication_endpoint: the BackChannel Authentication URI (optional)
-        :param device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices (optional)
-        :param jwks_uri: the JWKS URI to use to obtain the AS public keys (optional)
-        :param session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy
-        or client certificate must be used to connect to the AS.
+        :param auth: the authentication handler to use for client authentication on the token endpoint. Can be a [requests.auth.AuthBase][] instance (which will be as-is), or a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost], a `(client_id, jwk)` to initialize a [PrivateKeyJWK][requests_oauth2client.client_authentication.PrivateKeyJWK], or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
+        :param revocation_endpoint: the Revocation Endpoint URI to use for revoking tokens
+        :param introspection_endpoint: the Introspection Endpoint URI to use to get info about tokens
+        :param userinfo_endpoint: the Userinfo Endpoint URI to use to get information about the user
+        :param backchannel_authentication_endpoint: the BackChannel Authentication URI
+        :param device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
+        :param jwks_uri: the JWKS URI to use to obtain the AS public keys
+        :param session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy or client certificate must be used to connect to the AS.
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = (
@@ -122,7 +119,7 @@ class OAuth2Client:
     ) -> BearerToken:
         """
         Sends a authenticated request to the token endpoint.
-        :param data: parameters to send to the token endpoint
+        :param data: parameters to send to the token endpoint. Items with a None or empty value will not be sent in the request.
         :param timeout: a timeout value for the call
         :param requests_kwargs: additional parameters for requests.post()
         :return: the token endpoint response, as BearerToken instance.
@@ -209,7 +206,7 @@ class OAuth2Client:
 
     def authorization_code(
         self,
-        code: str,
+        code: Union[str, AuthorizationResponse],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -221,31 +218,17 @@ class OAuth2Client:
         :return: a TokenResponse
         """
         requests_kwargs = requests_kwargs or {}
-        data = dict(grant_type="authorization_code", code=code, **token_kwargs)
+        if isinstance(code, AuthorizationResponse):
+            data = dict(
+                grant_type="authorization_code",
+                code=code.code,
+                code_verifier=code.code_verifier,
+                redirect_uri=code.redirect_uri,
+                **token_kwargs,
+            )
+        else:
+            data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
-
-    def authorization_code_pkce(
-        self,
-        code: str,
-        code_verifier: str,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
-        **token_kwargs: Any,
-    ) -> BearerToken:
-        """
-        Sends a request to the token endpoint with the `authorization_code` grant, and the PKCE specific `code_verifier`.
-        This is just an alias to :method:`authorization_code()` with `code_verifier` as mandatory parameter.
-        :param code: an authorization code to exchange for tokens
-        :param code_verifier: the code verifier that matches the authorization code
-        :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `code`, etc.
-        :param requests_kwargs: additional parameters for the call to requests
-        :return: a BearerToken
-        """
-        return self.authorization_code(
-            code=code,
-            code_verifier=code_verifier,
-            requests_kwargs=requests_kwargs,
-            **token_kwargs,
-        )
 
     def refresh_token(
         self,

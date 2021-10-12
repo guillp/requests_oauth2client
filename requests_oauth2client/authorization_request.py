@@ -88,6 +88,69 @@ class PkceUtils:
         )
 
 
+class AuthorizationResponse:
+    """
+    Represents a successful Authorization Response, which is the redirection initiated by the AS
+    to the client's redirection endpoint (redirect_uri) after an Authorization Request.
+    This Response is typically created with a call to `AuthorizationRequest.validate_callback()` once the call
+    to the client Redirection Endpoint is made.
+    AuthorizationResponse contains the following, all accessible as attributes:
+     - all the parameters that have been returned by the AS, most notably the `code`, and optional parameters such as `state`.
+     - the redirect_uri that was used for the Authorization Request
+     - the code_verifier matching the code_challenge that was used for the Authorization Request
+
+    Usage:
+    ```python
+    request = AuthorizationRequest(
+        client_id, scope="openid", redirect_uri="http://localhost:54121/callback"
+    )
+    webbrowser.open(request)  # open the authorization request in a browser
+    response_uri = ...  # at this point, manage to get the response uri
+    response = request.validate_callback(
+        response_uri
+    )  # get an AuthorizationResponse at this point
+
+    client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
+    client.authorization_code(
+        response
+    )  # you can pass this response on a call to `OAuth2Client.authorization_code()`
+    ```
+    """
+
+    def __init__(
+        self,
+        code: Optional[str] = None,
+        redirect_uri: Optional[str] = None,
+        code_verifier: Optional[str] = None,
+        state: Optional[str] = None,
+        **kwargs: str,
+    ):
+        """
+        Initialises an AuthorizationResponse. Parameters `redirect_uri` and `code_verifier` must be those from the
+        matching AuthorizationRequest. All other parameters including `code` and `state` must be those extracted from
+        the Authorization Response parameters.
+        :param code: the authorization code returned by the AS
+        :param redirect_uri: the redirect_uri that was passed as parameter in the AuthorizationRequest
+        :param code_verifier: the code_verifier matching the code_challenge that was passed as parameter in the AuthorizationRequest
+        :param state: the state returned by the AS
+        :param kwargs: other parameters as returned by the AS
+        """
+        self.code = code
+        self.redirect_uri = redirect_uri
+        self.code_verifier = code_verifier
+        self.state = state
+        self.others = kwargs
+
+    def __getattr__(self, item: str) -> Optional[str]:
+        """
+        This allows attribute access to additional parameters from this Authorization Response.
+
+        :param item: the attribute name
+        :return: the attribute value, or None if it isn't part of the returned attributes
+        """
+        return self.others.get(item)
+
+
 class AuthorizationRequest:
     """
     Represents an Authorization Request.
@@ -282,7 +345,7 @@ class AuthorizationRequest:
         self.args = {"request": str(request_jwt)}
         return self
 
-    def validate_callback(self, response: str) -> str:
+    def validate_callback(self, response: str) -> AuthorizationResponse:
         """
         Validates a given Authorization Response URI against this Authorization Request.
         This includes matching the `state` parameter, checking for returned errors, and extracting the returned `code`.
@@ -310,9 +373,14 @@ class AuthorizationRequest:
         code: str = response_url.args.get("code")
         if code is None:
             raise MissingAuthCode()
-        return code
 
-    def on_response_error(self, response: str) -> str:
+        return AuthorizationResponse(
+            code_verifier=self.code_verifier,
+            redirect_uri=self.redirect_uri,
+            **response_url.args,
+        )
+
+    def on_response_error(self, response: str) -> AuthorizationResponse:
         """
         Triggered by :method:`validate_callback` if the response contains an error.
         :param response: the Authorization Response URI. This can be the full URL, or just the query parameters.
