@@ -6,13 +6,13 @@ from furl import furl
 
 from requests_oauth2client import (
     AuthorizationRequest,
+    AuthorizationResponse,
     AuthorizationResponseError,
     Jwt,
     MismatchingState,
     MissingAuthCode,
     SignedJwt,
 )
-from requests_oauth2client.authorization_request import AuthorizationResponse
 
 
 @pytest.fixture(params=[None, {"foo": "bar"}])

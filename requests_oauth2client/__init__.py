@@ -10,7 +10,11 @@ from .auth import (
     OAuth2ClientCredentialsAuth,
     OAuth2DeviceCodeAuth,
 )
-from .authorization_request import AuthorizationRequest, PkceUtils
+from .authorization_request import (
+    AuthorizationRequest,
+    AuthorizationResponse,
+    PkceUtils,
+)
 from .backchannel_authentication import (
     BackChannelAuthenticationPoolingJob,
     BackChannelAuthenticationResponse,
