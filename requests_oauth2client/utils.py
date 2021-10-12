@@ -33,7 +33,8 @@ def b64_encode(
 
 def b64_decode(data: Union[str, bytes]) -> bytes:
     """
-    Decodes a base64-encoded string or bytes.
+    Decode a base64-encoded string or bytes.
+
     :param data: the data to base64-decode
     :return: the decoded data, as bytes
     """
@@ -54,10 +55,12 @@ def b64u_encode(
     data: Union[bytes, str], encoding: str = "utf-8", padded: bool = False
 ) -> str:
     """
-    Encodes some data using Base64url.
+    Encode some data using Base64url.
+
     If `data` is a string, encode it to bytes using `encoding` before converting it to Base64.
     If `padded` is `False` (default), no padding is added. If `True`, outputs includes a padding with `=` to make
     its length a multiple of 4.
+
     :param data: the data to encode.
     :param encoding: if `data` is a string, the encoding to use to convert it to `bytes`
     :param padded: if `True`, pad the output with `=` to make its length a multiple of 4
@@ -78,7 +81,8 @@ def b64u_decode(
     data: Union[str, bytes],
 ) -> bytes:
     """
-    Decodes a base64url-encoded data.
+    Decode a base64url-encoded data.
+
     :param data: the data to decode.
     :return: the decoded data as bytes.
     """
@@ -107,7 +111,9 @@ def json_encode(
     default_encoder: Callable[[Any], Any] = _default_json_encode,
 ) -> str:
     """
-    Encodes an object to JSON. By default, this produces a compact output (no extra whitespaces), and datetimes are
+    Encode an object to JSON.
+
+    By default, this produces a compact output (no extra whitespaces), and datetimes are
     converted to epoch-style integers. Any unhandled value is stringified using `str()`. You can override this with the
     parameters `compact` and `default_encoder`.
     :param obj: the data to JSON-encode.
@@ -120,7 +126,16 @@ def json_encode(
     return json.dumps(obj, separators=separators, default=default_encoder)
 
 
-def b64u_encode_json(j: Dict[str, Any], encoder=json_encode) -> str:
+def b64u_encode_json(
+    j: Dict[str, Any], encoder: Callable[[Dict[str, Any]], str] = json_encode
+) -> str:
+    """
+    JSON encodes then Base64-URL encodes a given dict.
+
+    :param j: the dict to encode
+    :param encoder: an encoder method to encode `j` to JSON.
+    :return: the Base64-Url encoded JSON representation of `j`
+    """
     encoded_json = encoder(j)
     return b64u_encode(encoded_json)
 
@@ -129,7 +144,8 @@ def validate_endpoint_uri(
     value: str, https: bool = True, no_fragment: bool = True, path: bool = True
 ) -> None:
     """
-    Validates that an URI is suitable as an endpoint URI.
+    Validate that an URI is suitable as an endpoint URI.
+
     It checks:
 
     - that the scheme is `https`
@@ -154,9 +170,11 @@ def validate_endpoint_uri(
 
 def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
     """
-    A decorator that allows any method that takes an `expires_at` datetime parameter
-    to also accept an `expires_in` integer parameter. This will be converted
-    to a datetime with `expires_in` seconds in the future.
+    Decorate methods that accept an `expires_at` datetime parameter, to also allow an `expires_in` parameter in seconds.
+
+    If supplied, `expires_in` will be converted to a datetime `expires_in` seconds in the future, and passed as `expires_at`
+    in the decorated method.
+
     :param f: the method to decorate, with an `expires_at` parameter
     :return: a decorated method that accepts either `expires_in` or `expires_at`.
     """

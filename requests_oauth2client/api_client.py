@@ -17,7 +17,7 @@ from requests.cookies import RequestsCookieJar
 
 class ApiClient(requests.Session):
     """
-    A Wrapper around :class:`requests.Session` to simplify Rest API calls.
+    A Wrapper around [requests.Session][] to simplify Rest API calls.
     This allows setting a root url at creation time, then passing relative urls at request time.
     It may also raise exceptions instead of returning error responses.
     You can also pass additional kwargs at init time, which will be used to configure the Session,
@@ -39,8 +39,8 @@ class ApiClient(requests.Session):
         **kwargs: Any,
     ):
         """
-        :param url: the base api url. This url will serve as root for relative urls passed to :method:`ApiClient.request()`, :method:`ApiClient.get()`, etc.
-        :param auth: the :class:`requests.auth.AuthBase` to use as authentication handler.
+        :param url: the base api url. This url will serve as root for relative urls passed to [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request], [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
+        :param auth: the [requests.auth.AuthBase][] to use as authentication handler.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
         :param kwargs: additional kwargs to configure this session
         This parameter may be overridden at request time.
@@ -100,7 +100,7 @@ class ApiClient(requests.Session):
         :param method: the HTTP method to use
         :param url: the url where the request will be sent to. Can be a path instead of a full url; that path will be
         joined to the configured API url. Can also be an iterable of path segments, that will be joined to the root url.
-        :return: a :class:`requests.Response` as returned by requests
+        :return: a [requests.Response][] as returned by requests
         """
         if self.url:
             if url is not None:

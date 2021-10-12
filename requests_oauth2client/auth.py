@@ -11,8 +11,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class BearerAuth(requests.auth.AuthBase):
     """
-    A Requests compatible Authentication helper for API protected with Bearer tokens.
-    Using this AuthBase, you have to obtain an access token manually.
+    A [Requests Auth handler][requests.auth.AuthBase] that includes a Bearer Access Token in API calls.
+    As a prerequisite to using this AuthBase, you have to obtain an access token manually.
+    See others Auth Handlers in this module that will automatically obtain access tokens from an OAuth 2.x server.
 
     Usage:
     ```python
@@ -24,7 +25,7 @@ class BearerAuth(requests.auth.AuthBase):
     def __init__(self, token: Optional[Union[str, BearerToken]] = None) -> None:
         """
         Initialize an Auth Handler with an existing Access Token.
-        :param token: a :class:`BearerToken` to use for this Auth Handler. If `None`, this Auth Handler does nothing.
+        :param token: a [BearerToken][requests_oauth2client.tokens.BearerToken] or a string to use as token for this Auth Handler. If `None`, this Auth Handler is a no op.
         """
         self.token = token  # type: ignore[assignment] # until https://github.com/python/mypy/issues/3004 is fixed
 
@@ -171,7 +172,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
 
 class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
     """
-    A Requests Auth handler that exchanges a Device Code for an access token,
+    A [Requests Auth handler][requests.auth.AuthBase] that exchanges a Device Code for an access token,
     then automatically refreshes it once it is expired.
 
     Usage:

@@ -1,4 +1,6 @@
-import requests  # type: ignore
+"""Main module for `requests_oauth2client`."""
+
+import requests
 
 from .api_client import ApiClient
 from .auth import (
