@@ -1,9 +1,8 @@
 from urllib.parse import parse_qs
 
-from flask import Flask
+import pytest
 
 from requests_oauth2client import ApiClient, ClientSecretPost, OAuth2Client
-from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
 
 token_endpoint = "https://myas.local/token"
 client_id = "clientid"
@@ -16,6 +15,13 @@ external_api = "https://myapi.local/foo"
 
 
 def test_flask(requests_mock):
+    try:
+        from flask import Flask
+
+        from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
+    except ImportError:
+        pytest.skip("Flask is not available")
+
     oauth_client = OAuth2Client(
         token_endpoint, ClientSecretPost(client_id, client_secret)
     )
