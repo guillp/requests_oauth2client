@@ -21,6 +21,9 @@ libraries.
 And it also includes a [wrapper][apiclient] around [requests.Session] that makes it super easy to use REST-style APIs,
 with or without OAuth 2.x.
 
+Please note that despite the name, this library has no relationship with Google
+[oauth2client](https://github.com/googleapis/oauth2client) library.
+
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
 [![Downloads](https://pepy.tech/badge/requests_oauth2client/month)](https://pepy.tech/project/requests_oauth2client)
 [![Supported Versions](https://img.shields.io/pypi/pyversions/requests_oauth2client.svg)](https://pypi.org/project/requests_oauth2client)
