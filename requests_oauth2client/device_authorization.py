@@ -78,7 +78,13 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         )
         self.device_code = device_code
 
-    def pool(self) -> BearerToken:
+    def token_request(self) -> BearerToken:
+        """
+        Implement the Device Code token request.
+
+        This actually calls [OAuth2Client.device_code(device_code)] on `client`.
+        :return: a [BearerToken][requests_oauth2client.tokens.BearerToken]
+        """
         return self.client.device_code(
             self.device_code, requests_kwargs=self.requests_kwargs, **self.token_kwargs
         )

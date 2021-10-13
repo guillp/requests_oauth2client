@@ -98,7 +98,13 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
         )
         self.auth_req_id = auth_req_id
 
-    def pool(self) -> BearerToken:
+    def token_request(self) -> BearerToken:
+        """
+        Implement the CIBA token request.
+
+        This actually calls [OAuth2Client.ciba(auth_req_id)] on `client`.
+        :return: a [BearerToken][requests_oauth2client.tokens.BearerToken]
+        """
         return self.client.ciba(
             self.auth_req_id, requests_kwargs=self.requests_kwargs, **self.token_kwargs
         )
