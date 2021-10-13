@@ -97,15 +97,20 @@ class BearerToken:
         return self.other.get(key) or super().__getattribute__(key)
 
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
+        """
+        Return all the attributes from this BearerToken as a `dict`.
+
+        :param expires_at: if `True`, the dict will contain an extra `expires_at` field with the token expiration date.
+        :return: a `dict` containing this BearerToken attributes.
+        """
         r: Dict[str, Any] = {
             "access_token": self.access_token,
             "token_type": "Bearer",
         }
         if self.expires_at:
+            r["expires_in"] = self.expires_in
             if expires_at:
                 r["expires_at"] = self.expires_at
-            else:
-                r["expires_in"] = self.expires_in
         if self.scope:
             r["scope"] = self.scope
         if self.refresh_token:
@@ -118,13 +123,23 @@ class BearerToken:
         return pprint.pformat(self.as_dict())
 
     def __eq__(self, other: object) -> bool:
-        return (
-            isinstance(other, BearerToken)
-            and self.access_token == other.access_token
-            and self.refresh_token == other.refresh_token
-            and self.expires_at == other.expires_at
-            and self.token_type == other.token_type
-        )
+        """
+        Check if this BearerToken is equal to another.
+
+        It supports comparison with another BearerToken, or with an `access_token` as `str`.
+        :param other: another token to compare to
+        :return: `True` if equal, `False` otherwise
+        """
+        if isinstance(other, BearerToken):
+            return (
+                self.access_token == other.access_token
+                and self.refresh_token == other.refresh_token
+                and self.expires_at == other.expires_at
+                and self.token_type == other.token_type
+            )
+        elif isinstance(other, str):
+            return self.access_token == other
+        return super().__eq__(other)
 
 
 class BearerTokenSerializer:
