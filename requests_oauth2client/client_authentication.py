@@ -135,6 +135,10 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         return str(jwt)
 
 
+ClientSecretJwt = ClientSecretJWT
+"""Alias of ClientSecretJWT to be consistent with `jwskate`."""
+
+
 class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
     """
     Handles private_key_jwt client authentication method (client_assertion asymmetrically signed with a private key).
@@ -183,6 +187,10 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
             alg=self.alg,
         )
         return str(jwt)
+
+
+PrivateKeyJwt = PrivateKeyJWT
+"""Alias of PrivateKeyJWT to be consistent with jwkskate."""
 
 
 class PublicApp(ClientAuthenticationMethod):

@@ -23,8 +23,10 @@ from .client import OAuth2Client
 from .client_authentication import (
     ClientSecretBasic,
     ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
     PrivateKeyJWT,
+    PrivateKeyJwt,
     PublicApp,
 )
 from .device_authorization import (
