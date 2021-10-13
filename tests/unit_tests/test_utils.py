@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from requests_oauth2client import (
+from requests_oauth2client.utils import (
     accepts_expires_in,
     b64_decode,
     b64_encode,

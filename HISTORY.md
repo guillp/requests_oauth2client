@@ -14,6 +14,8 @@ response attributes instead of just a code. To access the authorization code, ge
 use it to include all necessary parameters for the Authorization Code Grant.
 * removed `OAuth2Client.authorization_code_pkce()`
 * Added `ClientSecretJwt` and `PrivateKeyJwt` aliases to `ClientSecretJWT` and `PrivateKeyJWT`, for consistency with `jwskate`.
+* Methods from `requests_oauth2client.utils` are no longer exposed in top-level module.
+
 ## <= 0.18
 
 * Draft versions
