@@ -361,15 +361,12 @@ class OAuth2Client:
 
     def parse_userinfo_response(self, resp: requests.Response) -> Any:
         """
-        Given a response obtained from the userinfo endpoint, extracts its JSON content.
-        A subclass may implement the signature validation and/or decryption of a userinfo JWT response.
-        :param resp: a response obtained from the userinfo endpoint
-        :return: the parsed JSON content from this response, or an str with the response contents if it is not a JSON.
+        Given a response obtained from the userinfo endpoint, extract its JSON content.
+
+        :param resp: a [Response][request.Response] returned from the UserInfo endpoint.
+        :return: the parsed JSON content from this response.
         """
-        try:
-            return resp.json()
-        except ValueError:
-            return resp.text
+        return resp.json()
 
     @classmethod
     def get_token_type(
