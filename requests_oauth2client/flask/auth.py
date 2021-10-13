@@ -2,7 +2,7 @@
 
 from typing import Any, Optional
 
-from flask import session  # type: ignore
+from flask import session
 
 from ..auth import OAuth2ClientCredentialsAuth
 from ..client import OAuth2Client

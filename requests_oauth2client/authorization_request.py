@@ -1,3 +1,6 @@
+"""This module contains classes and utilities related to Authorization Requests and Responses."""
+
+
 import hashlib
 import re
 import secrets
@@ -19,9 +22,7 @@ from .utils import b64u_encode
 
 
 class PkceUtils:
-    """
-    Contains helper methods for PKCE, as described in [RFC7636](https://tools.ietf.org/html/rfc7636).
-    """
+    """Contains helper methods for PKCE, as described in [RFC7636](https://tools.ietf.org/html/rfc7636)."""
 
     code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
     """A regex that matches valid code verifiers."""
@@ -29,7 +30,8 @@ class PkceUtils:
     @classmethod
     def generate_code_verifier(cls) -> str:
         """
-        Generates a valid `code_verifier`.
+        Generate a valid `code_verifier`.
+
         :return: a code_verifier ready to use for PKCE
         """
         return secrets.token_urlsafe(96)
@@ -37,7 +39,8 @@ class PkceUtils:
     @classmethod
     def derive_challenge(cls, verifier: Union[str, bytes], method: str = "S256") -> str:
         """
-        Derives the `code_challenge` from a given `code_verifier`.
+        Derive the `code_challenge` from a given `code_verifier`.
+
         :param verifier: a code verifier
         :param method: the method to use for deriving the challenge. Accepts 'S256' or 'plain'.
         :return: a code_challenge derived from the given verifier
@@ -63,7 +66,8 @@ class PkceUtils:
         cls, method: str = "S256"
     ) -> Tuple[str, str]:
         """
-        Generate a valid `code_verifier` and derives its `code_challenge`.
+        Generate a valid `code_verifier` and derive its `code_challenge`.
+
         :param method: the method to use for deriving the challenge. Accepts 'S256' or 'plain'.
         :return: a (code_verifier, code_challenge) tuple.
         """
@@ -76,7 +80,8 @@ class PkceUtils:
         cls, verifier: str, challenge: str, method: str = "S256"
     ) -> bool:
         """
-        Validates a `code_verifier` against a `code_challenge`.
+        Validate a `code_verifier` against a `code_challenge`.
+
         :param verifier: the `code_verifier`, exactly as submitted by the client on token request.
         :param challenge: the `code_challenge`, exactly as submitted by the client on authorization request.
         :param method: the method to use for deriving the challenge. Accepts 'S256' or 'plain'.
@@ -90,7 +95,9 @@ class PkceUtils:
 
 class AuthorizationResponse:
     """
-    Represents a successful Authorization Response, which is the redirection initiated by the AS
+    Represent a successful Authorization Response.
+
+    An Authorization Response is the redirection initiated by the AS
     to the client's redirection endpoint (redirect_uri) after an Authorization Request.
     This Response is typically created with a call to `AuthorizationRequest.validate_callback()` once the call
     to the client Redirection Endpoint is made.
@@ -126,9 +133,10 @@ class AuthorizationResponse:
         **kwargs: str,
     ):
         """
-        Initialises an AuthorizationResponse. Parameters `redirect_uri` and `code_verifier` must be those from the
-        matching AuthorizationRequest. All other parameters including `code` and `state` must be those extracted from
-        the Authorization Response parameters.
+        Initialise an `AuthorizationResponse`.
+
+        Parameters `redirect_uri` and `code_verifier` must be those from the matching `AuthorizationRequest`.
+        All other parameters including `code` and `state` must be those extracted from the Authorization Response parameters.
         :param code: the authorization code returned by the AS
         :param redirect_uri: the redirect_uri that was passed as parameter in the AuthorizationRequest
         :param code_verifier: the code_verifier matching the code_challenge that was passed as parameter in the AuthorizationRequest
@@ -143,7 +151,7 @@ class AuthorizationResponse:
 
     def __getattr__(self, item: str) -> Optional[str]:
         """
-        This allows attribute access to additional parameters from this Authorization Response.
+        Allow attribute access to additional parameters from this Authorization Response.
 
         :param item: the attribute name
         :return: the attribute value, or None if it isn't part of the returned attributes
@@ -154,8 +162,9 @@ class AuthorizationResponse:
 class AuthorizationRequest:
     """
     Represents an Authorization Request.
-    It generates a valid Authorization Request URI (possibly including a state, nonce, PKCE, and custom args),
-    stores all parameters, and may validate that the callback authorization response matches the state.
+
+    This class makes it easy to generate valid Authorization Request URI (possibly including a state, nonce, PKCE, and custom args),
+    to store all parameters, and to validate an Authorization Response.
     """
 
     exception_classes: Dict[str, Type[Exception]] = {
@@ -164,8 +173,6 @@ class AuthorizationRequest:
         "session_selection_required": SessionSelectionRequired,
         "consent_required": ConsentRequired,
     }
-
-    default_exception_class = AuthorizationResponseError
 
     def __init__(
         self,
@@ -181,31 +188,32 @@ class AuthorizationRequest:
         **kwargs: Any,
     ) -> None:
         """
-        Creates an AuthorizationRequest. All parameters passed here will be included in the request query parameters as-is,
+        Create an `AuthorizationRequest`.
+
+        All parameters passed here will be included in the request query parameters as-is,
         excepted for a few parameters which have a special behaviour:
 
-        * state: if True (default), a random state parameter will be generated for you. You may pass your own state as str,
+        * `state`: if True (default), a random state parameter will be generated for you. You may pass your own state as `str`,
         or set it to `None` so that the state parameter will not be included in the request. You may access that state in the
         `state` attribute from this request.
-        * nonce: if True (default) and scope includes 'openid', a random nonce will be generated and included in the request.
+        * `nonce`: if True (default) and scope includes 'openid', a random nonce will be generated and included in the request.
          You may access that nonce in the `nonce` attribute from this request.
-        * code_verifier: if None, and `code_challenge_method` is 'S256' or 'plain', a valid `code_challenge`
-        and `code_verifier` for PKCE will be automatically generated, and the code_challenge will be included
-        in the request. You may pass your own code_verifier as a str parameter, in which case the appropriate
-        `code_challenge` will be included in the request.
+        * `code_verifier`: if `None`, and `code_challenge_method` is `'S256'` or `'plain'`, a valid `code_challenge`
+        and `code_verifier` for PKCE will be automatically generated, and the `code_challenge` will be included
+        in the request. You may pass your own `code_verifier` as a `str` parameter, in which case the appropriate
+        `code_challenge` will be included in the request, according to the `code_challenge_method`.
 
-        :param authorization_endpoint: the uri for the authorization endpoint
-        :param client_id: the client_id to include in the request
-        :param redirect_uri: the redirect_uri to include in the request
-        :param scope: the scope to include in the request, as an iterable of string, or a space-separated str
+        :param authorization_endpoint: the uri for the authorization endpoint.
+        :param client_id: the client_id to include in the request.
+        :param redirect_uri: the redirect_uri to include in the request. This is required in OAuth 2.0 and optional in OAuth 2.1. Pass `None` if you don't need any redirect_uri in the Authorization Request.
+        :param scope: the scope to include in the request, as an iterable of `str`, or a single space-separated `str`.
         :param response_type: the response type to include in the request.
-        :param state: the state to include in the request, or True to autogenerate one (default).
-        :param nonce: the nonce to include in the request, or True to autogenerate one (default).
-        :param code_verifier: the state to include in the request, or True to autogenerate one (default).
-        :param code_challenge_method: the method to use to derive the code_challenge from the code_verifier.
+        :param state: the state to include in the request, or `True` to autogenerate one (default).
+        :param nonce: the nonce to include in the request, or `True` to autogenerate one (default).
+        :param code_verifier: the state to include in the request, or `True` to autogenerate one (default).
+        :param code_challenge_method: the method to use to derive the `code_challenge` from the `code_verifier`.
         :param kwargs: extra parameters to include in the request, as-is.
         """
-
         if state is True:
             state = secrets.token_urlsafe(32)
         elif state is False:
@@ -267,7 +275,8 @@ class AuthorizationRequest:
         self, jwk: Union[Jwk, Dict[str, Any]], alg: Optional[str] = None
     ) -> Jwt:
         """
-        Signs the `request` object that matches this Authorization Request parameters.
+        Sign the `request` object that matches this Authorization Request parameters.
+
         :param jwk: the JWK to use to sign the request
         :param alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
         :return: a :class:`Jwt` that contains the signed request object.
@@ -282,7 +291,10 @@ class AuthorizationRequest:
         self, jwk: Union[Jwk, Dict[str, Any]], alg: Optional[str] = None
     ) -> "AuthorizationRequest":
         """
-        Signs the current Authorization Request, replacing all its parameters with a signed `request` JWT.
+        Sign the current Authorization Request.
+
+        This replaces all parameters with a signed `request` JWT.
+
         :param jwk: the JWK to use to sign the request
         :param alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
         :return: the signed Authorization Request
@@ -300,7 +312,8 @@ class AuthorizationRequest:
         enc: Optional[str] = None,
     ) -> Jwt:
         """
-        Sign and Encrypt the `request` object that matches the current Authorization Request parameters.
+        Sign and encrypt the `request` object that matches the current Authorization Request parameters.
+
         :param sign_jwk: the JWK to use to sign the request
         :param enc_jwk: the JWK to use to encrypt the request
         :param sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
@@ -326,8 +339,9 @@ class AuthorizationRequest:
         enc: Optional[str] = None,
     ) -> "AuthorizationRequest":
         """
-        Sign and encrypt the current Authorization Request,
-        replacing all its parameters with a matching `request` object.
+        Sign and encrypt the current Authorization Request.
+
+        This replaces all parameters with a matching `request` object.
         :param sign_jwk: the JWK to use to sign the request
         :param enc_jwk: the JWK to use to encrypt the request
         :param sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
@@ -347,8 +361,10 @@ class AuthorizationRequest:
 
     def validate_callback(self, response: str) -> AuthorizationResponse:
         """
-        Validates a given Authorization Response URI against this Authorization Request.
-        This includes matching the `state` parameter, checking for returned errors, and extracting the returned `code`.
+        Validate a given Authorization Response URI against this Authorization Request, and return an [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
+
+        This includes matching the `state` parameter, checking for returned errors, and extracting the returned `code`
+        and other parameters.
         :param response: the Authorization Response URI. This can be the full URL, or just the query parameters.
         :return: the extracted code, if the
         :raises MismatchingState: if the response `state` does not match the expected value.
@@ -382,7 +398,8 @@ class AuthorizationRequest:
 
     def on_response_error(self, response: str) -> AuthorizationResponse:
         """
-        Triggered by :method:`validate_callback` if the response contains an error.
+        Triggered by [validate_callback()][requests_oauth2client.authorization_request.AuthorizationRequest.validate_callback] if the response uri contains an error.
+
         :param response: the Authorization Response URI. This can be the full URL, or just the query parameters.
         :return: may return a default code that will be returned by `validate_callback`. But this method will most
         likely raise exceptions instead.
@@ -391,15 +408,25 @@ class AuthorizationRequest:
         error = response_url.args.get("error")
         error_description = response_url.args.get("error_description")
         error_uri = response_url.args.get("error_uri")
-        exception_class = self.exception_classes.get(
-            error, self.default_exception_class
-        )
+        exception_class = self.exception_classes.get(error, AuthorizationResponseError)
         raise exception_class(error, error_description, error_uri)
 
     @property
     def uri(self) -> str:
         """
-        Returns the Authorization Request URI, as a `str`.
+        Return the Authorization Request URI, as a `str`.
+
+        You may also use `repr()` or `str()` on an AuthorizationRequest to obtain the same uri.
+
+        Authorization requests typically look like:
+        ```
+        https://myas.local/authorize?client_id=<client_id>&response_type=code&scope=openid&redirect_uri=<redirect_uri>
+        ```
+        Unless they have been signed, and optionally encrypted, into a `request` object, then they look like:
+        ```
+        https://myas.local/authorize?request=<request>
+        ```
+
         :return: the Authorization Request URI.
         """
         return str(
@@ -413,14 +440,16 @@ class AuthorizationRequest:
 
     def __repr__(self) -> str:
         """
-        Returns the Authorization Request URI, as a `str`.
+        Return the Authorization Request URI, as a `str`.
+
         :return: the Authorization Request URI.
         """
         return self.uri
 
     def __eq__(self, other: Any) -> bool:
         """
-        Checks if this Authorization Request is the same as another one.
+        Check if this Authorization Request is the same as another one.
+
         :param other:
         :return:
         """

@@ -34,7 +34,7 @@ class TokenEndpointPoolingJob(ABC):
 
         :param client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] that will be used to pool the token endpoint.
         :param interval: initial pooling interval, in seconds. If `None`, default to `5`.
-        :param slow_down_interval: when a [SlowDown][requests.exceptions.SlowDown] is received, this number of seconds will be added to the pooling interval.
+        :param slow_down_interval: when a [SlowDown][requests_oauth2client.exceptions.SlowDown] is received, this number of seconds will be added to the pooling interval.
         :param requests_kwargs: additional parameters for the underlying calls to [requests.request][]
         :param token_kwargs: additional parameters for the token request
         """
@@ -52,8 +52,8 @@ class TokenEndpointPoolingJob(ABC):
         [token_request()][requests_oauth2client.pooling.TokenEndpointPoolingJob.token_request]. So you can call it
         immediately after initiating the BackChannel flow, and it will wait before initiating the first call.
 
-        This implements the logic to handle [AuthorizationPending][requests.exceptions.AuthorizationPending]
-        or [SlowDown][requests.exceptions.SlowDown] requests by the AS.
+        This implements the logic to handle [AuthorizationPending][requests_oauth2client.exceptions.AuthorizationPending]
+        or [SlowDown][requests_oauth2client.exceptions.SlowDown] requests by the AS.
         :return: a [BearerToken][requests_oauth2client.tokens.BearerToken] if the AS returns one, or `None` if the Authorization is still pending.
         """
         time.sleep(self.interval)
@@ -71,8 +71,8 @@ class TokenEndpointPoolingJob(ABC):
         Abstract method for the token endpoint call.
 
         This must be implemented by subclasses. This method must
-        Must raise [AuthorizationPending][requests.exceptions.AuthorizationPending] to retry after the pooling interval,
-        or [SlowDown][requests.exceptions.SlowDown] to increase the pooling interval by `slow_down_interval` seconds.
+        Must raise [AuthorizationPending][requests_oauth2client.exceptions.AuthorizationPending] to retry after the pooling interval,
+        or [SlowDown][requests_oauth2client.exceptions.SlowDown] to increase the pooling interval by `slow_down_interval` seconds.
 
         :return: a [BearerToken][requests_oauth2client.tokens.BearerToken]
         """

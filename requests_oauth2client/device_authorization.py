@@ -1,3 +1,5 @@
+"""Implements the Device Authorization Flow as defined in [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)."""
+
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
@@ -10,9 +12,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class DeviceAuthorizationResponse:
-    """
-    A response returned by the device Authorization Endpoint (as defined in RFC8628)
-    """
+    """Represent a response returned by the device Authorization Endpoint."""
 
     @accepts_expires_in
     def __init__(
@@ -25,6 +25,19 @@ class DeviceAuthorizationResponse:
         interval: Optional[int] = None,
         **kwargs: Any,
     ):
+        """
+        Initialize a DeviceAuthorizationResponse.
+
+        All parameters are those returned by the AS as response to a Device Authorization Request.
+
+        :param device_code: the `device_code` as returned by the AS.
+        :param user_code: the `device_code` as returned by the AS.
+        :param verification_uri: the `device_code` as returned by the AS.
+        :param verification_uri_complete: the `device_code` as returned by the AS.
+        :param expires_at: the expiration date for the device_code. This method also accepts an `expires_in` parameter, as a number of seconds in the future.
+        :param interval: the pooling `interval` as returned by the AS.
+        :param kwargs: additional parameters as returned by the AS.
+        """
         self.device_code = device_code
         self.user_code = user_code
         self.verification_uri = verification_uri
@@ -35,8 +48,9 @@ class DeviceAuthorizationResponse:
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
         """
-        Returns True if the device_code within this response is expired at the time of the call.
-        :return: True if the device_code is expired, False if it is still valid, None if there is no expires_in hint.
+        Check if the `device_code` within this response is expired at the time of the call.
+
+        :return: `True` if the device_code is expired, `False` if it is still valid, `None` if there is no `expires_in` hint.
         """
         if self.expires_at:
             return datetime.now() - timedelta(seconds=leeway) > self.expires_at
@@ -69,6 +83,16 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ):
+        """
+        Initialize a `DeviceAuthorizationPoolingJob`.
+
+        :param client: an OAuth2Client that will be used to pool the token endpoint.
+        :param device_code: a `device_code` as `str` or a `DeviceAuthorizationResponse`.
+        :param interval: The pooling interval to use. This overrides the one in `auth_req_id` if it is a `BackChannelAuthenticationResponse`.
+        :param slow_down_interval: Number of seconds to add to the pooling interval when the AS returns a slow down request.
+        :param requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
+        :param token_kwargs: Additional parameters for the token request.
+        """
         super().__init__(
             client=client,
             interval=interval,

@@ -1,3 +1,5 @@
+"""This module contains helper methods that are used in multiple places within `requests_oauth2client`."""
+
 import base64
 import json
 from datetime import datetime, timedelta
@@ -11,7 +13,8 @@ def b64_encode(
     data: Union[bytes, str], encoding: str = "utf-8", padded: bool = True
 ) -> str:
     """
-    Encodes the string or bytes `data` using Base64.
+    Encode the string or bytes `data` using Base64.
+
     If `data` is a string, encode it to bytes using `encoding` before converting it to Base64.
     If `padded` is `True` (default), outputs includes a padding with `=` to make its length a multiple of 4. If `False`,
     no padding is included.
@@ -100,6 +103,12 @@ def b64u_decode(
 
 
 def _default_json_encode(data: Any) -> Any:
+    """
+    Encode `datetime` to integer number of seconds since epoch.
+
+    :param data: a scalar
+    :return: a serialized representation of this scalar.
+    """
     if isinstance(data, datetime):
         return int(data.timestamp())
     return str(data)
@@ -130,11 +139,11 @@ def b64u_encode_json(
     j: Dict[str, Any], encoder: Callable[[Dict[str, Any]], str] = json_encode
 ) -> str:
     """
-    JSON encodes then Base64-URL encodes a given dict.
+    JSON-encode then Base64-URL encode a given `dict`.
 
-    :param j: the dict to encode
-    :param encoder: an encoder method to encode `j` to JSON.
-    :return: the Base64-Url encoded JSON representation of `j`
+    :param j: the `dict` to encode.
+    :param encoder: an encoder method to encode non-standard values from `j` to JSON.
+    :return: the Base64-Url encoded JSON representation of `j`.
     """
     encoded_json = encoder(j)
     return b64u_encode(encoded_json)

@@ -1,3 +1,5 @@
+"""Implementation of [Client Initiated BackChannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)."""
+
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
@@ -11,8 +13,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class BackChannelAuthenticationResponse:
     """
-    Represents a BackChannel Authentication Response.
-    This contains all the parameters taht are returned by the AS as a result of a BackChannel Authentication Request,
+    Represent a BackChannel Authentication Response.
+
+    This contains all the parameters that are returned by the AS as a result of a BackChannel Authentication Request,
     such as `auth_req_id`, `expires_at`, `interval`, and/or any custom parameters.
     """
 
@@ -25,7 +28,9 @@ class BackChannelAuthenticationResponse:
         **kwargs: Any,
     ):
         """
-        Initializes a `BackChannelAuthenticationResponse`. Such a response MUST include an `auth_req_id`.
+        Initialize a `BackChannelAuthenticationResponse`.
+
+        Such a response MUST include an `auth_req_id`.
         :param auth_req_id: the `auth_req_id` as returned by the AS.
         :param expires_at: the date when the `auth_req_id` expires.
         Note that this request also accepts an `expires_in` parameter, in seconds.
@@ -39,7 +44,8 @@ class BackChannelAuthenticationResponse:
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
         """
-        Returns `True` if the auth_req_id within this response is expired at the time of the call.
+        Return `True` if the auth_req_id within this response is expired at the time of the call.
+
         :return: `True` if the auth_req_id is expired, `False` if it is still valid,
         `None` if there is no `expires_in` hint.
         """
@@ -49,7 +55,8 @@ class BackChannelAuthenticationResponse:
 
     def __getattr__(self, key: str) -> Any:
         """
-        Returns items from this Token Response.
+        Return attributes from this `BackChannelAuthenticationResponse`.
+
         Allows accessing response parameters with `token_response.expires_in` or `token_response.any_custom_attribute`
         :param key: a key
         :return: the associated value in this token response
@@ -63,7 +70,8 @@ class BackChannelAuthenticationResponse:
 
 
 class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
-    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow.
+    """
+    A pooling job for checking if the user has finished with his authorization in a BackChannel Authentication flow.
 
     Usage:
     ```python

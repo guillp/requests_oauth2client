@@ -1,3 +1,5 @@
+"""This modules implements multiple Client Authentication Methods for OAuth 2.0 client to authenticate to an AS."""
+
 from datetime import datetime
 from typing import Any, Callable, Dict, Tuple, Type, Union
 from uuid import uuid4
@@ -11,30 +13,52 @@ from .utils import b64_encode
 
 class ClientAuthenticationMethod(requests.auth.AuthBase):
     """
-    Base class for the Client Authentication methods.
+    Base class for all Client Authentication methods. This extends [requests.auth.AuthBase].
+
+    This base class only checks that requests are suitable to add Client Authentication parameters to,
+    and doesn't modify the request.
     """
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """
+        Check that the request is suitable for Client Authentication.
+
+        It checks:
+        * that the method is `POST`
+        * that the Content-Type is "application/x-www-form-urlencoded" or None
+        :param request: a [requests.PreparedRequest][]
+        :return: a [requests.PreparedRequest][], unmodified
+        """
         if request.method != "POST" or request.headers.get("Content-Type") not in (
             "application/x-www-form-urlencoded",
             None,
         ):
             raise RuntimeError(
-                "This request is not suitable for OAuth2.0 Client Authentication"
+                "This request is not suitable for OAuth 2.0 Client Authentication"
             )
         return request
 
 
 class ClientSecretBasic(ClientAuthenticationMethod):
-    """
-    Handles client_secret_basic authentication (client_id and client_secret passed as Basic authentication)
-    """
+    """Implement `client_secret_basic` authentication (client_id and client_secret passed as Basic authentication)."""
 
     def __init__(self, client_id: str, client_secret: str):
+        """
+        Initialize a `ClientSecretBasic` Auth Handler.
+
+        :param client_id: `client_id` to use.
+        :param client_secret: `client_secret` to use.
+        """
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """
+        Add the appropriate `Authorization: Basic` header with `client_id` as username and `client_secret` as password.
+
+        :param request: a [requests.PreparedRequest][].
+        :return: a [requests.PreparedRequest][] with the added Authorization header.
+        """
         request = super().__call__(request)
         b64encoded_credentials = b64_encode(
             ":".join((self.client_id, self.client_secret))
@@ -44,16 +68,25 @@ class ClientSecretBasic(ClientAuthenticationMethod):
 
 
 class ClientSecretPost(ClientAuthenticationMethod):
-    """
-    Handles client_secret_post client authentication method (client_id and client_secret
-    passed as part of the request form data).
-    """
+    """Implement `client_secret_post` client authentication method (client_id and client_secret passed as part of the request form data)."""
 
     def __init__(self, client_id: str, client_secret: str):
+        """
+        Initialize a `ClientSecretPost` Auth Handler.
+
+        :param client_id: `client_id` to use.
+        :param client_secret: `client_secret` to use.
+        """
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """
+        Add the `client_id` and `client_secret` parameters in the request body.
+
+        :param request: a [requests.PreparedRequest][].
+        :return: a [requests.PreparedRequest][] with the added client credentials fields.
+        """
         request = super().__call__(request)
         data = furl.Query(request.body)
         data.set([("client_id", self.client_id), ("client_secret", self.client_secret)])
@@ -62,22 +95,40 @@ class ClientSecretPost(ClientAuthenticationMethod):
 
 
 class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
-    """
-    Base class for assertion based client authentication methods.
-    """
+    """Base class for assertion based client authentication methods."""
 
     def __init__(
         self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]
     ):
+        """
+        Initialize a `ClientAssertionAuthenticationMethod` Base Auth Handler.
+
+        :param client_id: the client_id to use
+        :param alg: the alg to use to sign generated Client Assertions.
+        :param lifetime: the lifetime to use for generated Client Assertions.
+        :param jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
+        """
         self.client_id = str(client_id)
         self.alg = alg
         self.lifetime = lifetime
         self.jti_gen = jti_gen
 
     def client_assertion(self, audience: str) -> str:
+        """
+        Generate a Client Assertion for a specific audience.
+
+        :param audience: the audience to use for the `aud` claim of the generated Client Assertion.
+        :return: a Client Assertion, as `str`.
+        """
         raise NotImplementedError()  # pragma: no cover
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """
+        Add a `client_assertion` field in the request body.
+
+        :param request: a [requests.PreparedRequest][].
+        :return: a [requests.PreparedRequest][] with the added `client_assertion` field.
+        """
         request = super().__call__(request)
         token_endpoint = request.url
         assert token_endpoint is not None
@@ -98,9 +149,7 @@ class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
 
 
 class ClientSecretJWT(ClientAssertionAuthenticationMethod):
-    """
-    Handles client_secret_jwt client authentication method (client_assertion symmetrically signed with the client_secret).
-    """
+    """Implement `client_secret_jwt` client authentication method (using a `client_assertion` field, symmetrically signed with the client_secret)."""
 
     def __init__(
         self,
@@ -110,10 +159,25 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
     ) -> None:
+        """
+        Initialize a `ClientSecretJWT` Auth Handler.
+
+        :param client_id: the `client_id` to use.
+        :param client_secret: the `client_secret` to use to sign generated Client Assertions.
+        :param alg: the alg to use to sign generated Client Assertions.
+        :param lifetime: the lifetime to use for generated Client Assertions.
+        :param jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
+        """
         super().__init__(client_id, alg, lifetime, jti_gen)
         self.client_secret = str(client_secret)
 
     def client_assertion(self, audience: str) -> str:
+        """
+        Generate a Client Assertion, symetrically signed with the `client_secret` as key.
+
+        :param audience: the audience to use for the generated Client Assertion.
+        :return: a Client Assertion, as `str`.
+        """
         iat = int(datetime.now().timestamp())
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
@@ -140,9 +204,7 @@ ClientSecretJwt = ClientSecretJWT
 
 
 class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
-    """
-    Handles private_key_jwt client authentication method (client_assertion asymmetrically signed with a private key).
-    """
+    """Implement `private_key_jwt` client authentication method (client_assertion asymmetrically signed with a private key)."""
 
     def __init__(
         self,
@@ -152,6 +214,15 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
     ) -> None:
+        """
+        Initialize a `PrivateKeyJWT` Auth Handler.
+
+        :param client_id: the `client_id` to use.
+        :param private_jwk: the private JWK to use to sign generated Client Assertions.
+        :param alg: the alg to use to sign generated Client Assertions.
+        :param lifetime: the lifetime to use for generated Client Assertions.
+        :param jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
+        """
         if not isinstance(private_jwk, Jwk):
             private_jwk = Jwk(private_jwk)
 
@@ -170,6 +241,12 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         self.private_jwk = private_jwk
 
     def client_assertion(self, audience: str) -> str:
+        """
+        Generate a Client Assertion, asumetrically signed with `private_jwk` as key.
+
+        :param audience: the audience to use for the generated Client Assertion.
+        :return: a Client Assertion.
+        """
         iat = int(datetime.now().timestamp())
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
@@ -194,14 +271,23 @@ PrivateKeyJwt = PrivateKeyJWT
 
 
 class PublicApp(ClientAuthenticationMethod):
-    """
-    Handles the "none" authentication method for public apps (where the client only sends its client_id).
-    """
+    """Implement the `none` authentication method for public apps (where the client only sends its client_id)."""
 
     def __init__(self, client_id: str) -> None:
+        """
+        Initialize a `PublicApp` Auth Handler.
+
+        :param client_id: the client_id to use.
+        """
         self.client_id = client_id
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """
+        Add the `client_id` field in the request body.
+
+        :param request: a [requests.PreparedRequest][].
+        :return: a [requests.PreparedRequest][] with the added `client_id` field.
+        """
         request = super().__call__(request)
         data = furl.Query(request.body)
         data.set([("client_id", self.client_id)])
@@ -216,7 +302,9 @@ def client_auth_factory(
     ] = ClientSecretPost,
 ) -> requests.auth.AuthBase:
     """
-    An helper method that initializes a `ClientAuthenticationMethod` subclass based on the provided parameters.
+    Initialize the appropriate Auth Handler based on the provided parameters.
+
+    This initializes a `ClientAuthenticationMethod` subclass based on the provided parameters.
     :param auth: Can be a :class:`requests.auth.AuthBase` instance (which will be used directly), or a tuple
     of (client_id, client_secret) which will initialize, by default, an instance of `default_auth_handler`,
     a (client_id, jwk) to initialize a :class:`PrivateKeyJWK`, or a `client_id` which will use :class:`PublicApp`

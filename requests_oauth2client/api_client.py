@@ -1,3 +1,5 @@
+"""ApiClient main module."""
+
 from typing import (
     IO,
     Any,
@@ -18,16 +20,18 @@ from requests.cookies import RequestsCookieJar
 class ApiClient(requests.Session):
     """
     A Wrapper around [requests.Session][] to simplify Rest API calls.
+
     This allows setting a root url at creation time, then passing relative urls at request time.
     It may also raise exceptions instead of returning error responses.
-    You can also pass additional kwargs at init time, which will be used to configure the Session,
+    You can also pass additional kwargs at init time, which will be used to configure the [Session][requests.Session],
     instead of setting them later.
 
     Basic usage:
 
         from requests_oauth2client import ApiClient
         api = ApiClient("https://myapi.local/resource", timeout=10)
-        resp = api.get("/myid") # this will send a GET request to https://myapi.local/resource/myid
+        resp = api.get("/myid") # this will send a GET request
+                                # to https://myapi.local/resource/myid
 
     """
 
@@ -39,11 +43,16 @@ class ApiClient(requests.Session):
         **kwargs: Any,
     ):
         """
-        :param url: the base api url. This url will serve as root for relative urls passed to [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request], [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
+        Initialize an `ApiClient`, with an optional root url.
+
+        `url` will serve as root for relative urls passed to [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request], [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
+        An `HTTPError` will be raised everytime an API call returns an error code (>= 400), unless you set `raise_for_status` to `False`.
+        Additional parameters passed at init time, including `auth` will be used to configure the [Session][requests.Session].
+
+        :param url: the base api url.
         :param auth: the [requests.auth.AuthBase][] to use as authentication handler.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
-        :param kwargs: additional kwargs to configure this session
-        This parameter may be overridden at request time.
+        :param kwargs: additional kwargs to configure this session. This parameter may be overridden at request time.
         """
         super(ApiClient, self).__init__()
 
@@ -95,7 +104,7 @@ class ApiClient(requests.Session):
         raise_for_status: Optional[bool] = None,
     ) -> requests.Response:
         """
-        A customized `request` method that can handle a relative path instead of a full url.
+        Overridden `request` method that can handle a relative path instead of a full url.
 
         :param method: the HTTP method to use
         :param url: the url where the request will be sent to. Can be a path instead of a full url; that path will be
@@ -162,14 +171,15 @@ class ApiClient(requests.Session):
         **kwargs: Any,
     ) -> requests.Response:
         """
-        Sends a GET request. Returns :class:`Response` object.
+        Send a GET request. Return a [Response][requests.Response] object.
+
         The passed `url` may be relative to the url passed at initialization time.
-        It takes the same parameters as :method:`ApiClient.request`.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-        :param kwargs: Optional arguments that ``request`` takes.
-        :return: a :class:`requests.Response` object.
+        :param kwargs: Optional arguments that [request()][requests.request] takes.
+        :return: a [Response][requests.Response] object.
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         and an error response is returned.
         """
@@ -177,42 +187,45 @@ class ApiClient(requests.Session):
 
     def post(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         """
-        Sends a POST request. Returns :class:`Response` object.
+        Send a POST request. Return a [Response][requests.Response] object.
+
         The passed `url` may be relative to the url passed at initialization time.
-        It takes the same parameters as :method:`ApiClient.request`.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
-        :return: a :class:`requests.Response` object.
+        :return: a [Response][requests.Response] object.
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("POST", url, raise_for_status=raise_for_status, **kwargs)
 
     def patch(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         """
-        Sends a PATCH request. Returns :class:`Response` object.
+        Send a PATCH request. Return a [Response][requests.Response] object.
+
         The passed `url` may be relative to the url passed at initialization time.
-        It takes the same parameters as :method:`ApiClient.request`.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
-        :return: a :class:`requests.Response` object.
+        :return: a [Response][requests.Response] object.
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("PATCH", url, raise_for_status=raise_for_status, **kwargs)
 
     def put(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
         """
-        Sends a PUT request. Returns :class:`Response` object.
+        Send a PUT request. Return a [Response][requests.Response] object.
+
         The passed `url` may be relative to the url passed at initialization time.
-        It takes the same parameters as :method:`ApiClient.request`.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
-        :return: a :class:`requests.Response` object.
+        :return: a a [Response][requests.Response] object.
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("PUT", url, raise_for_status=raise_for_status, **kwargs)
@@ -224,14 +237,15 @@ class ApiClient(requests.Session):
         **kwargs: Any,
     ) -> requests.Response:
         """
-        Sends a DELETE request. Returns :class:`Response` object.
+        Send a DELETE request. Return a [Response][requests.Response] object.
+
         The passed `url` may be relative to the url passed at initialization time.
-        It takes the same parameters as :method:`ApiClient.request`.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
         :param kwargs: Optional arguments that ``request`` takes.
-        :return: a :class:`requests.Response` object.
+        :return: a a [Response][requests.Response] object.
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("DELETE", url, raise_for_status=raise_for_status, **kwargs)

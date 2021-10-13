@@ -1,3 +1,5 @@
+"""This modules contain classes that represent Tokens used in OAuth2.0 / OIDC."""
+
 import json
 import pprint
 import zlib
@@ -10,7 +12,9 @@ from .utils import accepts_expires_in, b64u_decode, b64u_encode
 
 class BearerToken:
     """
-    A wrapper around a Bearer Token and associated expiration date and refresh token,
+    Represents a Bearer Token and its associated parameters as returned by a Token Endpoint.
+
+    This is a wrapper around a Bearer Token and associated expiration date and refresh token,
     as returned by an OAuth 2.x or OIDC 1.0 Token Endpoint.
     """
 
@@ -26,6 +30,20 @@ class BearerToken:
         id_token: Optional[str] = None,
         **kwargs: Any,
     ):
+        """
+        Initialize a BearerToken.
+
+        All parameters are as returned by a Token Endpoint. The token expiration date can be passed as datetime
+        in the `expires_at` parameter, or an `expires_in` parameter, as number of seconds in the future, can be passed instead.
+
+        :param access_token: an `access_token`, as returned by the AS.
+        :param expires_at: an expiration date. This method also accepts an `expires_in` hint as returned by the AS, if any.
+        :param scope: a `scope`, as returned by the AS, if any.
+        :param refresh_token: a `refresh_token`, as returned by the AS, if any.
+        :param token_type: a `token_type`, as returned by the AS.
+        :param id_token: an `id_token`, as returned by the AS, if any.
+        :param kwargs: additional parameters as returned by the AS, if any.
+        """
         if token_type.title() != "Bearer":
             raise ValueError("This is not a Bearer Token!", token_type)
         self.access_token = access_token
@@ -37,6 +55,8 @@ class BearerToken:
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
         """
+        Check if the access token is expired.
+
         Returns `True` if the access token is expired at the time of the call.
         :param leeway: If the token expires in the next given number of seconds, then consider it expired already.
         :return: `True` if the access token is expired, `False` if it is still valid, `None` if there is no expires_in
@@ -48,14 +68,16 @@ class BearerToken:
 
     def authorization_header(self) -> str:
         """
-        Returns the Authorization Header value containing this access token, correctly formatted according to RFC6750.
+        Return the Authorization Header value containing this access token, correctly formatted according to RFC6750.
+
         :return: the value to use in a HTTP Authorization Header
         """
         return f"Bearer {self.access_token}"
 
     def __str__(self) -> str:
         """
-        Returns the access token value, as a string
+        Return the access token value, as a string.
+
         :return: the access token string
         """
         return self.access_token
@@ -63,6 +85,7 @@ class BearerToken:
     def __contains__(self, key: str) -> bool:
         """
         Check existence of a key in the token response.
+
         Allows testing like `assert "refresh_token" in token_response`.
         :param key: a key
         :return: True if the key exists in the token response, False otherwise
@@ -82,7 +105,8 @@ class BearerToken:
 
     def __getattr__(self, key: str) -> Any:
         """
-        Returns items from this BearerToken.
+        Return attributes from this BearerToken.
+
         Allows `token_response.expires_in` or `token_response.any_custom_attribute`
         :param key: a key
         :return: the associated value in this token response
@@ -120,6 +144,13 @@ class BearerToken:
         return r
 
     def __repr__(self) -> str:
+        """
+        Return a representation of this BearerToken.
+
+        This representation is a pretty formatted `dict` that looks like a Token Endpoint response.
+
+        :return: a `str` representation of this BearerToken.
+        """
         return pprint.pformat(self.as_dict())
 
     def __eq__(self, other: object) -> bool:
@@ -143,25 +174,29 @@ class BearerToken:
 
 
 class BearerTokenSerializer:
-    """
-    An helper class to serialize Tokens. This may be used to store BearerTokens in session or cookies.
-    """
+    """An helper class to serialize Tokens. This may be used to store BearerTokens in session or cookies."""
 
     def __init__(
         self,
         dumper: Optional[Callable[[BearerToken], str]] = None,
         loader: Optional[Callable[[str], BearerToken]] = None,
-        token_class: Type[BearerToken] = BearerToken,
     ):
-        self.token_class = token_class
+        """
+        Initialize a `BearerTokenSerializer`.
+
+        This needs a `dumper` and a `loader` functions that will respectively serialize and deserialize BearerTokens.
+        Default implementations are provided.
+        :param dumper: a function to serialize a token into a `str`.
+        :param loader: a function do deserialize a serialized token representation.
+        """
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
 
     @staticmethod
     def default_dumper(token: BearerToken) -> str:
         """
-        Serializes as JSON, encodes as base64url of zlib compression of JSON representation of the Access Token,
-        with expiration date represented as expires_at.
+        Serialize a token as JSON, then zlib compress, then encodes as base64url.
+
         :param token: the :class:`BearerToken` to serialize
         :return: the serialized value
         """
@@ -177,7 +212,8 @@ class BearerTokenSerializer:
         self, serialized: str, token_class: Type[BearerToken] = BearerToken
     ) -> BearerToken:
         """
-        Default deserializer for tokens.
+        Deserialize a BearerToken. Does the opposite operations than `default_dumper`.
+
         :param serialized: the serialized token
         :return: a BearerToken
         """
@@ -189,7 +225,8 @@ class BearerTokenSerializer:
 
     def dumps(self, token: BearerToken) -> str:
         """
-        Serialize and compress a given token for easier storage
+        Serialize and compress a given token for easier storage.
+
         :param token: a BearerToken to serialize
         :return: the serialized token, as a str
         """
@@ -197,7 +234,8 @@ class BearerTokenSerializer:
 
     def loads(self, serialized: str) -> BearerToken:
         """
-        Deserialize a serialized token
+        Deserialize a serialized token.
+
         :param serialized: the serialized token
         :return: the deserialized token
         """
@@ -205,4 +243,8 @@ class BearerTokenSerializer:
 
 
 class IdToken(SignedJwt):
-    pass
+    """
+    Represent an ID Token.
+
+    An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be prealably decoded.
+    """
