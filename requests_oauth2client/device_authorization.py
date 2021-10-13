@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from .pooling import TokenEndpointPoolingJob
 from .tokens import BearerToken
@@ -63,7 +63,7 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
     def __init__(
         self,
         client: "OAuth2Client",
-        device_code: str,
+        device_code: Union[str, DeviceAuthorizationResponse],
         interval: Optional[int] = None,
         slow_down_interval: int = 5,
         requests_kwargs: Optional[Dict[str, Any]] = None,

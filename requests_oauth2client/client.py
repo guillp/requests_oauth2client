@@ -251,7 +251,7 @@ class OAuth2Client:
 
     def device_code(
         self,
-        device_code: str,
+        device_code: Union[str, DeviceAuthorizationResponse],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -262,6 +262,9 @@ class OAuth2Client:
         :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
         :return: a BearerToken
         """
+        if isinstance(device_code, DeviceAuthorizationResponse):
+            device_code = device_code.device_code
+
         requests_kwargs = requests_kwargs or {}
         data = dict(
             grant_type="urn:ietf:params:oauth:grant-type:device_code",
@@ -272,7 +275,7 @@ class OAuth2Client:
 
     def ciba(
         self,
-        auth_req_id: str,
+        auth_req_id: Union[str, BackChannelAuthenticationResponse],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -283,6 +286,9 @@ class OAuth2Client:
         :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `auth_req_id`, etc.
         :return:
         """
+        if isinstance(auth_req_id, BackChannelAuthenticationResponse):
+            auth_req_id = auth_req_id.auth_req_id
+
         requests_kwargs = requests_kwargs or {}
         data = dict(
             grant_type="urn:openid:params:grant-type:ciba",

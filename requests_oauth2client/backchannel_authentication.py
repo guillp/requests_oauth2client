@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from .pooling import TokenEndpointPoolingJob
 from .tokens import BearerToken
@@ -83,12 +83,28 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
     def __init__(
         self,
         client: "OAuth2Client",
-        auth_req_id: str,
+        auth_req_id: Union[str, BackChannelAuthenticationResponse],
         interval: Optional[int] = None,
         slow_down_interval: int = 5,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ):
+        """
+        Initialize a `BackChannelAuthenticationPoolingJob`.
+
+        :param client: an OAuth2Client that will be used to pool the token endpoint.
+        :param auth_req_id: an `auth_req_id` as `str` or a `BackChannelAuthenticationResponse`.
+        :param interval: The pooling interval to use. This overrides the one in `auth_req_id` if it is a `BackChannelAuthenticationResponse`.
+        :param slow_down_interval: Number of seconds to add to the pooling interval when the AS returns a slow down request.
+        :param requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
+        :param token_kwargs: Additional parameters for the token request.
+        """
+        if (
+            isinstance(auth_req_id, BackChannelAuthenticationResponse)
+            and interval is None
+        ):
+            interval = auth_req_id.interval
+
         super().__init__(
             client=client,
             interval=interval,
