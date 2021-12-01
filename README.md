@@ -132,34 +132,42 @@ or an [ApiClient] which is a Session Subclass with a few enhancements as describ
 
 To send a request using the Client Credentials grant, use the aptly named
 [.client_credentials()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.client_credentials)
-method:
+method, with the parameters to send in the token request as keyword parameters:
 
 ```python
-token = oauth2client.client_credentials(
-    scope="myscope",
-    resource="https://myapi.local"
-    # you may pass additional kw params such as audience, or whatever your AS needs
-)
+token = oauth2client.client_credentials(scope="myscope", resource="https://myapi.local")
 ```
+
+Parameters such as `scope`, `resource` or `audience` that may be required by the AS can be passed as keyword
+parameters. Those will be included in the token request that is sent to the AS.
 
 #### As Auth Handler
 
 You can use the
-[OAuth2ClientCredentials](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
+[OAuth2ClientCredentialsAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
 auth handler. It takes an [OAuth2Client] as parameter, and the additional kwargs to pass to the token endpoint:
 
 ```python
-api_client = ApiClient(
-    "https://myapi.local/resource",
-    auth=OAuth2ClientCredentials(
-        oauth2client, scope="myscope", resource="https://myapi.local"
-    ),
-)
+import requests
 
-resp = (
-    api_client.get()
-)  # when you send your first request to the API, it will fetch an access token first.
+auth = OAuth2ClientCredentialsAuth(
+    oauth2client, scope="myscope", resource="https://myapi.local"
+)
+requests.get("https://myapi.local/resource", auth=auth)
+
+# or
+session = requests.Session()
+session.auth = auth
+
+resp = session.get("https://myapi.local/resource")
 ```
+
+Once again, extra parameters such as `scope`, `resource` or `audience` are allowed if required.
+
+When you send your first request, [OAuth2ClientCredentialsAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
+will automatically retrieve an access token from the AS using the Client Credentials grant, then will include it in the
+request. Next requests will use the same token, as long as it is valid. A new token will be automatically retrieved once
+the previous one is expired.
 
 ### Authorization Code Grant
 
@@ -189,8 +197,8 @@ auth_request = AuthorizationRequest(
     client_id,
     redirect_uri=redirect_uri,
     scope=scope,
-    resource=resource,  # not mandatory
-)  # add any other param that needs to be sent to your AS
+    resource=resource,  # extra parameters can be included as well if required by your AS
+)
 print(auth_request)  # redirect the user to that URL to get a code
 ```
 
