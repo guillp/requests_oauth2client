@@ -41,7 +41,7 @@ pytest-cov  = "^3.0.0"
 tox  = "^3.20.1"
 virtualenv  = "^20.2.2"
 pip  = "^20.3.1"
-mkdocs  = "^1.1.2"
+mkdocs  = "^1.2.3"
 mkdocstrings = "^0.16"
 mkdocs-include-markdown-plugin  = "^3.2.3"
 mkdocs-material  = "^7.2.6"
@@ -80,8 +80,9 @@ exclude = '''
 )/
 '''
 
-[mypy]
+[tool.mypy]
 strict = true
+implicit_reexport = true
 show_error_context = true
 show_column_numbers = true
 show_error_codes = true

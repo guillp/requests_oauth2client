@@ -245,18 +245,23 @@ class OAuth2Client:
 
     def refresh_token(
         self,
-        refresh_token: str,
+        refresh_token: Union[str, BearerToken],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """
         Send a request to the token endpoint with the `refresh_token` grant.
 
-        :param refresh_token: a refresh_token
+        :param refresh_token: a refresh_token, as a string, or as a BearerToken. That BearerToken must have a `refresh_token`.
         :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `refresh_token`, etc.
         :param requests_kwargs: additional parameters for the call to `requests`
         :return: a BearerToken
         """
+        if isinstance(refresh_token, BearerToken):
+            if refresh_token.refresh_token is None:
+                raise ValueError("This BearerToken doesn't have a refresh_token")
+            refresh_token = refresh_token.refresh_token
+
         requests_kwargs = requests_kwargs or {}
         data = dict(
             grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs
