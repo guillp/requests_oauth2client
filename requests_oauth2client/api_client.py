@@ -39,6 +39,7 @@ class ApiClient(requests.Session):
         self,
         url: Optional[str] = None,
         auth: Optional[requests.auth.AuthBase] = None,
+        timeout: Optional[int] = 60,
         raise_for_status: bool = True,
         **kwargs: Any,
     ):
@@ -51,6 +52,7 @@ class ApiClient(requests.Session):
 
         :param url: the base api url.
         :param auth: the [requests.auth.AuthBase][] to use as authentication handler.
+        :param timeout: the default timeout, in seconds, to use for each request from this ApiClient. Can be set to `None` to disable timeout.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
         :param kwargs: additional kwargs to configure this session. This parameter may be overridden at request time.
         """
@@ -58,6 +60,7 @@ class ApiClient(requests.Session):
 
         self.url = url
         self.auth = auth
+        self.timeout = timeout
         self.raise_for_status = raise_for_status
 
         for key, val in kwargs.items():
@@ -138,6 +141,8 @@ class ApiClient(requests.Session):
 
         if url is None or not isinstance(url, str):
             raise ValueError("No url to send the request to")
+
+        timeout = timeout or self.timeout
 
         response = super(ApiClient, self).request(
             method,
