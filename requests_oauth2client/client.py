@@ -230,17 +230,18 @@ class OAuth2Client:
         :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
-        requests_kwargs = requests_kwargs or {}
         if isinstance(code, AuthorizationResponse):
-            data = dict(
-                grant_type="authorization_code",
-                code=code.code,
-                code_verifier=code.code_verifier,
-                redirect_uri=code.redirect_uri,
-                **token_kwargs,
-            )
-        else:
-            data = dict(grant_type="authorization_code", code=code, **token_kwargs)
+            if not isinstance(code.code, str):
+                raise ValueError(
+                    "This AuthorizationResponse doesn't contain an authorization code"
+                )
+            token_kwargs.setdefault("code_verifer", code.code_verifier)
+            token_kwargs.setdefault("redirect_uri", code.redirect_uri)
+            code = code.code
+
+        requests_kwargs = requests_kwargs or {}
+
+        data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
     def refresh_token(
