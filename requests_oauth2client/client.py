@@ -661,7 +661,7 @@ class OAuth2Client:
 
     def backchannel_authentication_request(
         self,
-        scope: Union[str, Iterable[str]] = "openid",
+        scope: Union[None, str, Iterable[str]] = "openid",
         client_notification_token: Optional[str] = None,
         acr_values: Union[None, str, Iterable[str]] = None,
         login_hint_token: Optional[str] = None,
