@@ -296,7 +296,7 @@ class PublicApp(BaseClientAuthenticationMethod):
 
 
 def client_auth_factory(
-    auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+    auth: Union[requests.auth.AuthBase, Tuple[str, str], Tuple[str, Jwk], str],
     default_auth_handler: Union[
         Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJWT]
     ] = ClientSecretPost,

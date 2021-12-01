@@ -76,7 +76,7 @@ class OAuth2Client:
     def __init__(
         self,
         token_endpoint: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], Tuple[str, Jwk], str],
         revocation_endpoint: Optional[str] = None,
         introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,

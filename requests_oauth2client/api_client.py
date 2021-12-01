@@ -69,7 +69,7 @@ class ApiClient(requests.Session):
     def request(  # type: ignore
         self,
         method: str,
-        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
         params: Union[None, bytes, MutableMapping[str, str]] = None,
         data: Union[
             None,
