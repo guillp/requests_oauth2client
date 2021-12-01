@@ -21,6 +21,7 @@ from .backchannel_authentication import (
 )
 from .client import OAuth2Client
 from .client_authentication import (
+    BaseClientAuthenticationMethod,
     ClientSecretBasic,
     ClientSecretJWT,
     ClientSecretJwt,

@@ -11,7 +11,7 @@ from .jwskate import Jwk, Jwt, SymetricJwk
 from .utils import b64_encode
 
 
-class ClientAuthenticationMethod(requests.auth.AuthBase):
+class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     """
     Base class for all Client Authentication methods. This extends [requests.auth.AuthBase].
 
@@ -39,7 +39,7 @@ class ClientAuthenticationMethod(requests.auth.AuthBase):
         return request
 
 
-class ClientSecretBasic(ClientAuthenticationMethod):
+class ClientSecretBasic(BaseClientAuthenticationMethod):
     """Implement `client_secret_basic` authentication (client_id and client_secret passed as Basic authentication)."""
 
     def __init__(self, client_id: str, client_secret: str):
@@ -67,7 +67,7 @@ class ClientSecretBasic(ClientAuthenticationMethod):
         return request
 
 
-class ClientSecretPost(ClientAuthenticationMethod):
+class ClientSecretPost(BaseClientAuthenticationMethod):
     """Implement `client_secret_post` client authentication method (client_id and client_secret passed as part of the request form data)."""
 
     def __init__(self, client_id: str, client_secret: str):
@@ -94,7 +94,7 @@ class ClientSecretPost(ClientAuthenticationMethod):
         return request
 
 
-class ClientAssertionAuthenticationMethod(ClientAuthenticationMethod):
+class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
     """Base class for assertion based client authentication methods."""
 
     def __init__(
@@ -270,7 +270,7 @@ PrivateKeyJwt = PrivateKeyJWT
 """Alias of PrivateKeyJWT to be consistent with jwkskate."""
 
 
-class PublicApp(ClientAuthenticationMethod):
+class PublicApp(BaseClientAuthenticationMethod):
     """Implement the `none` authentication method for public apps (where the client only sends its client_id)."""
 
     def __init__(self, client_id: str) -> None:
