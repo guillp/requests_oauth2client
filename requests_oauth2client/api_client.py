@@ -171,7 +171,7 @@ class ApiClient(requests.Session):
 
     def get(  # type: ignore
         self,
-        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
         raise_for_status: Optional[bool] = None,
         **kwargs: Any,
     ) -> requests.Response:
