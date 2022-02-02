@@ -3,7 +3,7 @@
 name = "requests_oauth2client"
 version = "1.0.0-alpha.0"
 homepage = "https://github.com/guillp/requests_oauth2client"
-description = "An OAuth2.x Client based on and extending requests.."
+description = "An OAuth2.x Client based on requests."
 authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
 readme = "README.md"
 license =  "Apache-2.0"
@@ -13,10 +13,10 @@ classifiers=[
     'License :: OSI Approved :: Apache Software License',
     'Natural Language :: English',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
 ]
 packages = [
     { include = "requests_oauth2client" },
@@ -24,39 +24,39 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<4.0"
+python = ">=3.7,<4.0"
 
 requests = "^2.19.0"
 cryptography = "^3.0.0"
 furl = "^2.1.2"
 
 [tool.poetry.dev-dependencies]
-livereload = "^2.6.3"
-black  = "^21.8b0"
+black  = "^22.1.0"
+coverage = "^6.3"
 isort  = "^5.9.3"
 flake8  = "^4.0.1"
 flake8-docstrings = "^1.6.0"
-pytest  = "^6.2.5"
-pytest-cov  = "^3.0.0"
-tox  = "^3.20.1"
-virtualenv  = "^20.2.2"
-pip  = "^20.3.1"
-mkdocs  = "^1.2.3"
-mkdocstrings = "^0.16"
-mkdocs-include-markdown-plugin  = "^3.2.3"
-mkdocs-material  = "^7.2.6"
-mkdocs-material-extensions  = "^1.0.1"
-twine  = "^3.3.0"
-mkdocs-autorefs = "^0.3.0"
-pre-commit = "^2.12.0"
-toml = "^0.10.2"
-requests-mock = "^1.9.3"
-mypy = "^0.910"
-types-requests = "^2.25.6"
-types-cryptography = "^3.3.5"
 flake8-rst-docstrings = "^0.2.3"
 flask = "^2.0.1"
-
+livereload = "^2.6.3"
+mypy = "^0.931"
+mkdocs  = "^1.2.3"
+mkdocstrings = "^0.17.0"
+mkdocs-autorefs = "^0.3.0"
+mkdocs-include-markdown-plugin  = "^3.2.3"
+mkdocs-material  = "^8.1.9"
+mkdocs-material-extensions  = "^1.0.1"
+pip  = "^22.0"
+pre-commit = "^2.12.0"
+pytest  = "^6.2.5"
+pytest-cov  = "^3.0.0"
+requests-mock = "^1.9.3"
+toml = "^0.10.2"
+tox  = "^3.20.1"
+twine  = "^3.3.0"
+types-requests = "^2.25.6"
+types-cryptography = "^3.3.5"
+virtualenv  = "^20.2.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

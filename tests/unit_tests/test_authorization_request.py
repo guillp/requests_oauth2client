@@ -1,74 +1,81 @@
 import base64
 import hashlib
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import pytest
-from furl import furl
+from furl import furl  # type: ignore
 
 from requests_oauth2client import (
     AuthorizationRequest,
     AuthorizationResponse,
     AuthorizationResponseError,
+    Jwk,
     Jwt,
     MismatchingState,
     MissingAuthCode,
     SignedJwt,
 )
+from tests.conftest import FixtureRequest
 
 
-@pytest.fixture(params=[None, {"foo": "bar"}])
-def auth_request_kwargs(request):
-    return request.param or {}
+@pytest.fixture(scope="session", params=[None, {"foo": "bar"}])
+def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
+    return request.param or {}  # type: ignore
 
 
 @pytest.fixture(
+    scope="session",
     params=[None, "state", True],
 )
-def state(request):
+def state(request: FixtureRequest) -> Union[None, bool, str]:
     return request.param
 
 
 @pytest.fixture(
+    scope="session",
     params=[None, "nonce", False],
 )
-def nonce(request):
+def nonce(request: FixtureRequest) -> Union[None, bool, str]:
     return request.param
 
 
 @pytest.fixture(
+    scope="session",
     params=[None, "openid", "openid profile email", ["openid", "profile", "email"], []],
     ids=["None", "unique", "space-separated", "list", "empty-list"],
 )
-def scope(request):
+def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
     return request.param
 
 
 @pytest.fixture(
+    scope="session",
     params=[None, "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"],
     ids=["None", "rfc7636"],
 )
-def code_verifier(request):
+def code_verifier(request: FixtureRequest) -> Optional[str]:
     return request.param
 
 
-@pytest.fixture(params=[None, "plain", "S256"])
-def code_challenge_method(request):
+@pytest.fixture(scope="session", params=[None, "plain", "S256"])
+def code_challenge_method(request: FixtureRequest) -> Optional[str]:
     return request.param
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 @pytest.mark.slow
 def authorization_request(
-    authorization_endpoint,
-    client_id,
-    redirect_uri,
-    scope,
-    state,
-    nonce,
-    code_verifier,
-    code_challenge_method,
-    auth_request_kwargs,
-    authorization_code,
-):
+    authorization_endpoint: str,
+    client_id: str,
+    redirect_uri: str,
+    scope: Union[None, str, List[str]],
+    state: Union[None, bool, str],
+    nonce: Union[None, bool, str],
+    code_verifier: str,
+    code_challenge_method: str,
+    auth_request_kwargs: Dict[str, Any],
+    authorization_code: str,
+) -> AuthorizationRequest:
     azr = AuthorizationRequest(
         authorization_endpoint=authorization_endpoint,
         client_id=client_id,
@@ -101,7 +108,7 @@ def authorization_request(
     elif isinstance(nonce, str):
         assert args.pop("nonce") == nonce
     else:
-        pytest.warns("unexpected nonce type", nonce, type(nonce))
+        assert False
 
     if state is True:
         generated_state = args.pop("state")
@@ -150,29 +157,29 @@ def authorization_request(
     return azr
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def authorization_response_uri(
-    authorization_request,
-    redirect_uri,
-    code_verifier,
-    code_challenge_method,
-    authorization_code,
-):
+    authorization_request: AuthorizationRequest,
+    redirect_uri: str,
+    code_verifier: str,
+    code_challenge_method: str,
+    authorization_code: str,
+) -> str:
     auth_url = furl(redirect_uri).add(args={"code": authorization_code})
     if state is not None:
         auth_url.add(args={"state": authorization_request.state})
 
-    return auth_url.url
+    return str(auth_url.url)
 
 
 def test_validate_callback(
-    authorization_request,
-    authorization_response_uri,
-    redirect_uri,
-    state,
-    code_challenge_method,
-    authorization_code,
-):
+    authorization_request: AuthorizationRequest,
+    authorization_response_uri: str,
+    redirect_uri: str,
+    state: str,
+    code_challenge_method: str,
+    authorization_code: str,
+) -> None:
     auth_response = authorization_request.validate_callback(authorization_response_uri)
     assert isinstance(auth_response, AuthorizationResponse)
     assert auth_response.code == authorization_code
@@ -181,14 +188,16 @@ def test_validate_callback(
     assert auth_response.code_verifier == authorization_request.code_verifier
 
 
-def test_authorization_url(authorization_request):
+def test_authorization_url(authorization_request: AuthorizationRequest) -> None:
     url = furl(str(authorization_request))
     assert dict(url.args) == {
         key: val for key, val in authorization_request.args.items() if val is not None
     }
 
 
-def test_authorization_signed_request(authorization_request, private_jwk, public_jwk):
+def test_authorization_signed_request(
+    authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk
+) -> None:
     args = {
         key: value
         for key, value in authorization_request.args.items()
@@ -203,11 +212,13 @@ def test_authorization_signed_request(authorization_request, private_jwk, public
 
 
 @pytest.fixture(params=["consent_required"])
-def error(request):
+def error(request: FixtureRequest) -> str:
     return request.param
 
 
-def test_error_response(authorization_request, error):
+def test_error_response(
+    authorization_request: AuthorizationRequest, error: str
+) -> None:
     auth_response = furl(authorization_request.redirect_uri).add(
         args={"error": error, "state": authorization_request.state}
     )
@@ -215,43 +226,41 @@ def test_error_response(authorization_request, error):
         authorization_request.validate_callback(auth_response)
 
 
-def test_missing_code(authorization_request, authorization_code):
+def test_missing_code(
+    authorization_request: AuthorizationRequest, authorization_code: str
+) -> None:
     auth_response = furl(authorization_request.redirect_uri).add(
         args={"state": authorization_request.state}
     )
     with pytest.raises(MissingAuthCode):
-        assert (
-            authorization_request.validate_callback(auth_response) == authorization_code
-        )
+        authorization_request.validate_callback(auth_response)
 
 
-def test_not_an_url(authorization_request, authorization_code):
+def test_not_an_url(
+    authorization_request: AuthorizationRequest, authorization_code: str
+) -> None:
     auth_response = "https://...$cz\\1.3ada////:@+++++z/"
     with pytest.raises(ValueError):
-        assert (
-            authorization_request.validate_callback(auth_response) == authorization_code
-        )
+        authorization_request.validate_callback(auth_response)
 
 
-def test_mismatching_state(authorization_request, authorization_code, state):
+def test_mismatching_state(
+    authorization_request: AuthorizationRequest, authorization_code: str, state: str
+) -> None:
     auth_response = furl(authorization_request.redirect_uri).add(
         args={"code": authorization_code, "state": "foo"}
     )
     if state:
         with pytest.raises(MismatchingState):
-            assert (
-                authorization_request.validate_callback(auth_response)
-                == authorization_code
-            )
+            authorization_request.validate_callback(auth_response)
 
 
-def test_missing_state(authorization_request, authorization_code, state):
+def test_missing_state(
+    authorization_request: AuthorizationRequest, authorization_code: str, state: str
+) -> None:
     auth_response = furl(authorization_request.redirect_uri).add(
         args={"code": authorization_code}
     )
     if state:
         with pytest.raises(MismatchingState):
-            assert (
-                authorization_request.validate_callback(auth_response)
-                == authorization_code
-            )
+            authorization_request.validate_callback(auth_response)

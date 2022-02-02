@@ -1,16 +1,18 @@
 import secrets
-from urllib.parse import parse_qs
 
 import pytest
+from furl import Query  # type: ignore[import]
 
 from requests_oauth2client import BearerToken, ClientSecretPost, IdToken, OAuth2Client
-
-client_id = "TEST_CLIENT_ID"
-client_secret = "TEST_CLIENT_SECRET"
-token_endpoint = "https://test.com/token"
+from tests.conftest import RequestsMocker
 
 
-def test_token_exchange(requests_mock):
+def test_token_exchange(
+    requests_mock: RequestsMocker,
+    client_id: str,
+    client_secret: str,
+    token_endpoint: str,
+) -> None:
     access_token = secrets.token_urlsafe()
 
     client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
@@ -39,21 +41,21 @@ def test_token_exchange(requests_mock):
     assert token_response.token_type == "Bearer"
     assert 58 <= token_response.expires_in <= 60
 
-    params = parse_qs(requests_mock.last_request.text)
-    assert params.pop("client_id") == [client_id]
-    assert params.pop("client_secret") == [client_secret]
-    assert params.pop("grant_type") == [
-        "urn:ietf:params:oauth:grant-type:token-exchange"
-    ]
-    assert params.pop("subject_token") == [subject_token]
-    assert params.pop("subject_token_type") == [
-        "urn:ietf:params:oauth:token-type:access_token"
-    ]
-    assert params.pop("resource") == [resource]
+    assert requests_mock.last_request is not None
+    params = Query(requests_mock.last_request.text).params
+    assert params.pop("client_id") == client_id
+    assert params.pop("client_secret") == client_secret
+    assert params.pop("grant_type") == "urn:ietf:params:oauth:grant-type:token-exchange"
+    assert params.pop("subject_token") == subject_token
+    assert (
+        params.pop("subject_token_type")
+        == "urn:ietf:params:oauth:token-type:access_token"
+    )
+    assert params.pop("resource") == resource
     assert not params
 
 
-def test_token_type():
+def test_token_type() -> None:
     assert (
         OAuth2Client.get_token_type("urn:ietf:params:oauth:token-type:access_token")
         == "urn:ietf:params:oauth:token-type:access_token"

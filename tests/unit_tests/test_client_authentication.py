@@ -6,19 +6,21 @@ from requests_oauth2client import (
     ClientSecretBasic,
     ClientSecretJWT,
     ClientSecretPost,
+    Jwk,
     OAuth2Client,
     PrivateKeyJWT,
 )
+from tests.conftest import RequestsMocker, RequestValidatorType
 
 
 def test_client_secret_post(
-    requests_mock,
-    access_token,
-    token_endpoint,
-    client_id,
-    client_secret,
-    client_secret_post_auth_validator,
-):
+    requests_mock: RequestsMocker,
+    access_token: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    client_secret_post_auth_validator: RequestValidatorType,
+) -> None:
     client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
 
     requests_mock.post(
@@ -34,13 +36,13 @@ def test_client_secret_post(
 
 
 def test_client_secret_basic(
-    requests_mock,
-    access_token,
-    token_endpoint,
-    client_id,
-    client_secret,
-    client_secret_basic_auth_validator,
-):
+    requests_mock: RequestsMocker,
+    access_token: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    client_secret_basic_auth_validator: RequestValidatorType,
+) -> None:
 
     client = OAuth2Client(token_endpoint, ClientSecretBasic(client_id, client_secret))
 
@@ -57,15 +59,14 @@ def test_client_secret_basic(
 
 
 def test_private_key_jwt(
-    requests_mock,
-    access_token,
-    token_endpoint,
-    client_id,
-    private_jwk,
-    kid,
-    private_key_jwt_auth_validator,
-    public_jwk,
-):
+    requests_mock: RequestsMocker,
+    access_token: str,
+    token_endpoint: str,
+    client_id: str,
+    private_jwk: Jwk,
+    private_key_jwt_auth_validator: RequestValidatorType,
+    public_jwk: Jwk,
+) -> None:
 
     client = OAuth2Client(
         token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk)
@@ -87,14 +88,14 @@ def test_private_key_jwt(
 
 
 def test_private_key_jwt_with_kid(
-    requests_mock,
-    access_token,
-    token_endpoint,
-    client_id,
-    private_jwk,
-    private_key_jwt_auth_validator,
-    public_jwk,
-):
+    requests_mock: RequestsMocker,
+    access_token: str,
+    token_endpoint: str,
+    client_id: str,
+    private_jwk: Jwk,
+    private_key_jwt_auth_validator: RequestValidatorType,
+    public_jwk: Jwk,
+) -> None:
     client = OAuth2Client(
         token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk)
     )
@@ -115,13 +116,13 @@ def test_private_key_jwt_with_kid(
 
 
 def test_client_secret_jwt(
-    requests_mock,
-    access_token,
-    token_endpoint,
-    client_id,
-    client_secret,
-    client_secret_jwt_auth_validator,
-):
+    requests_mock: RequestsMocker,
+    access_token: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    client_secret_jwt_auth_validator: RequestValidatorType,
+) -> None:
 
     client = OAuth2Client(token_endpoint, ClientSecretJWT(client_id, client_secret))
 
@@ -141,13 +142,13 @@ def test_client_secret_jwt(
 
 
 def test_public_client(
-    requests_mock,
-    access_token,
-    token_endpoint,
-    client_id,
-    target_api,
-    public_app_auth_validator,
-):
+    requests_mock: RequestsMocker,
+    access_token: str,
+    token_endpoint: str,
+    client_id: str,
+    target_api: str,
+    public_app_auth_validator: RequestValidatorType,
+) -> None:
 
     client = OAuth2Client(token_endpoint, client_id)
 
@@ -161,7 +162,9 @@ def test_public_client(
     public_app_auth_validator(requests_mock.last_request, client_id=client_id)
 
 
-def test_invalid_request(requests_mock, client_id, client_secret):
+def test_invalid_request(
+    requests_mock: RequestsMocker, client_id: str, client_secret: str
+) -> None:
     requests_mock.get(ANY)
     with pytest.raises(RuntimeError):
         requests.get(
@@ -169,13 +172,13 @@ def test_invalid_request(requests_mock, client_id, client_secret):
         )
 
 
-def test_private_key_jwt_missing_alg(client_id, private_jwk):
+def test_private_key_jwt_missing_alg(client_id: str, private_jwk: Jwk) -> None:
     private_jwk.pop("alg")
     with pytest.raises(ValueError):
-        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk, alg=None)
+        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk, alg=None)  # type: ignore[arg-type]
 
 
-def test_private_key_jwt_missing_kid(client_id, private_jwk):
+def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:
     private_jwk.pop("kid")
     with pytest.raises(ValueError):
         PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk)

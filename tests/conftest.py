@@ -1,125 +1,168 @@
 import base64
 from datetime import datetime
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Type,
+    Union,
+)
 from urllib.parse import parse_qs
 
 import pytest
 import requests
-from furl import furl
+import requests_mock
+from furl import Query, furl  # type: ignore[import]
+from requests_mock import Mocker
+from requests_mock.request import _RequestObjectProxy
 
 from requests_oauth2client import (
     ApiClient,
+    BaseClientAuthenticationMethod,
     BearerAuth,
     ClientSecretBasic,
     ClientSecretJWT,
     ClientSecretPost,
     PublicApp,
 )
-from requests_oauth2client.jwskate import Jwt, SymetricJwk
+from requests_oauth2client.jwskate import Jwk, SignedJwt, SymetricJwk
+
+RequestValidatorType = Callable[..., None]
+
+if TYPE_CHECKING:
+    from pytest import FixtureRequest as __FixtureRequest
+
+    class FixtureRequest(__FixtureRequest):
+        param: str
+
+    class RequestsMocker(Mocker):
+        def reset_mock(self) -> None:
+            ...
 
 
-@pytest.fixture()
-def session():
-    return requests.Session()
+else:
+    from pytest import FixtureRequest
+
+    RequestsMocker = Mocker
 
 
 @pytest.fixture(scope="session")
-def join_url():
-    def _join_url(root, path):
-        if path:
-            f = furl(root).add(path=path)
-            f.path.normalize()
-            return f.url
-        else:
-            return root
+def session() -> requests.Session:
+    return requests.Session()
 
-    return _join_url
+
+def join_url(root: str, path: str) -> str:
+    if path:
+        f = furl(root).add(path=path)
+        f.path.normalize()
+        return str(f.url)
+    else:
+        return root
 
 
 @pytest.fixture(
+    scope="session",
     params=["short_access_token", "extremely_long_access_token" * 256],
     ids=["short_access_token", "long_access_token"],
 )
-def access_token(request):
+def access_token(request: FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture()
-def bearer_auth(access_token):
+@pytest.fixture(scope="session")
+def bearer_auth(access_token: str) -> BearerAuth:
     return BearerAuth(access_token)
 
 
 @pytest.fixture(
+    scope="session",
     params=[
         "http://localhost/",
         "https://myapi/",
         "https://myapi/root",
         "https://myapi.local/root/",
-    ]
+    ],
 )
-def target_api(request):
+def target_api(request: FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture()
-def api(target_api, bearer_auth):
+@pytest.fixture(scope="session")
+def api(target_api: str, bearer_auth: BearerAuth) -> ApiClient:
     return ApiClient(target_api, auth=bearer_auth)
 
 
-@pytest.fixture(params=["https://test.com"])
-def issuer(request):
-    return request.param
+@pytest.fixture(scope="session")
+def issuer() -> str:
+    return "https://test.com"
 
 
-@pytest.fixture(params=["token", "oauth/token"])
-def token_endpoint(request, issuer, join_url):
+@pytest.fixture(scope="session", params=["token", "oauth/token"])
+def token_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(params=["authorize", "login/authorize"])
-def authorization_endpoint(request, issuer, join_url):
+@pytest.fixture(scope="session", params=["authorize", "login/authorize"])
+def authorization_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(params=["revoke", "oauth/revoke"])
-def revocation_endpoint(request, issuer, join_url):
+@pytest.fixture(scope="session", params=["revoke", "oauth/revoke"])
+def revocation_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(params=["userinfo", "oidc/userinfo"])
-def userinfo_endpoint(request, issuer, join_url):
+@pytest.fixture(scope="session", params=["userinfo", "oidc/userinfo"])
+def userinfo_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(params=["jwks", "oidc/jwks", ".well-known/jwks.json"])
-def jwks_uri(request, issuer, join_url):
+@pytest.fixture(scope="session", params=["jwks", "oidc/jwks", ".well-known/jwks.json"])
+def jwks_uri(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(params=["client_id"])
-def client_id(request):
-    return request.param
+@pytest.fixture(scope="session")
+def client_id() -> str:
+    return "client_id"
 
 
-@pytest.fixture(params=["client_secret"])
-def client_secret(request):
-    return request.param
+@pytest.fixture(scope="session")
+def client_secret() -> str:
+    return "client_secret"
 
 
 @pytest.fixture(
-    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT]
+    scope="session",
+    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT],
 )
-def client_auth_method_handler(request):
-    return request.param
+def client_auth_method_handler(
+    request: FixtureRequest,
+) -> Type[BaseClientAuthenticationMethod]:
+    return request.param  # type: ignore
 
 
-@pytest.fixture()
-def client_auth_method(client_auth_method_handler, client_id, client_secret):
+@pytest.fixture(scope="session")
+def client_auth_method(
+    client_auth_method_handler: Union[
+        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJWT]
+    ],
+    client_id: str,
+    client_secret: str,
+) -> Union[ClientSecretPost, ClientSecretBasic, ClientSecretJWT]:
     return client_auth_method_handler(client_id, client_secret)
 
 
 @pytest.fixture(scope="session")
-def client_secret_post_auth_validator():
-    def validator(req, client_id, client_secret):
+def client_secret_post_auth_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy, *, client_id: str, client_secret: str
+    ) -> None:
         params = parse_qs(req.text)
         assert params.get("client_id") == [client_id]
         assert params.get("client_secret") == [client_secret]
@@ -129,8 +172,8 @@ def client_secret_post_auth_validator():
 
 
 @pytest.fixture(scope="session")
-def public_app_auth_validator():
-    def validator(req, *, client_id):
+def public_app_auth_validator() -> RequestValidatorType:
+    def validator(req: _RequestObjectProxy, *, client_id: str) -> None:
         params = parse_qs(req.text)
         assert params.get("client_id") == [client_id]
         assert "client_secret" not in params
@@ -139,8 +182,10 @@ def public_app_auth_validator():
 
 
 @pytest.fixture(scope="session")
-def client_secret_basic_auth_validator():
-    def validator(req, *, client_id, client_secret):
+def client_secret_basic_auth_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy, *, client_id: str, client_secret: str
+    ) -> None:
         encoded_username_password = base64.b64encode(
             f"{client_id}:{client_secret}".encode("ascii")
         ).decode()
@@ -151,13 +196,16 @@ def client_secret_basic_auth_validator():
 
 
 @pytest.fixture(scope="session")
-def client_secret_jwt_auth_validator():
-    def validator(req, *, client_id, client_secret, endpoint):
-        params = parse_qs(req.text)
-        assert params.get("client_id") == [client_id]
-        client_assertion = params.get("client_assertion")[0]
+def client_secret_jwt_auth_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
+    ) -> None:
+        params = Query(req.text).params
+        assert params.get("client_id") == client_id
+        assert "client_assertion" in params
+        client_assertion = params.get("client_assertion")
         jwk = SymetricJwk.from_bytes(client_secret)
-        jwt = Jwt(client_assertion)
+        jwt = SignedJwt(client_assertion)
         jwt.verify_signature(jwk, alg="HS256")
         claims = jwt.claims
         now = int(datetime.now().timestamp())
@@ -172,13 +220,19 @@ def client_secret_jwt_auth_validator():
 
 
 @pytest.fixture(scope="session")
-def private_key_jwt_auth_validator():
-    def validator(req, *, client_id, public_jwk, endpoint):
-        params = parse_qs(req.text)
-        assert params.get("client_id") == [client_id], "invalid client_id"
-        client_assertion = params.get("client_assertion")[0]
+def private_key_jwt_auth_validator() -> RequestValidatorType:
+    def validator(
+        req: requests_mock.request._RequestObjectProxy,
+        *,
+        client_id: str,
+        public_jwk: Jwk,
+        endpoint: str,
+    ) -> None:
+        params = Query(req.text).params
+        assert params.get("client_id") == client_id, "invalid client_id"
+        client_assertion = params.get("client_assertion")
         assert client_assertion, "missing client_assertion"
-        jwt = Jwt(client_assertion)
+        jwt = SignedJwt(client_assertion)
         jwt.verify_signature(public_jwk)
         claims = jwt.claims
         now = int(datetime.now().timestamp())
@@ -193,14 +247,16 @@ def private_key_jwt_auth_validator():
 
 
 @pytest.fixture(scope="session")
-def client_credentials_grant_validator():
-    def validator(req, scope=None, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("grant_type") == ["client_credentials"]
+def client_credentials_grant_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy, *, scope: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        params = Query(req.text).params
+        assert params.get("grant_type") == "client_credentials"
         if scope is not None and not isinstance(scope, str):
             scope = " ".join(scope)
 
-        assert params.get("scope") == [scope]
+        assert params.get("scope") == scope
         for key, val in kwargs.items():
             assert params.get(key) == val
 
@@ -208,22 +264,10 @@ def client_credentials_grant_validator():
 
 
 @pytest.fixture(scope="session")
-def authorization_code_grant_validator():
-    def validator(req, code, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("grant_type") == ["authorization_code"]
-        for key, val in kwargs.items():
-            assert params.get(key) == [val]
-
-    return validator
-
-
-@pytest.fixture(scope="session")
-def refresh_token_grant_validator():
-    def validator(req, refresh_token, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("grant_type") == ["refresh_token"]
-        assert params.get("refresh_token") == [refresh_token]
+def authorization_code_grant_validator() -> RequestValidatorType:
+    def validator(req: _RequestObjectProxy, *, code: str, **kwargs: Any) -> None:
+        params = Query(req.text).params
+        assert params.get("grant_type") == "authorization_code"
         for key, val in kwargs.items():
             assert params.get(key) == val
 
@@ -231,13 +275,13 @@ def refresh_token_grant_validator():
 
 
 @pytest.fixture(scope="session")
-def device_code_grant_validator():
-    def validator(req, device_code, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("grant_type") == [
-            "urn:ietf:params:oauth:grant-type:device_code"
-        ]
-        assert params.get("device_code") == [device_code]
+def refresh_token_grant_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy, *, refresh_token: str, **kwargs: Any
+    ) -> None:
+        params = Query(req.text).params
+        assert params.get("grant_type") == "refresh_token"
+        assert params.get("refresh_token") == refresh_token
         for key, val in kwargs.items():
             assert params.get(key) == val
 
@@ -245,39 +289,58 @@ def device_code_grant_validator():
 
 
 @pytest.fixture(scope="session")
-def token_exchange_grant_validator():
-    def validator(req, subject_token, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("grant_type") == [
-            "urn:ietf:params:oauth:grant-type:token-exchange"
-        ]
-        assert params.get("subject_token") == [subject_token]
+def device_code_grant_validator() -> RequestValidatorType:
+    def validator(req: _RequestObjectProxy, device_code: str, **kwargs: Any) -> None:
+        params = Query(req.text).params
+        assert (
+            params.get("grant_type") == "urn:ietf:params:oauth:grant-type:device_code"
+        )
+        assert params.get("device_code") == device_code
         for key, val in kwargs.items():
-            assert params.get(key) == [val]
+            assert params.get(key) == val
 
     return validator
 
 
 @pytest.fixture(scope="session")
-def ciba_request_validator():
-    def validator(req, *, auth_req_id, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("grant_type") == ["urn:openid:params:grant-type:ciba"]
-        assert params.get("auth_req_id") == [auth_req_id]
+def token_exchange_grant_validator() -> RequestValidatorType:
+    def validator(req: _RequestObjectProxy, subject_token: str, **kwargs: Any) -> None:
+        params = Query(req.text).params
+        assert (
+            params.get("grant_type")
+            == "urn:ietf:params:oauth:grant-type:token-exchange"
+        )
+        assert params.get("subject_token") == subject_token
         for key, val in kwargs.items():
-            assert params.get(key) == [val]
+            assert params.get(key) == val
 
     return validator
 
 
-@pytest.fixture()
-def backchannel_auth_request_validator():
-    def validator(req, *, scope, **kwargs):
-        params = parse_qs(req.text)
-        if isinstance(scope, str):
-            assert params.get("scope") == [scope]
+@pytest.fixture(scope="session")
+def ciba_request_validator() -> RequestValidatorType:
+    def validator(req: _RequestObjectProxy, *, auth_req_id: str, **kwargs: Any) -> None:
+        params = Query(req.text).params
+        assert params.get("grant_type") == "urn:openid:params:grant-type:ciba"
+        assert params.get("auth_req_id") == auth_req_id
+        for key, val in kwargs.items():
+            assert params.get(key) == val
+
+    return validator
+
+
+@pytest.fixture(scope="session")
+def backchannel_auth_request_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy, *, scope: Union[None, str, List[str]], **kwargs: Any
+    ) -> None:
+        params = Query(req.text).params
+        if scope is None:
+            assert "scope" not in params
+        elif isinstance(scope, str):
+            assert params.get("scope") == scope
         else:
-            assert params.get("scope") == [" ".join(scope)]
+            assert params.get("scope") == " ".join(scope)
         login_hint = params.get("login_hint")
         login_hint_token = params.get("login_hint_token")
         id_token_hint = params.get("id_token_hint")
@@ -288,17 +351,24 @@ def backchannel_auth_request_validator():
             and not (login_hint_token and id_token_hint)
         )
         for key, val in kwargs.items():
-            assert params.get(key) == [val]
+            assert params.get(key) == val
 
     return validator
 
 
-@pytest.fixture()
-def backchannel_auth_request_jwt_validator():
-    def validator(req, *, public_jwk, alg, scope, **kwargs):
-        params = parse_qs(req.text)
-        request = params.get("request")[0]
-        jwt = Jwt(request)
+@pytest.fixture(scope="session")
+def backchannel_auth_request_jwt_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy,
+        *,
+        public_jwk: Jwk,
+        alg: str,
+        scope: str,
+        **kwargs: Any,
+    ) -> None:
+        params = Query(req.text).params
+        request = params.get("request")
+        jwt = SignedJwt(request)
         jwt.verify_signature(public_jwk)
         claims = jwt.claims
         if isinstance(scope, str):
@@ -321,82 +391,99 @@ def backchannel_auth_request_jwt_validator():
 
 
 @pytest.fixture(scope="session")
-def revocation_request_validator():
-    def validator(req, token, type_hint=None, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("token") == [token]
+def revocation_request_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy,
+        token: str,
+        type_hint: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        params = Query(req.text).params
+        assert params.get("token") == token
         if type_hint is not None:
-            assert params.get("token_type_hint") == [type_hint]
+            assert params.get("token_type_hint") == type_hint
         for key, val in kwargs.items():
-            assert params.get(key) == [val]
+            assert params.get(key) == val
 
     return validator
 
 
-@pytest.fixture()
-def introspection_request_validator():
-    def validator(req, token, type_hint=None, **kwargs):
-        params = parse_qs(req.text)
-        assert params.get("token") == [token]
+@pytest.fixture(scope="session")
+def introspection_request_validator() -> RequestValidatorType:
+    def validator(
+        req: _RequestObjectProxy,
+        token: str,
+        type_hint: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        params = Query(req.text).params
+        assert params.get("token") == token
         if type_hint is not None:
-            assert params.get("token_type_hint") == [type_hint]
+            assert params.get("token_type_hint") == type_hint
         for key, val in kwargs.items():
-            assert params.get(key) == [val]
+            assert params.get(key) == val
 
     return validator
 
 
-@pytest.fixture(params=[None, "resource", "/resource", "resource/foo", "/resource/foo"])
-def target_path(request):
+@pytest.fixture(
+    scope="session",
+    params=[None, "resource", "/resource", "resource/foo", "/resource/foo"],
+)
+def target_path(request: FixtureRequest) -> Optional[str]:
     return request.param
 
 
-@pytest.fixture()
-def target_uri(target_api, target_path, join_url):
+@pytest.fixture(scope="session")
+def target_uri(target_api: str, target_path: str) -> str:
     return join_url(target_api, target_path)
 
 
-@pytest.fixture(params=["refresh_token"])
-def refresh_token(request):
+@pytest.fixture(scope="session", params=["refresh_token"])
+def refresh_token(request: FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture(params=["authorization_code"])
-def authorization_code(request):
+@pytest.fixture(scope="session", params=["authorization_code"])
+def authorization_code(request: FixtureRequest) -> str:
     return request.param
 
 
 @pytest.fixture(
+    scope="session",
     params=[
         "http://localhost/callback",
         "http://localhost:12345/callback",
         "https://example.com/callback",
         "https://example.com/callback:8443",
-    ]
+    ],
 )
-def redirect_uri(request):
+def redirect_uri(request: FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture(params=["TEST_AUDIENCE", "https://myapi.com", "https://myapi.com/path"])
-def audience(request):
+@pytest.fixture(
+    scope="session",
+    params=["TEST_AUDIENCE", "https://myapi.com", "https://myapi.com/path"],
+)
+def audience(request: FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture(params=["TEST_SCOPE", "openid", "openid profile email"])
-def scope(request):
+@pytest.fixture(scope="session", params=["openid", "openid profile email"])
+def scope(request: FixtureRequest) -> str:
     return request.param
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def discovery_document(
-    issuer,
-    token_endpoint,
-    authorization_endpoint,
-    revocation_endpoint,
-    userinfo_endpoint,
-    jwks_uri,
-):
+    issuer: str,
+    token_endpoint: str,
+    authorization_endpoint: str,
+    revocation_endpoint: str,
+    userinfo_endpoint: str,
+    jwks_uri: str,
+) -> Dict[str, str]:
     return {
         "issuer": issuer,
         "authorization_endpoint": authorization_endpoint,
@@ -407,8 +494,8 @@ def discovery_document(
     }
 
 
-@pytest.fixture()
-def server_private_jwks():
+@pytest.fixture(scope="session")
+def server_private_jwks() -> Dict[Literal["keys"], List[Dict[str, Any]]]:
     return {
         "keys": [
             {
@@ -437,11 +524,21 @@ def server_private_jwks():
     }
 
 
-@pytest.fixture()
-def server_public_jwks(server_private_jwks):
+@pytest.fixture(scope="session")
+def server_public_jwks(
+    server_private_jwks: Dict[Literal["keys"], List[Dict[str, Any]]]
+) -> Mapping[str, Any]:
     return {
         "keys": [
             {key: val for key, val in jwk.items() if key in ("kty", "n", "e")}
             for jwk in server_private_jwks["keys"]
         ]
     }
+
+
+@pytest.fixture(scope="session")
+def bearer_auth_validator() -> RequestValidatorType:
+    def validator(req: _RequestObjectProxy, *, access_token: str) -> None:
+        assert req.headers.get("Authorization") == f"Bearer {access_token}"
+
+    return validator

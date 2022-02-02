@@ -1,6 +1,7 @@
 import string
 import uuid
 from datetime import datetime
+from typing import Optional
 from uuid import uuid4
 
 import pytest
@@ -20,7 +21,7 @@ b64 = "MDEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU
 b64u = "MDEyMzQ1Njc4OWFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVohIiMkJSYnKCkqKywtLi86Ozw9Pj9AW1xdXl9ge3x9fiAJCg0LDA"
 
 
-def test_b64():
+def test_b64() -> None:
     assert b64_encode(clear_text) == b64
     assert b64_decode(b64).decode() == clear_text
 
@@ -39,7 +40,7 @@ def test_b64():
     assert b64_decode(Str()) == str(uuid).encode()
 
 
-def test_b64u():
+def test_b64u() -> None:
     assert b64u_encode(clear_text) == b64u
     assert b64u_decode(b64u).decode() == clear_text
 
@@ -52,13 +53,13 @@ def test_b64u():
     assert b64u_decode(b64u_encode(uuid)).decode() == str(uuid)
 
     class Str:
-        def __str__(self):
+        def __str__(self) -> str:
             return b64u_encode(uuid)
 
     assert b64u_decode(Str()) == str(uuid).encode()
 
 
-def test_validate_uri():
+def test_validate_uri() -> None:
     validate_endpoint_uri("https://myas.local/token")
     with pytest.raises(ValueError):
         validate_endpoint_uri("http://myas.local/token")
@@ -68,9 +69,9 @@ def test_validate_uri():
         validate_endpoint_uri("https://myas.local/token#foo")
 
 
-def test_accepts_expires_in():
+def test_accepts_expires_in() -> None:
     @accepts_expires_in
-    def foo(expires_at=None):
+    def foo(expires_at=None) -> Optional[datetime]:
         return expires_at
 
     now = datetime.now()
@@ -80,7 +81,7 @@ def test_accepts_expires_in():
     assert foo() is None
 
 
-def test_json_encode():
+def test_json_encode() -> None:
     now = datetime.fromtimestamp(1630916771)
     uuid_ = uuid.UUID("40971d1d-24c5-40d6-bf5f-7ceb35fe81ca")
     assert (

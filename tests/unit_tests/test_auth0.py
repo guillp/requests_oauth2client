@@ -1,8 +1,10 @@
 from requests_oauth2client.vendor_specific import Auth0Client, Auth0ManagementApiClient
 
 
-def test_auth0_management():
+def test_auth0_management() -> None:
     auth0api = Auth0ManagementApiClient("test.eu", ("client_id", "client_secret"))
+    assert auth0api.auth is not None
+    assert auth0api.auth.client is not None
     assert (
         auth0api.auth.client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
     )
@@ -11,7 +13,7 @@ def test_auth0_management():
     }
 
 
-def test_auth0_client():
+def test_auth0_client() -> None:
     auth0client = Auth0Client("test.eu.auth0.com", ("client_id", "client_secret"))
     assert auth0client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
     assert auth0client.revocation_endpoint == "https://test.eu.auth0.com/oauth/revoke"
@@ -19,7 +21,7 @@ def test_auth0_client():
     assert auth0client.jwks_uri == "https://test.eu.auth0.com/.well-known/jwks.json"
 
 
-def test_auth0_client_short_tenant_name():
+def test_auth0_client_short_tenant_name() -> None:
     auth0client = Auth0Client("test.eu", ("client_id", "client_secret"))
     assert auth0client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
     assert auth0client.revocation_endpoint == "https://test.eu.auth0.com/oauth/revoke"

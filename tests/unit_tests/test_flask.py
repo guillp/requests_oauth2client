@@ -3,18 +3,19 @@ from urllib.parse import parse_qs
 import pytest
 
 from requests_oauth2client import ApiClient, ClientSecretPost, OAuth2Client
-
-token_endpoint = "https://myas.local/token"
-client_id = "clientid"
-client_secret = "clientsecret"
-scope = "myscope"
+from tests.conftest import RequestsMocker
 
 session_key = "session_key"
 
-external_api = "https://myapi.local/foo"
 
-
-def test_flask(requests_mock):
+def test_flask(
+    requests_mock: RequestsMocker,
+    token_endpoint,
+    client_id,
+    client_secret,
+    scope,
+    target_api,
+) -> None:
     try:
         from flask import Flask
 
@@ -37,7 +38,7 @@ def test_flask(requests_mock):
 
     @app.route("/api")
     def get():
-        return api_client.get(external_api).json()
+        return api_client.get(target_api).json()
 
     access_token = "access_token"
     json_resp = {"status": "success"}
@@ -45,7 +46,7 @@ def test_flask(requests_mock):
         token_endpoint,
         json={"access_token": access_token, "token_type": "Bearer", "expires_in": 3600},
     )
-    requests_mock.get(external_api, json=json_resp)
+    requests_mock.get(target_api, json=json_resp)
 
     with app.test_client() as client:
         resp = client.get("/api")
