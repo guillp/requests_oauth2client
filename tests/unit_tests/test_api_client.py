@@ -216,3 +216,26 @@ def test_additional_kwargs(target_api: str) -> None:
     api = ApiClient(target_api, proxies=proxies, timeout=10)
     assert api.proxies == proxies
     assert api.timeout == 10
+
+
+def test_ignore_none_fields(requests_mock: Mocker, target_api: str) -> None:
+    requests_mock.post(target_api)
+
+    api_exclude = ApiClient(target_api)
+    assert api_exclude.none_fields == "exclude"
+    api_exclude.post(json={"foo": "bar", "none": None})
+    assert requests_mock.last_request.json() == {"foo": "bar"}
+    api_exclude.post(data={"foo": "bar", "none": None})
+    assert requests_mock.last_request.text == "foo=bar"
+
+    api_include = ApiClient(target_api, none_fields="include")
+    api_include.post(json={"foo": "bar", "none": None})
+    assert requests_mock.last_request.json() == {"foo": "bar", "none": None}
+    api_include.post(data={"foo": "bar", "none": None})
+    assert requests_mock.last_request.text == "foo=bar"
+
+    api_include = ApiClient(target_api, none_fields="empty")
+    api_include.post(json={"foo": "bar", "none": None})
+    assert requests_mock.last_request.json() == {"foo": "bar", "none": ""}
+    api_include.post(data={"foo": "bar", "none": None})
+    assert requests_mock.last_request.text == "foo=bar&none="

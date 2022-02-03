@@ -11,6 +11,12 @@ from typing import (
     Tuple,
     Union,
 )
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 from urllib.parse import urljoin
 
 import requests
@@ -41,6 +47,7 @@ class ApiClient(requests.Session):
         auth: Optional[requests.auth.AuthBase] = None,
         timeout: Optional[int] = 60,
         raise_for_status: bool = True,
+        none_fields: Literal["include", "exclude", "empty"] = "exclude",
         **kwargs: Any,
     ):
         """
@@ -54,6 +61,7 @@ class ApiClient(requests.Session):
         :param auth: the [requests.auth.AuthBase][] to use as authentication handler.
         :param timeout: the default timeout, in seconds, to use for each request from this ApiClient. Can be set to `None` to disable timeout.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
+        :param none_fields: if `"exclude"` (default), data or json fields whose values are `None` are not included in the request. If "include", they are included with string value `None` (this is the default behavior of `requests`). If "empty", they are included with an empty value (as an empty string).
         :param kwargs: additional kwargs to configure this session. This parameter may be overridden at request time.
         """
         super(ApiClient, self).__init__()
@@ -62,6 +70,7 @@ class ApiClient(requests.Session):
         self.auth = auth
         self.timeout = timeout
         self.raise_for_status = raise_for_status
+        self.none_fields = none_fields
 
         for key, val in kwargs.items():
             setattr(self, key, val)
@@ -105,6 +114,7 @@ class ApiClient(requests.Session):
         cert: Optional[Union[str, Tuple[str, str]]] = None,
         json: Optional[Mapping[str, Any]] = None,
         raise_for_status: Optional[bool] = None,
+        none_fields: Optional[Literal["include", "exclude", "empty"]] = None,
     ) -> requests.Response:
         """
         Overridden `request` method that can handle a relative path instead of a full url.
@@ -112,6 +122,8 @@ class ApiClient(requests.Session):
         :param method: the HTTP method to use
         :param url: the url where the request will be sent to. Can be a path instead of a full url; that path will be
         joined to the configured API url. Can also be an iterable of path segments, that will be joined to the root url.
+        :param raise_for_status: if `True`, raise an exception on a error response from the API. If `False`, return the Response. If `None` (default), obey the `raise_for_status` as defined at instance level.
+        :param none_data_fields: if `"exclude"` (default), data fields whose values are `None` are not included in the request. If "include", they are included with string value `None` (this is the default behavior of `requests`). If "empty", they are included with an empty value (as an empty string).
         :return: a [requests.Response][] as returned by requests
         """
         if self.url:
@@ -141,6 +153,24 @@ class ApiClient(requests.Session):
 
         if url is None or not isinstance(url, str):
             raise ValueError("No url to send the request to")
+
+        if none_fields is None:
+            none_fields = self.none_fields
+
+        if none_fields == "exclude":
+            if isinstance(data, Mapping):
+                data = {key: val for key, val in data.items() if val is not None}
+            if isinstance(json, Mapping):
+                json = {key: val for key, val in json.items() if val is not None}
+        elif none_fields == "empty":
+            if isinstance(data, Mapping):
+                data = {
+                    key: val if val is not None else "" for key, val in data.items()
+                }
+            if isinstance(json, Mapping):
+                json = {
+                    key: val if val is not None else "" for key, val in json.items()
+                }
 
         timeout = timeout or self.timeout
 
@@ -183,6 +213,7 @@ class ApiClient(requests.Session):
 
         :param url: a url where the request will be sent.
         :param raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+        :param none_data_fields: if `"exclude"` (default), data fields whose values are `None` are not included in the request. If "include", they are included with string value `None` (this is the default behavior of `requests`). If "empty", they are included with an empty value (as an empty string).
         :param kwargs: Optional arguments that [request()][requests.request] takes.
         :return: a [Response][requests.Response] object.
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
