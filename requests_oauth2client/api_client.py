@@ -48,6 +48,7 @@ class ApiClient(requests.Session):
         timeout: Optional[int] = 60,
         raise_for_status: bool = True,
         none_fields: Literal["include", "exclude", "empty"] = "exclude",
+        bool_fields: Optional[Tuple[Any, Any]] = ("true", "false"),
         **kwargs: Any,
     ):
         """
@@ -62,6 +63,7 @@ class ApiClient(requests.Session):
         :param timeout: the default timeout, in seconds, to use for each request from this ApiClient. Can be set to `None` to disable timeout.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
         :param none_fields: if `"exclude"` (default), data or json fields whose values are `None` are not included in the request. If "include", they are included with string value `None` (this is the default behavior of `requests`). If "empty", they are included with an empty value (as an empty string).
+        :param bool_fields: a tuple of (true_value, false_value). Fields from `data` or `params` with a boolean value (`True` or `False`) will be serialized to the corresponding value. This can be useful since some APIs expect a `'true'` or `'false'` value as boolean, and requests serialises `True` to `'True'` and `False` to `'False'`. Set it to `None` to restore default requests behaviour.
         :param kwargs: additional kwargs to configure this session. This parameter may be overridden at request time.
         """
         super(ApiClient, self).__init__()
@@ -71,11 +73,12 @@ class ApiClient(requests.Session):
         self.timeout = timeout
         self.raise_for_status = raise_for_status
         self.none_fields = none_fields
+        self.bool_fields = bool_fields if bool_fields is not None else (True, False)
 
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-    def request(  # type: ignore
+    def request(  # noqa: C901 # type: ignore
         self,
         method: str,
         url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
@@ -115,6 +118,7 @@ class ApiClient(requests.Session):
         json: Optional[Mapping[str, Any]] = None,
         raise_for_status: Optional[bool] = None,
         none_fields: Optional[Literal["include", "exclude", "empty"]] = None,
+        bool_fields: Optional[Tuple[Any, Any]] = None,
     ) -> requests.Response:
         """
         Overridden `request` method that can handle a relative path instead of a full url.
@@ -122,8 +126,9 @@ class ApiClient(requests.Session):
         :param method: the HTTP method to use
         :param url: the url where the request will be sent to. Can be a path instead of a full url; that path will be
         joined to the configured API url. Can also be an iterable of path segments, that will be joined to the root url.
-        :param raise_for_status: if `True`, raise an exception on a error response from the API. If `False`, return the Response. If `None` (default), obey the `raise_for_status` as defined at instance level.
-        :param none_data_fields: if `"exclude"` (default), data fields whose values are `None` are not included in the request. If "include", they are included with string value `None` (this is the default behavior of `requests`). If "empty", they are included with an empty value (as an empty string).
+        :param raise_for_status: like the parameter of the same name from `ApiClient.__init__`, but this will be applied for this request only.
+        :param none_fields: like the parameter of the same name from `ApiClient.__init__`, but this will be applied for this request only.
+        :param bool_fields: like the parameter of the same name from `ApiClient.__init__`, but this will be applied for this request only.
         :return: a [requests.Response][] as returned by requests
         """
         if self.url:
@@ -171,6 +176,29 @@ class ApiClient(requests.Session):
                 json = {
                     key: val if val is not None else "" for key, val in json.items()
                 }
+
+        if bool_fields is None:
+            bool_fields = self.bool_fields
+
+        if bool_fields:
+            try:
+                true_value, false_value = bool_fields
+            except ValueError:
+                raise ValueError(
+                    "Invalid value for 'bool_fields'. Must be a 2 value tuple, with (true_value, false_value)."
+                )
+            if isinstance(data, Mapping):
+                for key, val in data.items():
+                    if val is True:
+                        data[key] = true_value
+                    elif val is False:
+                        data[key] = false_value
+            if isinstance(params, Mapping):
+                for key, val in params.items():
+                    if val is True:
+                        params[key] = true_value
+                    elif val is False:
+                        params[key] = false_value
 
         timeout = timeout or self.timeout
 

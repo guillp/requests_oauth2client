@@ -218,7 +218,7 @@ def test_additional_kwargs(target_api: str) -> None:
     assert api.timeout == 10
 
 
-def test_ignore_none_fields(requests_mock: Mocker, target_api: str) -> None:
+def test_none_fields(requests_mock: Mocker, target_api: str) -> None:
     requests_mock.post(target_api)
 
     api_exclude = ApiClient(target_api)
@@ -239,3 +239,47 @@ def test_ignore_none_fields(requests_mock: Mocker, target_api: str) -> None:
     assert requests_mock.last_request.json() == {"foo": "bar", "none": ""}
     api_include.post(data={"foo": "bar", "none": None})
     assert requests_mock.last_request.text == "foo=bar&none="
+
+
+def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
+    requests_mock.post(target_api)
+
+    api_default = ApiClient(target_api)
+    api_default.post(
+        data={"foo": "bar", "true": True, "false": False},
+        params={"foo": "bar", "true": True, "false": False},
+    )
+    assert requests_mock.last_request.query == "foo=bar&true=true&false=false"
+    assert requests_mock.last_request.text == "foo=bar&true=true&false=false"
+
+    api_default.post(
+        data={"foo": "bar", "true": True, "false": False},
+        params={"foo": "bar", "true": True, "false": False},
+        bool_fields=("OK", "KO"),
+    )
+    assert requests_mock.last_request.query == "foo=bar&true=OK&false=KO"
+    assert requests_mock.last_request.text == "foo=bar&true=OK&false=KO"
+
+    api_none = ApiClient(target_api, bool_fields=None)  # default behviour or requests
+    api_none.post(
+        data={"foo": "bar", "true": True, "false": False},
+        params={"foo": "bar", "true": True, "false": False},
+    )
+    assert requests_mock.last_request.query == "foo=bar&true=True&false=False"
+    assert requests_mock.last_request.text == "foo=bar&true=True&false=False"
+
+    api_yesno = ApiClient(target_api, bool_fields=("yes", "no"))
+    api_yesno.post(
+        data={"foo": "bar", "true": True, "false": False},
+        params={"foo": "bar", "true": True, "false": False},
+    )
+    assert requests_mock.last_request.query == "foo=bar&true=yes&false=no"
+    assert requests_mock.last_request.text == "foo=bar&true=yes&false=no"
+
+    api_1_0 = ApiClient(target_api, bool_fields=(1, 0))
+    api_1_0.post(
+        data={"foo": "bar", "true": True, "false": False},
+        params={"foo": "bar", "true": True, "false": False},
+    )
+    assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
+    assert requests_mock.last_request.text == "foo=bar&true=1&false=0"
