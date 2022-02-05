@@ -13,6 +13,7 @@ from .exceptions import (
     ConsentRequired,
     InteractionRequired,
     LoginRequired,
+    MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
     SessionSelectionRequired,
@@ -185,6 +186,7 @@ class AuthorizationRequest:
         nonce: Union[str, bool, None] = True,
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
+        issuer: Union[str, bool, None] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -205,15 +207,18 @@ class AuthorizationRequest:
 
         :param authorization_endpoint: the uri for the authorization endpoint.
         :param client_id: the client_id to include in the request.
-        :param redirect_uri: the redirect_uri to include in the request. This is required in OAuth 2.0 and optional in OAuth 2.1. Pass `None` if you don't need any redirect_uri in the Authorization Request.
+        :param redirect_uri: the redirect_uri to include in the request. This is required in OAuth 2.0 and optional
+        in OAuth 2.1. Pass `None` if you don't need any redirect_uri in the Authorization Request.
         :param scope: the scope to include in the request, as an iterable of `str`, or a single space-separated `str`.
         :param response_type: the response type to include in the request.
         :param state: the state to include in the request, or `True` to autogenerate one (default).
         :param nonce: the nonce to include in the request, or `True` to autogenerate one (default).
         :param code_verifier: the state to include in the request, or `True` to autogenerate one (default).
         :param code_challenge_method: the method to use to derive the `code_challenge` from the `code_verifier`.
+        :param issuer: Issuer Identifier value from the OAuth/OIDC Server, if known. Set it to `False` if the AS doesn't support Server Issuer Identification.
         :param kwargs: extra parameters to include in the request, as-is.
         """
+
         if state is True:
             state = secrets.token_urlsafe(32)
         elif state is False:
@@ -257,6 +262,7 @@ class AuthorizationRequest:
         self.code_verifier = code_verifier
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
+        self.issuer = issuer
         self.kwargs = kwargs
 
         self.args = dict(
@@ -375,6 +381,13 @@ class AuthorizationRequest:
             response_url = furl(response)
         except ValueError:
             return self.on_response_error(response)
+
+        # validate 'iss' according to https://www.ietf.org/archive/id/draft-ietf-oauth-iss-auth-resp-05.html
+        expected_issuer = self.issuer
+        if expected_issuer is not None:
+            received_issuer = response_url.args.get("iss")
+            if received_issuer != expected_issuer:
+                raise MismatchingIssuer(expected_issuer, received_issuer)
 
         requested_state = self.state
         if requested_state:

@@ -57,6 +57,7 @@ from .exceptions import (
     InvalidScope,
     InvalidTokenResponse,
     LoginRequired,
+    MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
     OAuth2Error,

@@ -158,7 +158,11 @@ class MissingAuthCode(InvalidAuthResponse):
 
 
 class MismatchingState(InvalidAuthResponse):
-    """Raised when an auth response contains a state parameter that doesn't match the expected state."""
+    """Raised when an auth response contains a 'state' parameter that doesn't match the expected value."""
+
+
+class MismatchingIssuer(InvalidAuthResponse):
+    """Raised when an auth response contains an 'iss' parameter that doesn't match the expected value."""
 
 
 class BackChannelAuthenticationError(EndpointError):
