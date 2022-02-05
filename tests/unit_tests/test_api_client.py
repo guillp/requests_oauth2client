@@ -2,17 +2,15 @@ from typing import Callable
 
 import pytest
 from requests import HTTPError
-from requests_mock import Mocker
 
 from requests_oauth2client import ApiClient, BearerAuth
-from tests.conftest import RequestValidatorType, join_url
+from tests.conftest import RequestsMocker, RequestValidatorType, join_url
 
 
 def test_get(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     api: ApiClient,
     access_token: str,
-    bearer_auth: BearerAuth,
     target_api: str,
     target_path: str,
     bearer_auth_validator: RequestValidatorType,
@@ -29,10 +27,9 @@ def test_get(
 
 
 def test_post(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     api: ApiClient,
     access_token: str,
-    bearer_auth: BearerAuth,
     target_api: str,
     target_path: str,
     bearer_auth_validator: RequestValidatorType,
@@ -49,10 +46,9 @@ def test_post(
 
 
 def test_patch(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     api: ApiClient,
     access_token: str,
-    bearer_auth: BearerAuth,
     target_api: str,
     target_path: str,
     bearer_auth_validator: RequestValidatorType,
@@ -69,10 +65,9 @@ def test_patch(
 
 
 def test_put(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     api: ApiClient,
     access_token: str,
-    bearer_auth: BearerAuth,
     target_api: str,
     target_path: str,
     bearer_auth_validator: RequestValidatorType,
@@ -89,10 +84,9 @@ def test_put(
 
 
 def test_delete(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     api: ApiClient,
     access_token: str,
-    bearer_auth: BearerAuth,
     target_api: str,
     target_path: str,
     bearer_auth_validator: RequestValidatorType,
@@ -109,10 +103,9 @@ def test_delete(
 
 
 def test_fail(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     api: ApiClient,
     access_token: str,
-    bearer_auth: BearerAuth,
     target_api: str,
     bearer_auth_validator: RequestValidatorType,
 ) -> None:
@@ -125,7 +118,7 @@ def test_fail(
     bearer_auth_validator(requests_mock.last_request, access_token=access_token)
 
 
-def test_no_url_at_init(requests_mock: Mocker, target_api: str) -> None:
+def test_no_url_at_init(requests_mock: RequestsMocker, target_api: str) -> None:
     api_client = ApiClient()
     requests_mock.get(target_api)
     resp = api_client.get(target_api)
@@ -138,7 +131,7 @@ def test_no_url_fail() -> None:
         api_client.get()
 
 
-def test_url_as_bytes(requests_mock: Mocker, target_api: str) -> None:
+def test_url_as_bytes(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api)
 
     requests_mock.get(target_api)
@@ -148,7 +141,7 @@ def test_url_as_bytes(requests_mock: Mocker, target_api: str) -> None:
     assert resp.ok
 
 
-def test_url_as_iterable(requests_mock: Mocker, target_api: str) -> None:
+def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api)
 
     target_uri = join_url(target_api, "/resource/1234/foo")
@@ -172,7 +165,7 @@ def test_url_as_iterable(requests_mock: Mocker, target_api: str) -> None:
     assert requests_mock.last_request.url == target_uri
 
 
-def test_raise_for_status(requests_mock: Mocker, target_api: str) -> None:
+def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api, raise_for_status=False)
 
     requests_mock.get(target_api, status_code=400, json={"status": "error"})
@@ -189,7 +182,7 @@ def test_raise_for_status(requests_mock: Mocker, target_api: str) -> None:
 
 
 def test_other_api(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     access_token: str,
     bearer_auth: BearerAuth,
     bearer_auth_validator: RequestValidatorType,
@@ -218,30 +211,40 @@ def test_additional_kwargs(target_api: str) -> None:
     assert api.timeout == 10
 
 
-def test_none_fields(requests_mock: Mocker, target_api: str) -> None:
+def test_none_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     requests_mock.post(target_api)
 
     api_exclude = ApiClient(target_api)
     assert api_exclude.none_fields == "exclude"
     api_exclude.post(json={"foo": "bar", "none": None})
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.json() == {"foo": "bar"}
+
+    assert requests_mock.last_request is not None
     api_exclude.post(data={"foo": "bar", "none": None})
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.text == "foo=bar"
 
     api_include = ApiClient(target_api, none_fields="include")
     api_include.post(json={"foo": "bar", "none": None})
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.json() == {"foo": "bar", "none": None}
+
     api_include.post(data={"foo": "bar", "none": None})
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.text == "foo=bar"
 
     api_include = ApiClient(target_api, none_fields="empty")
     api_include.post(json={"foo": "bar", "none": None})
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.json() == {"foo": "bar", "none": ""}
+
     api_include.post(data={"foo": "bar", "none": None})
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.text == "foo=bar&none="
 
 
-def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
+def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     requests_mock.post(target_api)
 
     api_default = ApiClient(target_api)
@@ -249,6 +252,7 @@ def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
         data={"foo": "bar", "true": True, "false": False},
         params={"foo": "bar", "true": True, "false": False},
     )
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=true&false=false"
     assert requests_mock.last_request.text == "foo=bar&true=true&false=false"
 
@@ -257,6 +261,7 @@ def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
         params={"foo": "bar", "true": True, "false": False},
         bool_fields=("OK", "KO"),
     )
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=OK&false=KO"
     assert requests_mock.last_request.text == "foo=bar&true=OK&false=KO"
 
@@ -265,6 +270,7 @@ def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
         data={"foo": "bar", "true": True, "false": False},
         params={"foo": "bar", "true": True, "false": False},
     )
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=True&false=False"
     assert requests_mock.last_request.text == "foo=bar&true=True&false=False"
 
@@ -273,6 +279,7 @@ def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
         data={"foo": "bar", "true": True, "false": False},
         params={"foo": "bar", "true": True, "false": False},
     )
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=yes&false=no"
     assert requests_mock.last_request.text == "foo=bar&true=yes&false=no"
 
@@ -281,5 +288,6 @@ def test_bool_fields(requests_mock: Mocker, target_api: str) -> None:
         data={"foo": "bar", "true": True, "false": False},
         params={"foo": "bar", "true": True, "false": False},
     )
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
     assert requests_mock.last_request.text == "foo=bar&true=1&false=0"

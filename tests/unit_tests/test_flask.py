@@ -1,3 +1,4 @@
+from typing import Any, Mapping
 from urllib.parse import parse_qs
 
 import pytest
@@ -10,11 +11,11 @@ session_key = "session_key"
 
 def test_flask(
     requests_mock: RequestsMocker,
-    token_endpoint,
-    client_id,
-    client_secret,
-    scope,
-    target_api,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    scope: str,
+    target_api: str,
 ) -> None:
     try:
         from flask import Flask
@@ -37,7 +38,7 @@ def test_flask(
     app.config["SECRET_KEY"] = "thisissecret"
 
     @app.route("/api")
-    def get():
+    def get() -> Any:
         return api_client.get(target_api).json()
 
     access_token = "access_token"
@@ -53,7 +54,7 @@ def test_flask(
         assert resp.json == json_resp
         resp = client.get("/api")
         assert resp.json == json_resp
-        api_client.auth.token = None  # strangely this has no effect in a test session
+        # api_client.auth.token = None  # strangely this has no effect in a test session
         with client.session_transaction() as sess:  # does what 'api_client.auth.token = None' should do
             sess.pop("session_key")
         resp = client.get("/api")

@@ -30,14 +30,14 @@ def test_b64() -> None:
 
     assert b64_encode(clear_text, padded=False) == b64.rstrip("=")
 
-    uuid = uuid4()
-    assert b64_decode(b64_encode(uuid)).decode() == str(uuid)
+    uuid = str(uuid4())
+    assert b64_decode(b64_encode(uuid)).decode() == uuid
 
     class Str:
-        def __str__(self):
+        def __str__(self) -> str:
             return b64_encode(uuid)
 
-    assert b64_decode(Str()) == str(uuid).encode()
+    assert b64_decode(Str()) == uuid.encode()
 
 
 def test_b64u() -> None:
@@ -49,14 +49,14 @@ def test_b64u() -> None:
 
     assert b64u_encode(clear_text, padded=True) == b64u + "=" * (4 - (len(b64u) % 4))
 
-    uuid = uuid4()
-    assert b64u_decode(b64u_encode(uuid)).decode() == str(uuid)
+    uuid = str(uuid4())
+    assert b64u_decode(b64u_encode(uuid)).decode() == uuid
 
     class Str:
         def __str__(self) -> str:
             return b64u_encode(uuid)
 
-    assert b64u_decode(Str()) == str(uuid).encode()
+    assert b64u_decode(Str()) == uuid.encode()
 
 
 def test_validate_uri() -> None:
@@ -71,7 +71,7 @@ def test_validate_uri() -> None:
 
 def test_accepts_expires_in() -> None:
     @accepts_expires_in
-    def foo(expires_at=None) -> Optional[datetime]:
+    def foo(expires_at: Optional[datetime] = None) -> Optional[datetime]:
         return expires_at
 
     now = datetime.now()

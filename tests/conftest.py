@@ -102,28 +102,33 @@ def issuer() -> str:
     return "https://test.com"
 
 
-@pytest.fixture(scope="session", params=["token", "oauth/token"])
+@pytest.fixture(scope="session", params=["oauth/token"])
 def token_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(scope="session", params=["authorize", "login/authorize"])
+@pytest.fixture(scope="session", params=["login/authorize"])
 def authorization_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(scope="session", params=["revoke", "oauth/revoke"])
+@pytest.fixture(scope="session", params=["oauth/revoke"])
 def revocation_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(scope="session", params=["userinfo", "oidc/userinfo"])
+@pytest.fixture(scope="session", params=["oidc/userinfo"])
 def userinfo_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.fixture(scope="session", params=["jwks", "oidc/jwks", ".well-known/jwks.json"])
+@pytest.fixture(scope="session", params=["oidc/jwks", ".well-known/jwks.json"])
 def jwks_uri(request: FixtureRequest, issuer: str) -> str:
+    return join_url(issuer, request.param)
+
+
+@pytest.fixture(scope="session", params=["oauth/par"])
+def pushed_authorization_request_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 

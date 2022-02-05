@@ -4,6 +4,7 @@
 import hashlib
 import re
 import secrets
+from datetime import datetime
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 from furl import furl  # type: ignore[import]
@@ -19,7 +20,7 @@ from .exceptions import (
     SessionSelectionRequired,
 )
 from .jwskate import Jwk, Jwt
-from .utils import b64u_encode
+from .utils import accepts_expires_in, b64u_encode
 
 
 class PkceUtils:
@@ -262,8 +263,9 @@ class AuthorizationRequest:
         self.code_verifier = code_verifier
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
-        self.issuer = issuer
         self.kwargs = kwargs
+
+        self.issuer = issuer
 
         self.args = dict(
             client_id=client_id,
@@ -386,7 +388,9 @@ class AuthorizationRequest:
         expected_issuer = self.issuer
         if expected_issuer is not None:
             received_issuer = response_url.args.get("iss")
-            if received_issuer != expected_issuer:
+            if (expected_issuer is False and received_issuer is not None) or (
+                expected_issuer and received_issuer != expected_issuer
+            ):
                 raise MismatchingIssuer(expected_issuer, received_issuer)
 
         requested_state = self.state
@@ -469,16 +473,44 @@ class AuthorizationRequest:
         if isinstance(other, AuthorizationRequest):
             return (
                 self.authorization_endpoint == other.authorization_endpoint
-                and self.client_id == other.client_id
-                and self.redirect_uri == other.redirect_uri
-                and self.response_type == other.response_type
-                and self.scope == other.scope
-                and self.state == other.state
-                and self.nonce == other.nonce
-                and self.code_challenge == other.code_challenge
-                and self.code_challenge_method == other.code_challenge_method
-                and self.kwargs == other.kwargs
+                and self.ars == other.kwargs
+                and self.issuer == other.issuer
             )
         elif isinstance(other, str):
             return self.uri == other
         return super().__eq__(other)
+
+
+class RequestUriParameterAuthorizationRequest:
+    @accepts_expires_in
+    def __init__(
+        self,
+        authorization_endpoint: str,
+        client_id: str,
+        request_uri: str,
+        expires_at: Optional[datetime] = None,
+    ):
+        self.authorization_endpoint = authorization_endpoint
+        self.client_id = client_id
+        self.request_uri = request_uri
+        self.expires_at = expires_at
+
+    @property
+    def uri(self) -> str:
+        """
+        Return the Authorization Request URI, as a `str`.
+        """
+        return str(
+            furl(
+                self.authorization_endpoint,
+                args={"client_id": self.client_id, "request_uri": self.request_uri},
+            ).url
+        )
+
+    def __repr__(self) -> str:
+        """
+        Return the Authorization Request URI, as a `str`.
+
+        :return: the Authorization Request URI.
+        """
+        return self.uri

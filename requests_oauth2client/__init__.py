@@ -14,6 +14,7 @@ from .authorization_request import (
     AuthorizationRequest,
     AuthorizationResponse,
     PkceUtils,
+    RequestUriParameterAuthorizationRequest,
 )
 from .backchannel_authentication import (
     BackChannelAuthenticationPoolingJob,

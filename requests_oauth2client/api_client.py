@@ -78,7 +78,7 @@ class ApiClient(requests.Session):
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-    def request(  # noqa: C901 # type: ignore
+    def request(  # type: ignore  # noqa: C901
         self,
         method: str,
         url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
@@ -87,7 +87,7 @@ class ApiClient(requests.Session):
             None,
             str,
             bytes,
-            MutableMapping[str, Any],
+            Mapping[str, Any],
             Iterable[Tuple[str, Optional[str]]],
             IO[Any],
         ] = None,

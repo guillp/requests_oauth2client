@@ -174,7 +174,7 @@ def test_id_token() -> None:
     )
 
     with pytest.raises(ExpiredJwt):
-        assert id_token.validate(
+        id_token.validate(
             public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=True
         )
 
