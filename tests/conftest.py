@@ -5,6 +5,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Literal,
     Mapping,
@@ -18,6 +19,7 @@ import pytest
 import requests
 import requests_mock
 from furl import Query, furl  # type: ignore[import]
+from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
 from requests_mock.request import _RequestObjectProxy
 
@@ -30,7 +32,6 @@ from requests_oauth2client import (
     ClientSecretPost,
     PublicApp,
 )
-from requests_oauth2client.jwskate import Jwk, SignedJwt, SymetricJwk
 
 RequestValidatorType = Callable[..., None]
 
@@ -43,7 +44,6 @@ if TYPE_CHECKING:
     class RequestsMocker(Mocker):
         def reset_mock(self) -> None:
             ...
-
 
 else:
     from pytest import FixtureRequest
@@ -209,7 +209,7 @@ def client_secret_jwt_auth_validator() -> RequestValidatorType:
         assert params.get("client_id") == client_id
         assert "client_assertion" in params
         client_assertion = params.get("client_assertion")
-        jwk = SymetricJwk.from_bytes(client_secret)
+        jwk = SymmetricJwk.from_bytes(client_secret)
         jwt = SignedJwt(client_assertion)
         jwt.verify_signature(jwk, alg="HS256")
         claims = jwt.claims
@@ -374,12 +374,16 @@ def backchannel_auth_request_jwt_validator() -> RequestValidatorType:
         params = Query(req.text).params
         request = params.get("request")
         jwt = SignedJwt(request)
-        jwt.verify_signature(public_jwk)
+        jwt.verify_signature(public_jwk, alg)
         claims = jwt.claims
         if isinstance(scope, str):
             assert claims.get("scope") == scope
-        else:
+        elif scope is None:
+            assert claims.get("scope") is None
+        elif isinstance(scope, Iterable):
             assert claims.get("scope") == " ".join(scope)
+        else:
+            assert False, f"unexpected scope type {type(scope)}"
         login_hint = claims.get("login_hint")
         login_hint_token = claims.get("login_hint_token")
         id_token_hint = claims.get("id_token_hint")
@@ -500,45 +504,42 @@ def discovery_document(
 
 
 @pytest.fixture(scope="session")
-def server_private_jwks() -> Dict[Literal["keys"], List[Dict[str, Any]]]:
-    return {
-        "keys": [
-            {
-                "kty": "RSA",
-                "n": "uOzPy-lWCg14IuoKFI3rmW_Fde3H4uKEoCmUR4aNRjS7GawYN87I00DFhMcsHjjQOjEtLP4E6yt7UNAIIm2aiWWNOGmD2Uv3O_d85h-5Aj-N1BBL3G9pum2VhQQWkxwRAqZoeaj1dFJmxc1jBx0Wiu61vPEHUB0mGP0Y9UKhtRHtiMt4pf4IESa3JuVoOuE4fbyS8l1E4vPkbXE3ZXcXBKiQCXL7zbcLI38XWt3CGjZWR0zm2V65sTGEuBalWUB1btwibqudtA68qG5raJYMtn_gEXM0vUd0gns9jv8xxoem4IZeuEsO98qtxuSPn8vT92sukum8ZEmo_p0cXMDeYQ",
-                "e": "AQAB",
-                "d": "EVp3rYT6A_t7mJsp0v_2afGpMAXeShZDp9v_BC9GNp5gKGqT4zjOc7SSVIF0TGm8cJmIyb4UrBTqf4zmFoT-iYI0HGUacFvGmaQB3n5_mAxqvMnCtK7n1wzNiSv3ClsJ5ZvEFhaa4g2Rg2JgtpwuL19zQoXDz-rMVm_51ZopHpqlPyCLRhBTxD_SFaD6GKe3xUaHmJx-ycWCkHj_TNaH7ZMoAZnICXlaniDlv73k_8H-8VCcEAFDtLbcHVELu7aZdmIYwR8o10UO_aimkz66Pcemkk5_t3vJ-FqAQ-_My3Nm0jlpcFWKnGDGjvw-ERzqu4xypIMf0AD_CoaG8Yj8mQ",
-                "p": "2-_ZlCns-2gR2vGT8srj_5NH5VIwFIvvS1UVuE7KAWdNG-bUogOzWTi6nprv0xQ3PCmyKJ8csl0CEPrFksDFz0x1yTuXkXlUta0XR-xiNvObBTiNsQ32gG1utGuQqt2rV1nnD3sZHKk2GRAnR4u4RbxJvKYpJ0m2Pxjmq7Zm6F8",
-                "q": "1z9KigwxRmnTvkKtdrOY-Bq6vXq1lKXDEJACQnzqqLd0B8r2h5vVvG2o65xlSUh5NB50o7pT20oWm8bCVb-X_OzjGIuULJi47yRQt-2JmyF5B2OMxEoE4kKmxqS4LLISlGQQIUtj8Q_AKn6Cy3oaOODWGA5QAx20q8UDOHO8sT8",
-                "dp": "GGF5TCxtod0ChbPcA8EsDyvjf29h9xUgHMi81KafTBKIgLxQ-_jPC-f3ABgK1-pYySmSH2CsDLW0we8asc7-3qEKOZmKjszVcCJU_1sb9B2DJMwFIQh8N_ZpnESET_ysvs0viQ7LVNsJLTQWNp8teUWLIweEbl-EfXAkOgrJU58",
-                "dq": "XqiZyi3keZfOo6xFBp-i1PFEUFGnixB-wUjjhYPT2pCa-VZbpnV0wGHlWIA11s2FZ9NA7kPh3t0tJiJ5kiYo2_T9Re0UI6yiH6Dz0n8m9c75n7M605PNpAc1usPzrsw8-X8rzMiP0hJgKw_pyzwOThcqb_fTXhtxOdzxNqFHSRc",
-                "qi": "XIHQL8ZwQquEsHhaTPivHkJNI7Rlb7K5NrGkY-KAtEsTQFmY2M9k0EuuTD_-GvlARQ5QsgfkNNZg1UB8_KHti7lo-g0QqEOk-XMJ9tyYo6hQy28FJbP_pTsHNRaKrN4Ho0dQeKSDWqZQPhnwvH2Fd8FnyF7mclN0Do6spQCEaHI",
-            },
-            {
-                "kty": "RSA",
-                "n": "ncNMyXu_9tAXibmISssbSXB6IVatBZCCB8FzUnGzvxaYllt-OaAPsoUl9IGNIztwjvpPGpttr0oEtJDn-89_VB55yvOvDBEsSuE_ddQUvW1Rx360YVybbcqwQb73lUsKHoM6qj-v_fBlF0LS7sRH5FLHLLSyaJzVYC0rAlpF9CrXNLyUeNMZhMI8j427i5Yj-IbKVuoWCydMwsDH-R3Jrl2WZCxYakiK25z5blcblwya4cLw25q_teaSLWi4cLOnI6TnAknBgZsQe7emHelnguWiPQGyX0Adcf1f7k_Nxan01SyflktA1qXwSLbvwhIEOOLvFYCxeKy3Vt_-XjZJew",
-                "e": "AQAB",
-                "d": "f31Q80227pxxORIeqtqBnZJwj7p8rg9-lQfmyswpxpVbD762PZk0tj5VUsbSqJMjPdfXzxelxs7ZCJZFcj_XlMHgCHtujSDfm091uiF99Sp_uOiSmk99J3dxgl_xscrnTYsdAHHhJiR7fRW6YctqkX-3h1ArENEUudkmdYtAFrS2_3q9ZL6fQytBVzvRFu0GR-Kvb6QDUH4s53PVmR4w6y5nLmAeIbF5RDbSDnJT8Tkdf5_fGm-3MVdRe6yBfi11KnSzC4eY3YPWm0dHBiBxb7YIb-FHgxEmqkepN16sxh3v1VSfmkuCEkH3A_tlOC9c_kIn-pu9ngwG9qlQ1CnqWQ",
-                "p": "0fyWzoAxkfOv1uyFzAx7k3VZLM-NzYZXcjLcVDIBc9rqgzh9pzLqxv2oAogxo9pMuhbSMfLFPhkZ1ynmWFwWz2Vn7_s75smL5nTL6dbQ2_ES4brkEXALVQ3jfFn6qg36H6KFI02gfVC6yu-LuO6D5jHw8Z9FuQa7e6L6esYnOrU",
-                "q": "wFUqcX6MwQu3Sv7mgPglIUxLxr_V9p9_JcqdLuqdlaibQY0us66xq2F6VL10O1KOgyyL5BWYahTgjffTf8-NnWK-44bxN6RyAQbR5I4sgX7PUvsYmYNPFt1jTS_b3qxeG-FkVd2al9Y8YqUyYbLrcka8STjmsWtHPq1Oig8ooW8",
-                "dp": "tByY6dTxL8Q6ffnwJX5LfMa5z4LTmYbyeKSBccJWlp4eaqFIveIhmL83nbxd_7Id_7vVXTxjzIjRLknlJsMOWaQcS65Nyf3z_p8NzKwSB6U20eFxADf_sFuyVRYEuFo2wW2wDwDleLeHEMv5J42GGyuZBFbeAf9xTnITsL1IJsU",
-                "dq": "DR2BoG2lwYBABoAtTbweJBAk1q-8Mm4b6ILRhyJ-jncJ50VuWthdyzcBdYfZxjXR_AXsoCgM1acIzQWKSZvop0PVioRoLIgtMf66D2DWjhoMnzb6LXWzzfZY0CmkT6HnZPVQtz4-TX5RbdSgA-OEhK1oJ4IW0SBkolSFF4sDFUc",
-                "qi": "fHMZ-6wQYcB4Vsvhtx3dW_2Uj9gAzi6nskb7Ej6qTArtGcx8AewQOKaFzz9G6eRIqnnGSoHf6J4xtgGoEX6l9iqoGk-2-_mxqYrkoKIWomQwuDe65u0MMNW4EbFTiV3aTe3Gd5K0vRmGRvInjCoyJKrlpx7yGUsWBeLm3wMjTHU",
-            },
-        ]
-    }
+def server_private_jwks() -> JwkSet:
+    return JwkSet(
+        {
+            "keys": [
+                {
+                    "kty": "RSA",
+                    "n": "uOzPy-lWCg14IuoKFI3rmW_Fde3H4uKEoCmUR4aNRjS7GawYN87I00DFhMcsHjjQOjEtLP4E6yt7UNAIIm2aiWWNOGmD2Uv3O_d85h-5Aj-N1BBL3G9pum2VhQQWkxwRAqZoeaj1dFJmxc1jBx0Wiu61vPEHUB0mGP0Y9UKhtRHtiMt4pf4IESa3JuVoOuE4fbyS8l1E4vPkbXE3ZXcXBKiQCXL7zbcLI38XWt3CGjZWR0zm2V65sTGEuBalWUB1btwibqudtA68qG5raJYMtn_gEXM0vUd0gns9jv8xxoem4IZeuEsO98qtxuSPn8vT92sukum8ZEmo_p0cXMDeYQ",
+                    "e": "AQAB",
+                    "d": "EVp3rYT6A_t7mJsp0v_2afGpMAXeShZDp9v_BC9GNp5gKGqT4zjOc7SSVIF0TGm8cJmIyb4UrBTqf4zmFoT-iYI0HGUacFvGmaQB3n5_mAxqvMnCtK7n1wzNiSv3ClsJ5ZvEFhaa4g2Rg2JgtpwuL19zQoXDz-rMVm_51ZopHpqlPyCLRhBTxD_SFaD6GKe3xUaHmJx-ycWCkHj_TNaH7ZMoAZnICXlaniDlv73k_8H-8VCcEAFDtLbcHVELu7aZdmIYwR8o10UO_aimkz66Pcemkk5_t3vJ-FqAQ-_My3Nm0jlpcFWKnGDGjvw-ERzqu4xypIMf0AD_CoaG8Yj8mQ",
+                    "p": "2-_ZlCns-2gR2vGT8srj_5NH5VIwFIvvS1UVuE7KAWdNG-bUogOzWTi6nprv0xQ3PCmyKJ8csl0CEPrFksDFz0x1yTuXkXlUta0XR-xiNvObBTiNsQ32gG1utGuQqt2rV1nnD3sZHKk2GRAnR4u4RbxJvKYpJ0m2Pxjmq7Zm6F8",
+                    "q": "1z9KigwxRmnTvkKtdrOY-Bq6vXq1lKXDEJACQnzqqLd0B8r2h5vVvG2o65xlSUh5NB50o7pT20oWm8bCVb-X_OzjGIuULJi47yRQt-2JmyF5B2OMxEoE4kKmxqS4LLISlGQQIUtj8Q_AKn6Cy3oaOODWGA5QAx20q8UDOHO8sT8",
+                    "dp": "GGF5TCxtod0ChbPcA8EsDyvjf29h9xUgHMi81KafTBKIgLxQ-_jPC-f3ABgK1-pYySmSH2CsDLW0we8asc7-3qEKOZmKjszVcCJU_1sb9B2DJMwFIQh8N_ZpnESET_ysvs0viQ7LVNsJLTQWNp8teUWLIweEbl-EfXAkOgrJU58",
+                    "dq": "XqiZyi3keZfOo6xFBp-i1PFEUFGnixB-wUjjhYPT2pCa-VZbpnV0wGHlWIA11s2FZ9NA7kPh3t0tJiJ5kiYo2_T9Re0UI6yiH6Dz0n8m9c75n7M605PNpAc1usPzrsw8-X8rzMiP0hJgKw_pyzwOThcqb_fTXhtxOdzxNqFHSRc",
+                    "qi": "XIHQL8ZwQquEsHhaTPivHkJNI7Rlb7K5NrGkY-KAtEsTQFmY2M9k0EuuTD_-GvlARQ5QsgfkNNZg1UB8_KHti7lo-g0QqEOk-XMJ9tyYo6hQy28FJbP_pTsHNRaKrN4Ho0dQeKSDWqZQPhnwvH2Fd8FnyF7mclN0Do6spQCEaHI",
+                },
+                {
+                    "kty": "RSA",
+                    "n": "ncNMyXu_9tAXibmISssbSXB6IVatBZCCB8FzUnGzvxaYllt-OaAPsoUl9IGNIztwjvpPGpttr0oEtJDn-89_VB55yvOvDBEsSuE_ddQUvW1Rx360YVybbcqwQb73lUsKHoM6qj-v_fBlF0LS7sRH5FLHLLSyaJzVYC0rAlpF9CrXNLyUeNMZhMI8j427i5Yj-IbKVuoWCydMwsDH-R3Jrl2WZCxYakiK25z5blcblwya4cLw25q_teaSLWi4cLOnI6TnAknBgZsQe7emHelnguWiPQGyX0Adcf1f7k_Nxan01SyflktA1qXwSLbvwhIEOOLvFYCxeKy3Vt_-XjZJew",
+                    "e": "AQAB",
+                    "d": "f31Q80227pxxORIeqtqBnZJwj7p8rg9-lQfmyswpxpVbD762PZk0tj5VUsbSqJMjPdfXzxelxs7ZCJZFcj_XlMHgCHtujSDfm091uiF99Sp_uOiSmk99J3dxgl_xscrnTYsdAHHhJiR7fRW6YctqkX-3h1ArENEUudkmdYtAFrS2_3q9ZL6fQytBVzvRFu0GR-Kvb6QDUH4s53PVmR4w6y5nLmAeIbF5RDbSDnJT8Tkdf5_fGm-3MVdRe6yBfi11KnSzC4eY3YPWm0dHBiBxb7YIb-FHgxEmqkepN16sxh3v1VSfmkuCEkH3A_tlOC9c_kIn-pu9ngwG9qlQ1CnqWQ",
+                    "p": "0fyWzoAxkfOv1uyFzAx7k3VZLM-NzYZXcjLcVDIBc9rqgzh9pzLqxv2oAogxo9pMuhbSMfLFPhkZ1ynmWFwWz2Vn7_s75smL5nTL6dbQ2_ES4brkEXALVQ3jfFn6qg36H6KFI02gfVC6yu-LuO6D5jHw8Z9FuQa7e6L6esYnOrU",
+                    "q": "wFUqcX6MwQu3Sv7mgPglIUxLxr_V9p9_JcqdLuqdlaibQY0us66xq2F6VL10O1KOgyyL5BWYahTgjffTf8-NnWK-44bxN6RyAQbR5I4sgX7PUvsYmYNPFt1jTS_b3qxeG-FkVd2al9Y8YqUyYbLrcka8STjmsWtHPq1Oig8ooW8",
+                    "dp": "tByY6dTxL8Q6ffnwJX5LfMa5z4LTmYbyeKSBccJWlp4eaqFIveIhmL83nbxd_7Id_7vVXTxjzIjRLknlJsMOWaQcS65Nyf3z_p8NzKwSB6U20eFxADf_sFuyVRYEuFo2wW2wDwDleLeHEMv5J42GGyuZBFbeAf9xTnITsL1IJsU",
+                    "dq": "DR2BoG2lwYBABoAtTbweJBAk1q-8Mm4b6ILRhyJ-jncJ50VuWthdyzcBdYfZxjXR_AXsoCgM1acIzQWKSZvop0PVioRoLIgtMf66D2DWjhoMnzb6LXWzzfZY0CmkT6HnZPVQtz4-TX5RbdSgA-OEhK1oJ4IW0SBkolSFF4sDFUc",
+                    "qi": "fHMZ-6wQYcB4Vsvhtx3dW_2Uj9gAzi6nskb7Ej6qTArtGcx8AewQOKaFzz9G6eRIqnnGSoHf6J4xtgGoEX6l9iqoGk-2-_mxqYrkoKIWomQwuDe65u0MMNW4EbFTiV3aTe3Gd5K0vRmGRvInjCoyJKrlpx7yGUsWBeLm3wMjTHU",
+                },
+            ]
+        }
+    )
 
 
 @pytest.fixture(scope="session")
 def server_public_jwks(
     server_private_jwks: Dict[Literal["keys"], List[Dict[str, Any]]]
-) -> Mapping[str, Any]:
-    return {
-        "keys": [
-            {key: val for key, val in jwk.items() if key in ("kty", "n", "e")}
-            for jwk in server_private_jwks["keys"]
-        ]
-    }
+) -> JwkSet:
+    return JwkSet(keys=[jwk.public_jwk() for jwk in server_private_jwks.jwks])
 
 
 @pytest.fixture(scope="session")

@@ -2,12 +2,13 @@
 
 import json
 import pprint
-import zlib
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, Type
 
-from .jwskate import SignedJwt
-from .utils import accepts_expires_in, b64u_decode, b64u_encode
+from binapy import BinaPy
+from jwskate import SignedJwt
+
+from .utils import accepts_expires_in
 
 
 class BearerToken:
@@ -195,17 +196,16 @@ class BearerTokenSerializer:
     @staticmethod
     def default_dumper(token: BearerToken) -> str:
         """
-        Serialize a token as JSON, then zlib compress, then encodes as base64url.
+        Serialize a token as JSON, then gzip compress, then encodes as base64url.
 
         :param token: the :class:`BearerToken` to serialize
         :return: the serialized value
         """
-        return b64u_encode(
-            zlib.compress(
-                json.dumps(
-                    token.as_dict(True), default=lambda d: d.timestamp()
-                ).encode()
-            )
+        return (
+            BinaPy.serialize_to("json", token.as_dict(True))
+            .to("gzip")
+            .to("b64u")
+            .ascii()
         )
 
     def default_loader(
@@ -217,7 +217,12 @@ class BearerTokenSerializer:
         :param serialized: the serialized token
         :return: a BearerToken
         """
-        attrs = json.loads(zlib.decompress(b64u_decode(serialized)))
+        attrs = (
+            BinaPy(serialized)
+            .decode_from("b64u")
+            .decode_from("gzip")
+            .parse_from("json")
+        )
         expires_at = attrs.get("expires_at")
         if expires_at:
             attrs["expires_at"] = datetime.fromtimestamp(expires_at)

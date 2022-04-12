@@ -6,9 +6,8 @@ from uuid import uuid4
 
 import furl  # type: ignore[import]
 import requests
-
-from .jwskate import Jwk, Jwt, SymetricJwk
-from .utils import b64_encode
+from binapy import BinaPy
+from jwskate import Jwk, Jwt, SymmetricJwk
 
 
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
@@ -60,8 +59,8 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
         :return: a [requests.PreparedRequest][] with the added Authorization header.
         """
         request = super().__call__(request)
-        b64encoded_credentials = b64_encode(
-            ":".join((self.client_id, self.client_secret))
+        b64encoded_credentials = (
+            BinaPy(f"{self.client_id}:{self.client_secret}").to("b64").ascii()
         )
         request.headers["Authorization"] = f"Basic {b64encoded_credentials}"
         return request
@@ -173,7 +172,7 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
 
     def client_assertion(self, audience: str) -> str:
         """
-        Generate a Client Assertion, symetrically signed with the `client_secret` as key.
+        Generate a Client Assertion, symmetrically signed with the `client_secret` as key.
 
         :param audience: the audience to use for the generated Client Assertion.
         :return: a Client Assertion, as `str`.
@@ -182,7 +181,7 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 
-        jwk = SymetricJwk.from_bytes(self.client_secret.encode())
+        jwk = SymmetricJwk.from_bytes(self.client_secret.encode())
 
         jwt = Jwt.sign(
             claims={

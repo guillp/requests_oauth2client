@@ -43,7 +43,7 @@ class ApiClient(requests.Session):
 
     def __init__(
         self,
-        url: Optional[str] = None,
+        base_url: Optional[str] = None,
         auth: Optional[requests.auth.AuthBase] = None,
         timeout: Optional[int] = 60,
         raise_for_status: bool = True,
@@ -54,11 +54,11 @@ class ApiClient(requests.Session):
         """
         Initialize an `ApiClient`, with an optional root url.
 
-        `url` will serve as root for relative urls passed to [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request], [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
+        `base_url` will serve as root for relative urls passed to [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request], [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
         An `HTTPError` will be raised everytime an API call returns an error code (>= 400), unless you set `raise_for_status` to `False`.
         Additional parameters passed at init time, including `auth` will be used to configure the [Session][requests.Session].
 
-        :param url: the base api url.
+        :param base_url: the base api url, that should be root for all the target API endpoints.
         :param auth: the [requests.auth.AuthBase][] to use as authentication handler.
         :param timeout: the default timeout, in seconds, to use for each request from this ApiClient. Can be set to `None` to disable timeout.
         :param raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
@@ -68,7 +68,7 @@ class ApiClient(requests.Session):
         """
         super(ApiClient, self).__init__()
 
-        self.url = url
+        self.base_url = base_url
         self.auth = auth
         self.timeout = timeout
         self.raise_for_status = raise_for_status
@@ -131,33 +131,7 @@ class ApiClient(requests.Session):
         :param bool_fields: like the parameter of the same name from `ApiClient.__init__`, but this will be applied for this request only.
         :return: a [requests.Response][] as returned by requests
         """
-        if self.url:
-            if url is not None:
-                if not isinstance(url, (str, bytes)):
-                    try:
-                        url = "/".join(
-                            [
-                                part.decode() if isinstance(part, bytes) else str(part)
-                                for part in url
-                                if part
-                            ]
-                        )
-                    except TypeError:
-                        raise TypeError(
-                            "Unexpected url type, please pass a relative path as string or bytes, "
-                            "or an iterable of string-able objects",
-                            type(url),
-                        )
-
-                if isinstance(url, bytes):
-                    url = url.decode()
-
-                url = urljoin(self.url + "/", url.lstrip("/"))
-            else:
-                url = self.url
-
-        if url is None or not isinstance(url, str):
-            raise ValueError("No url to send the request to")
+        url = self.to_absolute_url(url)
 
         if none_fields is None:
             none_fields = self.none_fields
@@ -226,6 +200,44 @@ class ApiClient(requests.Session):
         if raise_for_status:
             response.raise_for_status()
         return response
+
+    def to_absolute_url(
+        self, url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None
+    ):
+        """
+        Given an 'url', that can be relative or absolute, return the matching absolute url, based on the base url.
+        :param url: a (possibly relative) url
+        :return: the matching absolute url
+        """
+        if self.base_url:
+            if url is not None:
+                if not isinstance(url, (str, bytes)):
+                    try:
+                        url = "/".join(
+                            [
+                                part.decode() if isinstance(part, bytes) else str(part)
+                                for part in url
+                                if part
+                            ]
+                        )
+                    except TypeError:
+                        raise TypeError(
+                            "Unexpected url type, please pass a relative path as string or bytes, "
+                            "or an iterable of string-able objects",
+                            type(url),
+                        )
+
+                if isinstance(url, bytes):
+                    url = url.decode()
+
+                url = urljoin(self.base_url + "/", url.lstrip("/"))
+            else:
+                url = self.base_url
+
+        if url is None or not isinstance(url, str):
+            raise ValueError("Unable to determine an absolute url.")
+
+        return url
 
     def get(  # type: ignore
         self,

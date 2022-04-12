@@ -1,9 +1,12 @@
 import secrets
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Literal, Type, Union
 
 import pytest
+from jwskate import Jwk, JwkSet
 
 from requests_oauth2client import (
+    AuthorizationRequest,
     BaseClientAuthenticationMethod,
     BearerToken,
     ClientSecretBasic,
@@ -11,11 +14,10 @@ from requests_oauth2client import (
     ClientSecretPost,
     IdToken,
     InvalidTokenResponse,
-    Jwk,
-    JwkSet,
     OAuth2Client,
     PrivateKeyJWT,
     PublicApp,
+    RequestUriParameterAuthorizationRequest,
     ServerError,
     UnauthorizedClient,
     UnknownIntrospectionError,
@@ -101,70 +103,6 @@ def test_client_credentials_grant(
     oauth2client.client_credentials(scope=scope)
 
     assert requests_mock.called_once
-    client_credentials_grant_validator(requests_mock.last_request, scope=scope)
-
-    if client_auth_method_handler == PublicApp:
-        public_app_auth_validator(requests_mock.last_request, client_id=client_id)
-    elif client_auth_method_handler == ClientSecretPost:
-        client_secret_post_auth_validator(
-            requests_mock.last_request,
-            client_id=client_id,
-            client_secret=client_credential,
-        )
-    elif client_auth_method_handler == ClientSecretBasic:
-        client_secret_basic_auth_validator(
-            requests_mock.last_request,
-            client_id=client_id,
-            client_secret=client_credential,
-        )
-    elif client_auth_method_handler == ClientSecretJWT:
-        client_secret_jwt_auth_validator(
-            requests_mock.last_request,
-            client_id=client_id,
-            client_secret=client_credential,
-            endpoint=token_endpoint,
-        )
-    elif client_auth_method_handler == PrivateKeyJWT:
-        private_key_jwt_auth_validator(
-            requests_mock.last_request,
-            client_id=client_id,
-            endpoint=token_endpoint,
-            public_jwk=public_jwk,
-        )
-
-
-def test_client_credentials_grant_with_scope_list(
-    requests_mock: RequestsMocker,
-    oauth2client: OAuth2Client,
-    token_endpoint: str,
-    access_token: str,
-    refresh_token: str,
-    scope: str,
-    client_credentials_grant_validator: RequestValidatorType,
-    client_auth_method_handler: Type[BaseClientAuthenticationMethod],
-    client_id: str,
-    client_credential: Union[None, str, Jwk],
-    public_jwk: Jwk,
-    public_app_auth_validator: RequestValidatorType,
-    client_secret_post_auth_validator: RequestValidatorType,
-    client_secret_basic_auth_validator: RequestValidatorType,
-    client_secret_jwt_auth_validator: RequestValidatorType,
-    private_key_jwt_auth_validator: RequestValidatorType,
-) -> None:
-    """the 'scope' parameter to .client_credentials() can be a list."""
-    requests_mock.post(
-        token_endpoint,
-        json={
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "Bearer",
-            "expires_in": 3600,
-        },
-    )
-
-    oauth2client.client_credentials(scope=scope.split(" "))
-    assert requests_mock.called_once
-
     client_credentials_grant_validator(requests_mock.last_request, scope=scope)
 
     if client_auth_method_handler == PublicApp:
@@ -1238,3 +1176,25 @@ def test_ciba(
     assert isinstance(token, BearerToken)
     assert requests_mock.called_once
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
+
+
+def test_pushed_authorization_request(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    pushed_authorization_request_endpoint: str,
+    authorization_request: AuthorizationRequest,
+) -> None:
+    request_uri = "request_uri"
+    expires_in = 60
+
+    requests_mock.post(
+        pushed_authorization_request_endpoint,
+        json={"request_uri": request_uri, "expires_in": expires_in},
+    )
+
+    razr = oauth2client.pushed_authorization_request(authorization_request)
+    assert isinstance(razr, RequestUriParameterAuthorizationRequest)
+    assert razr.request_uri == request_uri
+    assert isinstance(razr.expires_at, datetime) and datetime.now() - timedelta(
+        seconds=2
+    ) < razr.expires_at - timedelta(seconds=expires_in)

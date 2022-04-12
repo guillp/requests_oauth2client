@@ -1,12 +1,8 @@
 from datetime import datetime
 
 import pytest
-
-from requests_oauth2client import (
-    BearerToken,
-    BearerTokenSerializer,
+from jwskate import (
     ExpiredJwt,
-    IdToken,
     InvalidClaim,
     InvalidJwt,
     InvalidSignature,
@@ -14,6 +10,8 @@ from requests_oauth2client import (
     Jwt,
     SignedJwt,
 )
+
+from requests_oauth2client import BearerToken, BearerTokenSerializer, IdToken
 
 ID_TOKEN = (
     "eyJhbGciOiJSUzI1NiIsImtpZCI6Im15X2tleSJ9.eyJhY3IiOiIyIiwiYW1yIjpbInB3ZCIsIm90cCJdLCJhdWQiOiJjbGllbnRfaWQiL"
@@ -186,15 +184,6 @@ def test_id_token() -> None:
     assert id_token.expires_at == datetime(2021, 8, 17, 14, 50, 20)
     assert id_token.issued_at == datetime(2021, 8, 17, 14, 49, 20)
 
-    # you can pass a JWKS as well
-    id_token.validate(
-        jwk={"keys": [public_jwk]},
-        issuer=issuer,
-        audience=audience,
-        nonce=nonce,
-        check_exp=False,
-    )
-
 
 def test_invalid_jwt() -> None:
     public_jwk = Jwk(
@@ -280,8 +269,8 @@ def test_token_serializer() -> None:
     serializer = BearerTokenSerializer()
     assert (
         serializer.dumps(BearerToken("access_token"))
-        == "eJyrVkpMTk4tLo4vyc9OzVOyUkDl6ygogRnxJZUFqSBZp9TEotQipVoANxUTgA"
+        == "eJyrVkpMTk4tLo4vyc9OzVOyQuXqKIHp-JLKglSgnFNqYlFqkVItAAyNEyA"
     )
     assert serializer.loads(
-        "eJyrVkpMTk4tLo4vyc9OzVOyUkDl6ygogRnxJZUFqSBZp9TEotQipVoANxUTgA"
+        "eJyrVkpMTk4tLo4vyc9OzVOyQuXqKIHp-JLKglSgnFNqYlFqkVItAAyNEyA"
     ) == BearerToken("access_token")

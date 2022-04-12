@@ -7,14 +7,18 @@ based on the
 [Client Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-client-credentials),
 [Authorization Code](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-authorization-code),
 [Refresh token](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-refresh-token),
+[Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693),
 [Device Authorization](https://datatracker.ietf.org/doc/html/rfc8628), or
 [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
 
 It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-core-1_0.html),
-[PKCE](https://tools.ietf.org/html/rfc7636), [Client Assertions](https://datatracker.ietf.org/doc/html/rfc7523), Token
-[Revocation](https://www.rfc-editor.org/rfc/rfc7009.html), [Exchange](https://datatracker.ietf.org/doc/html/rfc8693),
+[PKCE](https://tools.ietf.org/html/rfc7636),
+[Client Assertions](https://datatracker.ietf.org/doc/html/rfc7523),
+[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html),
 and [Introspection](https://datatracker.ietf.org/doc/html/rfc7662),
-[BackChannel Authentication requests](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html),
+[Resource Indicators](https://datatracker.ietf.org/doc/rfc8707/),
+[JWT-secured Authorization Requests](https://datatracker.ietf.org/doc/rfc9101/),
+[Pushed Authorization Requests](https://datatracker.ietf.org/doc/rfc9126/),
 as well as using custom params to any endpoint, and other important features that are often overlooked in other client
 libraries.
 

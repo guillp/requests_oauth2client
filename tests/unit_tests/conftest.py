@@ -1,11 +1,15 @@
-from typing import Dict, Type, Union
+import base64
+import hashlib
+from typing import Any, Dict, List, Optional, Type, Union
 
 import pytest
 import requests
 from furl import furl  # type: ignore
+from jwskate import Jwk
 
 from requests_oauth2client import (
     ApiClient,
+    AuthorizationRequest,
     BearerAuth,
     ClientSecretBasic,
     ClientSecretJWT,
@@ -15,7 +19,7 @@ from requests_oauth2client import (
     PublicApp,
 )
 from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
-from requests_oauth2client.jwskate import Jwk
+from tests.conftest import FixtureRequest
 
 
 @pytest.fixture(scope="session")
@@ -95,6 +99,11 @@ def device_authorization_endpoint(issuer: str) -> str:
 @pytest.fixture(scope="session")
 def backchannel_authentication_endpoint(issuer: str) -> str:
     return join_url(issuer, "bc_authorize")
+
+
+@pytest.fixture(scope="session")
+def pushed_authorization_request_endpoint(issuer: str) -> str:
+    return join_url(issuer, "par")
 
 
 @pytest.fixture(scope="session")
@@ -239,11 +248,6 @@ def audience() -> str:
 
 
 @pytest.fixture(scope="session")
-def scope() -> str:
-    return "openid profile email"
-
-
-@pytest.fixture(scope="session")
 def auth_req_id() -> str:
     return "auth_request_id"
 
@@ -275,6 +279,7 @@ def oauth2client(
     revocation_endpoint: str,
     introspection_endpoint: str,
     userinfo_endpoint: str,
+    pushed_authorization_request_endpoint: str,
     jwks_uri: str,
     client_auth_method: BaseClientAuthenticationMethod,
 ) -> OAuth2Client:
@@ -283,6 +288,7 @@ def oauth2client(
         revocation_endpoint=revocation_endpoint,
         introspection_endpoint=introspection_endpoint,
         userinfo_endpoint=userinfo_endpoint,
+        pushed_authorization_request_endpoint=pushed_authorization_request_endpoint,
         jwks_uri=jwks_uri,
         auth=client_auth_method,
     )
@@ -293,6 +299,172 @@ def sub() -> str:
     return "abcdefghijklmnopqrstuvwxyz"
 
 
+@pytest.fixture(
+    scope="session",
+    params=[None, "state", True],
+)
+def state(request: FixtureRequest) -> Union[None, bool, str]:
+    return request.param
+
+
+@pytest.fixture(scope="session", params=[None, "https://myas.local", False])
+def expected_issuer(request: FixtureRequest) -> Optional[str]:
+    return request.param
+
+
+@pytest.fixture(scope="session", params=[None, {"foo": "bar"}])
+def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
+    return request.param or {}  # type: ignore
+
+
+@pytest.fixture(
+    scope="session",
+    params=[None, "nonce", False],
+)
+def nonce(request: FixtureRequest) -> Union[None, bool, str]:
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[None, "openid", "openid profile email", ["openid", "profile", "email"], []],
+    ids=["None", "single", "space-separated", "list", "empty-list"],
+)
+def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[None, "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"],
+    ids=["None", "rfc7636"],
+)
+def code_verifier(request: FixtureRequest) -> Optional[str]:
+    return request.param
+
+
+@pytest.fixture(scope="session", params=[None, "plain", "S256"])
+def code_challenge_method(request: FixtureRequest) -> Optional[str]:
+    return request.param
+
+
 @pytest.fixture(scope="session")
-def code_verifier() -> str:
-    return "code_verifier"
+@pytest.mark.slow
+def authorization_request(
+    authorization_endpoint: str,
+    client_id: str,
+    redirect_uri: str,
+    scope: Union[None, str, List[str]],
+    state: Union[None, bool, str],
+    nonce: Union[None, bool, str],
+    code_verifier: str,
+    code_challenge_method: str,
+    expected_issuer: Union[str, bool, None],
+    auth_request_kwargs: Dict[str, Any],
+) -> AuthorizationRequest:
+    azr = AuthorizationRequest(
+        authorization_endpoint=authorization_endpoint,
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        scope=scope,
+        state=state,
+        nonce=nonce,
+        code_verifier=code_verifier,
+        code_challenge_method=code_challenge_method,
+        issuer=expected_issuer,
+        **auth_request_kwargs,
+    )
+
+    url = furl(str(azr))
+    assert url.origin + str(url.path) == authorization_endpoint
+
+    assert azr.authorization_endpoint == authorization_endpoint
+    assert azr.client_id == client_id
+    assert azr.redirect_uri == redirect_uri
+    assert azr.issuer == expected_issuer
+    assert azr.kwargs == auth_request_kwargs
+
+    args = dict(url.args)
+    expected_args = dict(
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        response_type="code",
+        scope=scope,
+        **auth_request_kwargs,
+    )
+
+    if nonce is True:
+        generated_nonce = args.pop("nonce")
+        assert isinstance(generated_nonce, str)
+        assert len(generated_nonce) > 20
+        assert azr.nonce == generated_nonce
+    elif nonce is False or nonce is None:
+        assert azr.nonce is None
+        assert "nonce" not in args
+    elif isinstance(nonce, str):
+        assert azr.nonce == nonce
+        assert args.pop("nonce") == nonce
+    else:
+        assert False
+
+    if state is True:
+        generated_state = args.pop("state")
+        assert isinstance(generated_state, str)
+        assert len(generated_state) > 20
+        assert azr.state == generated_state
+    elif state is False:
+        assert "state" not in args
+        assert azr.state is None
+    elif isinstance(state, str):
+        assert args.pop("state") == state
+        assert azr.state == state
+
+    if scope is None:
+        assert azr.scope is None
+        assert "scope" not in args
+        del expected_args["scope"]
+    elif isinstance(scope, list):
+        joined_scope = " ".join(scope)
+        expected_args["scope"] = joined_scope
+        assert azr.scope == joined_scope
+    if isinstance(scope, str):
+        expected_args["scope"] = scope
+        assert azr.scope == scope
+
+    if code_challenge_method is None:
+        assert "code_challenge_method" not in args
+        assert "code_challenge" not in args
+        assert azr.code_challenge_method is None
+        assert azr.code_verifier is None
+        assert azr.code_challenge is None
+    elif code_challenge_method == "S256":
+        assert azr.code_challenge_method == "S256"
+        assert args.pop("code_challenge_method") == "S256"
+        generated_code_challenge = args.pop("code_challenge")
+        assert azr.code_challenge == generated_code_challenge
+        if code_verifier is None:
+            assert isinstance(generated_code_challenge, str)
+            assert len(generated_code_challenge) == 43
+            assert base64.urlsafe_b64decode(
+                generated_code_challenge.encode() + b"="
+            ), f"Invalid B64U for generated code_challenge: {generated_code_challenge}"
+        else:
+            assert azr.code_verifier == code_verifier
+            assert generated_code_challenge == base64.urlsafe_b64encode(
+                hashlib.sha256(code_verifier.encode()).digest()
+            ).decode().rstrip("=")
+    elif code_challenge_method == "plain":
+        assert azr.code_challenge_method == "plain"
+        assert args.pop("code_challenge_method") == "plain"
+        generated_code_challenge = args.pop("code_challenge")
+        assert azr.code_challenge == generated_code_challenge
+        if code_verifier is None:
+            assert isinstance(generated_code_challenge, str)
+            assert 43 <= len(generated_code_challenge) <= 128
+        else:
+            assert generated_code_challenge == code_verifier
+            assert azr.code_verifier == code_verifier
+
+    assert args == expected_args
+
+    return azr

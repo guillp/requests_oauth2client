@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Union
 
 import pytest
+from jwskate import Jwk
 
 from requests_oauth2client import (
     BackChannelAuthenticationPoolingJob,
@@ -9,7 +10,6 @@ from requests_oauth2client import (
     BaseClientAuthenticationMethod,
     BearerToken,
     InvalidBackChannelAuthenticationResponse,
-    Jwk,
     OAuth2Client,
     UnauthorizedClient,
 )

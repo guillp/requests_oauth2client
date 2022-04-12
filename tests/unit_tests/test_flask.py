@@ -1,4 +1,4 @@
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 from urllib.parse import parse_qs
 
 import pytest
@@ -67,7 +67,12 @@ def test_flask(
 
     token_params = parse_qs(token_request.text)
     assert token_params.get("client_id") == [client_id]
-    assert token_params.get("scope") == [scope]
+    if not scope:
+        assert token_params.get("scope") is None
+    elif isinstance(scope, str):
+        assert token_params.get("scope") == [scope]
+    elif isinstance(scope, Iterable):
+        assert token_params.get("scope") == [" ".join(scope)]
     assert token_params.get("client_secret") == [client_secret]
 
     assert api_request1.headers.get("Authorization") == f"Bearer {access_token}"

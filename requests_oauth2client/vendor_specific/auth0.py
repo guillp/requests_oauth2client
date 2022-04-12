@@ -1,12 +1,10 @@
 """Implements subclasses for [Auth0](https://auth0.com)."""
 
-from typing import Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import requests
 
-from ..api_client import ApiClient
-from ..auth import OAuth2ClientCredentialsAuth
-from ..client import OAuth2Client
+from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
 
 
 class Auth0Client(OAuth2Client):
@@ -68,7 +66,7 @@ class Auth0ManagementApiClient(ApiClient):
         tenant: str,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
-        raise_for_status: bool = False,
+        **kwargs: Any,
     ):
         """
         Initialize an Auth0ManagementApiClient against a given Auth0 tenant.
@@ -76,9 +74,13 @@ class Auth0ManagementApiClient(ApiClient):
         :param tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
         :param auth: client credentials. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
         :param session: requests session. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
-        :param raise_for_status: Same definition as for [ApiClient][requests_oauth2client.api_client.ApiClient.__init__]
+        :param kwargs: additional kwargs to pass to the ApiClient base class
         """
         client = Auth0Client(tenant, auth, session=session)
         audience = f"https://{client.tenant}/api/v2/"
         api_auth = OAuth2ClientCredentialsAuth(client, audience=audience)
-        super().__init__(url=audience, auth=api_auth, raise_for_status=raise_for_status)
+        super().__init__(
+            url=audience,
+            auth=api_auth,
+            **kwargs,
+        )

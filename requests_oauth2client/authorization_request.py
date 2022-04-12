@@ -7,7 +7,9 @@ import secrets
 from datetime import datetime
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
+from binapy import BinaPy
 from furl import furl  # type: ignore[import]
+from jwskate import Jwk, Jwt
 
 from .exceptions import (
     AuthorizationResponseError,
@@ -19,8 +21,7 @@ from .exceptions import (
     MissingAuthCode,
     SessionSelectionRequired,
 )
-from .jwskate import Jwk, Jwt
-from .utils import accepts_expires_in, b64u_encode
+from .utils import accepts_expires_in
 
 
 class PkceUtils:
@@ -57,7 +58,7 @@ class PkceUtils:
             )
 
         if method == "S256":
-            return b64u_encode(hashlib.sha256(verifier.encode()).digest())
+            return BinaPy(verifier).to("sha256").to("b64u").ascii()
         elif method == "plain":
             return verifier
         else:

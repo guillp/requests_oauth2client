@@ -3,9 +3,14 @@
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
+from jwskate import Jwk, JwkSet, Jwt
 
 from .auth import BearerAuth
-from .authorization_request import AuthorizationResponse
+from .authorization_request import (
+    AuthorizationRequest,
+    AuthorizationResponse,
+    RequestUriParameterAuthorizationRequest,
+)
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
@@ -19,6 +24,7 @@ from .exceptions import (
     InvalidBackChannelAuthenticationResponse,
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
+    InvalidPushedAuthorizationResponse,
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
@@ -30,7 +36,6 @@ from .exceptions import (
     UnknownTokenEndpointError,
     UnsupportedTokenType,
 )
-from .jwskate import Jwk, JwkSet, Jwt
 from .tokens import BearerToken, IdToken
 from .utils import validate_endpoint_uri
 
@@ -82,6 +87,7 @@ class OAuth2Client:
         userinfo_endpoint: Optional[str] = None,
         backchannel_authentication_endpoint: Optional[str] = None,
         device_authorization_endpoint: Optional[str] = None,
+        pushed_authorization_request_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
     ):
@@ -114,6 +120,11 @@ class OAuth2Client:
         self.device_authorization_endpoint = (
             str(device_authorization_endpoint)
             if device_authorization_endpoint
+            else None
+        )
+        self.pushed_authorization_request_endpoint = (
+            str(pushed_authorization_request_endpoint)
+            if pushed_authorization_request_endpoint
             else None
         )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
@@ -352,16 +363,16 @@ class OAuth2Client:
             subject_token_type = self.get_token_type(subject_token_type, subject_token)
         except ValueError:
             raise TypeError(
-                "Cannot determine the kind of subject_token you provided."
-                "Please specify a subject_token_type."
+                "Cannot determine the kind of 'subject_token' you provided. "
+                "Please specify a 'subject_token_type'."
             )
         if actor_token:  # pragma: no branch
             try:
                 actor_token_type = self.get_token_type(actor_token_type, actor_token)
             except ValueError:
                 raise TypeError(
-                    "Cannot determine the kind of actor_token you provided."
-                    "Please specify an actor_token_type."
+                    "Cannot determine the kind of 'actor_token' you provided. "
+                    "Please specify an 'actor_token_type'."
                 )
 
         data = dict(
@@ -375,6 +386,51 @@ class OAuth2Client:
         )
         return self.token_request(data, **requests_kwargs)
 
+    def pushed_authorization_request(
+        self, authorization_request: AuthorizationRequest
+    ) -> RequestUriParameterAuthorizationRequest:
+        if not self.pushed_authorization_request_endpoint:
+            raise AttributeError(
+                "No 'pushed_authorization_request_endpoint' defined for this client."
+            )
+
+        response = self.session.post(
+            self.pushed_authorization_request_endpoint,
+            data=authorization_request.args,
+            auth=self.auth,
+        )
+        if not response.ok:
+            return self.on_pushed_authorization_request_error(response)
+
+        response_json = response.json()
+        request_uri = response_json.get("request_uri")
+        expires_in = response_json.get("expires_in")
+
+        return RequestUriParameterAuthorizationRequest(
+            authorization_endpoint=authorization_request.authorization_endpoint,
+            client_id=authorization_request.client_id,
+            request_uri=request_uri,
+            expires_in=expires_in,
+        )
+
+    def on_pushed_authorization_request_error(
+        self, response: requests.Response
+    ) -> RequestUriParameterAuthorizationRequest:
+        error_json = response.json()
+        error = error_json.get("error")
+        error_description = error_json.get("error_description")
+        error_uri = error_json.get("error_uri")
+        if error:
+            exception_class = self.exception_classes.get(
+                error, UnknownTokenEndpointError
+            )
+            raise exception_class(error, error_description, error_uri)
+        else:
+            raise InvalidPushedAuthorizationResponse(
+                "pushed authorization endpoint returned an HTTP error without error message",
+                error_json,
+            )
+
     def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
         """
         Call the UserInfo endpoint with the specified access_token and return the result.
@@ -383,7 +439,7 @@ class OAuth2Client:
         :return: the [Response][requests.Response] returned by the userinfo endpoint.
         """
         if not self.userinfo_endpoint:
-            raise AttributeError("No userinfo endpoint defined for this client")
+            raise AttributeError("No userinfo_endpoint defined for this client")
 
         response = self.session.post(
             self.userinfo_endpoint, auth=BearerAuth(access_token)
@@ -429,13 +485,13 @@ class OAuth2Client:
                 return "urn:ietf:params:oauth:token-type:id_token"
             else:
                 raise TypeError(
-                    "Unexpected type of token, please provide a string or a BearerToken or an IdToken",
+                    "Unexpected type of token, please provide a string or a BearerToken or an IdToken.",
                     type(token),
                 )
         elif token_type == "access_token":
             if token is not None and not isinstance(token, (str, BearerToken)):
                 raise TypeError(
-                    "The supplied token is not a BearerToken or a string representation of it",
+                    "The supplied token is not a BearerToken or a string representation of it.",
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:access_token"
@@ -446,13 +502,13 @@ class OAuth2Client:
                 and not token.refresh_token
             ):
                 raise ValueError(
-                    "The supplied BearerToken doesn't have a refresh_token"
+                    "The supplied BearerToken doesn't have a refresh_token."
                 )
             return "urn:ietf:params:oauth:token-type:refresh_token"
         elif token_type == "id_token":
             if token is not None and not isinstance(token, (str, IdToken)):
                 raise TypeError(
-                    "The supplied token is not an IdToken or a string representation of it",
+                    "The supplied token is not an IdToken or a string representation of it.",
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:id_token"

@@ -1,12 +1,12 @@
 import pytest
 import requests
+from jwskate import Jwk
 from requests_mock import ANY
 
 from requests_oauth2client import (
     ClientSecretBasic,
     ClientSecretJWT,
     ClientSecretPost,
-    Jwk,
     OAuth2Client,
     PrivateKeyJWT,
 )

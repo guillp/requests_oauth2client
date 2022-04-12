@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from requests_oauth2client.jwskate import InvalidJwt
+from jwskate import InvalidJwt
 
 
 class OAuth2Error(Exception):
@@ -171,3 +171,7 @@ class BackChannelAuthenticationError(EndpointError):
 
 class InvalidBackChannelAuthenticationResponse(OAuth2Error):
     """Raised when the BackChannel Authentication endpoint returns non-standardised errors."""
+
+
+class InvalidPushedAuthorizationResponse(OAuth2Error):
+    """Raised when the Pushed Authorization Endpoint returns an error."""

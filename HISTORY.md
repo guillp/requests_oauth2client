@@ -17,6 +17,9 @@ use it to include all necessary parameters for the Authorization Code Grant.
 * Methods from `requests_oauth2client.utils` are no longer exposed in top-level module.
 * Renamed base class `ClientAuthenticationMethod` to `BaseClientAuthenticationMethod`.
 * Introduced a default timeout in `ApiClient`
+* Splitted `jwskate` into its own independant module
+* Use `BinaPy` for binary data manipulation
+* Add support for Pushed Authorization Requests
 
 ## <= 0.18
 
