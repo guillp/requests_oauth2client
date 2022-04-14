@@ -130,7 +130,7 @@ are expired. `requests_oauth2client` contains several [requests] compatible Auth
 [requests.auth.AuthBase](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication), that will
 take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
 ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session],
-or an [ApiClient] which is a Session Subclass with a few enhancements as described below.
+or an [ApiClient] which is a `Session` subclass with a few enhancements as described below.
 
 ### Client Credentials grant
 
@@ -248,9 +248,7 @@ To exchange a code for Access and/or ID tokens, use the
 method. If you have obtained an AuthorizationResponse as described above, you can simply do:
 
 ```python
-token = oauth2client.authorization_code(
-    auth_response
-)  # redirect_uri is not always mandatory, but some AS still requires it
+token = oauth2client.authorization_code(auth_response)
 ```
 
 This will automatically include the `code`, `redirect_uri` and `code_verifier` parameters in the Token Request,

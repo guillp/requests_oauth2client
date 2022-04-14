@@ -474,7 +474,7 @@ class AuthorizationRequest:
         if isinstance(other, AuthorizationRequest):
             return (
                 self.authorization_endpoint == other.authorization_endpoint
-                and self.ars == other.kwargs
+                and self.args == other.kwargs
                 and self.issuer == other.issuer
             )
         elif isinstance(other, str):

@@ -536,9 +536,7 @@ def server_private_jwks() -> JwkSet:
 
 
 @pytest.fixture(scope="session")
-def server_public_jwks(
-    server_private_jwks: Dict[Literal["keys"], List[Dict[str, Any]]]
-) -> JwkSet:
+def server_public_jwks(server_private_jwks: JwkSet) -> JwkSet:
     return JwkSet(keys=[jwk.public_jwk() for jwk in server_private_jwks.jwks])
 
 

@@ -161,13 +161,13 @@ class ApiClient(requests.Session):
                 raise ValueError(
                     "Invalid value for 'bool_fields'. Must be a 2 value tuple, with (true_value, false_value)."
                 )
-            if isinstance(data, Mapping):
+            if isinstance(data, MutableMapping):
                 for key, val in data.items():
                     if val is True:
                         data[key] = true_value
                     elif val is False:
                         data[key] = false_value
-            if isinstance(params, Mapping):
+            if isinstance(params, MutableMapping):
                 for key, val in params.items():
                     if val is True:
                         params[key] = true_value
@@ -203,7 +203,7 @@ class ApiClient(requests.Session):
 
     def to_absolute_url(
         self, url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None
-    ):
+    ) -> str:
         """
         Given an 'url', that can be relative or absolute, return the matching absolute url, based on the base url.
         :param url: a (possibly relative) url

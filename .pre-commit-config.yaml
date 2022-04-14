@@ -1,9 +1,11 @@
 repos:
--   repo: https://github.com/ambv/black
-    rev: 22.3.0
+-   repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.1.13
     hooks:
-    -   id: black
-        language_version: python3.8
+    -   id: forbid-crlf
+    -   id: remove-crlf
+    -   id: forbid-tabs
+    -   id: remove-tabs
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.2.0
     hooks:
@@ -12,17 +14,15 @@ repos:
     - id: check-merge-conflict
     - id: check-yaml
       args: [--unsafe]
--   repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.1.13
-    hooks:
-    -   id: forbid-crlf
-    -   id: remove-crlf
-    -   id: forbid-tabs
-    -   id: remove-tabs
 -   repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.10.1
     hooks:
     - id: isort
+-   repo: https://github.com/ambv/black
+    rev: 22.3.0
+    hooks:
+    -   id: black
+        language_version: python3.8
 -   repo: https://gitlab.com/pycqa/flake8
     rev: 3.9.2
     hooks:
@@ -32,3 +32,19 @@ repos:
     rev: v1.12.1
     hooks:
         - id: blacken-docs
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.942
+    hooks:
+    -   id: mypy
+        args:
+        - --strict
+        - --implicit-reexport
+        - --show-error-codes
+        - --show-error-context
+        - --show-column-numbers
+        additional_dependencies:
+            - pytest-mypy
+            - jwskate
+            - types-requests
+            - requests_mock
+            - flask
