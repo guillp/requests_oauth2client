@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "requests_oauth2client"
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.2"
 homepage = "https://github.com/guillp/requests_oauth2client"
 description = "An OAuth2.x Client based on requests."
 authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
