@@ -181,8 +181,8 @@ def test_id_token() -> None:
     assert id_token == id_token
     assert id_token.aud == audience
     assert id_token.is_expired()
-    assert id_token.expires_at == datetime(2021, 8, 17, 14, 50, 20)
-    assert id_token.issued_at == datetime(2021, 8, 17, 14, 49, 20)
+    assert id_token.expires_at == datetime(2021, 8, 17, 12, 50, 20, tzinfo=timezone.utc)
+    assert id_token.issued_at == datetime(2021, 8, 17, 12, 49, 20, tzinfo=timezone.utc)
 
 
 def test_invalid_jwt() -> None:
