@@ -1,14 +1,10 @@
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Type, Union
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import Dict, Type, Union
 
 import pytest
 from jwskate import Jwk, JwkSet
+from typing_extensions import Literal
 
 from requests_oauth2client import (
     AuthorizationRequest,

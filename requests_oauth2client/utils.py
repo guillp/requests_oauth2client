@@ -1,10 +1,8 @@
 """This module contains helper methods that are used in multiple places within `requests_oauth2client`."""
 
-import base64
-import json
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Optional
 
 from furl import furl  # type: ignore
 

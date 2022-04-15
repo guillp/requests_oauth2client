@@ -7,17 +7,10 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Mapping,
     Optional,
     Type,
     Union,
 )
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
-
 from urllib.parse import parse_qs
 
 import pytest
@@ -27,6 +20,7 @@ from furl import Query, furl  # type: ignore[import]
 from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
 from requests_mock.request import _RequestObjectProxy
+from typing_extensions import Literal
 
 from requests_oauth2client import (
     ApiClient,

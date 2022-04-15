@@ -1,6 +1,5 @@
 """This modules contain classes that represent Tokens used in OAuth2.0 / OIDC."""
 
-import json
 import pprint
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Optional, Type

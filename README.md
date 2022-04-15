@@ -157,6 +157,8 @@ import requests
 auth = OAuth2ClientCredentialsAuth(
     oauth2client, scope="myscope", resource="https://myapi.local"
 )
+
+# use it like this:
 requests.get("https://myapi.local/resource", auth=auth)
 
 # or

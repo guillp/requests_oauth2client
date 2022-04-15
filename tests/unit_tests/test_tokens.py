@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from jwskate import (
@@ -127,13 +127,13 @@ def test_jwt_iat_exp_nbf() -> None:
 
     assert jwt.verify_signature(public_jwk, alg="RS256")
     assert jwt.issued_at == datetime(
-        year=2021, month=8, day=19, hour=16, minute=55, second=28
+        year=2021, month=8, day=19, hour=14, minute=55, second=28, tzinfo=timezone.utc
     )
     assert jwt.expires_at == datetime(
-        year=2021, month=8, day=19, hour=16, minute=56, second=28
+        year=2021, month=8, day=19, hour=14, minute=56, second=28, tzinfo=timezone.utc
     )
     assert jwt.not_before == datetime(
-        year=2021, month=8, day=19, hour=16, minute=54, second=28
+        year=2021, month=8, day=19, hour=14, minute=54, second=28, tzinfo=timezone.utc
     )
 
     assert jwt.iat == 1629384928

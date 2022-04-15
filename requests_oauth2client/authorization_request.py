@@ -1,7 +1,6 @@
 """This module contains classes and utilities related to Authorization Requests and Responses."""
 
 
-import hashlib
 import re
 import secrets
 from datetime import datetime
@@ -220,7 +219,6 @@ class AuthorizationRequest:
         :param issuer: Issuer Identifier value from the OAuth/OIDC Server, if known. Set it to `False` if the AS doesn't support Server Issuer Identification.
         :param kwargs: extra parameters to include in the request, as-is.
         """
-
         if state is True:
             state = secrets.token_urlsafe(32)
         elif state is False:
@@ -483,6 +481,8 @@ class AuthorizationRequest:
 
 
 class RequestUriParameterAuthorizationRequest:
+    """Represent an Authorization Request that includes a `request` object."""
+
     @accepts_expires_in
     def __init__(
         self,
@@ -491,6 +491,10 @@ class RequestUriParameterAuthorizationRequest:
         request_uri: str,
         expires_at: Optional[datetime] = None,
     ):
+        """Init a RequestUriParameterAuthorizationRequest.
+
+        It needs an authorization endpoint, a client_id, a request_uri, and an optional expiration date.
+        """
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
         self.request_uri = request_uri
@@ -498,9 +502,7 @@ class RequestUriParameterAuthorizationRequest:
 
     @property
     def uri(self) -> str:
-        """
-        Return the Authorization Request URI, as a `str`.
-        """
+        """Return the Authorization Request URI, as a `str`."""
         return str(
             furl(
                 self.authorization_endpoint,
@@ -509,8 +511,7 @@ class RequestUriParameterAuthorizationRequest:
         )
 
     def __repr__(self) -> str:
-        """
-        Return the Authorization Request URI, as a `str`.
+        """Return the Authorization Request URI, as a `str`.
 
         :return: the Authorization Request URI.
         """

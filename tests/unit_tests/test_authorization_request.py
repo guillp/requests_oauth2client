@@ -1,6 +1,4 @@
-import base64
-import hashlib
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import Union
 
 import pytest
 from furl import furl  # type: ignore

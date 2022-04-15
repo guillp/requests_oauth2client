@@ -204,8 +204,8 @@ class ApiClient(requests.Session):
     def to_absolute_url(
         self, url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None
     ) -> str:
-        """
-        Given an 'url', that can be relative or absolute, return the matching absolute url, based on the base url.
+        """Given an 'url', that can be relative or absolute, return the matching absolute url, based on the base url.
+
         :param url: a (possibly relative) url
         :return: the matching absolute url
         """

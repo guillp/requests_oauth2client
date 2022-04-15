@@ -389,6 +389,11 @@ class OAuth2Client:
     def pushed_authorization_request(
         self, authorization_request: AuthorizationRequest
     ) -> RequestUriParameterAuthorizationRequest:
+        """Send a Pushed Authorization Request, return a RequestUriParameterAuthorizationRequest initialized with the AS response.
+
+        :param authorization_request: the authorization request to send
+        :return: the RequestUriParameterAuthorizationRequest initialized based on the AS response
+        """
         if not self.pushed_authorization_request_endpoint:
             raise AttributeError(
                 "No 'pushed_authorization_request_endpoint' defined for this client."
@@ -416,6 +421,12 @@ class OAuth2Client:
     def on_pushed_authorization_request_error(
         self, response: requests.Response
     ) -> RequestUriParameterAuthorizationRequest:
+        """Error Handler for Pushed Authorization Endpoint errors.
+
+        :param response: the HTTP response as returned by the AS PAR endpoint.
+        :return: a RequestUriParameterAuthorizationRequest, if the error is recoverable
+        :raises: Exception
+        """
         error_json = response.json()
         error = error_json.get("error")
         error_description = error_json.get("error_description")

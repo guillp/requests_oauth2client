@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable
 from urllib.parse import parse_qs
 
 import pytest
