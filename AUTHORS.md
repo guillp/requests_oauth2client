@@ -2,7 +2,7 @@
 
 ## Development Lead
 
-* Guillaume Pujol <guill.p.linux@gmail.com>
+- Guillaume Pujol <guill.p.linux@gmail.com>
 
 ## Contributors
 

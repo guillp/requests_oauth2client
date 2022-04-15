@@ -89,15 +89,15 @@ oauth2client = OAuth2Client(
 The Token Endpoint is the only Endpoint that is mandatory to obtain tokens. Credentials are used to authenticate the
 client everytime it sends a request to its Authorization Server. Usually, those are a static Client ID and Secret, which
 are the direct equivalent of a username and a password, but meant for an application instead of for a human user. The
-default authentication method used by OAuth2Client is *Client Secret Post*, but other standardised methods such as
+default authentication method used by `OAuth2Client` is *Client Secret Post*, but other standardised methods such as
 *Client Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See
 [more about client authentication methods below](#supported-client-authentication-methods).
 
 ## Obtaining tokens
 
 [OAuth2Client] has methods to send requests to the Token Endpoint using the different standardised (and/or custom)
-grants. Since the token endpoint and authentication method are already declared for the client, the only required
-parameters are those that will be sent in the request to the Token Endpoint.
+grants. Since the token endpoint and authentication method are already declared for the client at init time, the only
+required parameters are those that will be sent in the request to the Token Endpoint.
 
 Those methods directly return a [BearerToken] if the request is successful, or raise an exception if it fails.
 [BearerToken] will manage the token expiration, will contain the eventual refresh token that matches the access token,
@@ -117,8 +117,8 @@ assert not bearer_token.is_expired()
 ```
 
 Note that the `expires_in` indicator here is not static. It keeps track of the token lifetime and is calculated as the
-time flies. You can check if a token is expired with
-[bearer_token.is_expired()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken.is_expired).
+time flies. The actual static expiration date is accessible with the `expires_at` property. You can check if a token is
+expired with [bearer_token.is_expired()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken.is_expired).
 
 You can use a [BearerToken] instance anywhere you can supply an access_token as string.
 
@@ -126,11 +126,11 @@ You can use a [BearerToken] instance anywhere you can supply an access_token as 
 
 While using [OAuth2Client] directly is great for testing or debugging OAuth2.x flows, it is not a viable option for
 actual applications where tokens must be obtained, used during their lifetime then obtained again or refreshed once they
-are expired. `requests_oauth2client` contains several [requests] compatible Auth Handler (as subclasses of
-[requests.auth.AuthBase](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication), that will
+are expired. `requests_oauth2client` contains several [requests] compatible Auth Handlers (as subclasses of
+[requests.auth.AuthBase](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication)), that will
 take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
 ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session],
-or an [ApiClient] which is a `Session` subclass with a few enhancements as described below.
+or an [ApiClient], which is a `Session` subclass with a few enhancements as described below.
 
 ### Client Credentials grant
 
@@ -179,10 +179,10 @@ Obtaining tokens with the Authorization code grant is made in 3 steps:
 
 1. your application must open specific url called the *Authentication Request* in a browser.
 
-1. your application must obtain and validate the *Authorization Response*, which is a redirection back to your
+2. your application must obtain and validate the *Authorization Response*, which is a redirection back to your
    application that contains an *Authorization Code* as parameter.
 
-1. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
+3. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
    Endpoint.
 
 [OAuth2Client] doesn't implement anything that is related to the Authorization Request or Response. It is only able to
@@ -255,6 +255,7 @@ This will automatically include the `code`, `redirect_uri` and `code_verifier` p
 as expected by the AS.
 
 If you managed another way to obtain an Authorization Code, you can manually pass those parameters like this:
+
 ```python
 token = oauth2client.authorization_code(
     code=code,

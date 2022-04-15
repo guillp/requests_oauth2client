@@ -58,6 +58,10 @@ types-requests = ">=2.25.10"
 types-cryptography = ">=3.3.15"
 virtualenv  = ">=20.2.2"
 
+[tool.poetry.extras]
+test = ["pytest", "pytest-cov"]
+doc = ["mkdocs", "mkdocs-autorefs", "mkdocs-include-markdown-plugin", "mkdocs-material", "mkdocs-material-extensions", "mkdocstrings"]
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"

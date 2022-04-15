@@ -13,9 +13,9 @@ Report bugs at https://github.com/guillp/requests_oauth2client/issues.
 
 If you are reporting a bug, please include:
 
-* Your operating system name and version.
-* Any details about your local setup that might be helpful in troubleshooting.
-* Detailed steps to reproduce the bug.
+- Your operating system name and version.
+- Any details about your local setup that might be helpful in troubleshooting.
+- Detailed steps to reproduce the bug.
 
 ### Fix Bugs
 
@@ -39,9 +39,9 @@ The best way to send feedback is to file an issue at https://github.com/guillp/r
 
 If you are proposing a feature:
 
-* Explain in detail how it would work.
-* Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that this is a volunteer-driven project, and that contributions
+- Explain in detail how it would work.
+- Keep the scope as narrow as possible, to make it easier to implement.
+- Remember that this is a volunteer-driven project, and that contributions
   are welcome :)
 
 ## Get Started!
@@ -52,37 +52,37 @@ Ready to contribute? Here's how to set up `requests_oauth2client` for local deve
 2. Clone your fork locally
 
 ```
-    $ git clone git@github.com:your_name_here/requests_oauth2client.git
+$ git clone git@github.com:your_name_here/requests_oauth2client.git
 ```
 
 3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
 4. Install dependencies and start your virtualenv:
 
 ```
-    $ poetry install -E test -E doc -E dev
+$ poetry install -E test -E doc -E dev
 ```
 
 5. Create a branch for local development:
 
 ```
-    $ git checkout -b name-of-your-bugfix-or-feature
+$ git checkout -b name-of-your-bugfix-or-feature
 ```
 
-   Now you can make your changes locally.
+Now you can make your changes locally.
 
 6. When you're done making changes, check that your changes pass the
    tests, including testing other Python versions, with tox:
 
 ```
-    $ tox
+$ tox
 ```
 
 7. Commit your changes and push your branch to GitHub:
 
 ```
-    $ git add .
-    $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
+$ git add .
+$ git commit -m "Your detailed description of your changes."
+$ git push origin name-of-your-bugfix-or-feature
 ```
 
 8. Submit a pull request through the GitHub website.
@@ -99,10 +99,13 @@ Before you submit a pull request, check that it meets these guidelines:
    https://github.com/guillp/requests_oauth2client/actions
    and make sure that the tests pass for all supported Python versions.
 
-## Tips```
-    $ pytest tests.test_requests_oauth2client
-```To run a subset of tests.
+## Tips
 
+```
+$ pytest tests.test_client_credentials
+```
+
+To run a subset of tests.
 
 ## Deploying
 

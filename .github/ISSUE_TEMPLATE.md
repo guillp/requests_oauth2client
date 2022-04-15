@@ -1,6 +1,6 @@
-* `requests_oauth2client` version:
-* Python version:
-* Operating System:
+- `requests_oauth2client` version:
+- Python version:
+- Operating System:
 
 ### Description
 

@@ -14,6 +14,14 @@ repos:
     - id: check-merge-conflict
     - id: check-yaml
       args: [--unsafe]
+- repo: https://github.com/executablebooks/mdformat
+  rev: 0.7.14
+  hooks:
+  - id: mdformat
+    args:
+      - --number
+    additional_dependencies:
+    - mdformat-black
 -   repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.10.1
     hooks:
