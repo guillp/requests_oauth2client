@@ -1,6 +1,11 @@
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Literal, Type, Union
+from typing import Any, Dict, List, Type, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 import pytest
 from jwskate import Jwk, JwkSet

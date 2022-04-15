@@ -7,12 +7,17 @@ from typing import (
     Dict,
     Iterable,
     List,
-    Literal,
     Mapping,
     Optional,
     Type,
     Union,
 )
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 from urllib.parse import parse_qs
 
 import pytest
