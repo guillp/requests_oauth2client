@@ -1,8 +1,15 @@
 import pytest
+import requests
 from requests import HTTPError
 
 from requests_oauth2client import ApiClient, BearerAuth
 from tests.conftest import RequestsMocker, RequestValidatorType, join_url
+
+
+def test_session_at_init() -> None:
+    session = requests.Session()
+    api = ApiClient(session=session)
+    assert api.session == session
 
 
 def test_get(
@@ -205,7 +212,7 @@ def test_url_type(target_api: str) -> None:
 def test_additional_kwargs(target_api: str) -> None:
     proxies = {"https": "http://localhost:8888"}
     api = ApiClient(target_api, proxies=proxies, timeout=10)
-    assert api.proxies == proxies
+    assert api.session.proxies == proxies
     assert api.timeout == 10
 
 

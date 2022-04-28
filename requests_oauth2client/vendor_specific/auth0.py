@@ -82,5 +82,6 @@ class Auth0ManagementApiClient(ApiClient):
         super().__init__(
             url=audience,
             auth=api_auth,
+            session=session,
             **kwargs,
         )

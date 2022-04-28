@@ -130,7 +130,7 @@ are expired. `requests_oauth2client` contains several [requests] compatible Auth
 [requests.auth.AuthBase](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication)), that will
 take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
 ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session],
-or an [ApiClient], which is a `Session` subclass with a few enhancements as described below.
+or an [ApiClient], which is a wrapper around `Session` with a few enhancements as described below.
 
 ### Client Credentials grant
 
@@ -501,7 +501,7 @@ requires client authentication. You don't have anything else to do afterwards.
 
 - **private_key_jwt**: client uses a JWT assertion like _client_secret_jwt_, but it is signed with an _asymmetric_ key.
   To use it, you need a private signing key, in a `dict` that matches the JWK format. The matching public key must be
-  registered for your client on AS side. Once you have that, using this auth method is as simple with the
+  registered for your client on AS side. Once you have that, using this auth method is simple with the
   [PrivateKeyJWT(client_id, private_jwk)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PrivateKeyJWT)
   auth handler:
 
@@ -524,7 +524,13 @@ requires client authentication. You don't have anything else to do afterwards.
   )
   ```
 
-- **none**: client only presents its client_id in body form data to the AS, without any authentication credentials. Use
+  Note that you can also directly pass a `(client_id, jwk)` tuple, with the same effect:
+
+  ```python
+  client = OAuth2Client(token_endpoint, auth=(client_id, private_jwk))
+  ```
+
+- **none**: client only includes its `client_id` in body form data, without any authentication credentials. Use
   [PublicApp(client_id)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PublicApp):
 
   ```python
@@ -630,7 +636,7 @@ the appropriate endpoint URIs.
 ## Specialized API Client
 
 Using APIs usually involves multiple endpoints under the same root url, with a common authentication method. To make it
-easier, `requests_oauth2client` includes a specialized [requests.Session] subclass called [ApiClient], which takes the
+easier, `requests_oauth2client` includes a [requests.Session] wrapper called [ApiClient], which takes the
 root API url as parameter on initialization. You can then send requests to different endpoints by passing their relative
 path instead of the full url. [ApiClient] also accepts an `auth` parameter with an AuthHandler. You can pass any of the
 OAuth2 Auth Handler from this module, or any [requests]-compatible
@@ -647,14 +653,12 @@ resp = api.get(
 )  # will actually send a GET to https://myapi.local/root/resource/foo
 ```
 
-Note that [ApiClient] will never send requests "outside" its configured root url, unless you specifically give it full
+Note that [ApiClient] will never send requests "outside" its configured root url, unless you specifically give it a full
 url at request time. The leading `/` in `/resource` above is optional. A leading `/` will not "reset" the url path to
 root, which means that you can also write the relative path without the `/` and it will automatically be included:
 
 ```python
-api.get(
-    "resource/foo"
-)  # will actually send a GET to https://myapi.local/root/resource/foo
+api.get("resource/foo")  # will also send a GET to https://myapi.local/root/resource/foo
 ```
 
 You may also pass the path as an iterable of strings (or string-able objects), in which case they will be joined with a
@@ -673,18 +677,30 @@ api.get(
 passing `raise_for_status=False` when initializing your [ApiClient]:
 
 ```python
-api = ApiClient("http://httpstat.us", raise_for_status=False)  # this defaults to True
-resp = api.get(
-    "500"
-)  # without raise_for_status=False, this would raise a requests.exceptions.HTTPError
+api = ApiClient(
+    "http://httpstat.us", raise_for_status=False
+)  # raise_for_status defaults to True
+resp = api.get("500")
+assert resp is not None
+# without raise_for_status=False, a requests.exceptions.HTTPError exception would be raised instead
 ```
 
 You may override this at request time:
 
 ```python
-resp = api.get(
-    "500", raise_for_status=True
-)  # raise_for_status at request-time overrides the value defined at init-time
+# raise_for_status at request-time overrides the value defined at init-time
+resp = api.get("500", raise_for_status=True)
+```
+
+You can access the underlying `requests.Session` with the session attribute, and you can provide an already existing and configured `Session` instance at init time:
+
+```python
+import requests
+
+session = requests.Session()
+session.proxies = {"https": "http://localhost:3128"}
+api = ApiClient("https://myapi.local/resource", session=session)
+assert api.session == session
 ```
 
 ## Vendor-Specific clients
@@ -693,14 +709,14 @@ resp = api.get(
 as long as it supports OAuth 2.0.
 
 You can however create a subclass of [OAuth2Client] or [ApiClient] to make it easier to use with specific Authorization
-Servers or APIs. The sub-module `requests_oauth2client.vendor_specific` includes such classes for Auth0:
+Servers or APIs. The sub-module `requests_oauth2client.vendor_specific` includes such classes for [Auth0](https://auth0.com):
 
 ```python
 from requests_oauth2client.vendor_specific import Auth0Client
 
 a0client = Auth0Client("mytenant.eu", (client_id, client_secret))
 # this will automatically initialize the token endpoint to https://mytenant.eu.auth0.com/oauth/token
-# so you can use it directly
+# and other endpoints accordingly
 token = a0client.client_credentials(audience="audience")
 
 # this is a wrapper around Auth0 Management API

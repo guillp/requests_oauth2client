@@ -5,8 +5,8 @@
 - First properly documented version.
 - Migrated from pipenv to poetry
 - Added pre-commit checks
-- Major refactor of the Json Web Crypto related classes
 - `requests` is now automatically imported with `from requests_oauth2client import *`
+- ApiClient is now a wrapper around `requests.Session` instead of a subclass
 - `ApiClient.__init__()` now accepts extra kwargs which will be used to configure the `Session`.
 - `AuthorizationRequest.validate_callback()` now returns an `AuthorizationResponse` which contains all returned
   response attributes instead of just a code. To access the authorization code, get the `code` attribute from that response.

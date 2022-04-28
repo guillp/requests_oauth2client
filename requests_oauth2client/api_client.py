@@ -23,7 +23,7 @@ import requests
 from requests.cookies import RequestsCookieJar
 
 
-class ApiClient(requests.Session):
+class ApiClient:
     """
     A Wrapper around [requests.Session][] to simplify Rest API calls.
 
@@ -33,12 +33,23 @@ class ApiClient(requests.Session):
     instead of setting them later.
 
     Basic usage:
-
+        ```python
         from requests_oauth2client import ApiClient
-        api = ApiClient("https://myapi.local/resource", timeout=10)
-        resp = api.get("/myid") # this will send a GET request
-                                # to https://myapi.local/resource/myid
 
+        api = ApiClient("https://myapi.local/resource", timeout=10)
+        resp = api.get("/myid")  # this will send a GET request
+        # to https://myapi.local/resource/myid
+
+        # you can pass an underlying requests.Session at init time
+        session = requests.Session()
+        session.proxies = {"https": "https://localhost:3128"}
+        api = ApiClient("https://myapi.local/resource", session=session)
+
+        # or you can let ApiClient init it's own session and provide additional configuration parameters:
+        api = ApiClient(
+            "https://myapi.local/resource", proxies={"https": "https://localhost:3128"}
+        )
+        ```
     """
 
     def __init__(
@@ -49,6 +60,7 @@ class ApiClient(requests.Session):
         raise_for_status: bool = True,
         none_fields: Literal["include", "exclude", "empty"] = "exclude",
         bool_fields: Optional[Tuple[Any, Any]] = ("true", "false"),
+        session: Optional[requests.Session] = None,
         **kwargs: Any,
     ):
         """
@@ -69,16 +81,18 @@ class ApiClient(requests.Session):
         super(ApiClient, self).__init__()
 
         self.base_url = base_url
-        self.auth = auth
-        self.timeout = timeout
         self.raise_for_status = raise_for_status
         self.none_fields = none_fields
         self.bool_fields = bool_fields if bool_fields is not None else (True, False)
+        self.timeout = timeout
+
+        self.session = session or requests.Session()
+        self.session.auth = auth
 
         for key, val in kwargs.items():
-            setattr(self, key, val)
+            setattr(self.session, key, val)
 
-    def request(  # type: ignore  # noqa: C901
+    def request(  # noqa: C901
         self,
         method: str,
         url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
@@ -176,7 +190,7 @@ class ApiClient(requests.Session):
 
         timeout = timeout or self.timeout
 
-        response = super(ApiClient, self).request(
+        response = self.session.request(
             method,
             url,
             params=params,
@@ -239,7 +253,7 @@ class ApiClient(requests.Session):
 
         return url
 
-    def get(  # type: ignore
+    def get(
         self,
         url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
         raise_for_status: Optional[bool] = None,
@@ -261,7 +275,12 @@ class ApiClient(requests.Session):
         """
         return self.request("GET", url, raise_for_status=raise_for_status, **kwargs)
 
-    def post(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def post(
+        self,
+        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> requests.Response:
         """
         Send a POST request. Return a [Response][requests.Response] object.
 
@@ -276,7 +295,12 @@ class ApiClient(requests.Session):
         """
         return self.request("POST", url, raise_for_status=raise_for_status, **kwargs)
 
-    def patch(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def patch(
+        self,
+        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> requests.Response:
         """
         Send a PATCH request. Return a [Response][requests.Response] object.
 
@@ -291,7 +315,12 @@ class ApiClient(requests.Session):
         """
         return self.request("PATCH", url, raise_for_status=raise_for_status, **kwargs)
 
-    def put(self, url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None, raise_for_status: Optional[bool] = None, **kwargs: Any) -> requests.Response:  # type: ignore
+    def put(
+        self,
+        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
+        raise_for_status: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> requests.Response:
         """
         Send a PUT request. Return a [Response][requests.Response] object.
 
@@ -306,7 +335,7 @@ class ApiClient(requests.Session):
         """
         return self.request("PUT", url, raise_for_status=raise_for_status, **kwargs)
 
-    def delete(  # type: ignore
+    def delete(
         self,
         url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
         raise_for_status: Optional[bool] = None,
