@@ -8,6 +8,7 @@
 - `requests` is now automatically imported with `from requests_oauth2client import *`
 - ApiClient is now a wrapper around `requests.Session` instead of a subclass
 - `ApiClient.__init__()` now accepts extra kwargs which will be used to configure the `Session`.
+- Add `__getitem__` and `__getattr_` to ApiClient
 - `AuthorizationRequest.validate_callback()` now returns an `AuthorizationResponse` which contains all returned
   response attributes instead of just a code. To access the authorization code, get the `code` attribute from that response.
 - `OAuth2Client.authorization_code()` now accepts an `AuthorizationResponse` as parameter, and will

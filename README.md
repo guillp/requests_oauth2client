@@ -648,9 +648,9 @@ oauth2client = OAuth2Client("https://myas.local/token", (client_id, client_secre
 api = ApiClient(
     "https://myapi.local/root", auth=OAuth2ClientCredentialsAuth(oauth2client)
 )
-resp = api.get(
-    "/resource/foo"
-)  # will actually send a GET to https://myapi.local/root/resource/foo
+
+# will actually send a GET to https://myapi.local/root/resource/foo
+resp = api.get("/resource/foo")
 ```
 
 Note that [ApiClient] will never send requests "outside" its configured root url, unless you specifically give it a full
@@ -665,12 +665,29 @@ You may also pass the path as an iterable of strings (or string-able objects), i
 `/` and appended to the url path:
 
 ```python
-api.get(
-    ["resource", "foo"]
-)  # will actually send a GET to https://myapi.local/root/resource/foo
-api.get(
-    ["users", 1234, "details"]
-)  # will actually send a GET to https://myapi.local/root/users/1234/details
+# will send a GET to https://myapi.local/root/resource/foo
+api.get(["resource", "foo"])
+# will send a GET to https://myapi.local/root/users/1234/details
+api.get(["users", 1234, "details"])
+```
+
+You can also use a syntax based on `__getattr__` or `__getitem__`:
+
+```python
+api.resource.get()  # will send a GET to https://myapi.local/root/resource
+api["my-resource"].get()  # will send a GET to https://myapi.local/root/my-resource
+```
+
+Both `__getattr__` and `__getitem__` return a new `ApiClient` initialised on the new base_url.
+So you can easily call multiple sub-resources on the same API this way:
+
+```python
+api = ApiClient("https://myapi.local")
+users_api = api.users
+user = users_api.get("userid")  # GET https://myapi.local/users/userid
+other_user = users_api.get("other_userid")  # GET https://myapi.local/users/other_userid
+resources_api = api.resources
+resources = resources_api.get()  # GET https://myapi.local/resources
 ```
 
 [ApiClient] will, by default, raise exceptions whenever a request returns an error status. You can disable that by

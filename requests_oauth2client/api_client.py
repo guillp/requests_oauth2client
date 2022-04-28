@@ -1,5 +1,7 @@
 """ApiClient main module."""
 
+from __future__ import annotations
+
 from typing import (
     IO,
     Any,
@@ -354,3 +356,46 @@ class ApiClient:
         :raises requests.HTTPError: if `raises_for_status` is True (in this request or at initialization time) and an error response is returned.
         """
         return self.request("DELETE", url, raise_for_status=raise_for_status, **kwargs)
+
+    def __getattr__(self, item: str) -> ApiClient:
+        """Allow access sub resources with an attribute-based syntax.
+
+        ```python
+        api = ApiClient("https://myapi.local")
+        resource1 = api.resource1.get()  # GET https://myapi.local/resource1
+        resource2 = api.resource2.get()  # GET https://myapi.local/resource2
+        ```
+
+        :param item: a subpath
+        :return: a new ApiClient initialised on the new base url
+        """
+        return self[item]
+
+    def __getitem__(self, item: str) -> ApiClient:
+        """Allow access to sub resources with a subscription-based syntax.
+
+        ```python
+        api = ApiClient("https://myapi.local")
+        resource1 = api['resource1'].get() # GET https://myapi.local/resource1
+        resource2 = api['resource2'].get() # GET https://myapi.local/resource2
+
+        :param item: a subpath
+        :return: a new ApiClient initialised on the the new base url
+        """
+        new_base_uri = self.to_absolute_url(item)
+        return self.__class__(
+            new_base_uri,
+            session=self.session,
+            none_fields=self.none_fields,
+            bool_fields=self.bool_fields,
+            timeout=self.timeout,
+            raise_for_status=self.raise_for_status,
+        )
+
+    def __enter__(self) -> ApiClient:
+        """Allow `ApiClient` to act as a context manager, the same way as `requests.Session`."""
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        """Allow `ApiClient` to act as a context manager, the same way as `requests.Session`."""
+        self.session.close()

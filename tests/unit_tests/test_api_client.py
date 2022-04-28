@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 import pytest
 import requests
 from requests import HTTPError
@@ -296,3 +298,48 @@ def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
     assert requests_mock.last_request.text == "foo=bar&true=1&false=0"
+
+
+def test_getattr(requests_mock: RequestsMocker, target_api: str) -> None:
+    api = ApiClient(target_api)
+
+    requests_mock.post(target_api)
+    assert api.post().ok
+    assert requests_mock.last_request is not None
+
+    requests_mock.reset_mock()
+    requests_mock.post(urljoin(target_api, "foo"))
+    assert api.foo.post().ok
+    assert requests_mock.last_request is not None
+
+    requests_mock.reset_mock()
+    requests_mock.post(urljoin(target_api, "bar"))
+    assert api.bar.post().ok
+    assert requests_mock.last_request is not None
+
+
+def test_getitem(requests_mock: RequestsMocker, target_api: str) -> None:
+    api = ApiClient(target_api)
+
+    requests_mock.post(target_api)
+    assert api.post().ok
+    assert requests_mock.last_request is not None
+
+    requests_mock.reset_mock()
+    requests_mock.post(urljoin(target_api, "foo"))
+    assert api["foo"].post().ok
+    assert requests_mock.last_request is not None
+
+    requests_mock.reset_mock()
+    requests_mock.post(urljoin(target_api, "bar"))
+    assert api["bar"].post().ok
+    assert requests_mock.last_request is not None
+
+
+def test_contextmanager(requests_mock: RequestsMocker, target_api: str) -> None:
+    requests_mock.post(target_api)
+
+    with ApiClient(target_api) as api:
+        api.post()
+
+    assert requests_mock.last_request is not None
