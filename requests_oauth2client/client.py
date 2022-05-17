@@ -1,8 +1,16 @@
+"""This module contains the OAuth2Client class, which is a central part of `requests_oauth2client`."""
+
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
+from jwskate import Jwk, JwkSet, Jwt
 
 from .auth import BearerAuth
+from .authorization_request import (
+    AuthorizationRequest,
+    AuthorizationResponse,
+    RequestUriParameterAuthorizationRequest,
+)
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
@@ -16,6 +24,7 @@ from .exceptions import (
     InvalidBackChannelAuthenticationResponse,
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
+    InvalidPushedAuthorizationResponse,
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
@@ -27,18 +36,33 @@ from .exceptions import (
     UnknownTokenEndpointError,
     UnsupportedTokenType,
 )
-from .jwskate import Jwk, Jwt
 from .tokens import BearerToken, IdToken
 from .utils import validate_endpoint_uri
 
 
 class OAuth2Client:
     """
-    An OAuth 2.0 client, able to obtain tokens from the Token Endpoint using one of the standardised Grant Types,
+    An OAuth 2.0 client, that can send requests to an OAuth 2.0 Authorization Server.
+
+    `OAuth2Client` is able to obtain tokens from the Token Endpoint using one of the standardised Grant Types,
     and to communicate with the various backend endpoints like the Revocation, Introspection, and UserInfo Endpoint.
 
     This class doesn't implement anything related to the end-user authentication or any request that goes in a browser.
-    For authentication requests, see :class`AuthorizationRequest`.
+    For authentication requests, see [AuthorizationRequest][requests_oauth2client.authorization_request.AuthorizationRequest].
+
+    Usage:
+    ```python
+    client = OAuth2Client(
+        token_endpoint="https://my.as.local/token",
+        revocation_endpoint="https://my.as.local/revoke",
+        auth=("client_id", "client_secret"),
+    )
+
+    # once intialized, a client can send requests to its configured endpoints
+    cc_token = client.client_credentials(scope="my_scope")
+    ac_token = client.authorization_code(code="my_code")
+    client.revoke_access_token(cc_token)
+    ```
     """
 
     exception_classes: Dict[str, Type[Exception]] = {
@@ -57,23 +81,28 @@ class OAuth2Client:
     def __init__(
         self,
         token_endpoint: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], Tuple[str, Jwk], str],
         revocation_endpoint: Optional[str] = None,
         introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
         backchannel_authentication_endpoint: Optional[str] = None,
         device_authorization_endpoint: Optional[str] = None,
+        pushed_authorization_request_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
     ):
         """
-        :param token_endpoint: the token endpoint where this client will get access tokens
-        :param auth: the authentication handler to use for client authentication on the token endpoint.  Can be a
-        `requests.auth.AuthBase` instance (which will be used directly), or a tuple of (client_id, client_secret) which
-        will initialize an instance of `default_auth_handler`, or a client_id which will use PublicApp authentication.
-        :param revocation_endpoint: the revocation endpoint url to use for revoking tokens, if any
-        :param introspection_endpoint: the introspection endpoint url to get info about tokens, if any
-        :param session: a requests Session to use when sending HTTP requests
+        Initialize an `OAuth2Client`.
+
+        :param token_endpoint: the Token Endpoint URI where this client will get access tokens
+        :param auth: the authentication handler to use for client authentication on the token endpoint. Can be a [requests.auth.AuthBase][] instance (which will be as-is), or a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost], a `(client_id, jwk)` to initialize a [PrivateKeyJwt][requests_oauth2client.client_authentication.PrivateKeyJwt], or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
+        :param revocation_endpoint: the Revocation Endpoint URI to use for revoking tokens
+        :param introspection_endpoint: the Introspection Endpoint URI to use to get info about tokens
+        :param userinfo_endpoint: the Userinfo Endpoint URI to use to get information about the user
+        :param backchannel_authentication_endpoint: the BackChannel Authentication URI
+        :param device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
+        :param jwks_uri: the JWKS URI to use to obtain the AS public keys
+        :param session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy or client certificate must be used to connect to the AS.
         """
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = (
@@ -93,6 +122,11 @@ class OAuth2Client:
             if device_authorization_endpoint
             else None
         )
+        self.pushed_authorization_request_endpoint = (
+            str(pushed_authorization_request_endpoint)
+            if pushed_authorization_request_endpoint
+            else None
+        )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
         self.auth = client_auth_factory(auth, ClientSecretPost)
@@ -101,11 +135,12 @@ class OAuth2Client:
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
     ) -> BearerToken:
         """
-        Sends a authenticated request to the token endpoint.
-        :param data: parameters to send to the token endpoint
+        Send a request to the token endpoint. Authentication will be added automatically.
+
+        :param data: parameters to send to the token endpoint. Items with a None or empty value will not be sent in the request.
         :param timeout: a timeout value for the call
         :param requests_kwargs: additional parameters for requests.post()
-        :return: the token endpoint response, as BearerToken instance.
+        :return: the token endpoint response, as [BearerToken][requests_oauth2client.tokens.BearerToken] instance.
         """
         requests_kwargs = {
             key: value
@@ -126,6 +161,14 @@ class OAuth2Client:
         return self.on_token_error(response)
 
     def parse_token_response(self, response: requests.Response) -> BearerToken:
+        """
+        Parse a Response returned by the Token Endpoint.
+
+        Invoked by [token_request][requests_oauth2client.client.OAuth2Client.token_request] to parse responses returned by the Token Endpoint.
+        Those response contain an `access_token` and additional attributes.
+        :param response: the [Response][requests.Response] returned by the Token Endpoint.
+        :return: a [BearerToken][requests_oauth2client.tokens.BearerToken] based on the response contents.
+        """
         try:
             token_response = BearerToken(**response.json())
             return token_response
@@ -137,10 +180,11 @@ class OAuth2Client:
 
     def on_token_error(self, response: requests.Response) -> BearerToken:
         """
-        Executed when the token endpoint returns an error.
-        :param response: the token response
-        :return: should return nothing and raise an exception instead. But a subclass can return a BearerToken
-         to implement a default behaviour if needed.
+        Error handler for [token_request][requests_oauth2client.client.OAuth2Client.token_request].
+
+        Invoked by [token_request][requests_oauth2client.client.OAuth2Client.token_request] when the Token Endpoint returns an error.
+        :param response: the [Response][requests.Response] returned by the Token Endpoint.
+        :return: returns nothing and raises an exception instead. But a subclass may return a [BearerToken][requests_oauth2client.tokens.BearerToken] to implement a default behaviour if needed.
         """
         error_json = response.json()
         error = error_json.get("error")
@@ -164,10 +208,11 @@ class OAuth2Client:
         **token_kwargs: Any,
     ) -> BearerToken:
         """
-        Sends a request to the token endpoint with the client_credentials grant.
+        Send a request to the token endpoint using the `client_credentials` grant.
+
         :param scope: the scope to send with the request. Can be a str, or an iterable of str.
-        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type. Common parameters
-        to pass that way include scope, audience, resource, etc.
+        :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`. Common parameters
+        to pass that way include `scope`, `audience`, `resource`, etc.
         :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
@@ -184,57 +229,51 @@ class OAuth2Client:
 
     def authorization_code(
         self,
-        code: str,
+        code: Union[str, AuthorizationResponse],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """
-        Sends a request to the token endpoint with the authorization_code grant.
+        Send a request to the token endpoint with the `authorization_code` grant.
+
         :param code: an authorization code to exchange for tokens
-        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, code, etc.
+        :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `code`, etc.
         :param requests_kwargs: additional parameters for the call to requests
         :return: a TokenResponse
         """
+        if isinstance(code, AuthorizationResponse):
+            if not isinstance(code.code, str):
+                raise ValueError(
+                    "This AuthorizationResponse doesn't contain an authorization code"
+                )
+            token_kwargs.setdefault("code_verifer", code.code_verifier)
+            token_kwargs.setdefault("redirect_uri", code.redirect_uri)
+            code = code.code
+
         requests_kwargs = requests_kwargs or {}
+
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
-    def authorization_code_pkce(
-        self,
-        code: str,
-        code_verifier: str,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
-        **token_kwargs: Any,
-    ) -> BearerToken:
-        """
-        Sends a request to the token endpoint with the authorization_code grant, and
-        This is just an alias to `authorization_code()` with code_verifier as mandatory parameter.
-        :param code: an authorization code to exchange for tokens
-        :param code_verifier: the code verifier that matches the authorization code
-        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, code, etc.
-        :param requests_kwargs: additional parameters for the call to requests
-        :return: a BearerToken
-        """
-        return self.authorization_code(
-            code=code,
-            code_verifier=code_verifier,
-            requests_kwargs=requests_kwargs,
-            **token_kwargs,
-        )
-
     def refresh_token(
         self,
-        refresh_token: str,
+        refresh_token: Union[str, BearerToken],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """
-        Sends a request to the token endpoint with the refresh_token grant.
-        :param refresh_token: a refresh_token
-        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, refresh_token, etc.
-        :param requests_kwargs: additional parameters for the call to requests
+        Send a request to the token endpoint with the `refresh_token` grant.
+
+        :param refresh_token: a refresh_token, as a string, or as a BearerToken. That BearerToken must have a `refresh_token`.
+        :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `refresh_token`, etc.
+        :param requests_kwargs: additional parameters for the call to `requests`
         :return: a BearerToken
         """
+        if isinstance(refresh_token, BearerToken):
+            if refresh_token.refresh_token is None:
+                raise ValueError("This BearerToken doesn't have a refresh_token")
+            refresh_token = refresh_token.refresh_token
+
         requests_kwargs = requests_kwargs or {}
         data = dict(
             grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs
@@ -243,17 +282,21 @@ class OAuth2Client:
 
     def device_code(
         self,
-        device_code: str,
+        device_code: Union[str, DeviceAuthorizationResponse],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """
-        Sends a request to the token endpoint with the urn:ietf:params:oauth:grant-type:device_code grant.
-        :param device_code: a device code as received during the device authorization request
+        Send a request to the token endpoint with the `urn:ietf:params:oauth:grant-type:device_code` grant.
+
+        :param device_code: a device code, as received during the Device Authorization request
         :param requests_kwargs: additional parameters for the call to requests
-        :param token_kwargs: additional parameters for the token endpoint, alongside grant_type, device_code, etc.
+        :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
         :return: a BearerToken
         """
+        if isinstance(device_code, DeviceAuthorizationResponse):
+            device_code = device_code.device_code
+
         requests_kwargs = requests_kwargs or {}
         data = dict(
             grant_type="urn:ietf:params:oauth:grant-type:device_code",
@@ -264,10 +307,22 @@ class OAuth2Client:
 
     def ciba(
         self,
-        auth_req_id: str,
+        auth_req_id: Union[str, BackChannelAuthenticationResponse],
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
+        """
+        Send a CIBA request to the Token Endpoint.
+
+        A CIBA request is a Token Request using the `urn:openid:params:grant-type:ciba` grant.
+        :param auth_req_id: an authentication request ID, as returned by the AS
+        :param requests_kwargs: additional parameters for the call to requests
+        :param token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `auth_req_id`, etc.
+        :return:
+        """
+        if isinstance(auth_req_id, BackChannelAuthenticationResponse):
+            auth_req_id = auth_req_id.auth_req_id
+
         requests_kwargs = requests_kwargs or {}
         data = dict(
             grant_type="urn:openid:params:grant-type:ciba",
@@ -287,8 +342,9 @@ class OAuth2Client:
         **token_kwargs: Any,
     ) -> BearerToken:
         """
-        Sends a Token Exchange request, which is actually a request to the Token Endpoint with a
-        grant_type `urn:ietf:params:oauth:grant-type:token-exchange`.
+        Send a Token Exchange request.
+
+        A Token Exchange request is actually a request to the Token Endpoint with a grant_type `urn:ietf:params:oauth:grant-type:token-exchange`.
 
         :param subject_token: the subject token to exchange for a new token.
         :param subject_token_type: a token type identifier for the subject_token, mandatory if it cannot be guessed based
@@ -307,16 +363,16 @@ class OAuth2Client:
             subject_token_type = self.get_token_type(subject_token_type, subject_token)
         except ValueError:
             raise TypeError(
-                "Cannot determine the kind of subject_token you provided."
-                "Please specify a subject_token_type."
+                "Cannot determine the kind of 'subject_token' you provided. "
+                "Please specify a 'subject_token_type'."
             )
         if actor_token:  # pragma: no branch
             try:
                 actor_token_type = self.get_token_type(actor_token_type, actor_token)
             except ValueError:
                 raise TypeError(
-                    "Cannot determine the kind of actor_token you provided."
-                    "Please specify an actor_token_type."
+                    "Cannot determine the kind of 'actor_token' you provided. "
+                    "Please specify an 'actor_token_type'."
                 )
 
         data = dict(
@@ -330,14 +386,71 @@ class OAuth2Client:
         )
         return self.token_request(data, **requests_kwargs)
 
+    def pushed_authorization_request(
+        self, authorization_request: AuthorizationRequest
+    ) -> RequestUriParameterAuthorizationRequest:
+        """Send a Pushed Authorization Request, return a RequestUriParameterAuthorizationRequest initialized with the AS response.
+
+        :param authorization_request: the authorization request to send
+        :return: the RequestUriParameterAuthorizationRequest initialized based on the AS response
+        """
+        if not self.pushed_authorization_request_endpoint:
+            raise AttributeError(
+                "No 'pushed_authorization_request_endpoint' defined for this client."
+            )
+
+        response = self.session.post(
+            self.pushed_authorization_request_endpoint,
+            data=authorization_request.args,
+            auth=self.auth,
+        )
+        if not response.ok:
+            return self.on_pushed_authorization_request_error(response)
+
+        response_json = response.json()
+        request_uri = response_json.get("request_uri")
+        expires_in = response_json.get("expires_in")
+
+        return RequestUriParameterAuthorizationRequest(
+            authorization_endpoint=authorization_request.authorization_endpoint,
+            client_id=authorization_request.client_id,
+            request_uri=request_uri,
+            expires_in=expires_in,
+        )
+
+    def on_pushed_authorization_request_error(
+        self, response: requests.Response
+    ) -> RequestUriParameterAuthorizationRequest:
+        """Error Handler for Pushed Authorization Endpoint errors.
+
+        :param response: the HTTP response as returned by the AS PAR endpoint.
+        :return: a RequestUriParameterAuthorizationRequest, if the error is recoverable
+        :raises: Exception
+        """
+        error_json = response.json()
+        error = error_json.get("error")
+        error_description = error_json.get("error_description")
+        error_uri = error_json.get("error_uri")
+        if error:
+            exception_class = self.exception_classes.get(
+                error, UnknownTokenEndpointError
+            )
+            raise exception_class(error, error_description, error_uri)
+        else:
+            raise InvalidPushedAuthorizationResponse(
+                "pushed authorization endpoint returned an HTTP error without error message",
+                error_json,
+            )
+
     def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
         """
-        Calls the userinfo endpoint with the specified access_token and returns the result.
+        Call the UserInfo endpoint with the specified access_token and return the result.
+
         :param access_token: the access token to use
-        :return: the requests Response returned by the userinfo endpoint.
+        :return: the [Response][requests.Response] returned by the userinfo endpoint.
         """
         if not self.userinfo_endpoint:
-            raise AttributeError("No userinfo endpoint defined for this client")
+            raise AttributeError("No userinfo_endpoint defined for this client")
 
         response = self.session.post(
             self.userinfo_endpoint, auth=BearerAuth(access_token)
@@ -346,15 +459,12 @@ class OAuth2Client:
 
     def parse_userinfo_response(self, resp: requests.Response) -> Any:
         """
-        Given a response obtained from the userinfo endpoint, extracts its JSON content.
-        A subclass may implement the signature validation and/or decryption of a userinfo JWT response.
-        :param resp: a response obtained from the userinfo endpoint
-        :return: the parsed JSON content from this response
+        Given a response obtained from the userinfo endpoint, extract its JSON content.
+
+        :param resp: a [Response][requests.Response] returned from the UserInfo endpoint.
+        :return: the parsed JSON content from this response.
         """
-        try:
-            return resp.json()
-        except ValueError:
-            return resp.text
+        return resp.json()
 
     @classmethod
     def get_token_type(
@@ -362,6 +472,13 @@ class OAuth2Client:
         token_type: Optional[str] = None,
         token: Union[None, str, BearerToken, IdToken] = None,
     ) -> str:
+        """
+        Return a standardised token type identifier, based on a short `token_type` hint and/or a token value.
+
+        :param token_type: a token_type hint, as `str`. May be "access_token", "refresh_token" or "id_token" (optional)
+        :param token: a token value, as an instance of BearerToken or IdToken, or as a `str`.
+        :return: the token_type as defined in the Token Exchange RFC8693.
+        """
         if not (token_type or token):
             raise ValueError(
                 "Cannot determine type of an empty token without a token_type hint"
@@ -379,13 +496,13 @@ class OAuth2Client:
                 return "urn:ietf:params:oauth:token-type:id_token"
             else:
                 raise TypeError(
-                    "Unexpected type of token, please provide a string or a BearerToken or an IdToken",
+                    "Unexpected type of token, please provide a string or a BearerToken or an IdToken.",
                     type(token),
                 )
         elif token_type == "access_token":
             if token is not None and not isinstance(token, (str, BearerToken)):
                 raise TypeError(
-                    "The supplied token is not a BearerToken or a string representation of it",
+                    "The supplied token is not a BearerToken or a string representation of it.",
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:access_token"
@@ -396,13 +513,13 @@ class OAuth2Client:
                 and not token.refresh_token
             ):
                 raise ValueError(
-                    "The supplied BearerToken doesn't have a refresh_token"
+                    "The supplied BearerToken doesn't have a refresh_token."
                 )
             return "urn:ietf:params:oauth:token-type:refresh_token"
         elif token_type == "id_token":
             if token is not None and not isinstance(token, (str, IdToken)):
                 raise TypeError(
-                    "The supplied token is not an IdToken or a string representation of it",
+                    "The supplied token is not an IdToken or a string representation of it.",
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:id_token"
@@ -420,7 +537,8 @@ class OAuth2Client:
         **revoke_kwargs: Any,
     ) -> bool:
         """
-        Sends a request to the revocation endpoint to revoke an access token.
+        Send a request to the Revocation Endpoint to revoke an access token.
+
         :param access_token: the access token to revoke
         :param requests_kwargs: additional parameters for the underlying requests.post() call
         :param revoke_kwargs: additional parameters to pass to the revocation endpoint
@@ -439,14 +557,14 @@ class OAuth2Client:
         **revoke_kwargs: Any,
     ) -> bool:
         """
-        Sends a request to the revocation endpoint to revoke a refresh token.
+        Send a request to the Revocation Endpoint to revoke a refresh token.
+
         :param refresh_token: the refresh token to revoke.
         :param requests_kwargs: additional parameters to pass to the revocation endpoint.
         :param revoke_kwargs: additional parameters to pass to the revocation endpoint.
-        :return: True if the revocation request is successful, False if this client has no configured revocation
+        :return: `True` if the revocation request is successful, `False` if this client has no configured revocation
         endpoint.
         """
-
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None:
                 raise ValueError(
@@ -469,13 +587,16 @@ class OAuth2Client:
         **revoke_kwargs: Any,
     ) -> bool:
         """
-        Generic method to use the Revocation Endpoint.
+        Send a Token Revocation request.
+
+        By default, authentication will be the same than the one used for the Token Endpoint.
+
         :param token: the token to revoke.
         :param token_type_hint: a token_type_hint to send to the revocation endpoint.
         :param requests_kwargs: additional parameters to the underling call to requests.post()
         :param revoke_kwargs: additional parameters to send to the revocation endpoint.
-        :return: True if the revocation succeeds,
-        False if no revocation endpoint is present or a non-standardised error is returned.
+        :return: `True` if the revocation succeeds,
+        `False` if no revocation endpoint is present or a non-standardised error is returned.
         """
         if not self.revocation_endpoint:
             return False
@@ -506,9 +627,11 @@ class OAuth2Client:
 
     def on_revocation_error(self, response: requests.Response) -> bool:
         """
-        Executed when the revocation endpoint return an error.
-        :param response: the revocation response
-        :return: returns False to signal that an error occurred.
+        Error handler for [revoke_token()][requests_oauth2client.client.OAuth2Client.revoke_token].
+
+        Invoked by :method:`revoke_token` when the revocation endpoint returns an error.
+        :param response: the [Response][requests.Response] as returned by the Revocation Endpoint
+        :return: returns `False` to signal that an error occurred.
         May raise exceptions instead depending on the revocation response.
         """
         try:
@@ -530,7 +653,15 @@ class OAuth2Client:
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **introspect_kwargs: Any,
     ) -> Any:
+        """
+        Send a request to the configured Introspection Endpoint.
 
+        :param token: the token to introspect.
+        :param token_type_hint: the token_type_hint to include in the request.
+        :param requests_kwargs: additional parameters to the underling call to requests.post()
+        :param introspect_kwargs: additional parameters to send to the introspection endpoint.
+        :return: the response as returned by the Introspection Endpoint.
+        """
         if not self.introspection_endpoint:
             raise AttributeError("No introspection endpoint defined for this client")
 
@@ -559,12 +690,27 @@ class OAuth2Client:
         return self.on_introspection_error(response)
 
     def parse_introspection_response(self, response: requests.Response) -> Any:
+        """
+        Parse Token Introspection Responses received by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token].
+
+        Invoked by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token] to parse the returned response.
+        This decodes the JSON content if possible, otherwise it returns the response as a string.
+        :param response: the [Response][requests.Response] as returned by the Introspection Endpoint.
+        :return: the decoded JSON content, or a `str` with the content.
+        """
         try:
             return response.json()
         except ValueError:
             return response.text
 
     def on_introspection_error(self, response: requests.Response) -> Any:
+        """
+        Error handler for [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token].
+
+        Invoked by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token] to parse the returned response in the case an error is returned.
+        :param response: the response as returned by the Introspection Endpoint.
+        :return: raises exeptions. A subclass can return a default response instead.
+        """
         try:
             data = response.json()
         except ValueError:
@@ -582,37 +728,43 @@ class OAuth2Client:
 
     def backchannel_authentication_request(
         self,
-        scope: Union[str, Iterable[str]],
+        scope: Union[None, str, Iterable[str]] = "openid",
         client_notification_token: Optional[str] = None,
-        acr_values: Optional[str] = None,
+        acr_values: Union[None, str, Iterable[str]] = None,
         login_hint_token: Optional[str] = None,
         id_token_hint: Optional[str] = None,
         login_hint: Optional[str] = None,
         binding_message: Optional[str] = None,
         user_code: Optional[str] = None,
         requested_expiry: Optional[int] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
         private_jwk: Union[Jwk, Dict[str, Any], None] = None,
         alg: Optional[str] = None,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
         **ciba_kwargs: Any,
     ) -> BackChannelAuthenticationResponse:
         """
-        Sends a CIBA Authentication Request.
+
+        Send a CIBA Authentication Request.
+
+        :param scope: the scope to include in the request.
+        :param client_notification_token: the Client Notification Token to include in the request.
+        :param acr_values: the acr values to include in the request.
+        :param login_hint_token: the Login Hint Token to include in the request.
+        :param id_token_hint: the ID Token Hint to include in the request.
+        :param login_hint: the Login Hint to include in the request.
+        :param binding_message: the Binding Message to include in the request.
+        :param user_code: the User Code to include in the request
+        :param requested_expiry: the Requested Expiry, in seconds, to include in the request.
+        :param private_jwk: the JWK to use to sign the request (optional)
+        :param alg: the alg to use to sign the request, if the provided JWK does not include an "alg" parameter.
+        :param requests_kwargs: additional parameters for
+        :param ciba_kwargs: additional parameters to include in the request.
         :return: a BackChannelAuthenticationResponse
         """
-
         if not self.backchannel_authentication_endpoint:
             raise AttributeError(
                 "No backchannel authentication endpoint defined for this client"
             )
-
-        requests_kwargs = requests_kwargs or {}
-
-        if not isinstance(scope, str):
-            try:
-                scope = " ".join(scope)
-            except Exception as exc:
-                raise ValueError("Unsupported scope value") from exc
 
         if not (login_hint or login_hint_token or id_token_hint):
             raise ValueError(
@@ -627,6 +779,20 @@ class OAuth2Client:
             raise ValueError(
                 "Only one of `login_hint`, `login_hint_token` or `ìd_token_hint` must be provided"
             )
+
+        requests_kwargs = requests_kwargs or {}
+
+        if scope is not None and not isinstance(scope, str):
+            try:
+                scope = " ".join(scope)
+            except Exception as exc:
+                raise ValueError("Unsupported `scope` value") from exc
+
+        if acr_values is not None and not isinstance(acr_values, str):
+            try:
+                acr_values = " ".join(acr_values)
+            except Exception as exc:
+                raise ValueError("Unsupported `acr_values`") from exc
 
         data = dict(
             ciba_kwargs,
@@ -659,6 +825,14 @@ class OAuth2Client:
     def parse_backchannel_authentication_response(
         self, response: requests.Response
     ) -> BackChannelAuthenticationResponse:
+        """
+        Parse a BackChannel Authentication Response received by [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request].
+
+        Invoked by [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request] to parse the response
+        returned by the BackChannel Authentication Endpoint.
+        :param response: the response returned by the BackChannel Authentication Endpoint.
+        :return: a :class:`BackChannelAuthenticationResponse`
+        """
         try:
             return BackChannelAuthenticationResponse(**response.json())
         except TypeError as exc:
@@ -667,6 +841,14 @@ class OAuth2Client:
     def on_backchannel_authentication_error(
         self, response: requests.Response
     ) -> BackChannelAuthenticationResponse:
+        """
+        Error handler for [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request].
+
+        Invoked by [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request] to parse the response
+        returned by the BackChannel Authentication Endpoint, when it is an error.
+        :param response: the response returned by the BackChannel Authentication Endpoint.
+        :return: raises an exception. But a subclass can return a default response instead.
+        """
         try:
             error_json = response.json()
         except ValueError as exc:
@@ -685,7 +867,8 @@ class OAuth2Client:
 
     def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
         """
-        Sends a Device Authorization Request.
+        Send a Device Authorization Request.
+
         :param data: additional data to send to the Device Authorization Endpoint
         :return: a Device Authorization Response
         """
@@ -706,12 +889,27 @@ class OAuth2Client:
     def parse_device_authorization_response(
         self, response: requests.Response
     ) -> DeviceAuthorizationResponse:
+        """
+        Parse a Device Authorization Response received by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device].
+
+        Invoked by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device] to parse the response returned by the Device Authorization Endpoint.
+        :param response: the response returned by the Device Authorization Endpoint.
+        :return: a :class:`DeviceAuthorizationResponse`
+        """
         device_authorization_response = DeviceAuthorizationResponse(**response.json())
         return device_authorization_response
 
     def on_device_authorization_error(
         self, response: requests.Response
     ) -> DeviceAuthorizationResponse:
+        """
+        Error handler for [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device].
+
+        Invoked by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device] to parse the response returned by the Device Authorization Endpoint, when that response is an error.
+
+        :param response: the response returned by the Device Authorization Endpoint.
+        :return: raises an Exception. But a subclass may return a default response instead.
+        """
         error_json = response.json()
         error = error_json.get("error")
         error_description = error_json.get("error_description")
@@ -727,18 +925,16 @@ class OAuth2Client:
             error_json,
         )
 
-    def get_public_jwks(self) -> Dict[str, Any]:
+    def get_public_jwks(self) -> JwkSet:
+        """
+        Fetch and parse the public keys from the JWKS endpoint.
+
+        :return: a JwkSet based on the retrieved keys.
+        """
         if not self.jwks_uri:
             raise ValueError("No jwks uri defined for this client")
         jwks = self.session.get(self.jwks_uri, auth=None).json()
-        if (
-            not isinstance(jwks, dict)
-            or "keys" not in jwks
-            or not isinstance(jwks["keys"], list)
-            or any("kty" not in jwk for jwk in jwks["keys"])
-        ):
-            raise ValueError("Invalid JWKS returned by the server", jwks)
-        return jwks
+        return JwkSet(jwks)
 
     @classmethod
     def from_discovery_endpoint(
@@ -749,7 +945,8 @@ class OAuth2Client:
         session: Optional[requests.Session] = None,
     ) -> "OAuth2Client":
         """
-        Initialise an OAuth2Client, retrieving server metadata from a discovery document.
+        Initialise an OAuth2Client, retrieving the endpoint uris from the server metadata exposed on a discovery document.
+
         :param url: the url where the server metadata will be retrieved
         :param auth: the authentication handler to use for client authentication
         :param session: a requests Session to use to retrieve the document and initialise the client with
@@ -774,6 +971,7 @@ class OAuth2Client:
     ) -> "OAuth2Client":
         """
         Initialise an OAuth2Client, based on the server metadata from `discovery`.
+
         :param discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
         :param issuer: if an issuer is given, check that it matches the one mentioned in the document
         :param auth: the authentication handler to use for client authentication

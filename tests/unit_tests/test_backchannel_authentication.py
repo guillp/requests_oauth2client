@@ -1,18 +1,22 @@
 from datetime import datetime
+from typing import List, Union
 
 import pytest
+from jwskate import Jwk
 
 from requests_oauth2client import (
     BackChannelAuthenticationPoolingJob,
     BackChannelAuthenticationResponse,
+    BaseClientAuthenticationMethod,
     BearerToken,
     InvalidBackChannelAuthenticationResponse,
     OAuth2Client,
     UnauthorizedClient,
 )
+from tests.conftest import RequestsMocker, RequestValidatorType
 
 
-def test_backchannel_authentication_response(auth_req_id):
+def test_backchannel_authentication_response(auth_req_id: str) -> None:
     bca_resp = BackChannelAuthenticationResponse(
         auth_req_id=auth_req_id, expires_in=10, interval=10, foo="bar"
     )
@@ -28,7 +32,7 @@ def test_backchannel_authentication_response(auth_req_id):
         bca_resp.notfound
 
 
-def test_backchannel_authentication_response_defaults(auth_req_id):
+def test_backchannel_authentication_response_defaults(auth_req_id: str) -> None:
     bca_resp = BackChannelAuthenticationResponse(
         auth_req_id=auth_req_id,
     )
@@ -41,7 +45,11 @@ def test_backchannel_authentication_response_defaults(auth_req_id):
 
 
 @pytest.fixture()
-def bca_client(token_endpoint, backchannel_authentication_endpoint, client_auth_method):
+def bca_client(
+    token_endpoint: str,
+    backchannel_authentication_endpoint: str,
+    client_auth_method: BaseClientAuthenticationMethod,
+) -> OAuth2Client:
     bca_client = OAuth2Client(
         token_endpoint=token_endpoint,
         backchannel_authentication_endpoint=backchannel_authentication_endpoint,
@@ -57,13 +65,13 @@ def bca_client(token_endpoint, backchannel_authentication_endpoint, client_auth_
 
 
 def test_backchannel_authentication(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    auth_req_id,
-    scope,
-    backchannel_auth_request_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    auth_req_id: str,
+    scope: Union[None, str, List[str]],
+    backchannel_auth_request_validator: RequestValidatorType,
+) -> None:
 
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -83,12 +91,12 @@ def test_backchannel_authentication(
 
 
 def test_backchannel_authentication_scope_list(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    auth_req_id,
-    backchannel_auth_request_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    auth_req_id: str,
+    backchannel_auth_request_validator: RequestValidatorType,
+) -> None:
     scope = ["openid", "email", "profile"]
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -108,12 +116,12 @@ def test_backchannel_authentication_scope_list(
 
 
 def test_backchannel_authentication_invalid_response(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    scope,
-    backchannel_auth_request_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    scope: Union[None, str, List[str]],
+    backchannel_auth_request_validator: RequestValidatorType,
+) -> None:
 
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -131,15 +139,15 @@ def test_backchannel_authentication_invalid_response(
 
 
 def test_backchannel_authentication_jwt(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    private_jwk,
-    public_jwk,
-    auth_req_id,
-    scope,
-    backchannel_auth_request_jwt_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    private_jwk: Jwk,
+    public_jwk: Jwk,
+    auth_req_id: str,
+    scope: Union[None, str, List[str]],
+    backchannel_auth_request_jwt_validator: RequestValidatorType,
+) -> None:
 
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -162,12 +170,12 @@ def test_backchannel_authentication_jwt(
 
 
 def test_backchannel_authentication_error(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    scope,
-    backchannel_auth_request_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    scope: Union[None, str, List[str]],
+    backchannel_auth_request_validator: RequestValidatorType,
+) -> None:
 
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -186,12 +194,12 @@ def test_backchannel_authentication_error(
 
 
 def test_backchannel_authentication_invalid_error(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    scope,
-    backchannel_auth_request_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    scope: Union[None, str, List[str]],
+    backchannel_auth_request_validator: RequestValidatorType,
+) -> None:
 
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -210,12 +218,12 @@ def test_backchannel_authentication_invalid_error(
 
 
 def test_backchannel_authentication_not_json_error(
-    requests_mock,
-    backchannel_authentication_endpoint,
-    bca_client,
-    scope,
-    backchannel_auth_request_validator,
-):
+    requests_mock: RequestsMocker,
+    backchannel_authentication_endpoint: str,
+    bca_client: OAuth2Client,
+    scope: Union[None, str, List[str]],
+    backchannel_auth_request_validator: RequestValidatorType,
+) -> None:
 
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -233,7 +241,10 @@ def test_backchannel_authentication_not_json_error(
     )
 
 
-def test_backchannel_authentication_missing_hint(bca_client, scope):
+def test_backchannel_authentication_missing_hint(
+    bca_client: OAuth2Client,
+    scope: Union[None, str, List[str]],
+) -> None:
     with pytest.raises(ValueError):
         bca_client.backchannel_authentication_request(scope=scope)
 
@@ -243,21 +254,21 @@ def test_backchannel_authentication_missing_hint(bca_client, scope):
         )
 
 
-def test_backchannel_authentication_invalid_scope(bca_client):
+def test_backchannel_authentication_invalid_scope(bca_client: OAuth2Client) -> None:
     with pytest.raises(ValueError):
         bca_client.backchannel_authentication_request(
-            scope=1.44, login_hint="user@example.net"
+            scope=1.44, login_hint="user@example.net"  # type: ignore[arg-type]
         )
 
 
 def test_pooling_job(
-    requests_mock,
-    bca_client,
-    token_endpoint,
-    auth_req_id,
-    ciba_request_validator,
-    access_token,
-):
+    requests_mock: RequestsMocker,
+    bca_client: OAuth2Client,
+    token_endpoint: str,
+    auth_req_id: str,
+    ciba_request_validator: RequestValidatorType,
+    access_token: str,
+) -> None:
     job = BackChannelAuthenticationPoolingJob(
         client=bca_client,
         auth_req_id=auth_req_id,
@@ -290,8 +301,8 @@ def test_pooling_job(
 
 
 def test_missing_backchannel_authentication_endpoint(
-    token_endpoint, client_id, client_secret
-):
+    token_endpoint: str, client_id: str, client_secret: str
+) -> None:
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     with pytest.raises(AttributeError):
         client.backchannel_authentication_request("openid")

@@ -1,127 +1,133 @@
 import base64
-import json
-from datetime import datetime
-from urllib.parse import parse_qs
+import hashlib
+from typing import Any, Dict, List, Optional, Type, Union
 
 import pytest
 import requests
-from furl import furl
+from furl import furl  # type: ignore
+from jwskate import Jwk
 
 from requests_oauth2client import (
     ApiClient,
+    AuthorizationRequest,
     BearerAuth,
     ClientSecretBasic,
-    ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
     OAuth2Client,
-    PrivateKeyJWT,
+    PrivateKeyJwt,
     PublicApp,
 )
-from requests_oauth2client.jwskate import Jwk, Jwt, SymetricJwk
-
-
-@pytest.fixture()
-def session():
-    return requests.Session()
+from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
+from tests.conftest import FixtureRequest
 
 
 @pytest.fixture(scope="session")
-def join_url():
-    def _join_url(root, path):
-        if path:
-            f = furl(root).add(path=path)
-            f.path.normalize()
-            return f.url
-        else:
-            return root
-
-    return _join_url
+def session() -> requests.Session:
+    return requests.Session()
 
 
-@pytest.fixture()
-def access_token():
+def join_url(root: str, path: str) -> str:
+    if path:
+        f = furl(root).add(path=path)
+        f.path.normalize()
+        return str(f.url)
+    else:
+        return root
+
+
+@pytest.fixture(scope="session")
+def access_token() -> str:
     return "access_token"
 
 
-@pytest.fixture()
-def bearer_auth(access_token):
+@pytest.fixture(scope="session")
+def bearer_auth(access_token: str) -> BearerAuth:
     return BearerAuth(access_token)
 
 
-@pytest.fixture()
-def target_api():
+@pytest.fixture(scope="session")
+def target_api() -> str:
     return "https://myapi.local/root/"
 
 
-@pytest.fixture()
-def api(target_api, bearer_auth):
+@pytest.fixture(scope="session")
+def api(target_api: str, bearer_auth: BearerAuth) -> ApiClient:
     return ApiClient(target_api, auth=bearer_auth)
 
 
-@pytest.fixture()
-def issuer():
+@pytest.fixture(scope="session")
+def issuer() -> str:
     return "https://test.com"
 
 
-@pytest.fixture()
-def token_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def token_endpoint(issuer: str) -> str:
     return join_url(issuer, "oauth/token")
 
 
-@pytest.fixture()
-def authorization_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def authorization_endpoint(issuer: str) -> str:
     return join_url(issuer, "login/authorize")
 
 
-@pytest.fixture()
-def revocation_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def revocation_endpoint(issuer: str) -> str:
     return join_url(issuer, "oauth/revoke")
 
 
-@pytest.fixture()
-def introspection_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def introspection_endpoint(issuer: str) -> str:
     return join_url(issuer, "oauth/introspect")
 
 
-@pytest.fixture()
-def userinfo_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def userinfo_endpoint(issuer: str) -> str:
     return join_url(issuer, "oidc/userinfo")
 
 
-@pytest.fixture()
-def jwks_uri(issuer, join_url):
+@pytest.fixture(scope="session")
+def jwks_uri(issuer: str) -> str:
     return join_url(issuer, "jwks")
 
 
-@pytest.fixture()
-def device_authorization_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def device_authorization_endpoint(issuer: str) -> str:
     return join_url(issuer, "device")
 
 
-@pytest.fixture()
-def backchannel_authentication_endpoint(issuer, join_url):
+@pytest.fixture(scope="session")
+def backchannel_authentication_endpoint(issuer: str) -> str:
     return join_url(issuer, "bc_authorize")
 
 
-@pytest.fixture()
-def client_id():
+@pytest.fixture(scope="session")
+def pushed_authorization_request_endpoint(issuer: str) -> str:
+    return join_url(issuer, "par")
+
+
+@pytest.fixture(scope="session")
+def client_id() -> str:
     return "client_id"
 
 
 @pytest.fixture(
-    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT]
+    scope="session",
+    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJwt],
 )
-def client_auth_method_handler(request):
-    return request.param
+def client_auth_method_handler(
+    request: pytest.FixtureRequest,
+) -> Type[BaseClientAuthenticationMethod]:
+    return request.param  # type: ignore
 
 
-@pytest.fixture()
-def kid():
+@pytest.fixture(scope="session")
+def kid() -> str:
     return "JWK-ABCD"
 
 
-@pytest.fixture()
-def private_jwk(kid):
+@pytest.fixture(scope="session")
+def private_jwk(kid: str) -> Jwk:
     return Jwk(
         {
             "kty": "RSA",
@@ -139,179 +145,123 @@ def private_jwk(kid):
     )
 
 
-@pytest.fixture()
-def public_jwk(private_jwk):
+@pytest.fixture(scope="session")
+def public_jwk(private_jwk: Jwk) -> Jwk:
     return private_jwk.public_jwk()
 
 
-@pytest.fixture()
-def client_secret():
+@pytest.fixture(scope="session")
+def client_secret() -> str:
     return "client_secret"
 
 
-@pytest.fixture()
-def client_credential(client_auth_method_handler, client_secret, private_jwk):
+@pytest.fixture(scope="session")
+def client_credential(
+    client_auth_method_handler: Union[
+        Type[PublicApp],
+        Type[ClientSecretPost],
+        Type[ClientSecretBasic],
+        Type[ClientSecretJwt],
+        Type[PrivateKeyJwt],
+    ],
+    client_secret: str,
+    private_jwk: Jwk,
+) -> Union[None, str, Jwk]:
     if client_auth_method_handler == PublicApp:
         return None
     elif client_auth_method_handler in (
         ClientSecretPost,
         ClientSecretBasic,
-        ClientSecretJWT,
+        ClientSecretJwt,
     ):
         return client_secret
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         return private_jwk
+    assert False
 
 
-@pytest.fixture()
-def client_auth_method(client_auth_method_handler, client_id, client_credential):
+@pytest.fixture(scope="session")
+def client_auth_method(
+    client_auth_method_handler: Union[
+        Type[PublicApp],
+        Type[ClientSecretPost],
+        Type[ClientSecretBasic],
+        Type[ClientSecretJwt],
+        Type[PrivateKeyJwt],
+    ],
+    client_id: str,
+    client_credential: Union[None, str, Jwk],
+) -> BaseClientAuthenticationMethod:
     if client_auth_method_handler == PublicApp:
-        return client_auth_method_handler(client_id)
-    return client_auth_method_handler(client_id, client_credential)
+        return client_auth_method_handler(client_id)  # type: ignore
+    return client_auth_method_handler(client_id, client_credential)  # type: ignore
 
 
-@pytest.fixture()
-def client_auth_validator(
-    client_auth_method_handler, client_id, client_credential, public_jwk
-):
-    if client_auth_method_handler == PublicApp:
-
-        def validator(req):
-            params = parse_qs(req.text)
-            assert params.get("client_id") == [client_id]
-            assert "client_secret" not in params
-
-    elif client_auth_method_handler == ClientSecretBasic:
-
-        def validator(req):
-            encoded_username_password = base64.b64encode(
-                f"{client_id}:{client_secret}".encode("ascii")
-            ).decode()
-            assert (
-                req.headers.get("Authorization") == f"Basic {encoded_username_password}"
-            )
-            assert "client_secret" not in req.text
-
-    elif client_auth_method_handler == ClientSecretPost:
-
-        def validator(req):
-            params = parse_qs(req.text)
-            assert params.get("client_id") == [client_id]
-            assert params.get("client_secret") == [client_secret]
-            assert "Authorization" not in req.headers
-
-    elif client_auth_method_handler == ClientSecretJWT:
-
-        def validator(req):
-            params = parse_qs(req.text)
-            assert params.get("client_id") == [client_id]
-            client_assertion = params.get("client_assertion")[0]
-            jwk = SymetricJwk.from_bytes(
-                alg="HS256",
-                k=client_secret.encode(),
-            )
-            jwt = Jwt(jwt=client_assertion)
-            jwt.verify_signature(jwk)
-            claims = json.loads(jwt.claims)
-            now = int(datetime.now().timestamp())
-            assert now - 10 <= claims["iat"] <= now, "unexpected iat"
-            assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
-            assert claims["iss"] == client_id
-            assert claims["aud"] == token_endpoint
-            assert "jti" in claims
-            assert claims["sub"] == client_id
-
-    elif client_auth_method_handler == PrivateKeyJWT:
-
-        def validator(req):
-            params = parse_qs(req.text)
-            assert params.get("client_id") == [client_id], "invalid client_id"
-            client_assertion = params.get("client_assertion")[0]
-            assert client_assertion, "missing client_assertion"
-            jwt = Jwt(jwt=client_assertion)
-            jwt.verify_signature(public_jwk)
-            claims = jwt.claims
-            now = int(datetime.now().timestamp())
-            assert now - 10 <= claims["iat"] <= now, "Unexpected iat"
-            assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
-            assert claims["iss"] == client_id
-            assert claims["aud"] == token_endpoint
-            assert "jti" in claims
-            assert claims["sub"] == client_id
-
-    return validator
-
-
-@pytest.fixture()
-def target_path():
+@pytest.fixture(scope="session")
+def target_path() -> str:
     return "/resource"
 
 
-@pytest.fixture()
-def target_uri(target_api, target_path, join_url):
+@pytest.fixture(scope="session")
+def target_uri(target_api: str, target_path: str) -> str:
     return join_url(target_api, target_path)
 
 
-@pytest.fixture()
-def refresh_token():
+@pytest.fixture(scope="session")
+def refresh_token() -> str:
     return "refresh_token"
 
 
-@pytest.fixture()
-def authorization_code():
+@pytest.fixture(scope="session")
+def authorization_code() -> str:
     return "authorization_code"
 
 
-@pytest.fixture()
-def device_code():
+@pytest.fixture(scope="session")
+def device_code() -> str:
     return "device_code"
 
 
-@pytest.fixture()
-def user_code():
+@pytest.fixture(scope="session")
+def user_code() -> str:
     return "user_code"
 
 
-@pytest.fixture()
-def redirect_uri():
+@pytest.fixture(scope="session")
+def redirect_uri() -> str:
     return "http://localhost:12345/callback"
 
 
-@pytest.fixture()
-def verification_uri(issuer, join_url):
+@pytest.fixture(scope="session")
+def verification_uri(issuer: str) -> str:
     return join_url(issuer, "verification")
 
 
-@pytest.fixture()
-def verification_uri_complete(verification_uri, user_code):
+@pytest.fixture(scope="session")
+def verification_uri_complete(verification_uri: str, user_code: str) -> str:
     return verification_uri + "?user_code=" + user_code
 
 
-@pytest.fixture()
-def audience():
+@pytest.fixture(scope="session")
+def audience() -> str:
     return "https://myapi.com/path"
 
 
-@pytest.fixture()
-def scope():
-    return "openid profile email"
-
-
-@pytest.fixture()
-def auth_req_id():
+@pytest.fixture(scope="session")
+def auth_req_id() -> str:
     return "auth_request_id"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def discovery_document(
-    issuer,
-    token_endpoint,
-    authorization_endpoint,
-    revocation_endpoint,
-    introspection_endpoint,
-    userinfo_endpoint,
-    jwks_uri,
-):
+    issuer: str,
+    token_endpoint: str,
+    authorization_endpoint: str,
+    revocation_endpoint: str,
+    introspection_endpoint: str,
+    userinfo_endpoint: str,
+    jwks_uri: str,
+) -> Dict[str, str]:
     return {
         "issuer": issuer,
         "authorization_endpoint": authorization_endpoint,
@@ -323,38 +273,198 @@ def discovery_document(
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def oauth2client(
-    token_endpoint,
-    revocation_endpoint,
-    introspection_endpoint,
-    userinfo_endpoint,
-    jwks_uri,
-    client_auth_method,
-):
+    token_endpoint: str,
+    revocation_endpoint: str,
+    introspection_endpoint: str,
+    userinfo_endpoint: str,
+    pushed_authorization_request_endpoint: str,
+    jwks_uri: str,
+    client_auth_method: BaseClientAuthenticationMethod,
+) -> OAuth2Client:
     return OAuth2Client(
         token_endpoint,
         revocation_endpoint=revocation_endpoint,
         introspection_endpoint=introspection_endpoint,
         userinfo_endpoint=userinfo_endpoint,
+        pushed_authorization_request_endpoint=pushed_authorization_request_endpoint,
         jwks_uri=jwks_uri,
         auth=client_auth_method,
     )
 
 
-@pytest.fixture()
-def bearer_auth_validator():
-    def validator(req, access_token):
-        assert req.headers.get("Authorization") == f"Bearer {access_token}"
-
-    return validator
-
-
-@pytest.fixture()
-def sub():
+@pytest.fixture(scope="session")
+def sub() -> str:
     return "abcdefghijklmnopqrstuvwxyz"
 
 
-@pytest.fixture()
-def code_verifier():
-    return "code_verifier"
+@pytest.fixture(
+    scope="session",
+    params=[None, "state", True],
+)
+def state(request: FixtureRequest) -> Union[None, bool, str]:
+    return request.param
+
+
+@pytest.fixture(scope="session", params=[None, "https://myas.local", False])
+def expected_issuer(request: FixtureRequest) -> Optional[str]:
+    return request.param
+
+
+@pytest.fixture(scope="session", params=[None, {"foo": "bar"}])
+def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
+    return request.param or {}  # type: ignore
+
+
+@pytest.fixture(
+    scope="session",
+    params=[None, "nonce", False],
+)
+def nonce(request: FixtureRequest) -> Union[None, bool, str]:
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[None, "openid", "openid profile email", ["openid", "profile", "email"], []],
+    ids=["None", "single", "space-separated", "list", "empty-list"],
+)
+def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
+    return request.param
+
+
+@pytest.fixture(
+    scope="session",
+    params=[None, "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"],
+    ids=["None", "rfc7636"],
+)
+def code_verifier(request: FixtureRequest) -> Optional[str]:
+    return request.param
+
+
+@pytest.fixture(scope="session", params=[None, "plain", "S256"])
+def code_challenge_method(request: FixtureRequest) -> Optional[str]:
+    return request.param
+
+
+@pytest.fixture(scope="session")
+@pytest.mark.slow
+def authorization_request(
+    authorization_endpoint: str,
+    client_id: str,
+    redirect_uri: str,
+    scope: Union[None, str, List[str]],
+    state: Union[None, bool, str],
+    nonce: Union[None, bool, str],
+    code_verifier: str,
+    code_challenge_method: str,
+    expected_issuer: Union[str, bool, None],
+    auth_request_kwargs: Dict[str, Any],
+) -> AuthorizationRequest:
+    azr = AuthorizationRequest(
+        authorization_endpoint=authorization_endpoint,
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        scope=scope,
+        state=state,
+        nonce=nonce,
+        code_verifier=code_verifier,
+        code_challenge_method=code_challenge_method,
+        issuer=expected_issuer,
+        **auth_request_kwargs,
+    )
+
+    url = furl(str(azr))
+    assert url.origin + str(url.path) == authorization_endpoint
+
+    assert azr.authorization_endpoint == authorization_endpoint
+    assert azr.client_id == client_id
+    assert azr.redirect_uri == redirect_uri
+    assert azr.issuer == expected_issuer
+    assert azr.kwargs == auth_request_kwargs
+
+    args = dict(url.args)
+    expected_args = dict(
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        response_type="code",
+        scope=scope,
+        **auth_request_kwargs,
+    )
+
+    if nonce is True:
+        generated_nonce = args.pop("nonce")
+        assert isinstance(generated_nonce, str)
+        assert len(generated_nonce) > 20
+        assert azr.nonce == generated_nonce
+    elif nonce is False or nonce is None:
+        assert azr.nonce is None
+        assert "nonce" not in args
+    elif isinstance(nonce, str):
+        assert azr.nonce == nonce
+        assert args.pop("nonce") == nonce
+    else:
+        assert False
+
+    if state is True:
+        generated_state = args.pop("state")
+        assert isinstance(generated_state, str)
+        assert len(generated_state) > 20
+        assert azr.state == generated_state
+    elif state is False:
+        assert "state" not in args
+        assert azr.state is None
+    elif isinstance(state, str):
+        assert args.pop("state") == state
+        assert azr.state == state
+
+    if scope is None:
+        assert azr.scope is None
+        assert "scope" not in args
+        del expected_args["scope"]
+    elif isinstance(scope, list):
+        joined_scope = " ".join(scope)
+        expected_args["scope"] = joined_scope
+        assert azr.scope == joined_scope
+    if isinstance(scope, str):
+        expected_args["scope"] = scope
+        assert azr.scope == scope
+
+    if code_challenge_method is None:
+        assert "code_challenge_method" not in args
+        assert "code_challenge" not in args
+        assert azr.code_challenge_method is None
+        assert azr.code_verifier is None
+        assert azr.code_challenge is None
+    elif code_challenge_method == "S256":
+        assert azr.code_challenge_method == "S256"
+        assert args.pop("code_challenge_method") == "S256"
+        generated_code_challenge = args.pop("code_challenge")
+        assert azr.code_challenge == generated_code_challenge
+        if code_verifier is None:
+            assert isinstance(generated_code_challenge, str)
+            assert len(generated_code_challenge) == 43
+            assert base64.urlsafe_b64decode(
+                generated_code_challenge.encode() + b"="
+            ), f"Invalid B64U for generated code_challenge: {generated_code_challenge}"
+        else:
+            assert azr.code_verifier == code_verifier
+            assert generated_code_challenge == base64.urlsafe_b64encode(
+                hashlib.sha256(code_verifier.encode()).digest()
+            ).decode().rstrip("=")
+    elif code_challenge_method == "plain":
+        assert azr.code_challenge_method == "plain"
+        assert args.pop("code_challenge_method") == "plain"
+        generated_code_challenge = args.pop("code_challenge")
+        assert azr.code_challenge == generated_code_challenge
+        if code_verifier is None:
+            assert isinstance(generated_code_challenge, str)
+            assert 43 <= len(generated_code_challenge) <= 128
+        else:
+            assert generated_code_challenge == code_verifier
+            assert azr.code_verifier == code_verifier
+
+    assert args == expected_args
+
+    return azr

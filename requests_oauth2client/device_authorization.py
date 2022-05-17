@@ -1,5 +1,7 @@
-from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+"""Implements the Device Authorization Flow as defined in [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)."""
+
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from .pooling import TokenEndpointPoolingJob
 from .tokens import BearerToken
@@ -10,9 +12,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class DeviceAuthorizationResponse:
-    """
-    A response returned by the device Authorization Endpoint (as defined in RFC8628)
-    """
+    """Represent a response returned by the device Authorization Endpoint."""
 
     @accepts_expires_in
     def __init__(
@@ -25,6 +25,19 @@ class DeviceAuthorizationResponse:
         interval: Optional[int] = None,
         **kwargs: Any,
     ):
+        """
+        Initialize a DeviceAuthorizationResponse.
+
+        All parameters are those returned by the AS as response to a Device Authorization Request.
+
+        :param device_code: the `device_code` as returned by the AS.
+        :param user_code: the `device_code` as returned by the AS.
+        :param verification_uri: the `device_code` as returned by the AS.
+        :param verification_uri_complete: the `device_code` as returned by the AS.
+        :param expires_at: the expiration date for the device_code. This method also accepts an `expires_in` parameter, as a number of seconds in the future.
+        :param interval: the pooling `interval` as returned by the AS.
+        :param kwargs: additional parameters as returned by the AS.
+        """
         self.device_code = device_code
         self.user_code = user_code
         self.verification_uri = verification_uri
@@ -33,28 +46,53 @@ class DeviceAuthorizationResponse:
         self.interval = interval
         self.other = kwargs
 
-    def is_expired(self) -> Optional[bool]:
+    def is_expired(self, leeway: int = 0) -> Optional[bool]:
         """
-        Returns True if the device_code within this response is expired at the time of the call.
-        :return: True if the device_code is expired, False if it is still valid, None if there is no expires_in hint.
+        Check if the `device_code` within this response is expired at the time of the call.
+
+        :return: `True` if the device_code is expired, `False` if it is still valid, `None` if there is no `expires_in` hint.
         """
         if self.expires_at:
-            return datetime.now() > self.expires_at
+            return datetime.now() - timedelta(seconds=leeway) > self.expires_at
         return None
 
 
 class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
-    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow."""
+    """
+    A pooling job for checking if the user has finished with his authorization in a Device Authorization flow.
+
+    Usage:
+    ```python
+    client = OAuth2Client(
+        token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret")
+    )
+    pool_job = DeviceAuthorizationPoolingJob(client=client, device_code="my_device_code")
+
+    token = None
+    while token is None:
+        token = pool_job()
+    ```
+    """
 
     def __init__(
         self,
         client: "OAuth2Client",
-        device_code: str,
+        device_code: Union[str, DeviceAuthorizationResponse],
         interval: Optional[int] = None,
         slow_down_interval: int = 5,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ):
+        """
+        Initialize a `DeviceAuthorizationPoolingJob`.
+
+        :param client: an OAuth2Client that will be used to pool the token endpoint.
+        :param device_code: a `device_code` as `str` or a `DeviceAuthorizationResponse`.
+        :param interval: The pooling interval to use. This overrides the one in `auth_req_id` if it is a `BackChannelAuthenticationResponse`.
+        :param slow_down_interval: Number of seconds to add to the pooling interval when the AS returns a slow down request.
+        :param requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
+        :param token_kwargs: Additional parameters for the token request.
+        """
         super().__init__(
             client=client,
             interval=interval,
@@ -64,7 +102,13 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         )
         self.device_code = device_code
 
-    def pool(self) -> BearerToken:
+    def token_request(self) -> BearerToken:
+        """
+        Implement the Device Code token request.
+
+        This actually calls [OAuth2Client.device_code(device_code)] on `client`.
+        :return: a [BearerToken][requests_oauth2client.tokens.BearerToken]
+        """
         return self.client.device_code(
             self.device_code, requests_kwargs=self.requests_kwargs, **self.token_kwargs
         )

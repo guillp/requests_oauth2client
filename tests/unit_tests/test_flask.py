@@ -1,21 +1,29 @@
+from typing import Any, Iterable
 from urllib.parse import parse_qs
 
-from flask import Flask
+import pytest
 
 from requests_oauth2client import ApiClient, ClientSecretPost, OAuth2Client
-from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
-
-token_endpoint = "https://myas.local/token"
-client_id = "clientid"
-client_secret = "clientsecret"
-scope = "myscope"
+from tests.conftest import RequestsMocker
 
 session_key = "session_key"
 
-external_api = "https://myapi.local/foo"
 
+def test_flask(
+    requests_mock: RequestsMocker,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    scope: str,
+    target_api: str,
+) -> None:
+    try:
+        from flask import Flask
 
-def test_flask(requests_mock):
+        from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
+    except ImportError:
+        pytest.skip("Flask is not available")
+
     oauth_client = OAuth2Client(
         token_endpoint, ClientSecretPost(client_id, client_secret)
     )
@@ -30,8 +38,8 @@ def test_flask(requests_mock):
     app.config["SECRET_KEY"] = "thisissecret"
 
     @app.route("/api")
-    def get():
-        return api_client.get(external_api).json()
+    def get() -> Any:
+        return api_client.get(target_api).json()
 
     access_token = "access_token"
     json_resp = {"status": "success"}
@@ -39,16 +47,16 @@ def test_flask(requests_mock):
         token_endpoint,
         json={"access_token": access_token, "token_type": "Bearer", "expires_in": 3600},
     )
-    requests_mock.get(external_api, json=json_resp)
+    requests_mock.get(target_api, json=json_resp)
 
     with app.test_client() as client:
         resp = client.get("/api")
         assert resp.json == json_resp
         resp = client.get("/api")
         assert resp.json == json_resp
-        api_client.auth.token = None  # strangely this has no effect in a test session
+        # api_client.auth.token = None  # strangely this has no effect in a test session
         with client.session_transaction() as sess:  # does what 'api_client.auth.token = None' should do
-            sess.pop("session_key")
+            sess.pop("session_key", None)
         resp = client.get("/api")
         assert resp.json == json_resp
 
@@ -59,7 +67,12 @@ def test_flask(requests_mock):
 
     token_params = parse_qs(token_request.text)
     assert token_params.get("client_id") == [client_id]
-    assert token_params.get("scope") == [scope]
+    if not scope:
+        assert token_params.get("scope") is None
+    elif isinstance(scope, str):
+        assert token_params.get("scope") == [scope]
+    elif isinstance(scope, Iterable):
+        assert token_params.get("scope") == [" ".join(scope)]
     assert token_params.get("client_secret") == [client_secret]
 
     assert api_request1.headers.get("Authorization") == f"Bearer {access_token}"

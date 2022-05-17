@@ -13,32 +13,40 @@ from requests_oauth2client import (
     OAuth2Client,
     OAuth2DeviceCodeAuth,
 )
+from tests.conftest import RequestsMocker
 
 
 @pytest.fixture()
-def minutes_ago():
+def minutes_ago() -> datetime:
     return datetime.now() - timedelta(minutes=3)
 
 
-def test_bearer_auth(requests_mock, target_api, bearer_auth, access_token):
+def test_bearer_auth(
+    requests_mock: RequestsMocker,
+    target_api: str,
+    bearer_auth: BearerAuth,
+    access_token: str,
+) -> None:
     requests_mock.post(target_api)
     response = requests.post(target_api, auth=bearer_auth)
     assert response.ok
+    assert requests_mock.last_request is not None
     assert (
         requests_mock.last_request.headers.get("Authorization")
         == f"Bearer {access_token}"
     )
 
 
-def test_bearer_auth_none(requests_mock, target_api):
+def test_bearer_auth_none(requests_mock: RequestsMocker, target_api: str) -> None:
     requests_mock.post(target_api)
     auth = BearerAuth()
     response = requests.post(target_api, auth=auth)
     assert response.ok
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.headers.get("Authorization") is None
 
 
-def test_expired_token(minutes_ago):
+def test_expired_token(minutes_ago: datetime) -> None:
     token = BearerToken(access_token="foo", expires_at=minutes_ago)
     auth = BearerAuth(token)
     with pytest.raises(ExpiredAccessToken):
@@ -46,8 +54,13 @@ def test_expired_token(minutes_ago):
 
 
 def test_access_token_auth(
-    requests_mock, target_uri, token_endpoint, client_id, client_secret, minutes_ago
-):
+    requests_mock: RequestsMocker,
+    target_uri: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    minutes_ago: datetime,
+) -> None:
     access_token = "access_token"
     refresh_token = "refresh_token"
     new_access_token = "new_access_token"
@@ -85,20 +98,21 @@ def test_access_token_auth(
     assert api_request.url == target_uri
     assert api_request.headers.get("Authorization") == f"Bearer {new_access_token}"
 
+    assert auth.token is not None
     assert auth.token.access_token == new_access_token
     assert auth.token.refresh_token == new_refresh_token
 
 
 def test_authorization_code_auth(
-    requests_mock,
-    target_api,
-    token_endpoint,
-    client_id,
-    client_secret,
-    authorization_code,
-    access_token,
-    refresh_token,
-):
+    requests_mock: RequestsMocker,
+    target_api: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    authorization_code: str,
+    access_token: str,
+    refresh_token: str,
+) -> None:
 
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     auth = OAuth2AuthorizationCodeAuth(client, authorization_code)
@@ -129,6 +143,7 @@ def test_authorization_code_auth(
     assert api_request.url == target_api
     assert api_request.headers.get("Authorization") == f"Bearer {access_token}"
 
+    assert auth.token is not None
     assert auth.token.access_token == access_token
     assert auth.token.refresh_token == refresh_token
 
@@ -138,19 +153,19 @@ def test_authorization_code_auth(
 
 
 def test_device_code_auth(
-    requests_mock,
-    target_api,
-    device_authorization_endpoint,
-    token_endpoint,
-    client_id,
-    client_secret,
-    device_code,
-    user_code,
-    verification_uri,
-    verification_uri_complete,
-    access_token,
-    refresh_token,
-):
+    requests_mock: RequestsMocker,
+    target_api: str,
+    device_authorization_endpoint: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    device_code: str,
+    user_code: str,
+    verification_uri: str,
+    verification_uri_complete: str,
+    access_token: str,
+    refresh_token: str,
+) -> None:
 
     oauth2client = OAuth2Client(
         token_endpoint=token_endpoint,
@@ -200,10 +215,11 @@ def test_device_code_auth(
     assert api_request.url == target_api
     assert api_request.headers.get("Authorization") == f"Bearer {access_token}"
 
+    assert auth.token is not None
     assert auth.token.access_token == access_token
     assert auth.token.refresh_token == refresh_token
 
     requests_mock.reset_mock()
     requests.post(target_api, auth=auth)
-    assert len(requests_mock.request_history) == 1
+    assert requests_mock.last_request is not None
     assert requests_mock.last_request.url == target_api

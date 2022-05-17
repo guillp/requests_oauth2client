@@ -51,6 +51,11 @@ plugins:
   - mkdocstrings:
       watch:
         - requests_oauth2client
+        - README.md
+      handlers:
+          python:
+              import:
+                  - https://docs.python-requests.org/en/master/objects.inv
 
 extra:
   social:

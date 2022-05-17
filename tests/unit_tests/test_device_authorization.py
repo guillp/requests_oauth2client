@@ -12,11 +12,15 @@ from requests_oauth2client import (
     OAuth2Client,
     UnauthorizedClient,
 )
+from tests.conftest import RequestsMocker, RequestValidatorType
 
 
 def test_device_authorization_response(
-    device_code, user_code, verification_uri, verification_uri_complete
-):
+    device_code: str,
+    user_code: str,
+    verification_uri: str,
+    verification_uri_complete: str,
+) -> None:
 
     response = DeviceAuthorizationResponse(
         device_code=device_code,
@@ -38,8 +42,11 @@ def test_device_authorization_response(
 
 
 def test_device_authorization_response_expires_at(
-    device_code, user_code, verification_uri, verification_uri_complete
-):
+    device_code: str,
+    user_code: str,
+    verification_uri: str,
+    verification_uri_complete: str,
+) -> None:
     expires_at = datetime(year=2021, month=1, day=1, hour=0, minute=0, second=0)
     response = DeviceAuthorizationResponse(
         device_code=device_code,
@@ -60,8 +67,11 @@ def test_device_authorization_response_expires_at(
 
 
 def test_device_authorization_response_no_expiration(
-    device_code, user_code, verification_uri, verification_uri_complete
-):
+    device_code: str,
+    user_code: str,
+    verification_uri: str,
+    verification_uri_complete: str,
+) -> None:
 
     response = DeviceAuthorizationResponse(
         device_code=device_code,
@@ -82,8 +92,11 @@ def test_device_authorization_response_no_expiration(
 
 @pytest.fixture()
 def device_authorization_client(
-    token_endpoint, device_authorization_endpoint, client_id, client_secret, device_code
-):
+    token_endpoint: str,
+    device_authorization_endpoint: str,
+    client_id: str,
+    client_secret: str,
+) -> OAuth2Client:
     client = OAuth2Client(
         token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,
@@ -99,17 +112,17 @@ def device_authorization_client(
 
 
 def test_device_authorization_client(
-    requests_mock,
-    device_authorization_client,
-    device_authorization_endpoint,
-    device_code,
-    user_code,
-    verification_uri,
-    verification_uri_complete,
-    client_secret_post_auth_validator,
-    client_id,
-    client_secret,
-):
+    requests_mock: RequestsMocker,
+    device_authorization_client: OAuth2Client,
+    device_authorization_endpoint: str,
+    device_code: str,
+    user_code: str,
+    verification_uri: str,
+    verification_uri_complete: str,
+    client_secret_post_auth_validator: RequestValidatorType,
+    client_id: str,
+    client_secret: str,
+) -> None:
     requests_mock.post(
         device_authorization_endpoint,
         json={
@@ -130,13 +143,13 @@ def test_device_authorization_client(
 
 
 def test_device_authorization_client_error(
-    requests_mock,
-    device_authorization_client,
-    device_authorization_endpoint,
-    client_secret_post_auth_validator,
-    client_id,
-    client_secret,
-):
+    requests_mock: RequestsMocker,
+    device_authorization_client: OAuth2Client,
+    device_authorization_endpoint: str,
+    client_secret_post_auth_validator: RequestValidatorType,
+    client_id: str,
+    client_secret: str,
+) -> None:
     requests_mock.post(
         device_authorization_endpoint,
         status_code=400,
@@ -154,13 +167,13 @@ def test_device_authorization_client_error(
 
 
 def test_device_authorization_invalid_errors(
-    requests_mock,
-    device_authorization_client,
-    device_authorization_endpoint,
-    client_secret_post_auth_validator,
-    client_id,
-    client_secret,
-):
+    requests_mock: RequestsMocker,
+    device_authorization_client: OAuth2Client,
+    device_authorization_endpoint: str,
+    client_secret_post_auth_validator: RequestValidatorType,
+    client_id: str,
+    client_secret: str,
+) -> None:
     requests_mock.post(
         device_authorization_endpoint,
         status_code=400,
@@ -194,14 +207,14 @@ def test_device_authorization_invalid_errors(
 
 
 def test_device_authorization_pooling_job(
-    requests_mock,
-    token_endpoint,
-    client_id,
-    client_secret,
-    device_code,
-    device_code_grant_validator,
-    access_token,
-):
+    requests_mock: RequestsMocker,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    device_code: str,
+    device_code_grant_validator: RequestValidatorType,
+    access_token: str,
+) -> None:
     client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
     job = DeviceAuthorizationPoolingJob(
         client=client,
@@ -233,7 +246,9 @@ def test_device_authorization_pooling_job(
     assert token.access_token == access_token
 
 
-def test_no_device_authorization_endpoint(token_endpoint, client_id, client_secret):
+def test_no_device_authorization_endpoint(
+    token_endpoint: str, client_id: str, client_secret: str
+) -> None:
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     with pytest.raises(AttributeError):
         client.authorize_device()

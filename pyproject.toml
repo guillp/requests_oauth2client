@@ -1,22 +1,24 @@
 [tool]
 [tool.poetry]
 name = "requests_oauth2client"
-version = "1.0.0-alpha.0"
+version = "1.0.0-alpha.2"
 homepage = "https://github.com/guillp/requests_oauth2client"
-description = "An OAuth2.x Client based on and extending requests.."
+description = "An OAuth2.x Client based on requests."
 authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
 readme = "README.md"
 license =  "Apache-2.0"
 classifiers=[
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
+    'Topic :: Security',
     'License :: OSI Approved :: Apache Software License',
     'Natural Language :: English',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11'
 ]
 packages = [
     { include = "requests_oauth2client" },
@@ -24,68 +26,44 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<4.0"
+python = ">=3.7,<4.0"
 
-requests = "^2.26.0"
-cryptography = "^3.4.8"
-furl = "^2.1.2"
+requests = ">=2.19.0"
+jwskate = ">=0.2.1"
+binapy = ">=0.5"
+furl = ">=2.1.2"
 
-black  = { version = "21.8b0", optional = true}
-isort  = { version = "5.9.3", optional = true}
-flake8  = { version = "3.9.2", optional = true}
-flake8-docstrings = { version = "^1.6.0", optional = true }
-pytest  = { version = "6.2.5", optional = true}
-pytest-cov  = { version = "2.12.1", optional = true}
-tox  = { version = "^3.20.1", optional = true}
-virtualenv  = { version = "^20.2.2", optional = true}
-pip  = { version = "^20.3.1", optional = true}
-mkdocs  = { version = "^1.1.2", optional = true}
-mkdocs-include-markdown-plugin  = { version = "^3.2.3", optional = true}
-mkdocs-material  = { version = "^7.2.6", optional = true}
-mkdocstrings  = { version = "^0.15.2", optional = true}
-mkdocs-material-extensions  = { version = "^1.0.1", optional = true}
-twine  = { version = "^3.3.0", optional = true}
-mkdocs-autorefs = {version = "^0.2.1", optional = true}
-pre-commit = {version = "^2.12.0", optional = true}
-toml = {version = "^0.10.2", optional = true}
-requests-mock = {version = "^1.9.3", optional = true}
-flask = {version = "^2.0.1", optional = true}
-mypy = {version = "^0.910", optional = true}
-types-requests = {version ="^2.25.6", optional = true}
-types-cryptography = {version ="^3.3.5", optional = true}
-livereload = {version = "^2.6.3", optional = true}
-flake8-rst-docstrings = {version = "^0.2.3", extras = ["test"]}
-
+[tool.poetry.dev-dependencies]
+black  = ">=22.1.0"
+coverage = ">=6.3.1"
+isort  = ">=5.9.3"
+flake8  = ">=4.0.1"
+flake8-docstrings = ">=1.6.0"
+flake8-rst-docstrings = ">=0.2.3"
+flask = ">=2.0.1"
+livereload = ">=2.6.3"
+mypy = ">=0.931"
+mkdocs  = ">=1.2.3"
+mkdocs-autorefs = ">=0.3.0"
+mkdocs-include-markdown-plugin  = ">=3.2.3"
+mkdocs-material  = ">=8.2.1"
+mkdocs-material-extensions  = ">=1.0.1"
+mkdocstrings = { version = ">=0.18.0", extras = ["python"] }
+pre-commit = ">=2.12.0"
+pytest  = ">=7.0.1"
+pytest-cov  = ">=3.0.0"
+pytest-mypy = ">=0.9.1"
+requests-mock = ">=1.9.3"
+toml = ">=0.10.2"
+tox  = ">=3.20.1"
+types-requests = ">=2.25.10"
+types-cryptography = ">=3.3.15"
+virtualenv  = ">=20.2.2"
+pytest-freezegun = "^0.4.2"
 
 [tool.poetry.extras]
-test = [
-    "pytest",
-    "black",
-    "isort",
-    "flake8",
-    "flake8-docstrings",
-    "flake8-rst-docstrings",
-    "pytest-cov",
-    "mypy",
-    "types-requests",
-    "types-cryptography",
-    "requests-mock",
-    "flask"
-    ]
-
-dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml"]
-
-doc = [
-    "mkdocs",
-    "mkdocs-include-markdown-plugin",
-    "mkdocs-material",
-    "mkdocstrings",
-    "mkdocs-material-extensions",
-    "mkdocs-autorefs",
-    "livereload"
-    ]
-
-
+test = ["pytest", "pytest-cov"]
+doc = ["mkdocs", "mkdocs-autorefs", "mkdocs-include-markdown-plugin", "mkdocs-material", "mkdocs-material-extensions", "mkdocstrings"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -109,8 +87,9 @@ exclude = '''
 )/
 '''
 
-[mypy]
+[tool.mypy]
 strict = true
+implicit_reexport = true
 show_error_context = true
 show_column_numbers = true
 show_error_codes = true

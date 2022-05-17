@@ -1,4 +1,6 @@
-import requests  # type: ignore
+"""Main module for `requests_oauth2client`. You can import any class from any submodule directly from this main module."""
+
+import requests
 
 from .api_client import ApiClient
 from .auth import (
@@ -8,17 +10,23 @@ from .auth import (
     OAuth2ClientCredentialsAuth,
     OAuth2DeviceCodeAuth,
 )
-from .authorization_request import AuthorizationRequest, PkceUtils
+from .authorization_request import (
+    AuthorizationRequest,
+    AuthorizationResponse,
+    PkceUtils,
+    RequestUriParameterAuthorizationRequest,
+)
 from .backchannel_authentication import (
     BackChannelAuthenticationPoolingJob,
     BackChannelAuthenticationResponse,
 )
 from .client import OAuth2Client
 from .client_authentication import (
+    BaseClientAuthenticationMethod,
     ClientSecretBasic,
-    ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
-    PrivateKeyJWT,
+    PrivateKeyJwt,
     PublicApp,
 )
 from .device_authorization import (
@@ -48,6 +56,7 @@ from .exceptions import (
     InvalidScope,
     InvalidTokenResponse,
     LoginRequired,
+    MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
     OAuth2Error,
@@ -59,32 +68,4 @@ from .exceptions import (
     UnknownTokenEndpointError,
     UnsupportedTokenType,
 )
-from .jwskate import (
-    ECJwk,
-    ExpiredJwt,
-    InvalidClaim,
-    InvalidJwk,
-    InvalidJws,
-    InvalidJwt,
-    InvalidSignature,
-    Jwk,
-    JwkSet,
-    JwsCompact,
-    Jwt,
-    JwtSigner,
-    OKPJwk,
-    PrivateKeyRequired,
-    RSAJwk,
-    SignedJwt,
-    SymetricJwk,
-)
 from .tokens import BearerToken, BearerTokenSerializer, IdToken
-from .utils import (
-    accepts_expires_in,
-    b64_decode,
-    b64_encode,
-    b64u_decode,
-    b64u_encode,
-    json_encode,
-    validate_endpoint_uri,
-)

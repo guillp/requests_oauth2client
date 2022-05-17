@@ -1,34 +1,70 @@
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.1.10
+    rev: v1.1.13
     hooks:
     -   id: forbid-crlf
     -   id: remove-crlf
     -   id: forbid-tabs
     -   id: remove-tabs
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.2.0
     hooks:
     - id: trailing-whitespace
     - id: end-of-file-fixer
     - id: check-merge-conflict
     - id: check-yaml
       args: [--unsafe]
+- repo: https://github.com/executablebooks/mdformat
+  rev: 0.7.14
+  hooks:
+  - id: mdformat
+    args:
+      - --number
+    additional_dependencies:
+    - mdformat-black
+-   repo: https://github.com/hadialqattan/pycln
+    rev: v1.2.5
+    hooks:
+    -   id: pycln
+        args: [--config=pyproject.toml]
 -   repo: https://github.com/pre-commit/mirrors-isort
-    rev: v5.9.3
+    rev: v5.10.1
     hooks:
     - id: isort
 -   repo: https://github.com/ambv/black
-    rev: 21.8b0
+    rev: 22.3.0
     hooks:
-    - id: black
-      language_version: python3.8
+    -   id: black
+        language_version: python3.8
 -   repo: https://gitlab.com/pycqa/flake8
     rev: 3.9.2
     hooks:
     -   id: flake8
         additional_dependencies: [flake8-typing-imports==1.10.0]
 -   repo: https://github.com/asottile/blacken-docs
-    rev: v1.11.0
+    rev: v1.12.1
     hooks:
         - id: blacken-docs
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 6.1.1
+    hooks:
+    -   id: pydocstyle
+        additional_dependencies:
+            - toml
+        exclude: 'tests/'
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.942
+    hooks:
+    -   id: mypy
+        args:
+        - --strict
+        - --implicit-reexport
+        - --show-error-codes
+        - --show-error-context
+        - --show-column-numbers
+        additional_dependencies:
+            - pytest-mypy
+            - jwskate
+            - types-requests
+            - requests_mock
+            - flask

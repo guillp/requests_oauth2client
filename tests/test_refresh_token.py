@@ -2,18 +2,20 @@ import secrets
 
 from requests_oauth2client import OAuth2Client
 
+from .conftest import RequestsMocker, RequestValidatorType
+
 
 def test_refresh_token(
-    requests_mock,
-    token_endpoint,
-    revocation_endpoint,
-    refresh_token,
-    client_secret_post_auth_validator,
-    client_id,
-    client_secret,
-    refresh_token_grant_validator,
-    revocation_request_validator,
-):
+    requests_mock: RequestsMocker,
+    token_endpoint: str,
+    revocation_endpoint: str,
+    refresh_token: str,
+    client_secret_post_auth_validator: RequestValidatorType,
+    client_id: str,
+    client_secret: str,
+    refresh_token_grant_validator: RequestValidatorType,
+    revocation_request_validator: RequestValidatorType,
+) -> None:
     client = OAuth2Client(
         token_endpoint,
         revocation_endpoint=revocation_endpoint,
@@ -36,7 +38,9 @@ def test_refresh_token(
     assert token_resp.access_token == new_access_token
     assert token_resp.refresh_token == new_refresh_token
 
-    refresh_token_grant_validator(requests_mock.last_request, refresh_token)
+    refresh_token_grant_validator(
+        requests_mock.last_request, refresh_token=refresh_token
+    )
     client_secret_post_auth_validator(
         requests_mock.last_request, client_id=client_id, client_secret=client_secret
     )

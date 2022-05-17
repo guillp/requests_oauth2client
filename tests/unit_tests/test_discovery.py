@@ -5,7 +5,7 @@ from requests_oauth2client import (
 )
 
 
-def test_well_known_uri():
+def test_well_known_uri() -> None:
     assert (
         well_known_uri("http://www.example.com", "example")
         == "http://www.example.com/.well-known/example"
@@ -34,7 +34,7 @@ def test_well_known_uri():
     )
 
 
-def test_oidc_discovery():
+def test_oidc_discovery() -> None:
     assert (
         oidc_discovery_document_url("https://issuer.com")
         == "https://issuer.com/.well-known/openid-configuration"
@@ -49,7 +49,7 @@ def test_oidc_discovery():
     )
 
 
-def test_oauth20_discovery():
+def test_oauth20_discovery() -> None:
     assert (
         oauth2_discovery_document_url("https://issuer.com")
         == "https://issuer.com/.well-known/oauth-authorization-server"
