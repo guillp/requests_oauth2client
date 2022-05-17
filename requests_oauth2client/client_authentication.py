@@ -147,7 +147,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         return request
 
 
-class ClientSecretJWT(ClientAssertionAuthenticationMethod):
+class ClientSecretJwt(ClientAssertionAuthenticationMethod):
     """Implement `client_secret_jwt` client authentication method (using a `client_assertion` field, symmetrically signed with the client_secret)."""
 
     def __init__(
@@ -159,7 +159,7 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         jti_gen: Callable[[], Any] = lambda: uuid4(),
     ) -> None:
         """
-        Initialize a `ClientSecretJWT` Auth Handler.
+        Initialize a `ClientSecretJwt` Auth Handler.
 
         :param client_id: the `client_id` to use.
         :param client_secret: the `client_secret` to use to sign generated Client Assertions.
@@ -198,11 +198,7 @@ class ClientSecretJWT(ClientAssertionAuthenticationMethod):
         return str(jwt)
 
 
-ClientSecretJwt = ClientSecretJWT
-"""Alias of ClientSecretJWT to be consistent with `jwskate`."""
-
-
-class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
+class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
     """Implement `private_key_jwt` client authentication method (client_assertion asymmetrically signed with a private key)."""
 
     def __init__(
@@ -214,7 +210,7 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         jti_gen: Callable[[], Any] = lambda: uuid4(),
     ) -> None:
         """
-        Initialize a `PrivateKeyJWT` Auth Handler.
+        Initialize a `PrivateKeyJwt` Auth Handler.
 
         :param client_id: the `client_id` to use.
         :param private_jwk: the private JWK to use to sign generated Client Assertions.
@@ -265,10 +261,6 @@ class PrivateKeyJWT(ClientAssertionAuthenticationMethod):
         return str(jwt)
 
 
-PrivateKeyJwt = PrivateKeyJWT
-"""Alias of PrivateKeyJWT to be consistent with jwkskate."""
-
-
 class PublicApp(BaseClientAuthenticationMethod):
     """Implement the `none` authentication method for public apps (where the client only sends its client_id)."""
 
@@ -297,7 +289,7 @@ class PublicApp(BaseClientAuthenticationMethod):
 def client_auth_factory(
     auth: Union[requests.auth.AuthBase, Tuple[str, str], Tuple[str, Jwk], str],
     default_auth_handler: Union[
-        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJWT]
+        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJwt]
     ] = ClientSecretPost,
 ) -> requests.auth.AuthBase:
     """
@@ -318,7 +310,7 @@ def client_auth_factory(
         client_id, credential = auth
         if isinstance(credential, Jwk):
             private_jwk = credential
-            return PrivateKeyJWT(str(client_id), private_jwk)
+            return PrivateKeyJwt(str(client_id), private_jwk)
         else:
             return default_auth_handler(str(client_id), credential)
     elif isinstance(auth, str):
@@ -328,9 +320,9 @@ def client_auth_factory(
         raise ValueError(
             """Parameter 'auth' is required to define the Authentication Method that this Client will use when sending requests to the Token Endpoint.
 'auth' can be:
-- an instance of a requests.auth.AuthBase subclass, including ClientSecretPost, ClientSecretBasic, ClientSecretJWT, PrivateKeyJWT, PublicApp,
+- an instance of a requests.auth.AuthBase subclass, including ClientSecretPost, ClientSecretBasic, ClientSecretJwt, PrivateKeyJwt, PublicApp,
 - a (client_id, client_secret) tuple, both as str, for ClientSecretPost,
-- a (client_id, private_key) tuple, with client_id as str and private_key as a dict in JWK format, for PrivateKeyJWT,
+- a (client_id, private_key) tuple, with client_id as str and private_key as a dict in JWK format, for PrivateKeyJwt,
 - a client_id, as str, for PublicApp.
 """
         )

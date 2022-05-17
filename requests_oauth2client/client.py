@@ -95,7 +95,7 @@ class OAuth2Client:
         Initialize an `OAuth2Client`.
 
         :param token_endpoint: the Token Endpoint URI where this client will get access tokens
-        :param auth: the authentication handler to use for client authentication on the token endpoint. Can be a [requests.auth.AuthBase][] instance (which will be as-is), or a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost], a `(client_id, jwk)` to initialize a [PrivateKeyJWK][requests_oauth2client.client_authentication.PrivateKeyJWT], or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
+        :param auth: the authentication handler to use for client authentication on the token endpoint. Can be a [requests.auth.AuthBase][] instance (which will be as-is), or a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost], a `(client_id, jwk)` to initialize a [PrivateKeyJwt][requests_oauth2client.client_authentication.PrivateKeyJwt], or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
         :param revocation_endpoint: the Revocation Endpoint URI to use for revoking tokens
         :param introspection_endpoint: the Introspection Endpoint URI to use to get info about tokens
         :param userinfo_endpoint: the Userinfo Endpoint URI to use to get information about the user

@@ -24,10 +24,8 @@ from .client import OAuth2Client
 from .client_authentication import (
     BaseClientAuthenticationMethod,
     ClientSecretBasic,
-    ClientSecretJWT,
     ClientSecretJwt,
     ClientSecretPost,
-    PrivateKeyJWT,
     PrivateKeyJwt,
     PublicApp,
 )

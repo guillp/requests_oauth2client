@@ -12,10 +12,10 @@ from requests_oauth2client import (
     AuthorizationRequest,
     BearerAuth,
     ClientSecretBasic,
-    ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
     OAuth2Client,
-    PrivateKeyJWT,
+    PrivateKeyJwt,
     PublicApp,
 )
 from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
@@ -113,7 +113,7 @@ def client_id() -> str:
 
 @pytest.fixture(
     scope="session",
-    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT],
+    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJwt],
 )
 def client_auth_method_handler(
     request: pytest.FixtureRequest,
@@ -161,8 +161,8 @@ def client_credential(
         Type[PublicApp],
         Type[ClientSecretPost],
         Type[ClientSecretBasic],
-        Type[ClientSecretJWT],
-        Type[PrivateKeyJWT],
+        Type[ClientSecretJwt],
+        Type[PrivateKeyJwt],
     ],
     client_secret: str,
     private_jwk: Jwk,
@@ -172,10 +172,10 @@ def client_credential(
     elif client_auth_method_handler in (
         ClientSecretPost,
         ClientSecretBasic,
-        ClientSecretJWT,
+        ClientSecretJwt,
     ):
         return client_secret
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         return private_jwk
     assert False
 
@@ -186,8 +186,8 @@ def client_auth_method(
         Type[PublicApp],
         Type[ClientSecretPost],
         Type[ClientSecretBasic],
-        Type[ClientSecretJWT],
-        Type[PrivateKeyJWT],
+        Type[ClientSecretJwt],
+        Type[PrivateKeyJwt],
     ],
     client_id: str,
     client_credential: Union[None, str, Jwk],

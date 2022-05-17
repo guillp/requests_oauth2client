@@ -27,7 +27,7 @@ from requests_oauth2client import (
     BaseClientAuthenticationMethod,
     BearerAuth,
     ClientSecretBasic,
-    ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
     PublicApp,
 )
@@ -143,7 +143,7 @@ def client_secret() -> str:
 
 @pytest.fixture(
     scope="session",
-    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJWT],
+    params=[PublicApp, ClientSecretPost, ClientSecretBasic, ClientSecretJwt],
 )
 def client_auth_method_handler(
     request: FixtureRequest,
@@ -154,11 +154,11 @@ def client_auth_method_handler(
 @pytest.fixture(scope="session")
 def client_auth_method(
     client_auth_method_handler: Union[
-        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJWT]
+        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJwt]
     ],
     client_id: str,
     client_secret: str,
-) -> Union[ClientSecretPost, ClientSecretBasic, ClientSecretJWT]:
+) -> Union[ClientSecretPost, ClientSecretBasic, ClientSecretJwt]:
     return client_auth_method_handler(client_id, client_secret)
 
 

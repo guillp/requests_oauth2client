@@ -5,10 +5,10 @@ from requests_mock import ANY
 
 from requests_oauth2client import (
     ClientSecretBasic,
-    ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
     OAuth2Client,
-    PrivateKeyJWT,
+    PrivateKeyJwt,
 )
 from tests.conftest import RequestsMocker, RequestValidatorType
 
@@ -69,7 +69,7 @@ def test_private_key_jwt(
 ) -> None:
 
     client = OAuth2Client(
-        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk)
+        token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk)
     )
 
     requests_mock.post(
@@ -97,7 +97,7 @@ def test_private_key_jwt_with_kid(
     public_jwk: Jwk,
 ) -> None:
     client = OAuth2Client(
-        token_endpoint, PrivateKeyJWT(client_id, private_jwk=private_jwk)
+        token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk)
     )
 
     requests_mock.post(
@@ -124,7 +124,7 @@ def test_client_secret_jwt(
     client_secret_jwt_auth_validator: RequestValidatorType,
 ) -> None:
 
-    client = OAuth2Client(token_endpoint, ClientSecretJWT(client_id, client_secret))
+    client = OAuth2Client(token_endpoint, ClientSecretJwt(client_id, client_secret))
 
     requests_mock.post(
         token_endpoint,
@@ -175,10 +175,10 @@ def test_invalid_request(
 def test_private_key_jwt_missing_alg(client_id: str, private_jwk: Jwk) -> None:
     private_jwk.pop("alg")
     with pytest.raises(ValueError):
-        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk, alg=None)  # type: ignore[arg-type]
+        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk, alg=None)  # type: ignore[arg-type]
 
 
 def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:
     private_jwk.pop("kid")
     with pytest.raises(ValueError):
-        PrivateKeyJWT(client_id=client_id, private_jwk=private_jwk)
+        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk)

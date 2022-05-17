@@ -11,12 +11,12 @@ from requests_oauth2client import (
     BaseClientAuthenticationMethod,
     BearerToken,
     ClientSecretBasic,
-    ClientSecretJWT,
+    ClientSecretJwt,
     ClientSecretPost,
     IdToken,
     InvalidTokenResponse,
     OAuth2Client,
-    PrivateKeyJWT,
+    PrivateKeyJwt,
     PublicApp,
     RequestUriParameterAuthorizationRequest,
     ServerError,
@@ -37,9 +37,9 @@ def test_public_client_auth(token_endpoint: str, client_id: str) -> None:
 def test_private_key_jwt_auth(
     token_endpoint: str, client_id: str, private_jwk: Jwk
 ) -> None:
-    """Passing a (client_id, private_jwk) tuple  as `auth` uses PrivateKeyJWT authentication."""
+    """Passing a (client_id, private_jwk) tuple  as `auth` uses PrivateKeyJwt authentication."""
     client = OAuth2Client(token_endpoint, auth=(client_id, private_jwk))
-    assert isinstance(client.auth, PrivateKeyJWT)
+    assert isinstance(client.auth, PrivateKeyJwt)
     assert client.auth.client_id == client_id
     assert client.auth.private_jwk == private_jwk
 
@@ -120,14 +120,14 @@ def test_client_credentials_grant(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=token_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -191,14 +191,14 @@ def test_authorization_code_grant(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=token_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -260,14 +260,14 @@ def test_refresh_token_grant(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=token_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -327,14 +327,14 @@ def test_device_code_grant(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=token_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -403,14 +403,14 @@ def test_token_exchange_grant(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=token_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -628,14 +628,14 @@ def test_revoke_access_token(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=revocation_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -686,14 +686,14 @@ def test_revoke_refresh_token(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=revocation_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -773,14 +773,14 @@ def test_revoke_token(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=revocation_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -860,14 +860,14 @@ def test_revoke_token_error(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=revocation_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
@@ -1062,14 +1062,14 @@ def test_introspection(
             client_id=client_id,
             client_secret=client_credential,
         )
-    elif client_auth_method_handler == ClientSecretJWT:
+    elif client_auth_method_handler == ClientSecretJwt:
         client_secret_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,
             client_secret=client_credential,
             endpoint=introspection_endpoint,
         )
-    elif client_auth_method_handler == PrivateKeyJWT:
+    elif client_auth_method_handler == PrivateKeyJwt:
         private_key_jwt_auth_validator(
             requests_mock.last_request,
             client_id=client_id,

@@ -492,17 +492,17 @@ requires client authentication. You don't have anything else to do afterwards.
 
 - **client_secret_jwt**: client generates an ephemeral JWT assertion including information about itself (client_id), the
   AS (url of the endpoint), and expiration date. To use it, pass a
-  [ClientSecretJWT(client_id, client_secret)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretJWT)
+  [ClientSecretJwt(client_id, client_secret)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretJwt)
   as `auth` parameter. Assertion generation is entirely automatic, you don't have anything to do:
 
   ```python
-  client = OAuth2Client(token_endpoint, auth=ClientSecretJWT(client_id, client_secret))
+  client = OAuth2Client(token_endpoint, auth=ClientSecretJwt(client_id, client_secret))
   ```
 
 - **private_key_jwt**: client uses a JWT assertion like _client_secret_jwt_, but it is signed with an _asymmetric_ key.
   To use it, you need a private signing key, in a `dict` that matches the JWK format. The matching public key must be
   registered for your client on AS side. Once you have that, using this auth method is simple with the
-  [PrivateKeyJWT(client_id, private_jwk)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PrivateKeyJWT)
+  [PrivateKeyJwt(client_id, private_jwk)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PrivateKeyJwt)
   auth handler:
 
   ```python
@@ -520,7 +520,7 @@ requires client authentication. You don't have anything else to do afterwards.
   }
 
   client = OAuth2Client(
-      "https://myas.local/token", auth=PrivateKeyJWT(client_id, private_jwk)
+      "https://myas.local/token", auth=PrivateKeyJwt(client_id, private_jwk)
   )
   ```
 
@@ -546,7 +546,7 @@ creating the [OAuth2Client] :
 oauth2client = OAuth2Client(
     token_endpoint,
     revocation_endpoint=revocation_endpoint,
-    auth=ClientSecretJWT("client_id", "client_secret"),
+    auth=ClientSecretJwt("client_id", "client_secret"),
 )
 ```
 
@@ -581,7 +581,7 @@ when creating the `OAuth2Client`:
 oauth2client = OAuth2Client(
     token_endpoint,
     introspection_endpoint=introspection_endpoint,
-    auth=ClientSecretJWT("client_id", "client_secret"),
+    auth=ClientSecretJwt("client_id", "client_secret"),
 )
 ```
 
@@ -604,7 +604,7 @@ It returns whatever data is returned by the introspection endpoint (if it is a J
 oauth2client = OAuth2Client(
     token_endpoint,
     userinfo_endpoint=userinfo_endpoint,
-    auth=ClientSecretJWT("client_id", "client_secret"),
+    auth=ClientSecretJwt("client_id", "client_secret"),
 )
 ```
 
