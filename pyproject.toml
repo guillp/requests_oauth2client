@@ -8,8 +8,9 @@ authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
 readme = "README.md"
 license =  "Apache-2.0"
 classifiers=[
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
+    'Topic :: Security',
     'License :: OSI Approved :: Apache Software License',
     'Natural Language :: English',
     'Programming Language :: Python :: 3',
@@ -17,6 +18,7 @@ classifiers=[
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11'
 ]
 packages = [
     { include = "requests_oauth2client" },
@@ -27,7 +29,7 @@ packages = [
 python = ">=3.7,<4.0"
 
 requests = ">=2.19.0"
-jwskate = ">=0.1.1"
+jwskate = ">=0.2.1"
 binapy = ">=0.5"
 furl = ">=2.1.2"
 
