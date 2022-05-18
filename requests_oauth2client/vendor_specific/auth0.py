@@ -8,10 +8,15 @@ from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentia
 
 
 class Auth0Client(OAuth2Client):
-    """
-    A OAuth2Client for an Auth0 tenant.
+    """A OAuth2Client for an Auth0 tenant.
 
     You only have to provide a tenant name and all endpoints will be initialized to work with your tenant.
+
+    Args:
+        tenant: the tenant name or FQDN. If it doesn't contain a `.` or it ends with `.eu`, `.us`, or `.au`,
+            then `.auth0.com` will automatically be suffixed to the provided tenant name.
+        auth: the client credentials, same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
+        session: the session to use, same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
     """
 
     def __init__(
@@ -20,14 +25,6 @@ class Auth0Client(OAuth2Client):
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
     ):
-        """
-        Initialize an `Auth0Client`.
-
-        :param tenant: the tenant name or FQDN. If it doesn't contain a `.` or it ends with `.eu`, `.us`, or `.au`,
-        then `.auth0.com` will automatically be suffixed to the provided tenant name.
-        :param auth: the client credentials, same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client.__init__]
-        :param session: the session to use, same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client.__init__]
-        """
         if (
             "." not in tenant
             or tenant.endswith(".eu")
@@ -51,14 +48,19 @@ class Auth0Client(OAuth2Client):
 
 
 class Auth0ManagementApiClient(ApiClient):
-    """
-    A wrapper around [Auth0 Management API v2](https://auth0.com/docs/api/management/v2), for a given Auth0 tenant.
+    """A wrapper around [Auth0 Management API v2](https://auth0.com/docs/api/management/v2), for a given Auth0 tenant.
+
+    Args:
+        tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
+        auth: client credentials. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
+        session: requests session. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
+        **kwargs: additional kwargs to pass to the ApiClient base class
 
     Usage:
-    ```python
-    a0mgmt = Auth0ManagementApiClient("mytenant.eu", (client_id, client_secret))
-    users = a0mgmt.get("users", params={"page": 0, "per_page": 100})
-    ```
+        ```python
+        a0mgmt = Auth0ManagementApiClient("mytenant.eu", (client_id, client_secret))
+        users = a0mgmt.get("users", params={"page": 0, "per_page": 100})
+        ```
     """
 
     def __init__(
@@ -68,14 +70,6 @@ class Auth0ManagementApiClient(ApiClient):
         session: Optional[requests.Session] = None,
         **kwargs: Any,
     ):
-        """
-        Initialize an Auth0ManagementApiClient against a given Auth0 tenant.
-
-        :param tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
-        :param auth: client credentials. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
-        :param session: requests session. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
-        :param kwargs: additional kwargs to pass to the ApiClient base class
-        """
         client = Auth0Client(tenant, auth, session=session)
         audience = f"https://{client.tenant}/api/v2/"
         api_auth = OAuth2ClientCredentialsAuth(client, audience=audience)

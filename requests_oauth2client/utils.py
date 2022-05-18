@@ -10,8 +10,7 @@ from furl import furl  # type: ignore
 def validate_endpoint_uri(
     uri: str, https: bool = True, no_fragment: bool = True, path: bool = True
 ) -> None:
-    """
-    Validate that an URI is suitable as an endpoint URI.
+    """Validate that an URI is suitable as an endpoint URI.
 
     It checks:
 
@@ -20,11 +19,15 @@ def validate_endpoint_uri(
     - that a path is present
 
     Those check can be individually disabled using the parameters `https`, `no_fragment` and `path`.
-    :param uri: the uri
-    :param https: if `True`, check that the uri is https
-    :param no_fragment: if `True`, check that the uri contains no fragment
-    :param path: if `True`, check that the uri contains a path component
-    :return:
+
+    Args:
+        uri: the uri
+        https: if `True`, check that the uri is https
+        no_fragment: if `True`, check that the uri contains no fragment
+        path: if `True`, check that the uri contains a path component
+
+    Raises:
+        ValueError: if the supplied url is not suitable
     """
     url = furl(uri)
     if https and url.scheme != "https":
@@ -36,14 +39,16 @@ def validate_endpoint_uri(
 
 
 def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorate methods that accept an `expires_at` datetime parameter, to also allow an `expires_in` parameter in seconds.
+    """Decorate methods that accept an `expires_at` datetime parameter, to also allow an `expires_in` parameter in seconds.
 
     If supplied, `expires_in` will be converted to a datetime `expires_in` seconds in the future, and passed as `expires_at`
     in the decorated method.
 
-    :param f: the method to decorate, with an `expires_at` parameter
-    :return: a decorated method that accepts either `expires_in` or `expires_at`.
+    Args:
+        f: the method to decorate, with an `expires_at` parameter
+
+    Returns:
+        a decorated method that accepts either `expires_in` or `expires_at`.
     """
 
     @wraps(f)

@@ -10,20 +10,19 @@ class OAuth2Error(Exception):
 
 
 class EndpointError(OAuth2Error):
-    """Base class for exceptions raised when a token endpoint returns a standardised error."""
+    """Base class for exceptions raised when a token endpoint returns a standardised error.
+
+    An `EndpointError` contains the error message, description and uri that are returned by the AS.
+
+    Args:
+        error: the `error` identifier as returned by the AS
+        description: the `error_description` as returned by the AS
+        uri: the `error_uri` as returned by the AS
+    """
 
     def __init__(
         self, error: str, description: Optional[str] = None, uri: Optional[str] = None
     ):
-        """
-        Initialize an `EndpointError`.
-
-        An `EndpointError` contains the error message, description and uri that are returned by the AS.
-
-        :param error: the `error` identifier as returned by the AS
-        :param description: the `error_description` as returned by the AS
-        :param uri: the `error_uri` as returned by the AS
-        """
         self.error = error
         self.description = description
         self.uri = uri
@@ -110,20 +109,19 @@ class InvalidIdToken(InvalidJwt):
 
 
 class AuthorizationResponseError(Exception):
-    """Base class for error responses returned by the Authorization endpoint."""
+    """Base class for error responses returned by the Authorization endpoint.
+
+    An `AuthorizationResponseError` contains the error message, description and uri that are returned by the AS.
+
+    Args:
+        error: the `error` identifier as returned by the AS
+        description: the `error_description` as returned by the AS
+        uri: the `error_uri` as returned by the AS
+    """
 
     def __init__(
         self, error: str, description: Optional[str] = None, uri: Optional[str] = None
     ):
-        """
-        Initialize an `AuthorizationResponseError`.
-
-        An `AuthorizationResponseError` contains the error message, description and uri that are returned by the AS.
-
-        :param error: the `error` identifier as returned by the AS
-        :param description: the `error_description` as returned by the AS
-        :param uri: the `error_uri` as returned by the AS
-        """
         self.error = error
         self.description = description
         self.uri = uri

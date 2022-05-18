@@ -49,6 +49,8 @@ repos:
     rev: 6.1.1
     hooks:
     -   id: pydocstyle
+        args:
+        - --add-ignore=D107
         additional_dependencies:
             - toml
         exclude: 'tests/'

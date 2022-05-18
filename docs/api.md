@@ -1,6 +1,7 @@
 ::: requests_oauth2client
+handler: python
 selection:
-docstring_style: restructured-text
+docstring_style: google
 filters:
 \- "!^\_"
 \- "^__init__"
