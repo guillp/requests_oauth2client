@@ -8,7 +8,7 @@ from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentia
 
 
 class Auth0Client(OAuth2Client):
-    """A OAuth2Client for an Auth0 tenant.
+    """An OAuth2Client for an Auth0 tenant.
 
     You only have to provide a tenant name and all endpoints will be initialized to work with your tenant.
 
@@ -74,7 +74,7 @@ class Auth0ManagementApiClient(ApiClient):
         audience = f"https://{client.tenant}/api/v2/"
         api_auth = OAuth2ClientCredentialsAuth(client, audience=audience)
         super().__init__(
-            url=audience,
+            base_url=audience,
             auth=api_auth,
             session=session,
             **kwargs,
