@@ -19,6 +19,7 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
@@ -233,7 +234,11 @@ class ApiClient:
                     try:
                         url = "/".join(
                             [
-                                part.decode() if isinstance(part, bytes) else str(part)
+                                urlencode(
+                                    part.decode()
+                                    if isinstance(part, bytes)
+                                    else str(part)
+                                )
                                 for part in url
                                 if part
                             ]
