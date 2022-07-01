@@ -421,7 +421,7 @@ class ApiClient:
             ````
         """
         new_base_uri = self.to_absolute_url(item)
-        return self.__class__(
+        return ApiClient(
             new_base_uri,
             session=self.session,
             none_fields=self.none_fields,
