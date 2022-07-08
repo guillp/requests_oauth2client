@@ -115,7 +115,7 @@ class ApiClient:
             Callable[[requests.PreparedRequest], requests.PreparedRequest],
         ] = None,
         timeout: Union[None, float, Tuple[float, float], Tuple[float, None]] = None,
-        allow_redirects: Optional[bool] = True,
+        allow_redirects: bool = False,
         proxies: Optional[MutableMapping[str, str]] = None,
         hooks: Optional[
             MutableMapping[
