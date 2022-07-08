@@ -231,6 +231,9 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         if not isinstance(private_jwk, Jwk):
             private_jwk = Jwk(private_jwk)
 
+        if not private_jwk.is_private or isinstance(private_jwk, SymmetricJwk):
+            raise ValueError("Asymmetric signing requires a private key")
+
         alg = private_jwk.alg or alg
         if not alg:
             raise ValueError(
@@ -246,7 +249,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         self.private_jwk = private_jwk
 
     def client_assertion(self, audience: str) -> str:
-        """Generate a Client Assertion, asumetrically signed with `private_jwk` as key.
+        """Generate a Client Assertion, asymetrically signed with `private_jwk` as key.
 
         Args:
             audience: the audience to use for the generated Client Assertion.
@@ -300,7 +303,13 @@ class PublicApp(BaseClientAuthenticationMethod):
 
 
 def client_auth_factory(
-    auth: Union[requests.auth.AuthBase, Tuple[str, str], Tuple[str, Jwk], str],
+    auth: Union[
+        requests.auth.AuthBase,
+        Tuple[str, str],
+        Tuple[str, Jwk],
+        Tuple[str, Dict[str, Any]],
+        str,
+    ],
     default_auth_handler: Union[
         Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJwt]
     ] = ClientSecretPost,
@@ -324,7 +333,7 @@ def client_auth_factory(
         return auth
     elif isinstance(auth, tuple) and len(auth) == 2:
         client_id, credential = auth
-        if isinstance(credential, Jwk):
+        if isinstance(credential, (Jwk, dict)):
             private_jwk = credential
             return PrivateKeyJwt(str(client_id), private_jwk)
         else:

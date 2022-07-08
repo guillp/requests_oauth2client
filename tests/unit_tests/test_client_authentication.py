@@ -179,6 +179,24 @@ def test_private_key_jwt_missing_alg(client_id: str, private_jwk: Jwk) -> None:
 
 
 def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:
-    private_jwk.pop("kid")
+    private_jwk_without_kid = dict(private_jwk)
+    private_jwk_without_kid.pop("kid")
     with pytest.raises(ValueError):
-        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk)
+        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk_without_kid)
+
+
+def test_init_auth(
+    token_endpoint: str, client_id: str, client_secret: str, private_jwk: Jwk
+) -> None:
+    csp_client = OAuth2Client(token_endpoint, (client_id, client_secret))
+    assert isinstance(csp_client.auth, ClientSecretPost)
+    assert csp_client.auth.client_id == client_id
+    assert csp_client.auth.client_secret == client_secret
+
+    pkj_client = OAuth2Client(token_endpoint, (client_id, dict(private_jwk)))
+    assert isinstance(pkj_client.auth, PrivateKeyJwt)
+    assert pkj_client.auth.client_id == client_id
+    assert pkj_client.auth.private_jwk == private_jwk
+
+    with pytest.raises(ValueError):
+        OAuth2Client(token_endpoint, (client_id, {"foo": "bar"}))
