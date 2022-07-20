@@ -6,7 +6,6 @@ strict: false
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage: usage.md
   - API: api.md
   - Contributing: contributing.md
   - Authors: authors.md
@@ -36,6 +35,7 @@ markdown_extensions:
       generic: true
   - pymdownx.highlight:
       linenums: true
+  - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.details
   - admonition
@@ -49,32 +49,22 @@ plugins:
   - search:
       lang: en
   - mkdocstrings:
+      default_handler: python
       watch:
         - requests_oauth2client
         - README.md
       handlers:
-          python:
-              import:
-                  - https://requests.readthedocs.io/en/master/objects.inv
+        python:
+          options:
+            show_root_heading: true
+            members_order: source
+          import:
+            - https://requests.readthedocs.io/en/master/objects.inv
 
 extra:
   social:
-    - icon: fontawesome/brands/twitter
-      # replace with your own tweet link below
-      link: http://www.jieyu.ai
-      name: Tweet
-    - icon: fontawesome/brands/facebook
-      # replace with your own facebook link below
-      link: http://www.jieyu.ai
-      name: Facebook
     - icon: fontawesome/brands/github
       link: https://github.com/guillp/requests_oauth2client
       name: Github
     - icon: material/email
       link: "mailto:guill.p.linux@gmail.com"
-  # to enable disqus, uncomment the following and put your disqus id below
-  # disqus: disqus_id
-# uncomment the following and put your google tracking id below to enable GA
-#google_analytics:
-  #- UA-xxx
-  #- auto

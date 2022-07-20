@@ -11,10 +11,10 @@ from .utils import accepts_expires_in
 
 
 class BearerToken:
-    """Represents a Bearer Token and its associated parameters as returned by a Token Endpoint.
+    """Represents a Bearer Token as returned by a Token Endpoint.
 
-    This is a wrapper around a Bearer Token and associated expiration date and refresh token,
-    as returned by an OAuth 2.x or OIDC 1.0 Token Endpoint.
+    This is a wrapper around a Bearer Token and associated parameters,
+    such as expiration date and refresh token, as returned by an OAuth 2.x or OIDC 1.0 Token Endpoint.
 
     All parameters are as returned by a Token Endpoint. The token expiration date can be passed as datetime
     in the `expires_at` parameter, or an `expires_in` parameter, as number of seconds in the future, can be passed instead.
@@ -64,7 +64,9 @@ class BearerToken:
         return None
 
     def authorization_header(self) -> str:
-        """Return the Authorization Header value containing this access token, correctly formatted according to RFC6750.
+        """Return the appropriate Authorization Header value for this token.
+
+        The value is formatted correctly according to RFC6750.
 
         Returns:
             the value to use in a HTTP Authorization Header
@@ -184,9 +186,11 @@ class BearerToken:
 
 
 class BearerTokenSerializer:
-    """An helper class to serialize Tokens. This may be used to store BearerTokens in session or cookies.
+    """An helper class to serialize Token Response returned by an AS.
 
-    This needs a `dumper` and a `loader` functions that will respectively serialize and deserialize BearerTokens.
+    This may be used to store BearerTokens in session or cookies.
+
+    It needs a `dumper` and a `loader` functions that will respectively serialize and deserialize BearerTokens.
     Default implementations are provided with use gzip and base64url on the serialized JSON representation.
 
     Args:
@@ -212,17 +216,14 @@ class BearerTokenSerializer:
         Returns:
             the serialized value
         """
-        return (
-            BinaPy.serialize_to("json", token.as_dict(True))
-            .to("gzip")
-            .to("b64u")
-            .ascii()
-        )
+        return BinaPy.serialize_to("json", token.as_dict(True)).to("gzip").to("b64u").ascii()
 
     def default_loader(
         self, serialized: str, token_class: Type[BearerToken] = BearerToken
     ) -> BearerToken:
-        """Deserialize a BearerToken. Does the opposite operations than `default_dumper`.
+        """Deserialize a BearerToken.
+
+        This does the opposite operations than `default_dumper`.
 
         Args:
             serialized: the serialized token
@@ -230,12 +231,7 @@ class BearerTokenSerializer:
         Returns:
             a BearerToken
         """
-        attrs = (
-            BinaPy(serialized)
-            .decode_from("b64u")
-            .decode_from("gzip")
-            .parse_from("json")
-        )
+        attrs = BinaPy(serialized).decode_from("b64u").decode_from("gzip").parse_from("json")
         expires_at = attrs.get("expires_at")
         if expires_at:
             attrs["expires_at"] = datetime.fromtimestamp(expires_at)
@@ -267,5 +263,6 @@ class BearerTokenSerializer:
 class IdToken(SignedJwt):
     """Represent an ID Token.
 
-    An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be prealably decoded.
+    An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be prealably
+    decoded.
     """

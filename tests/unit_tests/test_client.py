@@ -34,9 +34,7 @@ def test_public_client_auth(token_endpoint: str, client_id: str) -> None:
     assert client.auth.client_id == client_id
 
 
-def test_private_key_jwt_auth(
-    token_endpoint: str, client_id: str, private_jwk: Jwk
-) -> None:
+def test_private_key_jwt_auth(token_endpoint: str, client_id: str, private_jwk: Jwk) -> None:
     """Passing a (client_id, private_jwk) tuple  as `auth` uses PrivateKeyJwt authentication."""
     client = OAuth2Client(token_endpoint, auth=(client_id, private_jwk))
     assert isinstance(client.auth, PrivateKeyJwt)
@@ -47,7 +45,8 @@ def test_private_key_jwt_auth(
 def test_client_secret_post_auth(
     token_endpoint: str, client_id: str, client_secret: str
 ) -> None:
-    """Passing a (client_id, client_secret) tuple  as `auth` uses ClientSecretPost authentication."""
+    """Passing a (client_id, client_secret) tuple  as `auth` uses ClientSecretPost
+    authentication."""
     client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
     assert isinstance(client.auth, ClientSecretPost)
     assert client.auth.client_id == client_id
@@ -57,17 +56,16 @@ def test_client_secret_post_auth(
 def test_client_secret_basic_auth(
     token_endpoint: str, client_id: str, client_secret: str
 ) -> None:
-    """Passing a (client_id, client_secret) tuple  as `auth` and ClientSecretBasic as `default_auth_handler` uses ClientSecretBasic authentication."""
-    client = OAuth2Client(
-        token_endpoint, auth=ClientSecretBasic(client_id, client_secret)
-    )
+    """Passing a (client_id, client_secret) tuple  as `auth` and ClientSecretBasic as
+    `default_auth_handler` uses ClientSecretBasic authentication."""
+    client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
     assert isinstance(client.auth, ClientSecretBasic)
     assert client.auth.client_id == client_id
     assert client.auth.client_secret == client_secret
 
 
 def test_missing_auth(token_endpoint: str) -> None:
-    """`auth` is required"""
+    """`auth` is required."""
     with pytest.raises(ValueError):
         OAuth2Client(token_endpoint, auth=None)  # type: ignore[arg-type]
 
@@ -90,7 +88,8 @@ def test_client_credentials_grant(
     client_secret_jwt_auth_validator: RequestValidatorType,
     private_key_jwt_auth_validator: RequestValidatorType,
 ) -> None:
-    """.client_credentials() sends a requests to the Token Endpoint using the Client Credentials grant."""
+    """.client_credentials() sends a requests to the Token Endpoint using the Client Credentials
+    grant."""
     requests_mock.post(
         token_endpoint,
         json={
@@ -159,7 +158,8 @@ def test_authorization_code_grant(
     client_secret_jwt_auth_validator: RequestValidatorType,
     private_key_jwt_auth_validator: RequestValidatorType,
 ) -> None:
-    """.authorization_code() sends a requests to the Token Endpoint using the Authorization Code grant."""
+    """.authorization_code() sends a requests to the Token Endpoint using the Authorization Code
+    grant."""
     requests_mock.post(
         token_endpoint,
         json={
@@ -173,9 +173,7 @@ def test_authorization_code_grant(
     oauth2client.authorization_code(code=authorization_code)
 
     assert requests_mock.called_once
-    authorization_code_grant_validator(
-        requests_mock.last_request, code=authorization_code
-    )
+    authorization_code_grant_validator(requests_mock.last_request, code=authorization_code)
 
     if client_auth_method_handler == PublicApp:
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
@@ -242,9 +240,7 @@ def test_refresh_token_grant(
     assert token_resp.access_token == new_access_token
     assert token_resp.refresh_token == new_refresh_token
 
-    refresh_token_grant_validator(
-        requests_mock.last_request, refresh_token=refresh_token
-    )
+    refresh_token_grant_validator(requests_mock.last_request, refresh_token=refresh_token)
 
     if client_auth_method_handler == PublicApp:
         public_app_auth_validator(requests_mock.last_request, client_id=client_id)
@@ -358,7 +354,8 @@ def test_token_exchange_grant(
     client_secret_jwt_auth_validator: RequestValidatorType,
     private_key_jwt_auth_validator: RequestValidatorType,
 ) -> None:
-    """.token_exchange() sends a requests to the Token Endpoint using the Token Exchange grant."""
+    """.token_exchange() sends a requests to the Token Endpoint using the Token Exchange
+    grant."""
     subject_token = secrets.token_urlsafe()
     actor_token = secrets.token_urlsafe()
     new_access_token = secrets.token_urlsafe()
@@ -462,7 +459,8 @@ def test_from_discovery_document(
     jwks_uri: str,
     client_id: str,
 ) -> None:
-    """You initialize an OAuth2Client based on a standardised discovery document with OAuth2Client.from_discovery_document()."""
+    """You initialize an OAuth2Client based on a standardised discovery document with
+    OAuth2Client.from_discovery_document()."""
     client = OAuth2Client.from_discovery_document(
         {
             "issuer": issuer,
@@ -512,9 +510,7 @@ def test_from_discovery_document_token_endpoint_only(
     assert client.jwks_uri is None
 
 
-def test_from_discovery_document_test_issuer(
-    token_endpoint: str, client_id: str
-) -> None:
+def test_from_discovery_document_test_issuer(token_endpoint: str, client_id: str) -> None:
     """Invalid discovery documents raises an exception."""
     with pytest.raises(ValueError):
         OAuth2Client.from_discovery_document(
@@ -566,7 +562,8 @@ def test_invalid_token_response(
 def test_invalid_token_response_200(
     requests_mock: RequestsMocker, token_endpoint: str, client_id: str
 ) -> None:
-    """Token Endpoint successful responses outside the standard raises an InvalidTokenResponse"""
+    """Token Endpoint successful responses outside the standard raises an
+    InvalidTokenResponse."""
     client = OAuth2Client(token_endpoint, auth=client_id)
     requests_mock.post(token_endpoint, status_code=200, json={"confusing": "data"})
     with pytest.raises(InvalidTokenResponse):
@@ -600,7 +597,8 @@ def test_revoke_access_token(
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """.revoke_access_token() sends a Revocation request to the Revocation Endpoint, with token_type_hint=access_token."""
+    """.revoke_access_token() sends a Revocation request to the Revocation Endpoint, with
+    token_type_hint=access_token."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
@@ -661,7 +659,8 @@ def test_revoke_refresh_token(
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """.revoke_refresh_token() sends a Revocation request to the Revocation Endpoint, with token_type_hint=refresh_token."""
+    """.revoke_refresh_token() sends a Revocation request to the Revocation Endpoint, with
+    token_type_hint=refresh_token."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
@@ -711,7 +710,8 @@ def test_revoke_refresh_token_with_bearer_token_as_param(
     refresh_token: str,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """.revoke_refresh_token() sends a Revocation request to the Revocation Endpoint, with token_type_hint=refresh_token."""
+    """.revoke_refresh_token() sends a Revocation request to the Revocation Endpoint, with
+    token_type_hint=refresh_token."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
@@ -798,7 +798,8 @@ def test_revoke_token_with_bearer_token_as_param(
     refresh_token: str,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """if a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh token from the BearerToken"""
+    """if a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh
+    token from the BearerToken."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
@@ -832,13 +833,12 @@ def test_revoke_token_error(
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """.revoke_token() sends a Revocation request to the Revocation Endpoint, with token_type_hint=access_token."""
+    """.revoke_token() sends a Revocation request to the Revocation Endpoint, with
+    token_type_hint=access_token."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
-    requests_mock.post(
-        revocation_endpoint, status_code=400, json={"error": "server_error"}
-    )
+    requests_mock.post(revocation_endpoint, status_code=400, json={"error": "server_error"})
 
     with pytest.raises(ServerError):
         client.revoke_token(refresh_token)
@@ -883,7 +883,8 @@ def test_revoke_token_error_non_standard(
     client_auth_method: BaseClientAuthenticationMethod,
     refresh_token: str,
 ) -> None:
-    """.revoke_token() sends a Revocation request to the Revocation Endpoint, with token_type_hint=access_token."""
+    """.revoke_token() sends a Revocation request to the Revocation Endpoint, with
+    token_type_hint=access_token."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
@@ -898,9 +899,7 @@ def test_revoke_token_error_non_standard(
     assert requests_mock.called_once
 
 
-def test_revoke_token_no_revocation_endpoint(
-    token_endpoint: str, client_id: str
-) -> None:
+def test_revoke_token_no_revocation_endpoint(token_endpoint: str, client_id: str) -> None:
     """Revocation methods return False if no revocation_endpoint is configured."""
     client = OAuth2Client(token_endpoint, revocation_endpoint=None, auth=client_id)
 
@@ -915,7 +914,7 @@ def test_server_jwks(
     jwks_uri: str,
     server_public_jwks: JwkSet,
 ) -> None:
-    """get_public_jwks() fetches the AS public JWKS from its JWKS URI"""
+    """get_public_jwks() fetches the AS public JWKS from its JWKS URI."""
     requests_mock.get(jwks_uri, json=dict(server_public_jwks))
     assert oauth2client.get_public_jwks() == server_public_jwks
     assert requests_mock.called_once
@@ -933,9 +932,7 @@ def test_server_jwks_not_json(
 ) -> None:
     """If JWKS URI is not known, get_public_jwks() raises an exception."""
     requests_mock.get(jwks_uri, text="Hello World!")
-    client = OAuth2Client(
-        token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar")
-    )
+    client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
     with pytest.raises(ValueError):
         assert client.get_public_jwks()
     assert requests_mock.called_once
@@ -946,9 +943,7 @@ def test_server_jwks_invalid_doc(
 ) -> None:
     """If JWKS URI is an invalid document, get_public_jwks() raises an exception."""
     requests_mock.get(jwks_uri, json={"foo": "bar"})
-    client = OAuth2Client(
-        token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar")
-    )
+    client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
     jwks = client.get_public_jwks()
     assert requests_mock.called_once
     assert not jwks.jwks
@@ -1170,9 +1165,7 @@ def test_ciba(
     access_token: str,
     ciba_request_validator: RequestValidatorType,
 ) -> None:
-    requests_mock.post(
-        token_endpoint, json={"access_token": access_token, "expires_in": 60}
-    )
+    requests_mock.post(token_endpoint, json={"access_token": access_token, "expires_in": 60})
     token = oauth2client.ciba(auth_req_id=auth_req_id)
     assert isinstance(token, BearerToken)
     assert requests_mock.called_once

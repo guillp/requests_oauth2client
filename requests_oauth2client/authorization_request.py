@@ -1,4 +1,4 @@
-"""This module contains classes and utilities related to Authorization Requests and Responses."""
+"""Classes and utilities related to Authorization Requests and Responses."""
 
 
 import re
@@ -24,7 +24,10 @@ from .utils import accepts_expires_in
 
 
 class PkceUtils:
-    """Contains helper methods for PKCE, as described in [RFC7636](https://tools.ietf.org/html/rfc7636)."""
+    """Contains helper methods for PKCE, as described in RFC7636.
+
+    See [RFC7636](https://tools.ietf.org/html/rfc7636).
+    """
 
     code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
     """A regex that matches valid code verifiers."""
@@ -66,9 +69,7 @@ class PkceUtils:
             raise ValueError("Unsupported code_challenge_method", method)
 
     @classmethod
-    def generate_code_verifier_and_challenge(
-        cls, method: str = "S256"
-    ) -> Tuple[str, str]:
+    def generate_code_verifier_and_challenge(cls, method: str = "S256") -> Tuple[str, str]:
         """Generate a valid `code_verifier` and derive its `code_challenge`.
 
         Args:
@@ -156,7 +157,7 @@ class AuthorizationResponse:
         self.others = kwargs
 
     def __getattr__(self, item: str) -> Optional[str]:
-        """Allow attribute access to additional parameters from this Authorization Response.
+        """Make additional parameters available as attributes.
 
         Args:
             item: the attribute name
@@ -251,9 +252,7 @@ class AuthorizationRequest:
         else:
             if not code_verifier:
                 code_verifier = PkceUtils.generate_code_verifier()
-            code_challenge = PkceUtils.derive_challenge(
-                code_verifier, code_challenge_method
-            )
+            code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
 
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
@@ -325,7 +324,9 @@ class AuthorizationRequest:
         enc_alg: Optional[str] = None,
         enc: Optional[str] = None,
     ) -> Jwt:
-        """Sign and encrypt the `request` object that matches the current Authorization Request parameters.
+        """Sign and encrypt a `request` object for this Authorization Request.
+
+        The signed `request` will contain the same parameters as this AuthorizationRequest.
 
         Args:
             sign_jwk: the JWK to use to sign the request
@@ -379,7 +380,10 @@ class AuthorizationRequest:
         return self
 
     def validate_callback(self, response: str) -> AuthorizationResponse:
-        """Validate a given Authorization Response URI against this Authorization Request, and return an [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
+        """Validate an Authorization Response against this Request.
+
+        Validate a given Authorization Response URI against this Authorization
+        Request, and return an [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
 
         This includes matching the `state` parameter, checking for returned errors, and extracting the returned `code`
         and other parameters.
@@ -430,7 +434,10 @@ class AuthorizationRequest:
         )
 
     def on_response_error(self, response: str) -> AuthorizationResponse:
-        """Triggered by [validate_callback()][requests_oauth2client.authorization_request.AuthorizationRequest.validate_callback] if the response uri contains an error.
+        """Error handler for Authorization Response errors.
+
+        Triggered by [validate_callback()][requests_oauth2client.authorization_request.AuthorizationRequest.validate_callback] if the response uri contains
+        an error.
 
         Args:
             response: the Authorization Response URI. This can be the full URL, or just the query parameters.
@@ -466,9 +473,7 @@ class AuthorizationRequest:
         return str(
             furl(
                 self.authorization_endpoint,
-                args={
-                    key: value for key, value in self.args.items() if value is not None
-                },
+                args={key: value for key, value in self.args.items() if value is not None},
             ).url
         )
 

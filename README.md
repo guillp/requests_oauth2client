@@ -1,8 +1,8 @@
-`requests_oauth2client` is a Python OAuth 2.x client, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC
+`requests_oauth2client` is a OAuth 2.x client for Python, able to obtain, refresh and revoke tokens from any OAuth2.x/OIDC
 compliant Authorization Server. It sits upon and extends the famous [requests] HTTP client module.
 
 It can act as an [OAuth 2.0](https://tools.ietf.org/html/rfc6749) /
-[2.1](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1) client, to automatically get and renew access tokens,
+[2.1](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1) client, to automatically get and renew Access Tokens,
 based on the
 [Client Credentials](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-client-credentials),
 [Authorization Code](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-authorization-code),
@@ -43,7 +43,7 @@ Full module documentation is available at https://guillp.github.io/requests_oaut
 
 # Installation
 
-As easy as:
+`requests_oauth2client` is [available from PyPi](https://pypi.org/project/requests-oauth2client/), so installing it is as easy as:
 
 ```shell
 pip install requests_oauth2client
@@ -51,7 +51,7 @@ pip install requests_oauth2client
 
 # Usage
 
-Import it like this:
+Everything from `requests_oauth2client` is available from the root module, so you can import it like this:
 
 ```python
 from requests_oauth2client import *
@@ -64,6 +64,9 @@ Note that this automatically imports `requests`, so no need to import it yoursel
 If you already managed to obtain an access token, you can simply use the [BearerAuth] Auth Handler for [requests]:
 
 ```python
+import requests
+from requests_oauth2client import BearerToken
+
 token = "an_access_token"
 resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 ```
@@ -75,19 +78,21 @@ according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
 
 [OAuth2Client] offers several methods that implement the communication to the various endpoints that are standardised by
 OAuth 2.0 and its extensions. Those endpoints include the Token Endpoint, the Revocation, Introspection, UserInfo,
-BackChannel Authentication and Device Authorization Endpoints.
+BackChannel Authentication and Device Authorization Endpoints. You only have to provide those if you intend to use them.
 
 To initialize an [OAuth2Client], you only need a Token Endpoint URI, and the credentials for your application, which are
 often a `client_id` and a `client_secret`:
 
 ```python
+from requests_oauth2client import OAuth2Client
+
 oauth2client = OAuth2Client(
     token_endpoint="https://myas.local/token_endpoint",
     auth=("client_id", "client_secret"),
 )
 ```
 
-The Token Endpoint is the only Endpoint that is mandatory to obtain tokens. Credentials are used to authenticate the
+The Token Endpoint is the only endpoint that is mandatory to obtain tokens. Credentials are used to authenticate the
 client everytime it sends a request to its Authorization Server. Usually, those are a static Client ID and Secret, which
 are the direct equivalent of a username and a password, but meant for an application instead of for a human user. The
 default authentication method used by `OAuth2Client` is *Client Secret Post*, but other standardised methods such as
@@ -128,7 +133,7 @@ You can use a [BearerToken] instance anywhere you can supply an access_token as 
 While using [OAuth2Client] directly is great for testing or debugging OAuth2.x flows, it is not a viable option for
 actual applications where tokens must be obtained, used during their lifetime then obtained again or refreshed once they
 are expired. `requests_oauth2client` contains several [requests] compatible Auth Handlers (as subclasses of
-[requests.auth.AuthBase](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication)), that will
+[requests.auth.AuthBase](https://requests.readthedocs.io/en/latest/user/advanced/#custom-authentication)), that will
 take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
 ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session],
 or an [ApiClient], which is a wrapper around `Session` with a few enhancements as described below.
@@ -471,72 +476,95 @@ select the appropriate method to use when initializing your [OAuth2Client], with
 a client will automatically use the configured authentication method every time it sends a requested to an endpoint that
 requires client authentication. You don't have anything else to do afterwards.
 
-- **client_secret_basic**: client_id and client_secret are included in clear-text in the Authorization header. To use
-  it, just pass a
-  [ClientSecretBasic(client_id, client_secret)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretBasic)
-  as `auth` parameter:
+### Client Secret Basic
 
-  ```python
-  client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
-  ```
+With **client_secret_basic**, `client_id` and `client_secret` are included in clear-text in the `Authorization` header when sending requests to the Token Endpoint. To use
+it, just pass a
+[`ClientSecretBasic(client_id, client_secret)`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretBasic)
+as `auth` parameter:
 
-- **client_secret_post**: client_id and client_secret are included as part of the body form data. To use it, pass a
-  [ClientSecretPost(client_id, client_secret)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretPost)
-  as `auth` parameter. This also what is being used as default when you pass a tuple `(client_id, client_secret)` as
-  `auth`:
+```python
+from requests_oauth2client import OAuth2Client, ClientSecretBasic
 
-  ```python
-  client = OAuth2Client(token_endpoint, auth=ClientSecretPost(client_id, client_secret))
-  # or
-  client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
-  ```
+client = OAuth2Client(token_endpoint, auth=ClientSecretBasic(client_id, client_secret))
+```
 
-- **client_secret_jwt**: client generates an ephemeral JWT assertion including information about itself (client_id), the
-  AS (url of the endpoint), and expiration date. To use it, pass a
-  [ClientSecretJwt(client_id, client_secret)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretJwt)
-  as `auth` parameter. Assertion generation is entirely automatic, you don't have anything to do:
+### Client Secret Post
 
-  ```python
-  client = OAuth2Client(token_endpoint, auth=ClientSecretJwt(client_id, client_secret))
-  ```
+With **client_secret_post**, `client_id` and `client_secret` are included as part of the body form data. To use it, pass a
+[`ClientSecretPost(client_id, client_secret)`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretPost)
+as `auth` parameter. This is the default when you pass a tuple `(client_id, client_secret)` as
+`auth` when initializing an `OAuth2Client`:
 
-- **private_key_jwt**: client uses a JWT assertion like _client_secret_jwt_, but it is signed with an _asymmetric_ key.
-  To use it, you need a private signing key, in a `dict` that matches the JWK format. The matching public key must be
-  registered for your client on AS side. Once you have that, using this auth method is simple with the
-  [PrivateKeyJwt(client_id, private_jwk)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PrivateKeyJwt)
-  auth handler:
+```python
+from requests_oauth2client import OAuth2Client, ClientSecretPost
 
-  ```python
-  private_jwk = {
-      "kid": "mykid",
-      "kty": "RSA",
-      "e": "AQAB",
-      "n": "...",
-      "d": "...",
-      "p": "...",
-      "q": "...",
-      "dp": "...",
-      "dq": "...",
-      "qi": "...",
-  }
+client = OAuth2Client(token_endpoint, auth=ClientSecretPost(client_id, client_secret))
+# or
+client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
+```
 
-  client = OAuth2Client(
-      "https://myas.local/token", auth=PrivateKeyJwt(client_id, private_jwk)
-  )
-  ```
+### Client Secret JWT
 
-  Note that you can also directly pass a `(client_id, jwk)` tuple, with the same effect:
+With **client_secret_jwt**, the client generates an ephemeral JWT assertion including information about itself (client_id), the
+AS (url of the endpoint), and an expiration date a few seconds in the future. To use it, pass a
+[`ClientSecretJwt(client_id, client_secret)`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretJwt)
+as `auth` parameter. Assertion generation is entirely automatic, you don't have anything to do:
 
-  ```python
-  client = OAuth2Client(token_endpoint, auth=(client_id, private_jwk))
-  ```
+```python
+from requests_oauth2client import OAuth2Client, ClientSecretJwt
 
-- **none**: client only includes its `client_id` in body form data, without any authentication credentials. Use
-  [PublicApp(client_id)](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PublicApp):
+client = OAuth2Client(token_endpoint, auth=ClientSecretJwt(client_id, client_secret))
+```
 
-  ```python
-  client = OAuth2Client(token_endpoint, auth=PublicApp(client_id, client_secret))
-  ```
+This method is more secure than the 2 previous, because only ephemeral credentials are transmitted, which limits the possibility for interception and replay of the Client Secret.
+But that Client Secret still needs to be shared between the AS and Client owner(s).
+
+### Private Key JWT
+
+With **private_key_jwt**, client uses a JWT assertion that is just like _client_secret_jwt_, but it is signed with an _asymmetric_ key.
+To use it, you need a private signing key, in a `dict` that matches the JWK format, or as an instance of `jwskate.Jwk`. The matching public key must be
+registered for your client on AS side. Once you have that, using this auth method is simple with the
+[`PrivateKeyJwt(client_id, private_jwk)`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PrivateKeyJwt)
+auth handler:
+
+```python
+from requests_oauth2client import OAuth2Client, PrivateKeyJwt
+
+private_jwk = {
+    "kid": "mykid",
+    "kty": "RSA",
+    "e": "AQAB",
+    "n": "...",
+    "d": "...",
+    "p": "...",
+    "q": "...",
+    "dp": "...",
+    "dq": "...",
+    "qi": "...",
+}
+
+client = OAuth2Client(
+    "https://myas.local/token", auth=PrivateKeyJwt(client_id, private_jwk)
+)
+# or
+client = OAuth2Client(token_endpoint, auth=(client_id, private_jwk))
+```
+
+This method can be considered more secure than those relying on a client secret, because only ephemeral credentials are sent over the wire, and it uses asymetric cryptography: the signing key is generated by the client, and only the public key is known by the AS.
+Transmitting that public key between owner(s) of the client and of the AS is much easier than transmitting the Client Secret, which is a shared key that must be considered as confidential.
+
+### None
+
+The latest Client Authentication Method, **none**, is for Public Clients which do not authenticate to the Token Endpoint.
+Those clients only include their `client_id` in body form data, without any authentication credentials. Use
+[`PublicApp(client_id)`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.PublicApp):
+
+```python
+from requests_oauth2client import OAuth2Client, PublicApp
+
+client = OAuth2Client(token_endpoint, auth=PublicApp(client_id, client_secret))
+```
 
 ## Token Revocation
 
@@ -641,7 +669,7 @@ easier, `requests_oauth2client` includes a [requests.Session] wrapper called [Ap
 root API url as parameter on initialization. You can then send requests to different endpoints by passing their relative
 path instead of the full url. [ApiClient] also accepts an `auth` parameter with an AuthHandler. You can pass any of the
 OAuth2 Auth Handler from this module, or any [requests]-compatible
-[Authentication Handler](https://docs.python-requests.org/en/master/user/advanced/#custom-authentication). Which makes
+[Authentication Handler](https://requests.readthedocs.io/en/latest/user/advanced/#custom-authentication). Which makes
 it very easy to call APIs that are protected with an OAuth2 Client Credentials Grant:
 
 ```python
@@ -747,5 +775,5 @@ myusers = a0mgmt.get("users")
 [bearerauth]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.BearerAuth
 [bearertoken]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken
 [oauth2client]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client
-[requests]: https://docs.python-requests.org/en/master/
-[requests.session]: https://docs.python-requests.org/en/master/api/#request-sessions
+[requests]: https://requests.readthedocs.io/en/latest/
+[requests.session]: https://requests.readthedocs.io/en/latest/api/#requests.Session

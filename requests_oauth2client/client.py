@@ -1,4 +1,4 @@
-"""This module contains the OAuth2Client class, which is a central part of `requests_oauth2client`."""
+"""This module contains the `OAuth2Client` class."""
 
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
@@ -108,9 +108,7 @@ class OAuth2Client:
         session: Optional[requests.Session] = None,
     ):
         self.token_endpoint = str(token_endpoint)
-        self.revocation_endpoint = (
-            str(revocation_endpoint) if revocation_endpoint else None
-        )
+        self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
         self.introspection_endpoint = (
             str(introspection_endpoint) if introspection_endpoint else None
         )
@@ -121,9 +119,7 @@ class OAuth2Client:
             else None
         )
         self.device_authorization_endpoint = (
-            str(device_authorization_endpoint)
-            if device_authorization_endpoint
-            else None
+            str(device_authorization_endpoint) if device_authorization_endpoint else None
         )
         self.pushed_authorization_request_endpoint = (
             str(pushed_authorization_request_endpoint)
@@ -137,7 +133,9 @@ class OAuth2Client:
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
     ) -> BearerToken:
-        """Send a request to the token endpoint. Authentication will be added automatically.
+        """Send a request to the token endpoint.
+
+        Authentication will be added automatically based on the defined `auth` for this client.
 
         Args:
              data: parameters to send to the token endpoint. Items with a None or empty value will not be sent in the request.
@@ -187,7 +185,7 @@ class OAuth2Client:
                 raise token_error_exc from response_class_exc
 
     def on_token_error(self, response: requests.Response) -> BearerToken:
-        """Error handler for [token_request][requests_oauth2client.client.OAuth2Client.token_request].
+        """Error handler for `token_request()`.
 
         Invoked by [token_request][requests_oauth2client.client.OAuth2Client.token_request] when the Token Endpoint returns an error.
 
@@ -202,9 +200,7 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(
-                error, UnknownTokenEndpointError
-            )
+            exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
             raise exception_class(error, error_description, error_uri)
         else:
             raise InvalidTokenResponse(
@@ -292,9 +288,7 @@ class OAuth2Client:
             refresh_token = refresh_token.refresh_token
 
         requests_kwargs = requests_kwargs or {}
-        data = dict(
-            grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs
-        )
+        data = dict(grant_type="refresh_token", refresh_token=refresh_token, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
     def device_code(
@@ -303,7 +297,10 @@ class OAuth2Client:
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
-        """Send a request to the token endpoint with the `urn:ietf:params:oauth:grant-type:device_code` grant.
+        """Send a request to the token endpoint using the Device Code grant.
+
+        The grant_type is `urn:ietf:params:oauth:grant-type:device_code`.
+        This needs a Device Code, or a `DeviceAuthorizationResponse` as parameter.
 
         Args:
             device_code: a device code, as received during the Device Authorization request
@@ -413,7 +410,10 @@ class OAuth2Client:
     def pushed_authorization_request(
         self, authorization_request: AuthorizationRequest
     ) -> RequestUriParameterAuthorizationRequest:
-        """Send a Pushed Authorization Request, return a RequestUriParameterAuthorizationRequest initialized with the AS response.
+        """Send a Pushed Authorization Request.
+
+        This sends a request to the Pushed Authorization Request Endpoint, and returns a
+        `RequestUriParameterAuthorizationRequest` initialized with the AS response.
 
         Args:
             authorization_request: the authorization request to send
@@ -466,9 +466,7 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(
-                error, UnknownTokenEndpointError
-            )
+            exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
             raise exception_class(error, error_description, error_uri)
         else:
             raise InvalidPushedAuthorizationResponse(
@@ -477,7 +475,9 @@ class OAuth2Client:
             )
 
     def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
-        """Call the UserInfo endpoint with the specified access_token and return the result.
+        """Call the UserInfo endpoint.
+
+        This sends a request to the UserInfo endpoint, with the specified access_token, and returns the parsed result.
 
         Args:
             access_token: the access token to use
@@ -488,13 +488,14 @@ class OAuth2Client:
         if not self.userinfo_endpoint:
             raise AttributeError("No userinfo_endpoint defined for this client")
 
-        response = self.session.post(
-            self.userinfo_endpoint, auth=BearerAuth(access_token)
-        )
+        response = self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token))
         return self.parse_userinfo_response(response)
 
     def parse_userinfo_response(self, resp: requests.Response) -> Any:
-        """Given a response obtained from the userinfo endpoint, extract its JSON content.
+        """Parse the response obtained by `userinfo()`.
+
+        Invoked by [userinfo()][requests_oauth2client.client.OAuth2Client.userinfo] to parse the response from the UserInfo endpoint, this will extract and return its JSON
+        content.
 
         Args:
             resp: a [Response][requests.Response] returned from the UserInfo endpoint.
@@ -510,7 +511,10 @@ class OAuth2Client:
         token_type: Optional[str] = None,
         token: Union[None, str, BearerToken, IdToken] = None,
     ) -> str:
-        """Return a standardised token type identifier, based on a short `token_type` hint and/or a token value.
+        """Get standardised token type identifiers.
+
+        Return a standardised token type identifier, based on a short `token_type`
+        hint and/or a token value.
 
         Args:
             token_type: a token_type hint, as `str`. May be "access_token", "refresh_token" or "id_token" (optional)
@@ -547,14 +551,8 @@ class OAuth2Client:
                 )
             return "urn:ietf:params:oauth:token-type:access_token"
         elif token_type == "refresh_token":
-            if (
-                token is not None
-                and isinstance(token, BearerToken)
-                and not token.refresh_token
-            ):
-                raise ValueError(
-                    "The supplied BearerToken doesn't have a refresh_token."
-                )
+            if token is not None and isinstance(token, BearerToken) and not token.refresh_token:
+                raise ValueError("The supplied BearerToken doesn't have a refresh_token.")
             return "urn:ietf:params:oauth:token-type:refresh_token"
         elif token_type == "id_token":
             if token is not None and not isinstance(token, (str, IdToken)):
@@ -608,9 +606,7 @@ class OAuth2Client:
         """
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None:
-                raise ValueError(
-                    "The supplied BearerToken doesn't have a refresh token."
-                )
+                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
             refresh_token = refresh_token.refresh_token
 
         return self.revoke_token(
@@ -648,9 +644,7 @@ class OAuth2Client:
 
         if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
             if token.refresh_token is None:
-                raise ValueError(
-                    "The supplied BearerToken doesn't have a refresh token."
-                )
+                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
             token = token.refresh_token
 
         data = dict(revoke_kwargs, token=str(token))
@@ -669,9 +663,9 @@ class OAuth2Client:
         return self.on_revocation_error(response)
 
     def on_revocation_error(self, response: requests.Response) -> bool:
-        """Error handler for [revoke_token()][requests_oauth2client.client.OAuth2Client.revoke_token].
+        """Error handler for `revoke_token()`.
 
-        Invoked by :method:`revoke_token` when the revocation endpoint returns an error.
+        Invoked by [revoke_token()][requests_oauth2client.client.OAuth2Client.revoke_token] when the revocation endpoint returns an error.
 
         Args:
             response: the [Response][requests.Response] as returned by the Revocation Endpoint
@@ -715,9 +709,7 @@ class OAuth2Client:
 
         if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
             if token.refresh_token is None:
-                raise ValueError(
-                    "The supplied BearerToken doesn't have a refresh token."
-                )
+                raise ValueError("The supplied BearerToken doesn't have a refresh token.")
             token = token.refresh_token
 
         data = dict(introspect_kwargs, token=str(token))
@@ -736,7 +728,7 @@ class OAuth2Client:
         return self.on_introspection_error(response)
 
     def parse_introspection_response(self, response: requests.Response) -> Any:
-        """Parse Token Introspection Responses received by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token].
+        """Parse Token Introspection Responses received by `introspect_token()`.
 
         Invoked by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token] to parse the returned response.
         This decodes the JSON content if possible, otherwise it returns the response as a string.
@@ -753,7 +745,7 @@ class OAuth2Client:
             return response.text
 
     def on_introspection_error(self, response: requests.Response) -> Any:
-        """Error handler for [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token].
+        """Error handler for `introspect_token()`.
 
         Invoked by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token] to parse the returned response in the case an error is returned.
 
@@ -878,7 +870,7 @@ class OAuth2Client:
     def parse_backchannel_authentication_response(
         self, response: requests.Response
     ) -> BackChannelAuthenticationResponse:
-        """Parse a BackChannel Authentication Response received by [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request].
+        """Parse a response received by `backchannel_authentication_request()`.
 
         Invoked by [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request] to parse the response
         returned by the BackChannel Authentication Endpoint.
@@ -897,7 +889,7 @@ class OAuth2Client:
     def on_backchannel_authentication_error(
         self, response: requests.Response
     ) -> BackChannelAuthenticationResponse:
-        """Error handler for [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request].
+        """Error handler for `backchannel_authentication_request()`.
 
         Invoked by [backchannel_authentication_request()][requests_oauth2client.client.OAuth2Client.backchannel_authentication_request] to parse the response
         returned by the BackChannel Authentication Endpoint, when it is an error.
@@ -917,9 +909,7 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(
-                error, BackChannelAuthenticationError
-            )
+            exception_class = self.exception_classes.get(error, BackChannelAuthenticationError)
             raise exception_class(error, error_description, error_uri)
 
         raise InvalidBackChannelAuthenticationResponse(response)
@@ -934,9 +924,7 @@ class OAuth2Client:
             a Device Authorization Response
         """
         if self.device_authorization_endpoint is None:
-            raise AttributeError(
-                "No device authorization endpoint defined for this client"
-            )
+            raise AttributeError("No device authorization endpoint defined for this client")
 
         response = self.session.post(
             self.device_authorization_endpoint, data=data, auth=self.auth
@@ -950,7 +938,7 @@ class OAuth2Client:
     def parse_device_authorization_response(
         self, response: requests.Response
     ) -> DeviceAuthorizationResponse:
-        """Parse a Device Authorization Response received by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device].
+        """Parse a Device Authorization Response received by `authorize_device()`.
 
         Invoked by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device] to parse the response returned by the Device Authorization Endpoint.
 
@@ -966,7 +954,7 @@ class OAuth2Client:
     def on_device_authorization_error(
         self, response: requests.Response
     ) -> DeviceAuthorizationResponse:
-        """Error handler for [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device].
+        """Error handler for `authorize_device()`.
 
         Invoked by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device] to parse the response returned by the Device Authorization Endpoint, when that response is an error.
 
@@ -981,9 +969,7 @@ class OAuth2Client:
         error_description = error_json.get("error_description")
         error_uri = error_json.get("error_uri")
         if error:
-            exception_class = self.exception_classes.get(
-                error, DeviceAuthorizationError
-            )
+            exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
             raise exception_class(error, error_description, error_uri)
 
         raise InvalidDeviceAuthorizationResponse(
@@ -1010,7 +996,10 @@ class OAuth2Client:
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
     ) -> "OAuth2Client":
-        """Initialise an OAuth2Client, retrieving the endpoint uris from the server metadata exposed on a discovery document.
+        """Initialise an OAuth2Client based on Authorization Server Metadata.
+
+        This will retrieve the standardised metadata document available at `url`, and will extract all Endpoint Uris from that document,
+        then will initialize an OAuth2Client based on those endpoint.
 
         Args:
              url: the url where the server metadata will be retrieved
@@ -1019,14 +1008,12 @@ class OAuth2Client:
              issuer: if an issuer is given, check that it matches the one from the retrieved document
 
         Returns:
-            a OAuth2Client
+            an OAuth2Client with endpoint initialized based on the obtained metadata
         """
         session = session or requests.Session()
         discovery = session.get(url).json()
 
-        return cls.from_discovery_document(
-            discovery, issuer=issuer, auth=auth, session=session
-        )
+        return cls.from_discovery_document(discovery, issuer=issuer, auth=auth, session=session)
 
     @classmethod
     def from_discovery_document(

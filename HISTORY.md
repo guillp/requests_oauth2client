@@ -1,6 +1,6 @@
 # History
 
-## 1.0.0 (to be released)
+## 1.0.0
 
 - First properly documented version.
 - Migrated from pipenv to poetry

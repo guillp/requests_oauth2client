@@ -208,7 +208,7 @@ def test_other_api(
 def test_url_type(target_api: str) -> None:
     api = ApiClient(target_api)
     with pytest.raises(TypeError):
-        api.get(True)  # type: ignore
+        api.get(True)  # type: ignore[arg-type]
 
 
 def test_additional_kwargs(target_api: str) -> None:

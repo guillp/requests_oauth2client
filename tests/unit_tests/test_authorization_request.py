@@ -1,7 +1,7 @@
 from typing import Union
 
 import pytest
-from furl import furl  # type: ignore
+from furl import furl  # type: ignore[import]
 from jwskate import Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (
@@ -56,9 +56,7 @@ def test_authorization_signed_request(
     authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk
 ) -> None:
     args = {
-        key: value
-        for key, value in authorization_request.args.items()
-        if value is not None
+        key: value for key, value in authorization_request.args.items() if value is not None
     }
     url = furl(str(authorization_request.sign(private_jwk)))
     request = url.args.get("request")
