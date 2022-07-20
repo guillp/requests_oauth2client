@@ -56,8 +56,13 @@ plugins:
       handlers:
         python:
           options:
-            show_root_heading: true
-            members_order: source
+              filters:
+                  - "!^_"
+                  - "^__init__"
+                  - "!^utils"
+              members_order: source
+              show_root_heading: true
+              show_submodules: true
           import:
             - https://requests.readthedocs.io/en/master/objects.inv
 
