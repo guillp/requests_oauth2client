@@ -208,7 +208,7 @@ class BearerTokenSerializer:
 
     @staticmethod
     def default_dumper(token: BearerToken) -> str:
-        """Serialize a token as JSON, then gzip compress, then encodes as base64url.
+        """Serialize a token as JSON, then compress with deflate, then encodes as base64url.
 
         Args:
             token: the `BearerToken` to serialize
@@ -216,7 +216,7 @@ class BearerTokenSerializer:
         Returns:
             the serialized value
         """
-        return BinaPy.serialize_to("json", token.as_dict(True)).to("gzip").to("b64u").ascii()
+        return BinaPy.serialize_to("json", token.as_dict(True)).to("deflate").to("b64u").ascii()
 
     def default_loader(
         self, serialized: str, token_class: Type[BearerToken] = BearerToken
@@ -231,7 +231,7 @@ class BearerTokenSerializer:
         Returns:
             a BearerToken
         """
-        attrs = BinaPy(serialized).decode_from("b64u").decode_from("gzip").parse_from("json")
+        attrs = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
         expires_at = attrs.get("expires_at")
         if expires_at:
             attrs["expires_at"] = datetime.fromtimestamp(expires_at)
