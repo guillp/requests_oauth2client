@@ -1,4 +1,9 @@
-"""This modules implements multiple Client Authentication Methods for OAuth 2.0 client to authenticate to an AS."""
+"""This modules implements OAuth 2.0 Client Authentication Methods.
+
+An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to the Token
+Endpoint, by including appropriate credentials. This module contains helper classes and methods
+that implement the standardised and commonly used Client Authentication Methods.
+"""
 
 from datetime import datetime
 from typing import Any, Callable, Dict, Tuple, Type, Union
@@ -13,8 +18,8 @@ from jwskate import Jwk, Jwt, SymmetricJwk
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase].
 
-    This base class only checks that requests are suitable to add Client Authentication parameters to,
-    and doesn't modify the request.
+    This base class only checks that requests are suitable to add Client Authentication
+    parameters to, and doesn't modify the request.
     """
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
@@ -44,7 +49,10 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
 
 
 class ClientSecretBasic(BaseClientAuthenticationMethod):
-    """Implement `client_secret_basic` authentication (client_id and client_secret passed as Basic authentication).
+    """Implement `client_secret_basic` authentication.
+
+    With this method, the client sends its Client ID and Secret, in the Auhtorization header, with the "Basic" scheme,
+    in each authenticated request to the AS.
 
     Args:
         client_id: `client_id` to use.
@@ -56,7 +64,10 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
         self.client_secret = str(client_secret)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
-        """Add the appropriate `Authorization: Basic` header with `client_id` as username and `client_secret` as password.
+        """Add the appropriate `Authorization` header in each request.
+
+        The Authorization header is formatted as such:
+        `Authorization: Basic BASE64('<client_id:client_secret>')`
 
         Args:
             request: a [requests.PreparedRequest][].
@@ -73,14 +84,16 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
 
 
 class ClientSecretPost(BaseClientAuthenticationMethod):
-    """Implement `client_secret_post` client authentication method (client_id and client_secret passed as part of the request form data).
+    """Implement `client_secret_post` client authentication method.
+
+     With this method, the client inserts its client_id and client_secret in each authenticated request to the AS.
 
     Args:
-                client_id: `client_id` to use.
-                client_secret: `client_secret` to use.
+        client_id: `client_id` to use.
+        client_secret: `client_secret` to use.
     """
 
-    def __init__(self, client_id: str, client_secret: str):
+    def __init__(self, client_id: str, client_secret: str) -> None:
         self.client_id = str(client_id)
         self.client_secret = str(client_secret)
 
@@ -112,7 +125,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
 
     def __init__(
         self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]
-    ):
+    ) -> None:
         self.client_id = str(client_id)
         self.alg = alg
         self.lifetime = lifetime
@@ -158,7 +171,10 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
 
 
 class ClientSecretJwt(ClientAssertionAuthenticationMethod):
-    """Implement `client_secret_jwt` client authentication method (using a `client_assertion` field, symmetrically signed with the client_secret).
+    """Implement `client_secret_jwt` client authentication method.
+
+     With this method, client generates and signs a client assertion that is symmetrically signed with its Client Secret.
+     The assertion is then sent to the AS in a `client_assertion` field with each authenticated request.
 
     Args:
         client_id: the `client_id` to use.
@@ -180,7 +196,9 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
         self.client_secret = str(client_secret)
 
     def client_assertion(self, audience: str) -> str:
-        """Generate a Client Assertion, symmetrically signed with the `client_secret` as key.
+        """Generate a  symmetrically signed Client Assertion.
+
+        Assertion is signed with the `client_secret` as key and the `alg` passed at init time.
 
         Args:
             audience: the audience to use for the generated Client Assertion.
@@ -210,7 +228,10 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
 
 
 class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
-    """Implement `private_key_jwt` client authentication method (client_assertion asymmetrically signed with a private key).
+    """Implement `private_key_jwt` client authentication method.
+
+    With this method, the client generates and sends a client_assertion, that is
+    asymmetrically signed with a private key, on each direct request to the Authorization Server.
 
     Args:
         client_id: the `client_id` to use.
@@ -277,7 +298,10 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
 
 
 class PublicApp(BaseClientAuthenticationMethod):
-    """Implement the `none` authentication method for public apps (where the client only sends its client_id).
+    """Implement the `none` authentication method for public apps.
+
+    This scheme is used for Public Clients, which do not have any secret credentials. Those only
+    send their client_id to the Authorization Server.
 
     Args:
         client_id: the client_id to use.

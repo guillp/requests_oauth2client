@@ -1,4 +1,4 @@
-"""This module contains all exceptions that can be raised by methods from `requests_oauth2client`."""
+"""This module contains all exception classes from `requests_oauth2client`."""
 
 from typing import Optional
 
@@ -10,9 +10,9 @@ class OAuth2Error(Exception):
 
 
 class EndpointError(OAuth2Error):
-    """Base class for exceptions raised when a token endpoint returns a standardised error.
+    """Base class for exceptions raised from the token endpoint errors.
 
-    An `EndpointError` contains the error message, description and uri that are returned by the AS.
+    An `EndpointError` contains the error message, description and uri that are returned by the AS in the OAuth 2.0 standardised way.
 
     Args:
         error: the `error` identifier as returned by the AS
@@ -29,7 +29,7 @@ class EndpointError(OAuth2Error):
 
 
 class InvalidTokenResponse(OAuth2Error):
-    """Base class for exceptions raised when a token endpoint returns a non-standardised response."""
+    """Raised when the Token Endpoint returns a non-standard response."""
 
 
 class ExpiredAccessToken(OAuth2Error):
@@ -148,19 +148,31 @@ class ConsentRequired(InteractionRequired):
 
 
 class InvalidAuthResponse(OAuth2Error):
-    """Base class for errors due to Auth Responses that don't obey the standard (e.g. missing mandatory params)."""
+    """Raised when the Authorization Endpoint returns an invalid response."""
 
 
 class MissingAuthCode(InvalidAuthResponse):
-    """Raised when the authorization code is missing from the auth response and no error is returned."""
+    """Raised when the Authorization Endpoint does not return a `code`.
+
+    This happens when the Authorization Endpoint does not return an error, but does not return
+    an authorization `code` either.
+    """
 
 
 class MismatchingState(InvalidAuthResponse):
-    """Raised when an auth response contains a 'state' parameter that doesn't match the expected value."""
+    """Raised on mismatching `state` value.
+
+    This happens when the Authorization Endpoints returns a 'state' parameter that doesn't match
+    the value passed in the Authorization Request.
+    """
 
 
 class MismatchingIssuer(InvalidAuthResponse):
-    """Raised when an auth response contains an 'iss' parameter that doesn't match the expected value."""
+    """Raised on mismatching `iss` value.
+
+    This happens when the Authorization Endpoints returns an 'iss' that doesn't match the
+    expected value.
+    """
 
 
 class BackChannelAuthenticationError(EndpointError):
@@ -168,7 +180,7 @@ class BackChannelAuthenticationError(EndpointError):
 
 
 class InvalidBackChannelAuthenticationResponse(OAuth2Error):
-    """Raised when the BackChannel Authentication endpoint returns non-standardised errors."""
+    """Raised when the BackChannel Authentication endpoint returns a non-standard response."""
 
 
 class InvalidPushedAuthorizationResponse(OAuth2Error):

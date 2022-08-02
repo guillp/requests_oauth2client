@@ -38,9 +38,7 @@ def test_refresh_token(
     assert token_resp.access_token == new_access_token
     assert token_resp.refresh_token == new_refresh_token
 
-    refresh_token_grant_validator(
-        requests_mock.last_request, refresh_token=refresh_token
-    )
+    refresh_token_grant_validator(requests_mock.last_request, refresh_token=refresh_token)
     client_secret_post_auth_validator(
         requests_mock.last_request, client_id=client_id, client_secret=client_secret
     )
@@ -49,18 +47,14 @@ def test_refresh_token(
 
     assert client.revoke_access_token(token_resp.access_token) is True
 
-    revocation_request_validator(
-        requests_mock.last_request, new_access_token, "access_token"
-    )
+    revocation_request_validator(requests_mock.last_request, new_access_token, "access_token")
     client_secret_post_auth_validator(
         requests_mock.last_request, client_id=client_id, client_secret=client_secret
     )
 
     assert client.revoke_refresh_token(token_resp.refresh_token) is True
 
-    revocation_request_validator(
-        requests_mock.last_request, new_refresh_token, "refresh_token"
-    )
+    revocation_request_validator(requests_mock.last_request, new_refresh_token, "refresh_token")
     client_secret_post_auth_validator(
         requests_mock.last_request, client_id=client_id, client_secret=client_secret
     )

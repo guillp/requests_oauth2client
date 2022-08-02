@@ -72,9 +72,7 @@ def test_authorization_code(
     assert code_verifier is not None
     assert code_challenge_method == ["S256"]
     assert (
-        base64.urlsafe_b64encode(
-            hashlib.sha256(code_verifier.encode()).digest()
-        ).rstrip(b"=")
+        base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).rstrip(b"=")
         == code_challenge.encode()
     )
 

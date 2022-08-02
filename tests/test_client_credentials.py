@@ -49,9 +49,7 @@ def test_client_credentials_api(
         token_endpoint,
         json={"access_token": access_token, "token_type": "Bearer", "expires_in": 3600},
     )
-    requests_mock.get(
-        target_api, request_headers={"Authorization": f"Bearer {access_token}"}
-    )
+    requests_mock.get(target_api, request_headers={"Authorization": f"Bearer {access_token}"})
     response = requests.get(target_api, auth=auth)
     assert response.ok
     assert len(requests_mock.request_history) == 2

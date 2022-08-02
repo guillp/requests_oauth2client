@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 import pytest
 import requests
-from furl import furl  # type: ignore
+from furl import furl  # type: ignore[import]
 from jwskate import Jwk
 
 from requests_oauth2client import (
@@ -118,7 +118,7 @@ def client_id() -> str:
 def client_auth_method_handler(
     request: pytest.FixtureRequest,
 ) -> Type[BaseClientAuthenticationMethod]:
-    return request.param  # type: ignore
+    return request.param  # type: ignore[attr-defined,no-any-return]
 
 
 @pytest.fixture(scope="session")
@@ -193,8 +193,8 @@ def client_auth_method(
     client_credential: Union[None, str, Jwk],
 ) -> BaseClientAuthenticationMethod:
     if client_auth_method_handler == PublicApp:
-        return client_auth_method_handler(client_id)  # type: ignore
-    return client_auth_method_handler(client_id, client_credential)  # type: ignore
+        return client_auth_method_handler(client_id)  # type: ignore[call-arg]
+    return client_auth_method_handler(client_id, client_credential)  # type: ignore[arg-type,call-arg]
 
 
 @pytest.fixture(scope="session")
@@ -314,7 +314,7 @@ def expected_issuer(request: FixtureRequest) -> Optional[str]:
 
 @pytest.fixture(scope="session", params=[None, {"foo": "bar"}])
 def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
-    return request.param or {}  # type: ignore
+    return request.param or {}  # type: ignore[return-value]
 
 
 @pytest.fixture(

@@ -269,8 +269,8 @@ def test_token_serializer() -> None:
     serializer = BearerTokenSerializer()
     assert (
         serializer.dumps(BearerToken("access_token"))
-        == "eJyrVkpMTk4tLo4vyc9OzVOyQuXqKIHp-JLKglSgnFNqYlFqkVItAAyNEyA"
+        == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
     )
     assert serializer.loads(
-        "eJyrVkpMTk4tLo4vyc9OzVOyQuXqKIHp-JLKglSgnFNqYlFqkVItAAyNEyA"
+        "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
     ) == BearerToken("access_token")

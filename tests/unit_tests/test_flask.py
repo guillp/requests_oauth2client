@@ -24,9 +24,7 @@ def test_flask(
     except ImportError:
         pytest.skip("Flask is not available")
 
-    oauth_client = OAuth2Client(
-        token_endpoint, ClientSecretPost(client_id, client_secret)
-    )
+    oauth_client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     api_client = ApiClient(
         auth=FlaskOAuth2ClientCredentialsAuth(
             oauth_client, session_key=session_key, scope=scope

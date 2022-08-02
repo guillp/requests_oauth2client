@@ -1,4 +1,7 @@
-"""Main module for `requests_oauth2client`. You can import any class from any submodule directly from this main module."""
+"""Main module for `requests_oauth2client`.
+
+You can import any class from any submodule directly from this main module.
+"""
 
 import requests
 

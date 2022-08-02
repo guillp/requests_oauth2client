@@ -1,4 +1,7 @@
-"""Implements the Device Authorization Flow as defined in [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)."""
+"""Implements the Device Authorization Flow as defined in RFC8628.
+
+See [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628).
+"""
 
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
@@ -46,7 +49,7 @@ class DeviceAuthorizationResponse:
         self.other = kwargs
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
-        """Check if the `device_code` within this response is expired at the time of the call.
+        """Check if the `device_code` within this response is expired.
 
         Returns:
             `True` if the device_code is expired, `False` if it is still valid, `None` if there is no `expires_in` hint.
@@ -57,7 +60,10 @@ class DeviceAuthorizationResponse:
 
 
 class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
-    """A pooling job for checking if the user has finished with his authorization in a Device Authorization flow.
+    """A Token Endpoint pooling job for the Device Authorization Flow.
+
+    This periodically checks if the user has finished with his authorization in a
+    Device Authorization flow.
 
     Args:
         client: an OAuth2Client that will be used to pool the token endpoint.
@@ -66,6 +72,7 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         slow_down_interval: Number of seconds to add to the pooling interval when the AS returns a slow down request.
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
+
     Usage:
         ```python
         client = OAuth2Client(

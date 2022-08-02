@@ -19,9 +19,7 @@ class FlaskSessionAuthMixin:
         serializer: the serializer that will be used to store the access token in session.
     """
 
-    def __init__(
-        self, session_key: str, serializer: Optional[BearerTokenSerializer] = None
-    ):
+    def __init__(self, session_key: str, serializer: Optional[BearerTokenSerializer] = None):
         self.serializer = serializer or BearerTokenSerializer()
         self.session_key = session_key
 
@@ -51,10 +49,8 @@ class FlaskSessionAuthMixin:
             session.pop(self.session_key, None)
 
 
-class FlaskOAuth2ClientCredentialsAuth(
-    FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth
-):
-    """A Flask-specific `requests` Authentication handler that fetches Access Tokens using the Client Credentials Grant.
+class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth):
+    """A `requests` Auth handler for CC that stores its token in Flask session.
 
     It will automatically gets access tokens from an OAuth 2.x Token Endpoint
     with the Client Credentials grant (and can get a new one once it is expired),

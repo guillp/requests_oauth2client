@@ -10,7 +10,8 @@ from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentia
 class Auth0Client(OAuth2Client):
     """An OAuth2Client for an Auth0 tenant.
 
-    You only have to provide a tenant name and all endpoints will be initialized to work with your tenant.
+    Instead of providing each endpoint URL separately, you only have to provide a
+    tenant name and all endpoints will be initialized to work with your tenant.
 
     Args:
         tenant: the tenant name or FQDN. If it doesn't contain a `.` or it ends with `.eu`, `.us`, or `.au`,
@@ -48,7 +49,10 @@ class Auth0Client(OAuth2Client):
 
 
 class Auth0ManagementApiClient(ApiClient):
-    """A wrapper around [Auth0 Management API v2](https://auth0.com/docs/api/management/v2), for a given Auth0 tenant.
+    """A wrapper around the Auth0 Management API.
+
+    See [Auth0 Management API v2](https://auth0.com/docs/api/management/v2).
+    You must provide the target tenant name and the credentials for a client that is allowed access to the Management API.
 
     Args:
         tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]

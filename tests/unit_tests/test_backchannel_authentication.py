@@ -55,10 +55,7 @@ def bca_client(
         backchannel_authentication_endpoint=backchannel_authentication_endpoint,
         auth=client_auth_method,
     )
-    assert (
-        bca_client.backchannel_authentication_endpoint
-        == backchannel_authentication_endpoint
-    )
+    assert bca_client.backchannel_authentication_endpoint == backchannel_authentication_endpoint
     assert bca_client.auth == client_auth_method
 
     return bca_client
@@ -275,9 +272,7 @@ def test_pooling_job(
         interval=1,
     )
 
-    requests_mock.post(
-        token_endpoint, status_code=401, json={"error": "authorization_pending"}
-    )
+    requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
     assert job() is None
     assert requests_mock.called_once
     assert job.interval == 1
