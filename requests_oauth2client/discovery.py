@@ -1,10 +1,16 @@
-"""Implements Metadata discovery documents, as specified in [RFC8615](https://datatracker.ietf.org/doc/html/rfc8615) and [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata)."""
+"""Implements Metadata discovery documents URLS.
+
+This is as defined in [RFC8615](https://datatracker.ietf.org/doc/html/rfc8615)
+and [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
+"""
 
 from furl import Path, furl  # type: ignore[import]
 
 
 def well_known_uri(origin: str, name: str, at_root: bool = True) -> str:
-    """Return the location of a well-known document on an origin, according to [RFC8615](https://datatracker.ietf.org/doc/html/rfc8615).
+    """Return the location of a well-known document on an origin url.
+
+    See [RFC8615](https://datatracker.ietf.org/doc/html/rfc8615) and [OIDC Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
 
     Args:
         origin: origin to use to build the well-known uri.
@@ -24,7 +30,10 @@ def well_known_uri(origin: str, name: str, at_root: bool = True) -> str:
 
 
 def oidc_discovery_document_url(issuer: str) -> str:
-    """Given an `issuer` identifier, return the standardised URL where the OIDC discovery document can be retrieved.
+    """Construct the OIDC discovery document url for a given `issuer`.
+
+    Given an `issuer` identifier, return the standardised URL where the OIDC
+    discovery document can be retrieved.
 
     The returned URL is biuilt as specified in [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
 
@@ -38,7 +47,10 @@ def oidc_discovery_document_url(issuer: str) -> str:
 
 
 def oauth2_discovery_document_url(issuer: str) -> str:
-    """Given an `issuer` identifier, return the standardised URL where the OAuth20 server metadata can be retrieved.
+    """Construct the standardised OAuth 2.0 discovery document url for a given `issuer`.
+
+    Based an `issuer` identifier, returns the standardised URL where the OAuth20
+    server metadata can be retrieved.
 
     The returned URL is built as specified in [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414).
 

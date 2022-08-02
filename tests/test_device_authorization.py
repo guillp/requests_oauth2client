@@ -136,9 +136,7 @@ def test_auth_handler(
         auth=client_id,
     )
 
-    assert (
-        isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
-    )
+    assert isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
 
 
 def test_invalid_response(

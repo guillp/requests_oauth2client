@@ -1,4 +1,4 @@
-"""Base classes for pooling jobs, that call an endpoint at regular interval to obtain some response."""
+"""Contains base classes for pooling jobs."""
 
 import time
 from abc import ABC, abstractmethod
@@ -12,7 +12,9 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TokenEndpointPoolingJob(ABC):
-    """Base class for Token Endpoint pooling jobs on decoupled flows like CIBA or Device Authorization.
+    """Base class for Token Endpoint pooling jobs.
+
+    This is used for decoupled flows like CIBA or Device Authorization.
 
     This class must be subclassed to implement actual BackChannel flows.
     This needs an [OAuth2Client][requests_oauth2client.client.OAuth2Client] that will be used to pool the token

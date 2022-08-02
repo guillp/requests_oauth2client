@@ -31,10 +31,7 @@ def test_bearer_auth(
     response = requests.post(target_api, auth=bearer_auth)
     assert response.ok
     assert requests_mock.last_request is not None
-    assert (
-        requests_mock.last_request.headers.get("Authorization")
-        == f"Bearer {access_token}"
-    )
+    assert requests_mock.last_request.headers.get("Authorization") == f"Bearer {access_token}"
 
 
 def test_bearer_auth_none(requests_mock: RequestsMocker, target_api: str) -> None:

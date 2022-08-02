@@ -1,10 +1,14 @@
-"""This module contains helper methods that are used in multiple places within `requests_oauth2client`."""
+"""Various utilities used in multiple places.
+
+This module contains helper methods that are used in multiple places within
+`requests_oauth2client`.
+"""
 
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Callable, Optional
 
-from furl import furl  # type: ignore
+from furl import furl  # type: ignore[import]
 
 
 def validate_endpoint_uri(
@@ -39,7 +43,10 @@ def validate_endpoint_uri(
 
 
 def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
-    """Decorate methods that accept an `expires_at` datetime parameter, to also allow an `expires_in` parameter in seconds.
+    """Decorate methods to handle both `expires_at` and `expires_in`.
+
+    This decorates methods that accept an `expires_at` datetime parameter, to also allow an
+    `expires_in` parameter in seconds.
 
     If supplied, `expires_in` will be converted to a datetime `expires_in` seconds in the future, and passed as `expires_at`
     in the decorated method.

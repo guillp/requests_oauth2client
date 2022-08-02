@@ -148,7 +148,7 @@ def client_secret() -> str:
 def client_auth_method_handler(
     request: FixtureRequest,
 ) -> Type[BaseClientAuthenticationMethod]:
-    return request.param  # type: ignore
+    return request.param  # type: ignore[return-value]
 
 
 @pytest.fixture(scope="session")
@@ -164,9 +164,7 @@ def client_auth_method(
 
 @pytest.fixture(scope="session")
 def client_secret_post_auth_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, client_id: str, client_secret: str
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
         params = parse_qs(req.text)
         assert params.get("client_id") == [client_id]
         assert params.get("client_secret") == [client_secret]
@@ -187,9 +185,7 @@ def public_app_auth_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def client_secret_basic_auth_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, client_id: str, client_secret: str
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
         encoded_username_password = base64.b64encode(
             f"{client_id}:{client_secret}".encode("ascii")
         ).decode()
@@ -280,9 +276,7 @@ def authorization_code_grant_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def refresh_token_grant_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, refresh_token: str, **kwargs: Any
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, refresh_token: str, **kwargs: Any) -> None:
         params = Query(req.text).params
         assert params.get("grant_type") == "refresh_token"
         assert params.get("refresh_token") == refresh_token
@@ -296,9 +290,7 @@ def refresh_token_grant_validator() -> RequestValidatorType:
 def device_code_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, device_code: str, **kwargs: Any) -> None:
         params = Query(req.text).params
-        assert (
-            params.get("grant_type") == "urn:ietf:params:oauth:grant-type:device_code"
-        )
+        assert params.get("grant_type") == "urn:ietf:params:oauth:grant-type:device_code"
         assert params.get("device_code") == device_code
         for key, val in kwargs.items():
             assert params.get(key) == val
@@ -310,10 +302,7 @@ def device_code_grant_validator() -> RequestValidatorType:
 def token_exchange_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, subject_token: str, **kwargs: Any) -> None:
         params = Query(req.text).params
-        assert (
-            params.get("grant_type")
-            == "urn:ietf:params:oauth:grant-type:token-exchange"
-        )
+        assert params.get("grant_type") == "urn:ietf:params:oauth:grant-type:token-exchange"
         assert params.get("subject_token") == subject_token
         for key, val in kwargs.items():
             assert params.get(key) == val

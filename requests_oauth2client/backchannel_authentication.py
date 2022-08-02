@@ -1,4 +1,8 @@
-"""Implementation of [Client Initiated BackChannel Authentication (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html)."""
+"""Implementation of CIBA.
+
+CIBA stands for Client Initiated BackChannel Authentication and is standardised by the OpenID Fundation.
+https://openid.net/specs/openid-client-initiated-backchannel- authentication-core-1_0.html.
+"""
 
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
@@ -39,7 +43,10 @@ class BackChannelAuthenticationResponse:
         self.other = kwargs
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
-        """Return `True` if the auth_req_id within this response is expired at the time of the call.
+        """Return `True` if the `auth_req_id` within this response is expired.
+
+        Expiration is evaluated at the time of the call.
+        If there is no "expires_at" hint (which is derived from the `expires_in` hint returned by the AS BackChannel Authentication endpoint), this will return `None`.
 
         Returns:
             `True` if the auth_req_id is expired, `False` if it is still valid, `None` if there is no `expires_in` hint.
@@ -70,7 +77,9 @@ class BackChannelAuthenticationResponse:
 
 
 class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
-    """A pooling job for checking if the user has finished with his authorization in a BackChannel Authentication flow.
+    """A pooling job for the BackChannel Authentication flow.
+
+    This will poll the Token Endpoint until the user finishes with its authentication.
 
     Args:
         client: an OAuth2Client that will be used to pool the token endpoint.
@@ -104,10 +113,7 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ):
-        if (
-            isinstance(auth_req_id, BackChannelAuthenticationResponse)
-            and interval is None
-        ):
+        if isinstance(auth_req_id, BackChannelAuthenticationResponse) and interval is None:
             interval = auth_req_id.interval
 
         super().__init__(
