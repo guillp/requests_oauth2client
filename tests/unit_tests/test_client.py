@@ -4,15 +4,17 @@ from typing import Dict, Type, Union
 
 import pytest
 from jwskate import Jwk, JwkSet
-from typing_extensions import Literal
 
 from requests_oauth2client import (
     AuthorizationRequest,
+    AuthorizationResponse,
+    BackChannelAuthenticationResponse,
     BaseClientAuthenticationMethod,
     BearerToken,
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
+    DeviceAuthorizationResponse,
     IdToken,
     InvalidTokenResponse,
     OAuth2Client,
@@ -269,6 +271,21 @@ def test_refresh_token_grant(
             client_id=client_id,
             endpoint=token_endpoint,
             public_jwk=public_jwk,
+        )
+
+
+def test_grants_with_invalid_response_objects_as_parameter(oauth2client: OAuth2Client) -> None:
+    with pytest.raises(ValueError):
+        oauth2client.authorization_code(AuthorizationResponse())
+    with pytest.raises(ValueError):
+        oauth2client.refresh_token(BearerToken(access_token="foo"))
+    with pytest.raises(ValueError):
+        oauth2client.ciba(BackChannelAuthenticationResponse(auth_req_id=None))
+    with pytest.raises(ValueError):
+        oauth2client.device_code(
+            DeviceAuthorizationResponse(
+                device_code=None, user_code="foo", verification_uri="bar"
+            )
         )
 
 
@@ -1192,3 +1209,17 @@ def test_pushed_authorization_request(
     assert isinstance(razr.expires_at, datetime) and datetime.now() - timedelta(
         seconds=2
     ) < razr.expires_at - timedelta(seconds=expires_in)
+
+
+def test_pushed_authorization_request_error(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    pushed_authorization_request_endpoint: str,
+    authorization_request: AuthorizationRequest,
+) -> None:
+    requests_mock.post(
+        pushed_authorization_request_endpoint, json={"error": "server_error"}, status_code=500
+    )
+
+    with pytest.raises(ServerError):
+        oauth2client.pushed_authorization_request(authorization_request)

@@ -59,6 +59,7 @@ class OAuth2Client:
         device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
         jwks_uri: the JWKS URI to use to obtain the AS public keys
         session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy or client certificate must be used to connect to the AS.
+        extra_metadata: additional metadata for this client, unused by this class, but may be used by subclasses. Those will be accessible with the `extra_metadata` attribute.
 
     Usage:
         ```python
@@ -98,6 +99,7 @@ class OAuth2Client:
             Tuple[str, Dict[str, Any]],
             str,
         ],
+        *,
         revocation_endpoint: Optional[str] = None,
         introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
@@ -106,6 +108,7 @@ class OAuth2Client:
         pushed_authorization_request_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
         session: Optional[requests.Session] = None,
+        **extra_metadata: Any,
     ):
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
@@ -129,6 +132,7 @@ class OAuth2Client:
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
         self.session = session or requests.Session()
         self.auth = client_auth_factory(auth, ClientSecretPost)
+        self.extra_metadata = extra_metadata
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
@@ -253,7 +257,7 @@ class OAuth2Client:
             a BearerToken
         """
         if isinstance(code, AuthorizationResponse):
-            if not isinstance(code.code, str):
+            if code.code is None or not isinstance(code.code, str):
                 raise ValueError(
                     "This AuthorizationResponse doesn't contain an authorization code"
                 )
@@ -283,7 +287,9 @@ class OAuth2Client:
             a BearerToken
         """
         if isinstance(refresh_token, BearerToken):
-            if refresh_token.refresh_token is None:
+            if refresh_token.refresh_token is None or not isinstance(
+                refresh_token.refresh_token, str
+            ):
                 raise ValueError("This BearerToken doesn't have a refresh_token")
             refresh_token = refresh_token.refresh_token
 
@@ -311,6 +317,8 @@ class OAuth2Client:
             a BearerToken
         """
         if isinstance(device_code, DeviceAuthorizationResponse):
+            if device_code.device_code is None or not isinstance(device_code.device_code, str):
+                raise ValueError("This DeviceAuthorizationResponse doesn't have a device_code")
             device_code = device_code.device_code
 
         requests_kwargs = requests_kwargs or {}
@@ -340,6 +348,10 @@ class OAuth2Client:
             a BearerToken
         """
         if isinstance(auth_req_id, BackChannelAuthenticationResponse):
+            if auth_req_id.auth_req_id is None or not isinstance(auth_req_id.auth_req_id, str):
+                raise ValueError(
+                    "This BackChannelAuthenticationResponse doesn't have an auth_req_id"
+                )
             auth_req_id = auth_req_id.auth_req_id
 
         requests_kwargs = requests_kwargs or {}

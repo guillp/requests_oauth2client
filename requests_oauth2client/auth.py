@@ -238,9 +238,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
     def exchange_code_for_token(self) -> None:
         """Obtain the initial access token with the authorization_code grant."""
         if self.code:  # pragma: no branch
-            self.token = self.client.authorization_code(
-                code=self.code, **self.token_kwargs
-            )
+            self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
             self.code = None
 
 
