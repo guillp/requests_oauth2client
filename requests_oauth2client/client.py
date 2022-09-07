@@ -52,9 +52,14 @@ class OAuth2Client:
     Args:
         token_endpoint: the Token Endpoint URI where this client will get access tokens
         auth: the authentication handler to use for client authentication on the token endpoint. Can be a [requests.auth.AuthBase][] instance (which will be as-is), or a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost], a `(client_id, jwk)` to initialize a [PrivateKeyJwt][requests_oauth2client.client_authentication.PrivateKeyJwt], or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
+        client_id: client ID
+        client_secret: client secret
+        private_key: private_key to use for client authentication
         revocation_endpoint: the Revocation Endpoint URI to use for revoking tokens
         introspection_endpoint: the Introspection Endpoint URI to use to get info about tokens
         userinfo_endpoint: the Userinfo Endpoint URI to use to get information about the user
+        authorization_endpoint: the Authorization Endpoint URI for initializing Authorization Requests
+        redirect_uri: the redirect_uri for this client
         backchannel_authentication_endpoint: the BackChannel Authentication URI
         device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
         jwks_uri: the JWKS URI to use to obtain the AS public keys
@@ -69,7 +74,7 @@ class OAuth2Client:
             auth=("client_id", "client_secret"),
         )
 
-        # once intialized, a client can send requests to its configured endpoints
+        # once initialized, a client can send requests to its configured endpoints
         cc_token = client.client_credentials(scope="my_scope")
         ac_token = client.authorization_code(code="my_code")
         client.revoke_access_token(cc_token)
@@ -98,15 +103,22 @@ class OAuth2Client:
             Tuple[str, Jwk],
             Tuple[str, Dict[str, Any]],
             str,
-        ],
+            None,
+        ] = None,
         *,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        private_key: Union[Jwk, Dict[str, Any], None] = None,
         revocation_endpoint: Optional[str] = None,
         introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
+        authorization_endpoint: Optional[str] = None,
+        redirect_uri: Optional[str] = None,
         backchannel_authentication_endpoint: Optional[str] = None,
         device_authorization_endpoint: Optional[str] = None,
         pushed_authorization_request_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
+        issuer: Optional[str] = None,
         session: Optional[requests.Session] = None,
         **extra_metadata: Any,
     ):
@@ -116,6 +128,10 @@ class OAuth2Client:
             str(introspection_endpoint) if introspection_endpoint else None
         )
         self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
+        self.authorization_endpoint = (
+            str(authorization_endpoint) if authorization_endpoint else None
+        )
+        self.redirect_uri = str(redirect_uri) if redirect_uri else None
         self.backchannel_authentication_endpoint = (
             str(backchannel_authentication_endpoint)
             if backchannel_authentication_endpoint
@@ -130,9 +146,25 @@ class OAuth2Client:
             else None
         )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
+        self.issuer = str(issuer) if issuer else None
         self.session = session or requests.Session()
-        self.auth = client_auth_factory(auth, ClientSecretPost)
+        self.auth = client_auth_factory(
+            auth,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
+            default_auth_handler=ClientSecretPost,
+        )
         self.extra_metadata = extra_metadata
+
+    @property
+    def client_id(self) -> str:
+        """Client ID."""
+        if hasattr(self.auth, "client_id"):
+            return self.auth.client_id  # type: ignore[attr-defined, no-any-return]
+        raise AttributeError(
+            "This client uses a custom authentication method without client_id."
+        )
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
@@ -147,7 +179,7 @@ class OAuth2Client:
              **requests_kwargs: additional parameters for requests.post()
 
         Returns:
-            the token endpoint response, as [BearerToken][requests_oauth2client.tokens.BearerToken] instance.
+            the token endpoint response, as [`BearerToken`][requests_oauth2client.tokens.BearerToken] instance.
         """
         requests_kwargs = {
             key: value
@@ -177,7 +209,7 @@ class OAuth2Client:
             response: the [Response][requests.Response] returned by the Token Endpoint.
 
         Returns:
-            a [BearerToken][requests_oauth2client.tokens.BearerToken] based on the response contents.
+            a [`BearerToken`][requests_oauth2client.tokens.BearerToken] based on the response contents.
         """
         try:
             token_response = BearerToken(**response.json())
@@ -197,7 +229,7 @@ class OAuth2Client:
             response: the [Response][requests.Response] returned by the Token Endpoint.
 
         Returns:
-            nothing, and raises an exception instead. But a subclass may return a [BearerToken][requests_oauth2client.tokens.BearerToken] to implement a default behaviour if needed.
+            nothing, and raises an exception instead. But a subclass may return a [`BearerToken`][requests_oauth2client.tokens.BearerToken] to implement a default behaviour if needed.
         """
         error_json = response.json()
         error = error_json.get("error")
@@ -254,7 +286,7 @@ class OAuth2Client:
              **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `code`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(code, AuthorizationResponse):
             if code.code is None or not isinstance(code.code, str):
@@ -279,12 +311,12 @@ class OAuth2Client:
         """Send a request to the token endpoint with the `refresh_token` grant.
 
         Args:
-            refresh_token: a refresh_token, as a string, or as a BearerToken. That BearerToken must have a `refresh_token`.
+            refresh_token: a refresh_token, as a string, or as a `BearerToken`. That `BearerToken` must have a `refresh_token`.
             requests_kwargs: additional parameters for the call to `requests`
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `refresh_token`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None or not isinstance(
@@ -314,7 +346,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(device_code, DeviceAuthorizationResponse):
             if device_code.device_code is None or not isinstance(device_code.device_code, str):
@@ -345,7 +377,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `auth_req_id`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(auth_req_id, BackChannelAuthenticationResponse):
             if auth_req_id.auth_req_id is None or not isinstance(auth_req_id.auth_req_id, str):
@@ -388,7 +420,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters to include in the request body.
 
         Returns:
-            a BearerToken as returned by the Authorization Server.
+            a `BearerToken` as returned by the Authorization Server.
         """
         requests_kwargs = requests_kwargs or {}
 
@@ -431,7 +463,7 @@ class OAuth2Client:
             authorization_request: the authorization request to send
 
         Returns:
-            the RequestUriParameterAuthorizationRequest initialized based on the AS response
+            the `RequestUriParameterAuthorizationRequest` initialized based on the AS response
         """
         if not self.pushed_authorization_request_endpoint:
             raise AttributeError(
@@ -530,7 +562,7 @@ class OAuth2Client:
 
         Args:
             token_type: a token_type hint, as `str`. May be "access_token", "refresh_token" or "id_token" (optional)
-            token: a token value, as an instance of BearerToken or IdToken, or as a `str`.
+            token: a token value, as an instance of `BearerToken` or IdToken, or as a `str`.
 
         Returns:
             the token_type as defined in the Token Exchange RFC8693.
@@ -1007,6 +1039,7 @@ class OAuth2Client:
         issuer: Optional[str],
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
+        **kwargs: Any,
     ) -> "OAuth2Client":
         """Initialise an OAuth2Client based on Authorization Server Metadata.
 
@@ -1025,7 +1058,9 @@ class OAuth2Client:
         session = session or requests.Session()
         discovery = session.get(url).json()
 
-        return cls.from_discovery_document(discovery, issuer=issuer, auth=auth, session=session)
+        return cls.from_discovery_document(
+            discovery, issuer=issuer, auth=auth, session=session, **kwargs
+        )
 
     @classmethod
     def from_discovery_document(
@@ -1035,6 +1070,7 @@ class OAuth2Client:
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
         session: Optional[requests.Session] = None,
         https: bool = True,
+        **kwargs: Any,
     ) -> "OAuth2Client":
         """Initialise an OAuth2Client, based on the server metadata from `discovery`.
 
@@ -1057,6 +1093,10 @@ class OAuth2Client:
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
         validate_endpoint_uri(token_endpoint, https=https)
+        authorization_endpoint = discovery.get("authorization_endpoint")
+        if authorization_endpoint is not None:
+            validate_endpoint_uri(authorization_endpoint, https=https)
+        validate_endpoint_uri(token_endpoint, https=https)
         revocation_endpoint = discovery.get("revocation_endpoint")
         if revocation_endpoint is not None:
             validate_endpoint_uri(revocation_endpoint, https=https)
@@ -1072,10 +1112,12 @@ class OAuth2Client:
 
         return cls(
             token_endpoint=token_endpoint,
+            authorization_endpoint=authorization_endpoint,
             revocation_endpoint=revocation_endpoint,
             introspection_endpoint=introspection_endpoint,
             userinfo_endpoint=userinfo_endpoint,
             jwks_uri=jwks_uri,
             auth=auth,
             session=session,
+            **kwargs,
         )

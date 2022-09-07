@@ -4,9 +4,8 @@ An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to t
 Endpoint, by including appropriate credentials. This module contains helper classes and methods
 that implement the standardised and commonly used Client Authentication Methods.
 """
-
 from datetime import datetime
-from typing import Any, Callable, Dict, Tuple, Type, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 from uuid import uuid4
 
 import furl  # type: ignore[import]
@@ -21,6 +20,9 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     This base class only checks that requests are suitable to add Client Authentication
     parameters to, and doesn't modify the request.
     """
+
+    def __init__(self, client_id: str):
+        self.client_id = str(client_id)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Check that the request is suitable for Client Authentication.
@@ -51,7 +53,7 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
 class ClientSecretBasic(BaseClientAuthenticationMethod):
     """Implement `client_secret_basic` authentication.
 
-    With this method, the client sends its Client ID and Secret, in the Auhtorization header, with the "Basic" scheme,
+    With this method, the client sends its Client ID and Secret, in the Authorization header, with the "Basic" scheme,
     in each authenticated request to the AS.
 
     Args:
@@ -60,7 +62,7 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
     """
 
     def __init__(self, client_id: str, client_secret: str):
-        self.client_id = str(client_id)
+        super().__init__(client_id)
         self.client_secret = str(client_secret)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
@@ -94,7 +96,7 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
     """
 
     def __init__(self, client_id: str, client_secret: str) -> None:
-        self.client_id = str(client_id)
+        super().__init__(client_id)
         self.client_secret = str(client_secret)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
@@ -126,7 +128,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
     def __init__(
         self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]
     ) -> None:
-        self.client_id = str(client_id)
+        super().__init__(client_id)
         self.alg = alg
         self.lifetime = lifetime
         self.jti_gen = jti_gen
@@ -253,24 +255,26 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
             private_jwk = Jwk(private_jwk)
 
         if not private_jwk.is_private or isinstance(private_jwk, SymmetricJwk):
-            raise ValueError("Asymmetric signing requires a private key")
+            raise ValueError(
+                "Private Key JWT client authentication method uses asymmetric signing thus requires a private key."
+            )
 
         alg = private_jwk.alg or alg
         if not alg:
             raise ValueError(
-                "Asymmetric signing requires an alg, either as part of the private JWK, or passed as parameter"
+                "An asymmetric signing alg is required, either as part of the private JWK, or passed as parameter."
             )
         kid = private_jwk.get("kid")
         if not kid:
             raise ValueError(
-                "Asymmetric signing requires a kid, either as part of the private JWK, or passed as parameter"
+                "Asymmetric signing requires the private JWK to have a Key ID (kid)."
             )
 
         super().__init__(client_id, alg, lifetime, jti_gen)
         self.private_jwk = private_jwk
 
     def client_assertion(self, audience: str) -> str:
-        """Generate a Client Assertion, asymetrically signed with `private_jwk` as key.
+        """Generate a Client Assertion, asymmetrically signed with `private_jwk` as key.
 
         Args:
             audience: the audience to use for the generated Client Assertion.
@@ -333,7 +337,12 @@ def client_auth_factory(
         Tuple[str, Jwk],
         Tuple[str, Dict[str, Any]],
         str,
+        None,
     ],
+    *,
+    client_id: Optional[str] = None,
+    client_secret: Optional[str] = None,
+    private_key: Union[Jwk, Dict[str, Any], None] = None,
     default_auth_handler: Union[
         Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJwt]
     ] = ClientSecretPost,
@@ -343,35 +352,49 @@ def client_auth_factory(
     This initializes a `ClientAuthenticationMethod` subclass based on the provided parameters.
 
     Args:
-        auth: Can be a :class:`requests.auth.AuthBase` instance (which will be used directly), or a tuple
-            of (client_id, client_secret) which will initialize, by default, an instance of `default_auth_handler`,
-            a (client_id, jwk) to initialize a :class:`PrivateKeyJWK`, or a `client_id` which will use :class:`PublicApp`
-            authentication.
-        default_auth_handler: if auth is a tuple of two string, consider that they are a client_id and client_secret,
-            and initialize an instance of this class with those 2 parameters.
+        auth: can be:
+            - a `requests.auth.AuthBase` instance (which will be used directly)
+            - a tuple of (client_id, client_secret) which will be used to initialize an instance of `default_auth_handler`,
+            - a tuple of (client_id, jwk), used to initialize a `PrivateKeyJwk` (`jwk` being an instance of `jwskate.Jwk` or a `dict`),
+            - a `client_id`, as `str`,
+            - or `None`, to pass `client_id` and other credentials as dedicated parameters, see below.
+        client_id: the Client ID to use for this client
+        client_secret: the Client Secret to use for this client, if any (for clients using an authentication method based on a secret)
+        private_key: the private key to use for private_key_jwt authentication method
+        default_auth_handler: if a client_id and client_secret are provided, initialize an instance of this class with those 2 parameters.
+            You can choose between `ClientSecretBasic`, `ClientSecretPost`, or `ClientSecretJwt`.
 
     Returns:
         an Auth Handler that will manage client authentication to the AS Token Endpoint or other backend endpoints.
     """
-    if isinstance(auth, requests.auth.AuthBase):
+    if auth is not None and (
+        client_id is not None or client_secret is not None or private_key is not None
+    ):
+        raise ValueError(
+            "Please use either `auth` parameter to provide an authentication method, or use `client_id` and one of `client_secret` or `private_key`."
+        )
+
+    if isinstance(auth, str):
+        client_id = auth
+    elif isinstance(auth, requests.auth.AuthBase):
         return auth
     elif isinstance(auth, tuple) and len(auth) == 2:
         client_id, credential = auth
         if isinstance(credential, (Jwk, dict)):
-            private_jwk = credential
-            return PrivateKeyJwt(str(client_id), private_jwk)
+            private_key = credential
+        elif isinstance(credential, str):
+            client_secret = credential
         else:
-            return default_auth_handler(str(client_id), credential)
-    elif isinstance(auth, str):
-        client_id = auth
-        return PublicApp(client_id)
+            raise TypeError(
+                "This credential type is not supported:", type(credential), credential
+            )
+
+    if client_id is None:
+        raise ValueError("A client_id must be provided.")
+
+    if private_key is not None:
+        return PrivateKeyJwt(str(client_id), private_key)
+    elif client_secret is None:
+        return PublicApp(str(client_id))
     else:
-        raise ValueError(
-            """Parameter 'auth' is required to define the Authentication Method that this Client will use when sending requests to the Token Endpoint.
-'auth' can be:
-- an instance of a requests.auth.AuthBase subclass, including ClientSecretPost, ClientSecretBasic, ClientSecretJwt, PrivateKeyJwt, PublicApp,
-- a (client_id, client_secret) tuple, both as str, for ClientSecretPost,
-- a (client_id, private_key) tuple, with client_id as str and private_key as a dict in JWK format, for PrivateKeyJwt,
-- a client_id, as str, for PublicApp.
-"""
-        )
+        return default_auth_handler(str(client_id), str(client_secret))
