@@ -127,6 +127,26 @@ class BearerToken:
             return "Bearer"
         return self.other.get(key) or super().__getattribute__(key)
 
+    def __getitem__(self, key: str) -> Any:
+        """Allow subscription access to any attribute from this BearerToken.
+
+        This is useful is some key name returned by the AS is not valid as
+        attribute name (e.g. it contains special characters).
+
+        Args:
+            key: a key
+
+        Returns:
+            the associated value in this token response
+
+        Raises:
+            KeyError: if the attribute is not found in this response.
+        """
+        try:
+            return self.__getattr__(key)
+        except AttributeError as exc:
+            raise KeyError(key) from exc
+
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
         """Return all attributes from this BearerToken as a `dict`.
 
