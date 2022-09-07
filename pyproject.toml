@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "requests_oauth2client"
-version = "1.1.0"
+version = "1.2.0"
 homepage = "https://github.com/guillp/requests_oauth2client"
 description = "An OAuth2.x Client based on requests."
 authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
@@ -31,7 +31,13 @@ python = ">=3.7,<4.0"
 requests = ">=2.19.0"
 binapy = "^0.6"
 furl = ">=2.1.2"
-jwskate = "^0.3.0"
+jwskate = {version = "^0.4.0.dev31", allow-prereleases = true}
+
+
+[[tool.poetry.source]]
+name = "testpypi"
+url = "https://test.pypi.org/simple"
+
 
 [tool.poetry.dev-dependencies]
 black  = ">=22.1.0"
