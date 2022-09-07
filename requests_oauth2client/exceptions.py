@@ -152,10 +152,18 @@ class InvalidAuthResponse(OAuth2Error):
 
 
 class MissingAuthCode(InvalidAuthResponse):
-    """Raised when the Authorization Endpoint does not return a `code`.
+    """Raised when the Authorization Endpoint does not return the mandatory `code`.
 
     This happens when the Authorization Endpoint does not return an error, but does not return
     an authorization `code` either.
+    """
+
+
+class MissingIdToken(InvalidAuthResponse):
+    """Raised when the Authorization Endpoint does not return a mandatory ID Token.
+
+    This happens when the Authorization Endpoint does not return an error, but does not return
+    an ID Token either.
     """
 
 

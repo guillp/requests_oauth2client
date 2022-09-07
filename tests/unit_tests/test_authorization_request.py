@@ -6,6 +6,7 @@ from jwskate import Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (
     AuthorizationRequest,
+    AuthorizationRequestSerializer,
     AuthorizationResponse,
     AuthorizationResponseError,
     MismatchingIssuer,
@@ -138,3 +139,9 @@ def test_missing_issuer(
     if expected_issuer:
         with pytest.raises(MismatchingIssuer):
             authorization_request.validate_callback(authorization_response_uri)
+
+
+def test_authorization_request_serializer(authorization_request: AuthorizationRequest) -> None:
+    serializer = AuthorizationRequestSerializer()
+    serialized = serializer.dumps(authorization_request)
+    assert serializer.loads(serialized) == authorization_request
