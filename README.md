@@ -8,12 +8,13 @@ based on the
 [Authorization Code](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-authorization-code),
 [Refresh token](https://www.ietf.org/archive/id/draft-ietf-oauth-v2-1-03.html#name-refresh-token),
 [Token Exchange](https://www.rfc-editor.org/rfc/rfc8693.html),
+[JWT Bearer](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1),
 [Device Authorization](https://www.rfc-editor.org/rfc/rfc8628.html), or
 [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
 
 It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-core-1_0.html),
 [PKCE](https://www.rfc-editor.org/rfc/rfc7636.html),
-[Client Assertions](https://www.rfc-editor.org/rfc/rfc7523.html),
+[Client Assertions](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.2),
 [Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html),
 and [Introspection](https://www.rfc-editor.org/rfc/rfc7662.html),
 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html),
@@ -61,24 +62,26 @@ Note that this automatically imports `requests`, so no need to import it yoursel
 
 ## Calling APIs with Access Tokens
 
-If you already managed to obtain an access token, you can simply use the [BearerAuth] Auth Handler for [requests]:
+If you already managed to obtain an access token for the API you want to call, you can simply use the [BearerAuth] Auth Handler for [requests]:
 
 ```python
 import requests
-from requests_oauth2client import BearerToken
+from requests_oauth2client import BearerAuth
 
 token = "an_access_token"
 resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 ```
 
-This authentication handler will add a properly formatted `Authorization` header in the request, with your access token
+This authentication handler will add a properly formatted `Authorization: Bearer <access_token>` header in the request, with your access token
 according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
 
 ## Using an OAuth2Client
 
 [OAuth2Client] offers several methods that implement the communication to the various endpoints that are standardised by
 OAuth 2.0 and its extensions. Those endpoints include the Token Endpoint, the Revocation, Introspection, UserInfo,
-BackChannel Authentication and Device Authorization Endpoints. You only have to provide those if you intend to use them.
+BackChannel Authentication and Device Authorization Endpoints.
+
+You have to provide the URLs for those endpoints if you intend to use them. Otherwise, only the Token Endpoint is mandatory to initialize an `OAuth2Client`.
 
 To initialize an [OAuth2Client], you only need a Token Endpoint URI, and the credentials for your application, which are
 often a `client_id` and a `client_secret`:
@@ -101,13 +104,19 @@ default authentication method used by `OAuth2Client` is *Client Secret Post*, bu
 
 ## Obtaining tokens
 
-[OAuth2Client] has methods to send requests to the Token Endpoint using the different standardised (and/or custom)
-grants. Since the token endpoint and authentication method are already declared for the client at init time, the only
-required parameters are those that will be sent in the request to the Token Endpoint.
+[OAuth2Client] has dedicated methods to send requests to the Token Endpoint using the different standardised (and/or custom)
+grants. Since the Token Endpoint URL and Client Authentication Method to use are already declared for the client at init time, the only
+required parameters for those methods are those that will be sent in the request to the Token Endpoint.
 
 Those methods directly return a [BearerToken] if the request is successful, or raise an exception if it fails.
-[BearerToken] will manage the token expiration, will contain the eventual refresh token that matches the access token,
-and will keep track of other associated metadata as well. You can create such a [BearerToken] yourself if you need:
+[BearerToken] contains all the data as returned by the Token Endpoint, including the Access Token. It will:
+
+- keep track of the Access Token expiration date (based on the `expires_in` hint as returned by the AS). This date is accessible with the `expires_at` attribute.
+- contain the Refresh Token, if returned by the AS, accessible with the `refresh_token` attribute.
+- contain the ID Token, if returned by the AS, accessible with the `ìd_token` attribute.
+- keep track of other associated metadata as well, also accessible as attributes with the same name (`token.custom_attr`), or with subscription (`token["my.custom.attr"]`).
+
+You can create such a [BearerToken] yourself if you need:
 
 ```python
 from requests_oauth2client import BearerToken
@@ -120,6 +129,9 @@ print(bearer_token)
 print(bearer_token.expires_at)
 # datetime.datetime(2021, 8, 20, 9, 56, 59, 498793)
 assert not bearer_token.is_expired()
+
+print(bearer_token.expires_in)
+# 40
 ```
 
 Note that the `expires_in` indicator here is not static. It keeps track of the token lifetime and is calculated as the
@@ -145,11 +157,19 @@ To send a request using the Client Credentials grant, use the aptly named
 method, with the parameters to send in the token request as keyword parameters:
 
 ```python
+# using `oauth2client` as defined above
+
+token = oauth2client.client_credentials(scope="myscope")
+# or, if your AS uses resource indicator:
 token = oauth2client.client_credentials(scope="myscope", resource="https://myapi.local")
+# or, if your AS uses 'audience' as parameter to identify the requested API (Auth0 style):
+token = oauth2client.client_credentials(audience="https://myapi.local")
+# or, if your AS uses custom parameters:
+token = oauth2client.client_credentials(scope="myscope", custom_param="custom_value")
 ```
 
-Parameters such as `scope`, `resource` or `audience` that may be required by the AS can be passed as keyword
-parameters. Those will be included in the token request that is sent to the AS.
+Parameters such as `scope`, `resource` or `audience` or any other parameter that may be required by the AS can be passed as keyword
+parameters. Those will be included in the token request that is sent to the AS. `scope` is not mandatory at client level (but it might be required by your AS to serve your request).
 
 #### As Auth Handler
 
@@ -159,6 +179,12 @@ auth handler. It takes an [OAuth2Client] as parameter, and the additional kwargs
 
 ```python
 import requests
+from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
+
+oauth2client = OAuth2Client(
+    token_endpoint="https://myas.local/token_endpoint",
+    auth=("client_id", "client_secret"),
+)
 
 auth = OAuth2ClientCredentialsAuth(
     oauth2client, scope="myscope", resource="https://myapi.local"
@@ -204,12 +230,15 @@ You can generate valid authorization requests with the
 class:
 
 ```python
+from requests_oauth2client import AuthorizationRequest
+
 auth_request = AuthorizationRequest(
-    authorization_endpoint,
-    client_id,
-    redirect_uri=redirect_uri,
-    scope=scope,
-    resource=resource,  # extra parameters can be included as well if required by your AS
+    "https://myas.local/authorize",
+    client_id="my_client_id",
+    redirect_uri="http://localhost/redirect_uri",  # this redirect_uri is specific to your app
+    scope="openid email profile",
+    # extra parameters such as `resource` can be included as well if required by your AS
+    resource="https://my.resource.local/api",
 )
 print(auth_request)  # redirect the user to that URL to get a code
 ```
@@ -243,6 +272,8 @@ authorization code is one of those parameters, but you must also validate that t
 do this with:
 
 ```python
+# using `auth_request` as defined above
+
 response_uri = input(
     "Please enter the full url and/or params obtained on the redirect_uri: "
 )
@@ -250,6 +281,8 @@ auth_response = auth_request.validate_callback(response_uri)
 ```
 
 #### Exchanging code for tokens
+
+Once you have obtained the AS response, containing an authorization code, your application must exchange it for actual Token(s).
 
 To exchange a code for Access and/or ID tokens, use the
 [OAuth2Client.authorization_code()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.authorization_code)
@@ -281,19 +314,19 @@ handler takes an [OAuth2Client] and an authorization code as parameter, plus wha
 required by your Authorization Server:
 
 ```python
+from requests_oauth2client import ApiClient, OAuth2AuthorizationCodeAuth
+
 api_client = ApiClient(
     "https://your.protected.api/endpoint",
     auth=OAuth2AuthorizationCodeAuth(
-        client,
-        code,
-        code_verifier=auth_request.code_verifier,
-        redirect_uri=redirect_uri,
+        oauth2client,
+        code=auth_response,
     ),
 )
 
 resp = api_client.post(
     data={...}
-)  # first call will exchange the code for an initial access/refresh tokens
+)  # this will exchange the code for an initial access/refresh tokens before the first call to the API
 ```
 
 [OAuth2AuthorizationCodeAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth)
