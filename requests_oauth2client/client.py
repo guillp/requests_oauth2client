@@ -451,6 +451,83 @@ class OAuth2Client:
         )
         return self.token_request(data, **requests_kwargs)
 
+    def jwt_bearer(
+        self,
+        assertion: Union[Jwt, str],
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
+        """Send a request using a JWT as authorization grant.
+
+        This is a defined in (RFC7523 $2.1)[https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1).
+
+        Args:
+            assertion: a JWT (as an instance of `jwskate.Jwt` or as a `str`) to use as authorization grant.
+            requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
+            **token_kwargs: additional parameters to include in the request body.
+
+        Returns:
+            a `BearerToken` as returned by the Authorization Server.
+        """
+        requests_kwargs = requests_kwargs or {}
+
+        if not isinstance(assertion, Jwt):
+            assertion = Jwt(assertion)
+
+        data = dict(
+            grant_type="urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion=assertion,
+            **token_kwargs,
+        )
+
+        return self.token_request(data, **requests_kwargs)
+
+    def authorization_request(
+        self,
+        scope: Union[None, str, Iterable[str]] = "openid",
+        response_type: str = "code",
+        state: Union[str, bool, None] = True,
+        nonce: Union[str, bool, None] = True,
+        code_verifier: Optional[str] = None,
+        code_challenge_method: Optional[str] = "S256",
+        **kwargs: Any,
+    ) -> AuthorizationRequest:
+        """Generate an Authorization Request for this client.
+
+        Args:
+            scope: the scope to use
+            response_type: the response_type to use
+            state: the state parameter to use. Leave default to generate a random value.
+            nonce: a nonce. Leave default to generate a random value.
+            code_verifier: the PKCE code verifier to use. Leave default to generate a random value.
+            code_challenge_method: the PKCE code challenge method to use.
+            **kwargs: additional parameters to include in the auth request
+
+        Returns:
+            an AuthorizationRequest with the supplied parameters
+        """
+        if not self.authorization_endpoint:
+            raise AttributeError("No 'authorization_endpoint' defined for this client.")
+        if not self.redirect_uri:
+            raise AttributeError("No 'redirect_uri' defined for this client.")
+
+        if response_type != "code":
+            raise ValueError("Only response_type=code is supported.")
+
+        return AuthorizationRequest(
+            authorization_endpoint=self.authorization_endpoint,
+            client_id=self.client_id,
+            redirect_uri=self.redirect_uri,
+            issuer=self.issuer,
+            response_type=response_type,
+            scope=scope,
+            state=state,
+            nonce=nonce,
+            code_verifier=code_verifier,
+            code_challenge_method=code_challenge_method,
+            **kwargs,
+        )
+
     def pushed_authorization_request(
         self, authorization_request: AuthorizationRequest
     ) -> RequestUriParameterAuthorizationRequest:
