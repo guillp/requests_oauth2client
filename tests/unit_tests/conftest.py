@@ -276,15 +276,22 @@ def discovery_document(
 @pytest.fixture(scope="session")
 def oauth2client(
     token_endpoint: str,
+    authorization_endpoint: str,
+    redirect_uri: str,
+    expected_issuer: str,
     revocation_endpoint: str,
     introspection_endpoint: str,
     userinfo_endpoint: str,
     pushed_authorization_request_endpoint: str,
     jwks_uri: str,
     client_auth_method: BaseClientAuthenticationMethod,
+    client_id: str,
 ) -> OAuth2Client:
-    return OAuth2Client(
-        token_endpoint,
+    client = OAuth2Client(
+        token_endpoint=token_endpoint,
+        authorization_endpoint=authorization_endpoint,
+        redirect_uri=redirect_uri,
+        issuer=expected_issuer,
         revocation_endpoint=revocation_endpoint,
         introspection_endpoint=introspection_endpoint,
         userinfo_endpoint=userinfo_endpoint,
@@ -292,6 +299,16 @@ def oauth2client(
         jwks_uri=jwks_uri,
         auth=client_auth_method,
     )
+    assert client.token_endpoint == token_endpoint
+    assert client.authorization_endpoint == authorization_endpoint
+    assert client.revocation_endpoint == revocation_endpoint
+    assert client.introspection_endpoint == introspection_endpoint
+    assert client.userinfo_endpoint == userinfo_endpoint
+    assert client.pushed_authorization_request_endpoint == pushed_authorization_request_endpoint
+    assert client.jwks_uri == jwks_uri
+    assert client.auth == client_auth_method
+    assert client.client_id == client_id
+    return client
 
 
 @pytest.fixture(scope="session")
@@ -307,7 +324,7 @@ def state(request: FixtureRequest) -> Union[None, bool, str]:
     return request.param
 
 
-@pytest.fixture(scope="session", params=[None, "https://myas.local", False])
+@pytest.fixture(scope="session", params=[None, "https://myas.local"])
 def expected_issuer(request: FixtureRequest) -> Optional[str]:
     return request.param
 
@@ -359,7 +376,7 @@ def authorization_request(
     nonce: Union[None, bool, str],
     code_verifier: str,
     code_challenge_method: str,
-    expected_issuer: Union[str, bool, None],
+    expected_issuer: Union[str, None],
     auth_request_kwargs: Dict[str, Any],
 ) -> AuthorizationRequest:
     azr = AuthorizationRequest(

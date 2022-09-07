@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Type, Union
 
 import pytest
-from jwskate import Jwk, JwkSet
+from jwskate import Jwk, JwkSet, Jwt
 
 from requests_oauth2client import (
     AuthorizationRequest,
@@ -66,10 +66,24 @@ def test_client_secret_basic_auth(
     assert client.auth.client_secret == client_secret
 
 
-def test_missing_auth(token_endpoint: str) -> None:
+def test_invalid_auth(token_endpoint: str) -> None:
     """`auth` is required."""
     with pytest.raises(ValueError):
-        OAuth2Client(token_endpoint, auth=None)  # type: ignore[arg-type]
+        OAuth2Client(token_endpoint)
+    with pytest.raises(ValueError):
+        OAuth2Client(token_endpoint, auth=("client_id", "client_secret"), client_id="client_id")
+    with pytest.raises(ValueError):
+        OAuth2Client(
+            token_endpoint, auth=("client_id", "client_secret"), client_secret="client_secret"
+        )
+    with pytest.raises(ValueError):
+        OAuth2Client(token_endpoint, ("client_id", "client_secret"), client_id="client_id")
+    with pytest.raises(ValueError):
+        OAuth2Client(
+            token_endpoint,
+            client_secret="client_secret",
+            private_key=Jwk.generate_for_kty("EC", crv="P-256"),
+        )
 
 
 def test_client_credentials_grant(
@@ -1223,3 +1237,30 @@ def test_pushed_authorization_request_error(
 
     with pytest.raises(ServerError):
         oauth2client.pushed_authorization_request(authorization_request)
+
+
+def test_jwt_bearer_grant(
+    requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str
+) -> None:
+    key = Jwk.generate_for_kty("EC", alg="ES256")
+    assertion = Jwt.sign({"iat": 1661759343, "exp": 1661759403, "sub": "some_user_id"}, key)
+    scope = "my_scope"
+
+    requests_mock.post(
+        token_endpoint,
+        json={"access_token": "access_token", "token_type": "Bearer", "scope": scope},
+    )
+
+    token = oauth2client.jwt_bearer(assertion=assertion, scope=scope)
+    assert isinstance(token, BearerToken)
+    assert requests_mock.called_once
+    assert token.scope == scope
+
+
+def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoint: str) -> None:
+    scope = "my_scope"
+    auth_req = oauth2client.authorization_request(scope="my_scope")
+    assert isinstance(auth_req, AuthorizationRequest)
+    assert auth_req.authorization_endpoint == authorization_endpoint
+    assert auth_req.response_type == "code"
+    assert auth_req.scope == scope
