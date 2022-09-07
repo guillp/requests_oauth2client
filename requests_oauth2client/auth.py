@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import requests
 
+from .authorization_request import AuthorizationResponse
 from .device_authorization import DeviceAuthorizationResponse
 from .exceptions import ExpiredAccessToken
 from .tokens import BearerToken
@@ -214,9 +215,14 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
         ````
     """
 
-    def __init__(self, client: "OAuth2Client", code: str, **token_kwargs: Any) -> None:
+    def __init__(
+        self,
+        client: "OAuth2Client",
+        code: Union[str, AuthorizationResponse],
+        **token_kwargs: Any,
+    ) -> None:
         super().__init__(client, None)
-        self.code: Optional[str] = code
+        self.code: Union[str, AuthorizationResponse, None] = code
         self.token_kwargs = token_kwargs
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
