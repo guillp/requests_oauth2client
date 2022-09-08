@@ -35,7 +35,12 @@ jwskate = {version = "^0.4.0.dev31", allow-prereleases = true}
 
 
 [[tool.poetry.source]]
-name = "testpypi"
+name = "pypi-public"
+url = "https://pypi.org/simple/"
+default = true
+
+[[tool.poetry.source]]
+name = "pypi-test"
 url = "https://test.pypi.org/simple"
 
 
