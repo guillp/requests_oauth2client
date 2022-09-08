@@ -1102,7 +1102,7 @@ class OAuth2Client:
         """Fetch and parse the public keys from the JWKS endpoint.
 
         Returns:
-            a JwkSet based on the retrieved keys.
+            a `jwskate.JwkSet` based on the retrieved keys.
         """
         if not self.jwks_uri:
             raise ValueError("No jwks uri defined for this client")
@@ -1115,6 +1115,9 @@ class OAuth2Client:
         url: str,
         issuer: Optional[str],
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        private_key: Union[Jwk, Dict[str, Any], None] = None,
         session: Optional[requests.Session] = None,
         **kwargs: Any,
     ) -> "OAuth2Client":
@@ -1126,6 +1129,9 @@ class OAuth2Client:
         Args:
              url: the url where the server metadata will be retrieved
              auth: the authentication handler to use for client authentication
+             client_id: client ID
+             client_secret: client secret to use to authenticate the client
+             private_key: private key to sign client assertions
              session: a requests Session to use to retrieve the document and initialise the client with
              issuer: if an issuer is given, check that it matches the one from the retrieved document
 
@@ -1144,7 +1150,10 @@ class OAuth2Client:
         cls,
         discovery: Dict[str, Any],
         issuer: Optional[str],
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        private_key: Union[Jwk, Dict[str, Any], None] = None,
         session: Optional[requests.Session] = None,
         https: bool = True,
         **kwargs: Any,
@@ -1155,6 +1164,9 @@ class OAuth2Client:
              discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
              issuer: if an issuer is given, check that it matches the one mentioned in the document
              auth: the authentication handler to use for client authentication
+             client_id: client ID
+             client_secret: client secret to use to authenticate the client
+             private_key: private key to sign client assertions
              session: a requests Session to use to retrieve the document and initialise the client with
              https: if True, validates that urls in the discovery document use the https scheme
 
@@ -1195,6 +1207,9 @@ class OAuth2Client:
             userinfo_endpoint=userinfo_endpoint,
             jwks_uri=jwks_uri,
             auth=auth,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
             session=session,
             **kwargs,
         )
