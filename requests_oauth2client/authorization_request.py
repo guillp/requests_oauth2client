@@ -19,7 +19,6 @@ from .exceptions import (
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
-    MissingIdToken,
     SessionSelectionRequired,
 )
 from .utils import accepts_expires_in
@@ -150,12 +149,16 @@ class AuthorizationResponse:
         redirect_uri: Optional[str] = None,
         code_verifier: Optional[str] = None,
         state: Optional[str] = None,
+        nonce: Optional[str] = None,
+        acr_values: Optional[Iterable[str]] = None,
         **kwargs: str,
     ):
         self.code = code
         self.redirect_uri = redirect_uri
         self.code_verifier = code_verifier
         self.state = state
+        self.nonce = nonce
+        self.acr_values = list(acr_values) if acr_values is not None else None
         self.others = kwargs
 
     def __getattr__(self, item: str) -> Optional[str]:
@@ -200,6 +203,7 @@ class AuthorizationRequest:
         nonce: the nonce to include in the request, or `True` to autogenerate one (default).
         code_verifier: the state to include in the request, or `True` to autogenerate one (default).
         code_challenge_method: the method to use to derive the `code_challenge` from the `code_verifier`.
+        acr_values: requested Authentication Context Class Reference values.
         issuer: Issuer Identifier value from the OAuth/OIDC Server, if using Server Issuer Identification.
         **kwargs: extra parameters to include in the request, as-is.
     """
@@ -222,6 +226,7 @@ class AuthorizationRequest:
         nonce: Union[str, bool, None] = True,
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
+        acr_values: Union[str, Iterable[str], None] = None,
         issuer: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
@@ -238,8 +243,11 @@ class AuthorizationRequest:
         elif nonce is False:
             nonce = None
 
-        if scope is not None and not isinstance(scope, str):
-            scope = " ".join(str(s) for s in scope)
+        if acr_values is not None:
+            if isinstance(acr_values, str):
+                acr_values = acr_values.split()
+            elif not isinstance(acr_values, list):
+                acr_values = list(acr_values)
 
         if "code_challenge" in kwargs:
             raise ValueError(
@@ -267,17 +275,19 @@ class AuthorizationRequest:
         self.code_verifier = code_verifier
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
+        self.acr_values = acr_values
         self.kwargs = kwargs
 
         self.args = dict(
             client_id=client_id,
             redirect_uri=redirect_uri,
             response_type=response_type,
-            scope=scope,
+            scope=" ".join(scope) if scope is not None else None,
             state=state,
             nonce=nonce,
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
+            acr_values=" ".join(acr_values) if acr_values is not None else None,
             **kwargs,
         )
 
@@ -301,6 +311,7 @@ class AuthorizationRequest:
             "code_verifier": self.code_verifier,
             "code_challenge_method": self.code_challenge_method,
             "issuer": self.issuer,
+            "acr_values": self.acr_values,
             **self.kwargs,
         }
 
@@ -438,7 +449,7 @@ class AuthorizationRequest:
             response: the Authorization Response URI. This can be the full URL, or just the query parameters.
 
         Returns:
-            the extracted code, if the
+            the extracted code, if all checks are successful
 
         Raises:
             MismatchingState: if the response `state` does not match the expected value.
@@ -470,14 +481,6 @@ class AuthorizationRequest:
             code: str = response_url.args.get("code")
             if code is None:
                 raise MissingAuthCode()
-
-        # validate ID Token, if using Hybrid Flow
-        if "id_token" in self.response_type:
-            id_token = response_url.args.get("id_token")
-            if id_token is None:
-                raise MissingIdToken()
-
-            Jwt(id_token)
 
         return AuthorizationResponse(
             code_verifier=self.code_verifier,

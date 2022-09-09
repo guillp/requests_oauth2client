@@ -441,12 +441,10 @@ def authorization_request(
         assert "scope" not in args
         del expected_args["scope"]
     elif isinstance(scope, list):
-        joined_scope = " ".join(scope)
-        expected_args["scope"] = joined_scope
-        assert azr.scope == joined_scope
-    if isinstance(scope, str):
-        expected_args["scope"] = scope
+        expected_args["scope"] = " ".join(scope)
         assert azr.scope == scope
+    elif isinstance(scope, str):
+        assert azr.scope == scope.split()
 
     if code_challenge_method is None:
         assert "code_challenge_method" not in args
