@@ -89,7 +89,7 @@ reference = "pypi-public"
 
 [[package]]
 name = "certifi"
-version = "2022.6.15"
+version = "2022.6.15.1"
 description = "Python package for providing Mozilla's CA Bundle."
 category = "main"
 optional = false
@@ -460,7 +460,7 @@ reference = "pypi-public"
 
 [[package]]
 name = "jwskate"
-version = "0.4.0.dev31"
+version = "0.4.0.dev32"
 description = "A Pythonic implementation of Json Web Signature, Keys, Algorithms, Tokens and Encryption (RFC7514 to 7519), on top of the `cryptography` module."
 category = "main"
 optional = false
@@ -1193,7 +1193,7 @@ reference = "pypi-public"
 
 [[package]]
 name = "types-requests"
-version = "2.28.9"
+version = "2.28.10"
 description = "Typing stubs for requests"
 category = "dev"
 optional = false
@@ -1333,7 +1333,7 @@ test = []
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<4.0"
-content-hash = "81750d61c1da1bf4b8a1bea47d5e821e62e11771f7271a8cea3963b59f7ec010"
+content-hash = "a256620594095882ca0f28d6b4c35b3c5ffd0162ae39a935faaadddd4e865bbd"
 
 [metadata.files]
 attrs = [
@@ -1378,8 +1378,8 @@ cached-property = [
     {file = "cached_property-1.5.2-py2.py3-none-any.whl", hash = "sha256:df4f613cf7ad9a588cc381aaf4a512d26265ecebd5eb9e1ba12f1319eb85a6a0"},
 ]
 certifi = [
-    {file = "certifi-2022.6.15-py3-none-any.whl", hash = "sha256:fe86415d55e84719d75f8b69414f6438ac3547d2078ab91b67e779ef69378412"},
-    {file = "certifi-2022.6.15.tar.gz", hash = "sha256:84c85a9078b11105f04f3036a9482ae10e4621616db313fe045dd24743a0820d"},
+    {file = "certifi-2022.6.15.1-py3-none-any.whl", hash = "sha256:43dadad18a7f168740e66944e4fa82c6611848ff9056ad910f8f7a3e46ab89e0"},
+    {file = "certifi-2022.6.15.1.tar.gz", hash = "sha256:cffdcd380919da6137f76633531a5817e3a9f268575c128249fb637e4f9e73fb"},
 ]
 cffi = [
     {file = "cffi-1.15.1-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:a66d3508133af6e8548451b25058d5812812ec3798c886bf38ed24a98216fab2"},
@@ -1600,8 +1600,8 @@ jinja2 = [
     {file = "Jinja2-3.1.2.tar.gz", hash = "sha256:31351a702a408a9e7595a8fc6150fc3f43bb6bf7e319770cbc0db9df9437e852"},
 ]
 jwskate = [
-    {file = "jwskate-0.4.0.dev31-py3-none-any.whl", hash = "sha256:2ef9bfe3d7aa1c6ed4ecdb048cc2de3c399d67dfc5aa5e9880e8461d2b3b67ab"},
-    {file = "jwskate-0.4.0.dev31.tar.gz", hash = "sha256:bc7bd37ab30b6d591e7cf4b35b37fbf9fd73aa88445ff15212851c390545d237"},
+    {file = "jwskate-0.4.0.dev32-py3-none-any.whl", hash = "sha256:9fb8012351dee97a992aa09543ad1e9dfc9ea77b0218a7d603b8e3fd2dd0722c"},
+    {file = "jwskate-0.4.0.dev32.tar.gz", hash = "sha256:e4a8e5c6861cb83c3e4900cf31167d8a8c0c02f0f1ef0963898298c92c9d49e1"},
 ]
 livereload = [
     {file = "livereload-2.6.3.tar.gz", hash = "sha256:776f2f865e59fde56490a56bcc6773b6917366bce0c267c60ee8aaf1a0959869"},
@@ -1888,8 +1888,8 @@ types-cryptography = [
     {file = "types_cryptography-3.3.23-py3-none-any.whl", hash = "sha256:913b3e66a502edbf4bfc3bb45e33ab476040c56942164a7ff37bd1f0ef8ef783"},
 ]
 types-requests = [
-    {file = "types-requests-2.28.9.tar.gz", hash = "sha256:feaf581bd580497a47fe845d506fa3b91b484cf706ff27774e87659837de9962"},
-    {file = "types_requests-2.28.9-py3-none-any.whl", hash = "sha256:86cb66d3de2f53eac5c09adc42cf6547eefbd0c7e1210beca1ee751c35d96083"},
+    {file = "types-requests-2.28.10.tar.gz", hash = "sha256:97d8f40aa1ffe1e58c3726c77d63c182daea9a72d9f1fa2cafdea756b2a19f2c"},
+    {file = "types_requests-2.28.10-py3-none-any.whl", hash = "sha256:45b485725ed58752f2b23461252f1c1ad9205b884a1e35f786bb295525a3e16a"},
 ]
 types-urllib3 = [
     {file = "types-urllib3-1.26.24.tar.gz", hash = "sha256:a1b3aaea7dda3eb1b51699ee723aadd235488e4dc4648e030f09bc429ecff42f"},
