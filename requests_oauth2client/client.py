@@ -1292,6 +1292,8 @@ class OAuth2Client:
             issuer_from_doc = discovery.get("issuer")
             if issuer_from_doc != issuer:
                 raise ValueError("issuer mismatch!", issuer_from_doc)
+        else:
+            issuer = discovery.get("issuer")
 
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
@@ -1326,5 +1328,6 @@ class OAuth2Client:
             client_secret=client_secret,
             private_key=private_key,
             session=session,
+            issuer=issuer,
             **kwargs,
         )
