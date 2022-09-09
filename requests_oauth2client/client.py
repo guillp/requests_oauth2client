@@ -3,7 +3,7 @@
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
-from jwskate import Jwk, JwkSet, Jwt
+from jwskate import JweCompact, Jwk, JwkSet, Jwt, SignatureAlgs, SignedJwt, SymmetricJwk
 
 from .auth import BearerAuth
 from .authorization_request import (
@@ -19,15 +19,24 @@ from .exceptions import (
     AuthorizationPending,
     BackChannelAuthenticationError,
     DeviceAuthorizationError,
+    ExpiredIdToken,
     ExpiredToken,
     IntrospectionError,
     InvalidBackChannelAuthenticationResponse,
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
+    InvalidIdToken,
     InvalidPushedAuthorizationResponse,
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
+    MismatchingAcr,
+    MismatchingAudience,
+    MismatchingAzp,
+    MismatchingIdTokenAlg,
+    MismatchingIssuer,
+    MismatchingNonce,
+    MissingIdToken,
     RevocationError,
     ServerError,
     SlowDown,
@@ -94,6 +103,8 @@ class OAuth2Client:
         "unsupported_token_type": UnsupportedTokenType,
     }
 
+    token_class: Type[BearerToken] = BearerToken
+
     def __init__(
         self,
         token_endpoint: str,
@@ -120,6 +131,7 @@ class OAuth2Client:
         jwks_uri: Optional[str] = None,
         issuer: Optional[str] = None,
         session: Optional[requests.Session] = None,
+        id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
         **extra_metadata: Any,
     ):
         self.token_endpoint = str(token_endpoint)
@@ -155,6 +167,9 @@ class OAuth2Client:
             private_key=private_key,
             default_auth_handler=ClientSecretPost,
         )
+        self.id_token_decryption_key = (
+            Jwk(id_token_decryption_key) if id_token_decryption_key else None
+        )
         self.extra_metadata = extra_metadata
 
     @property
@@ -164,6 +179,15 @@ class OAuth2Client:
             return self.auth.client_id  # type: ignore[attr-defined, no-any-return]
         raise AttributeError(
             "This client uses a custom authentication method without client_id."
+        )
+
+    @property
+    def client_secret(self) -> str:
+        """Client Secret."""
+        if hasattr(self.auth, "client_secret"):
+            return self.auth.client_secret  # type: ignore[attr-defined, no-any-return]
+        raise AttributeError(
+            "This client uses a custom authentication method without client_secret."
         )
 
     def token_request(
@@ -212,7 +236,7 @@ class OAuth2Client:
             a [`BearerToken`][requests_oauth2client.tokens.BearerToken] based on the response contents.
         """
         try:
-            token_response = BearerToken(**response.json())
+            token_response = self.token_class(**response.json())
             return token_response
         except Exception as response_class_exc:
             try:
@@ -275,6 +299,7 @@ class OAuth2Client:
     def authorization_code(
         self,
         code: Union[str, AuthorizationResponse],
+        validate: bool = True,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -282,12 +307,14 @@ class OAuth2Client:
 
         Args:
              code: an authorization code to exchange for tokens
+             validate: if `True`, validate the received ID Token
              requests_kwargs: additional parameters for the call to requests
              **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `code`, etc.
 
         Returns:
             a `BearerToken`
         """
+        azr: Optional[AuthorizationResponse] = None
         if isinstance(code, AuthorizationResponse):
             if code.code is None or not isinstance(code.code, str):
                 raise ValueError(
@@ -295,12 +322,93 @@ class OAuth2Client:
                 )
             token_kwargs.setdefault("code_verifer", code.code_verifier)
             token_kwargs.setdefault("redirect_uri", code.redirect_uri)
+            azr = code
             code = code.code
 
         requests_kwargs = requests_kwargs or {}
 
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
-        return self.token_request(data, **requests_kwargs)
+        token = self.token_request(data, **requests_kwargs)
+        if isinstance(azr, AuthorizationResponse) and validate:
+            self.validate_token_response(token, azr)
+        return token
+
+    def validate_token_response(  # noqa: C901
+        self, resp: BearerToken, azr: AuthorizationResponse
+    ) -> None:
+        """Validate that a token response is valid.
+
+        This will validate the id_token as described
+        in [OIDC 1.0 $3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+        """
+        if azr.scope and "openid" in azr.scope:
+            if not resp.id_token:
+                raise MissingIdToken()
+
+            id_token = resp.id_token
+
+            id_token_encrypted_response_alg = self.extra_metadata.get(
+                "id_token_encrypted_response_alg"
+            )
+            if isinstance(id_token, JweCompact):
+                if id_token_encrypted_response_alg is None:
+                    raise InvalidIdToken(
+                        "ID Token is encrypted while it should be clear-text", resp
+                    )
+            else:
+                if id_token_encrypted_response_alg is not None:
+                    raise InvalidIdToken(
+                        "ID Token is clear-text while it should be encrypted", resp
+                    )
+
+            if isinstance(id_token, JweCompact):
+                id_token = Jwt.decrypt_nested_jwt(id_token, jwk=self.id_token_decryption_key)  # type: ignore[attr-defined]
+                if not isinstance(id_token, SignedJwt):
+                    raise InvalidIdToken(
+                        "ID Token was encrypted but nested token is not signed"
+                    )
+                resp.id_token = id_token
+
+            if azr.issuer:
+                if id_token.issuer != azr.issuer:
+                    raise MismatchingIssuer(id_token.issuer, azr.issuer, resp)
+
+            if id_token.audiences and self.client_id not in id_token.audiences:
+                raise MismatchingAudience(id_token.audiences, self.client_id, resp)
+
+            if id_token.azp is not None and id_token.azp != self.client_id:
+                raise MismatchingAzp(id_token.azp, self.client_id, resp)
+
+            id_token_signed_response_alg = self.extra_metadata.get(
+                "id_token_signed_response_alg"
+            )
+            if (
+                id_token_signed_response_alg is not None
+                and id_token.alg != id_token_signed_response_alg
+            ):
+                raise MismatchingIdTokenAlg(id_token.alg, id_token_signed_response_alg)
+
+            if id_token.alg in SignatureAlgs.ALL_SYMMETRIC:
+                if not self.client_secret:
+                    raise InvalidIdToken(
+                        "Returned ID Token is symmetrically signed but this client does not have a Client ID."
+                    )
+                id_token.verify_signature(SymmetricJwk.from_bytes(self.client_secret))
+
+            if id_token.is_expired():
+                raise ExpiredIdToken(id_token)
+
+            if azr.nonce:
+                if id_token.nonce != azr.nonce:
+                    raise MismatchingNonce()
+
+            if azr.acr_values:
+                if id_token.acr not in azr.acr_values:
+                    raise MismatchingAcr(id_token.acr, azr.acr_values)
+
+            if id_token.at_hash:
+                pass
+                # TODO
 
     def refresh_token(
         self,
@@ -1142,7 +1250,14 @@ class OAuth2Client:
         discovery = session.get(url).json()
 
         return cls.from_discovery_document(
-            discovery, issuer=issuer, auth=auth, session=session, **kwargs
+            discovery,
+            issuer=issuer,
+            auth=auth,
+            session=session,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
+            **kwargs,
         )
 
     @classmethod

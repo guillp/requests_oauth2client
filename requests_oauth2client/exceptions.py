@@ -183,6 +183,38 @@ class MismatchingIssuer(InvalidAuthResponse):
     """
 
 
+class MismatchingNonce(InvalidIdToken):
+    """Raised on mismatching `nonce` value in an ID Token.
+
+    This happens when the authorization request includes a `nonce` but the returned ID Token
+    include a different value.
+    """
+
+
+class MismatchingAcr(InvalidIdToken):
+    """Raised when the returned ID Token doesn't contain one of the requested ACR Values.
+
+    This happens when the authorization request includes an `acr_values` parameter but the
+    returned ID Token includes a different value.
+    """
+
+
+class MismatchingAudience(InvalidIdToken):
+    """Raised when the ID Token audience does not include the requesting Client ID."""
+
+
+class MismatchingAzp(InvalidIdToken):
+    """Raised when the ID Token Authorized Presenter (azp) claim is not the Client ID."""
+
+
+class MismatchingIdTokenAlg(InvalidIdToken):
+    """Raised when the returned ID Token is signed with an unexpected alg."""
+
+
+class ExpiredIdToken(InvalidIdToken):
+    """Raised when the returned ID Token is expired."""
+
+
 class BackChannelAuthenticationError(EndpointError):
     """Base class for errors returned by the BackChannel Authentication endpoint."""
 

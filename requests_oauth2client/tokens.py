@@ -2,10 +2,10 @@
 
 import pprint
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Callable, Dict, Optional, Type, Union
 
 from binapy import BinaPy
-from jwskate import SignedJwt
+from jwskate import InvalidJwt, JweCompact, SignedJwt
 
 from .utils import accepts_expires_in
 
@@ -47,7 +47,12 @@ class BearerToken:
         self.expires_at = expires_at
         self.scope = scope
         self.refresh_token = refresh_token
-        self.id_token = IdToken(id_token) if id_token else None
+        self.id_token: Union[IdToken, JweCompact, None] = None
+        if id_token:
+            try:
+                self.id_token = IdToken(id_token)
+            except InvalidJwt:
+                self.id_token = JweCompact(id_token)
         self.other = kwargs
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
