@@ -23,7 +23,9 @@ class Auth0Client(OAuth2Client):
     def __init__(
         self,
         tenant: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None],
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
         session: Optional[requests.Session] = None,
     ):
         if (
@@ -31,6 +33,7 @@ class Auth0Client(OAuth2Client):
             or tenant.endswith(".eu")
             or tenant.endswith(".us")
             or tenant.endswith(".au")
+            or tenant.endswith(".jp")
         ):
             tenant = f"{tenant}.auth0.com"
         self.tenant = tenant
@@ -44,6 +47,8 @@ class Auth0Client(OAuth2Client):
             userinfo_endpoint=userinfo_endpoint,
             jwks_uri=jwks_uri,
             auth=auth,
+            client_id=client_id,
+            client_secret=client_secret,
             session=session,
         )
 
@@ -70,11 +75,15 @@ class Auth0ManagementApiClient(ApiClient):
     def __init__(
         self,
         tenant: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None],
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
         session: Optional[requests.Session] = None,
         **kwargs: Any,
     ):
-        client = Auth0Client(tenant, auth, session=session)
+        client = Auth0Client(
+            tenant, auth=auth, client_id=client_id, client_secret=client_secret, session=session
+        )
         audience = f"https://{client.tenant}/api/v2/"
         api_auth = OAuth2ClientCredentialsAuth(client, audience=audience)
         super().__init__(
