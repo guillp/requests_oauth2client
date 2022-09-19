@@ -311,7 +311,7 @@ class OAuth2Client:
                 raise ValueError(
                     "This AuthorizationResponse doesn't contain an authorization code"
                 )
-            token_kwargs.setdefault("code_verifer", code.code_verifier)
+            token_kwargs.setdefault("code_verifier", code.code_verifier)
             token_kwargs.setdefault("redirect_uri", code.redirect_uri)
             azr = code
             code = code.code
