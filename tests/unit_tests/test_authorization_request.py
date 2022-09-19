@@ -16,36 +16,6 @@ from requests_oauth2client import (
 from tests.conftest import FixtureRequest
 
 
-@pytest.fixture()
-def authorization_response_uri(
-    authorization_request: AuthorizationRequest,
-    redirect_uri: str,
-    authorization_code: str,
-    expected_issuer: Union[str, bool, None],
-) -> furl:
-    auth_url = furl(redirect_uri).add(args={"code": authorization_code})
-    if authorization_request.state is not None:
-        auth_url.add(args={"state": authorization_request.state})
-    if expected_issuer:
-        auth_url.add(args={"iss": expected_issuer})
-
-    return auth_url
-
-
-def test_validate_callback(
-    authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
-    redirect_uri: str,
-    authorization_code: str,
-) -> None:
-    auth_response = authorization_request.validate_callback(authorization_response_uri)
-    assert isinstance(auth_response, AuthorizationResponse)
-    assert auth_response.code == authorization_code
-    assert auth_response.state == authorization_request.state
-    assert auth_response.redirect_uri == redirect_uri
-    assert auth_response.code_verifier == authorization_request.code_verifier
-
-
 def test_authorization_url(authorization_request: AuthorizationRequest) -> None:
     url = furl(str(authorization_request))
     assert dict(url.args) == {

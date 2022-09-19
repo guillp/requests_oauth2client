@@ -3,7 +3,7 @@
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
-from jwskate import JweCompact, Jwk, JwkSet, Jwt, SignatureAlgs, SignedJwt, SymmetricJwk
+from jwskate import Jwk, JwkSet, Jwt
 
 from .auth import BearerAuth
 from .authorization_request import (
@@ -19,24 +19,15 @@ from .exceptions import (
     AuthorizationPending,
     BackChannelAuthenticationError,
     DeviceAuthorizationError,
-    ExpiredIdToken,
     ExpiredToken,
     IntrospectionError,
     InvalidBackChannelAuthenticationResponse,
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
-    InvalidIdToken,
     InvalidPushedAuthorizationResponse,
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
-    MismatchingAcr,
-    MismatchingAudience,
-    MismatchingAzp,
-    MismatchingIdTokenAlg,
-    MismatchingIssuer,
-    MismatchingNonce,
-    MissingIdToken,
     RevocationError,
     ServerError,
     SlowDown,
@@ -330,85 +321,8 @@ class OAuth2Client:
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         token = self.token_request(data, **requests_kwargs)
         if isinstance(azr, AuthorizationResponse) and validate:
-            self.validate_token_response(token, azr)
+            token.validate_oidc(self, azr)
         return token
-
-    def validate_token_response(  # noqa: C901
-        self, resp: BearerToken, azr: AuthorizationResponse
-    ) -> None:
-        """Validate that a token response is valid.
-
-        This will validate the id_token as described
-        in [OIDC 1.0 $3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
-        """
-        if azr.scope and "openid" in azr.scope:
-            if not resp.id_token:
-                raise MissingIdToken()
-
-            id_token = resp.id_token
-
-            id_token_encrypted_response_alg = self.extra_metadata.get(
-                "id_token_encrypted_response_alg"
-            )
-            if isinstance(id_token, JweCompact):
-                if id_token_encrypted_response_alg is None:
-                    raise InvalidIdToken(
-                        "ID Token is encrypted while it should be clear-text", resp
-                    )
-            else:
-                if id_token_encrypted_response_alg is not None:
-                    raise InvalidIdToken(
-                        "ID Token is clear-text while it should be encrypted", resp
-                    )
-
-            if isinstance(id_token, JweCompact):
-                id_token = Jwt.decrypt_nested_jwt(id_token, jwk=self.id_token_decryption_key)  # type: ignore[attr-defined]
-                if not isinstance(id_token, SignedJwt):
-                    raise InvalidIdToken(
-                        "ID Token was encrypted but nested token is not signed"
-                    )
-                resp.id_token = id_token
-
-            if azr.issuer:
-                if id_token.issuer != azr.issuer:
-                    raise MismatchingIssuer(id_token.issuer, azr.issuer, resp)
-
-            if id_token.audiences and self.client_id not in id_token.audiences:
-                raise MismatchingAudience(id_token.audiences, self.client_id, resp)
-
-            if id_token.azp is not None and id_token.azp != self.client_id:
-                raise MismatchingAzp(id_token.azp, self.client_id, resp)
-
-            id_token_signed_response_alg = self.extra_metadata.get(
-                "id_token_signed_response_alg"
-            )
-            if (
-                id_token_signed_response_alg is not None
-                and id_token.alg != id_token_signed_response_alg
-            ):
-                raise MismatchingIdTokenAlg(id_token.alg, id_token_signed_response_alg)
-
-            if id_token.alg in SignatureAlgs.ALL_SYMMETRIC:
-                if not self.client_secret:
-                    raise InvalidIdToken(
-                        "Returned ID Token is symmetrically signed but this client does not have a Client ID."
-                    )
-                id_token.verify_signature(SymmetricJwk.from_bytes(self.client_secret))
-
-            if id_token.is_expired():
-                raise ExpiredIdToken(id_token)
-
-            if azr.nonce:
-                if id_token.nonce != azr.nonce:
-                    raise MismatchingNonce()
-
-            if azr.acr_values:
-                if id_token.acr not in azr.acr_values:
-                    raise MismatchingAcr(id_token.acr, azr.acr_values)
-
-            if id_token.at_hash:
-                pass
-                # TODO
 
     def refresh_token(
         self,

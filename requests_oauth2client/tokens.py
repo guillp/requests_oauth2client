@@ -2,12 +2,43 @@
 
 import pprint
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 
 from binapy import BinaPy
-from jwskate import InvalidJwt, JweCompact, SignedJwt
+from jwskate import (
+    InvalidJwe,
+    InvalidJwt,
+    JweCompact,
+    Jwt,
+    SignatureAlgs,
+    SignedJwt,
+    SymmetricJwk,
+)
 
+from .exceptions import (
+    ExpiredIdToken,
+    InvalidIdToken,
+    MismatchingAcr,
+    MismatchingAudience,
+    MismatchingAzp,
+    MismatchingIdTokenAlg,
+    MismatchingIssuer,
+    MismatchingNonce,
+    MissingIdToken,
+)
 from .utils import accepts_expires_in
+
+if TYPE_CHECKING:
+    from .authorization_request import AuthorizationResponse
+    from .client import OAuth2Client
+
+
+class IdToken(SignedJwt):
+    """Represent an ID Token.
+
+    An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be decoded
+    beforehand.
+    """
 
 
 class BearerToken:
@@ -52,7 +83,12 @@ class BearerToken:
             try:
                 self.id_token = IdToken(id_token)
             except InvalidJwt:
-                self.id_token = JweCompact(id_token)
+                try:
+                    self.id_token = JweCompact(id_token)
+                except InvalidJwe:
+                    raise InvalidIdToken(
+                        "ID Token is invalid because it is  neither a JWT or a JWE."
+                    )
         self.other = kwargs
 
     def is_expired(self, leeway: int = 0) -> Optional[bool]:
@@ -77,6 +113,81 @@ class BearerToken:
             the value to use in a HTTP Authorization Header
         """
         return f"Bearer {self.access_token}"
+
+    def validate_oidc(  # noqa: C901
+        self, client: "OAuth2Client", azr: "AuthorizationResponse"
+    ) -> IdToken:
+        """Validate that a token response is valid, and return the ID Token.
+
+        This will validate the id_token as described
+        in [OIDC 1.0 $3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation).
+
+        If the ID Token was encrypted, this decrypts it and returns the clear-text ID Token.
+        """
+        if not self.id_token:
+            raise MissingIdToken()
+
+        id_token = self.id_token
+
+        id_token_encrypted_response_alg = client.extra_metadata.get(
+            "id_token_encrypted_response_alg"
+        )
+        if isinstance(id_token, JweCompact):
+            if id_token_encrypted_response_alg is None:
+                raise InvalidIdToken(
+                    "ID Token is encrypted while it should be clear-text", self
+                )
+        else:
+            if id_token_encrypted_response_alg is not None:
+                raise InvalidIdToken(
+                    "ID Token is clear-text while it should be encrypted", self
+                )
+
+        if isinstance(id_token, JweCompact):
+            id_token = Jwt.decrypt_nested_jwt(id_token, jwk=client.id_token_decryption_key)  # type: ignore[attr-defined]
+            if not isinstance(id_token, SignedJwt):
+                raise InvalidIdToken("ID Token was encrypted but nested token is not signed")
+
+        if azr.issuer:
+            if id_token.issuer != azr.issuer:
+                raise MismatchingIssuer(id_token.issuer, azr.issuer, self)
+
+        if id_token.audiences and client.client_id not in id_token.audiences:
+            raise MismatchingAudience(id_token.audiences, client.client_id, self)
+
+        if id_token.get_claim("azp") is not None and id_token.azp != client.client_id:
+            raise MismatchingAzp(id_token.azp, client.client_id, self)
+
+        id_token_signed_response_alg = client.extra_metadata.get("id_token_signed_response_alg")
+        if (
+            id_token_signed_response_alg is not None
+            and id_token.alg != id_token_signed_response_alg
+        ):
+            raise MismatchingIdTokenAlg(id_token.alg, id_token_signed_response_alg)
+
+        if id_token.alg in SignatureAlgs.ALL_SYMMETRIC:
+            if not client.client_secret:
+                raise InvalidIdToken(
+                    "Returned ID Token is symmetrically signed but this client does not have a Client ID."
+                )
+            id_token.verify_signature(SymmetricJwk.from_bytes(client.client_secret))
+
+        if id_token.is_expired():
+            raise ExpiredIdToken(id_token)
+
+        if azr.nonce:
+            if id_token.nonce != azr.nonce:
+                raise MismatchingNonce()
+
+        if azr.acr_values:
+            if id_token.acr not in azr.acr_values:
+                raise MismatchingAcr(id_token.acr, azr.acr_values)
+
+        if id_token.get_claim("at_hash"):
+            pass
+            # TODO
+
+        return id_token
 
     def __str__(self) -> str:
         """Return the access token value, as a string.
@@ -283,11 +394,3 @@ class BearerTokenSerializer:
             the deserialized token
         """
         return self.loader(serialized)
-
-
-class IdToken(SignedJwt):
-    """Represent an ID Token.
-
-    An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be prealably
-    decoded.
-    """

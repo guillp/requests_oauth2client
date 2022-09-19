@@ -7,7 +7,6 @@ from jwskate import (
     InvalidJwt,
     InvalidSignature,
     Jwk,
-    Jwt,
     SignedJwt,
 )
 
@@ -160,7 +159,7 @@ def test_id_token() -> None:
     )
 
     with pytest.raises(AttributeError):
-        id_token.not_found
+        id_token.attr_not_found
 
     id_token.validate(
         public_jwk,
