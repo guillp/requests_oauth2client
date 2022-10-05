@@ -371,7 +371,7 @@ class AuthorizationRequest:
         enc_jwk: Union[Jwk, Dict[str, Any]],
         sign_alg: Optional[str] = None,
         enc_alg: Optional[str] = None,
-        enc: Optional[str] = None,
+        enc: str = "A128CBC-HS256",
         lifetime: Optional[int] = None,
     ) -> JweCompact:
         """Sign and encrypt a `request` object for this Authorization Request.
@@ -392,7 +392,7 @@ class AuthorizationRequest:
         claims = {key: val for key, val in self.args.items() if val is not None}
         if lifetime:
             claims["exp"] = int(time.time() + lifetime)
-        return Jwt.sign_and_encrypt(  # type: ignore[return-value]
+        return Jwt.sign_and_encrypt(
             claims=claims,
             sign_jwk=sign_jwk,
             sign_alg=sign_alg,
@@ -407,7 +407,7 @@ class AuthorizationRequest:
         enc_jwk: Union[Jwk, Dict[str, Any]],
         sign_alg: Optional[str] = None,
         enc_alg: Optional[str] = None,
-        enc: Optional[str] = None,
+        enc: str = "A128CBC-HS256",
         lifetime: Optional[int] = None,
     ) -> RequestParameterAuthorizationRequest:
         """Sign and encrypt the current Authorization Request.

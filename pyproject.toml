@@ -31,7 +31,7 @@ python = ">=3.7,<4.0"
 requests = ">=2.19.0"
 binapy = "^0.6"
 furl = ">=2.1.2"
-jwskate = {version = "^0.4.0.dev32", allow-prereleases = true}
+jwskate = "^0.4"
 
 
 [[tool.poetry.source]]

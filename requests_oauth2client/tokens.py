@@ -144,9 +144,13 @@ class BearerToken:
                 )
 
         if isinstance(id_token, JweCompact):
-            id_token = Jwt.decrypt_nested_jwt(id_token, jwk=client.id_token_decryption_key)  # type: ignore[attr-defined]
-            if not isinstance(id_token, SignedJwt):
-                raise InvalidIdToken("ID Token was encrypted but nested token is not signed")
+            enc_jwk = client.id_token_decryption_key
+            if enc_jwk is None:
+                raise InvalidIdToken(
+                    "ID Token is encrypted but client does not have a decryption key", self
+                )
+            nested_id_token = id_token.decrypt(enc_jwk)
+            id_token = IdToken(nested_id_token)
 
         if azr.issuer:
             if id_token.issuer != azr.issuer:

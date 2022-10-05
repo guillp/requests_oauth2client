@@ -119,7 +119,7 @@ def client_id() -> str:
 def client_auth_method_handler(
     request: pytest.FixtureRequest,
 ) -> Type[BaseClientAuthenticationMethod]:
-    return request.param  # type: ignore[attr-defined,no-any-return]
+    return request.param  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
