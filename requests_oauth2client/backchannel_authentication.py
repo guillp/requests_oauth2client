@@ -108,6 +108,7 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
         self,
         client: "OAuth2Client",
         auth_req_id: Union[str, BackChannelAuthenticationResponse],
+        *,
         interval: Optional[int] = None,
         slow_down_interval: int = 5,
         requests_kwargs: Optional[Dict[str, Any]] = None,
