@@ -1135,8 +1135,8 @@ class OAuth2Client:
     def from_discovery_endpoint(
         cls,
         url: str,
-        issuer: Optional[str],
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        issuer: Optional[str] = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
         private_key: Union[Jwk, Dict[str, Any], None] = None,
@@ -1178,7 +1178,7 @@ class OAuth2Client:
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        issuer: Optional[str],
+        issuer: Optional[str] = None,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
         client_id: Optional[str] = None,
         client_secret: Optional[str] = None,
