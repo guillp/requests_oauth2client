@@ -114,7 +114,7 @@ class BearerToken:
         """
         return f"Bearer {self.access_token}"
 
-    def validate_oidc(  # noqa: C901
+    def validate_id_token(  # noqa: C901
         self, client: "OAuth2Client", azr: "AuthorizationResponse"
     ) -> IdToken:
         """Validate that a token response is valid, and return the ID Token.

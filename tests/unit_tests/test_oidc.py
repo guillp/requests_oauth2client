@@ -29,7 +29,7 @@ def test_validate_oidc(token_endpoint: str) -> None:
         access_token="jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y",
         expires_in=60,
         id_token=ID_TOKEN,
-    ).validate_oidc(
+    ).validate_id_token(
         client=OAuth2Client(token_endpoint, client_id="s6BhdRkqt3"),
         azr=AuthorizationResponse(
             code="Qcb0Orv1zh30vL1MPRsbm-diHiMwcLyZvn1arpZv-Jxf_11jnpEX3Tgfvk"
@@ -41,7 +41,7 @@ def test_invalid_oidc(token_endpoint: str) -> None:
     with pytest.raises(InvalidIdToken):
         BearerToken(
             access_token="an_access_token", expires_in=60, id_token="foo"
-        ).validate_oidc(
+        ).validate_id_token(
             client=OAuth2Client(token_endpoint, client_id="client_id"),
             azr=AuthorizationResponse(code="foo"),
         )
