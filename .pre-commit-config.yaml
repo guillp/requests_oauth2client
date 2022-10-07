@@ -91,7 +91,7 @@ repos:
         - --show-column-numbers
         additional_dependencies:
             - pytest-mypy
-            - jwskate
+            - jwskate>=0.4.1
             - types-requests
             - requests_mock
             - flask

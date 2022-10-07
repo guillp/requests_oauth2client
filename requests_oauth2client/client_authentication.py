@@ -254,7 +254,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         if not isinstance(private_jwk, Jwk):
             private_jwk = Jwk(private_jwk)
 
-        if not private_jwk.is_private or isinstance(private_jwk, SymmetricJwk):
+        if not private_jwk.is_private or private_jwk.is_symmetric:
             raise ValueError(
                 "Private Key JWT client authentication method uses asymmetric signing thus requires a private key."
             )

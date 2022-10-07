@@ -331,6 +331,7 @@ class AuthorizationRequest:
             a :class:`Jwt` that contains the signed request object.
         """
         claims = {key: val for key, val in self.args.items() if val is not None}
+        claims["iat"] = Jwt.timestamp()
         if lifetime:
             claims["exp"] = int(time.time() + lifetime)
         return Jwt.sign(
@@ -384,7 +385,7 @@ class AuthorizationRequest:
             sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
             enc_alg: the alg to use to encrypt the request, if the passed `jwk` has no `alg` parameter.
             enc: the encoding to use to encrypt the request, if the passed `jwk` has no `enc` parameter.
-            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim). By default, don't use an 'exp' claim.
+            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim). By default, do not include an 'exp' claim.
 
         Returns:
             the signed and encrypted request object, as a `jwskate.Jwt`
@@ -420,6 +421,7 @@ class AuthorizationRequest:
             sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
             enc_alg: the alg to use to encrypt the request, if the passed `jwk` has no `alg` parameter.
             enc: the encoding to use to encrypt the request, if the passed `jwk` has no `enc` parameter.
+            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim). By default, do not include an 'exp' claim.
 
         Returns:
             the same AuthorizationRequest, with a request object as parameter
