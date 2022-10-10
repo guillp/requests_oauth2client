@@ -1,4 +1,4 @@
-from requests_oauth2client.vendor_specific.ping import PingClient
+from requests_oauth2client.vendor_specific import PingClient
 
 
 def test_ping_client() -> None:
