@@ -326,14 +326,15 @@ class AuthorizationRequest:
         Args:
             jwk: the JWK to use to sign the request
             alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
+            lifetime: an optional number of seconds of validity for the signed reqeust. If present, `iat` an `exp` claims will be included in the signed JWT.
 
         Returns:
-            a :class:`Jwt` that contains the signed request object.
+            a `Jwt` that contains the signed request object.
         """
         claims = {key: val for key, val in self.args.items() if val is not None}
-        claims["iat"] = Jwt.timestamp()
         if lifetime:
-            claims["exp"] = int(time.time() + lifetime)
+            claims["iat"] = Jwt.timestamp()
+            claims["exp"] = Jwt.timestamp(lifetime)
         return Jwt.sign(
             claims,
             jwk=jwk,

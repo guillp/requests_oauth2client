@@ -1,13 +1,13 @@
 from typing import Union
 
 import pytest
+from freezegun import freeze_time  # type: ignore[import]
 from furl import furl  # type: ignore[import]
 from jwskate import Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (
     AuthorizationRequest,
     AuthorizationRequestSerializer,
-    AuthorizationResponse,
     AuthorizationResponseError,
     MismatchingIssuer,
     MismatchingState,
@@ -30,6 +30,23 @@ def test_authorization_signed_request(
         key: value for key, value in authorization_request.args.items() if value is not None
     }
     url = furl(str(authorization_request.sign(private_jwk)))
+    request = url.args.get("request")
+    jwt = Jwt(request)
+    assert isinstance(jwt, SignedJwt)
+    assert jwt.verify_signature(public_jwk)
+    assert jwt.claims == args
+
+
+@freeze_time("2022-10-10 13:37:00")  # type: ignore[misc]
+def test_authorization_signed_request_with_lifetime(
+    authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk
+) -> None:
+    args = {
+        key: value for key, value in authorization_request.args.items() if value is not None
+    }
+    args["iat"] = 1665409020
+    args["exp"] = 1665409080
+    url = furl(str(authorization_request.sign(private_jwk, lifetime=60)))
     request = url.args.get("request")
     jwt = Jwt(request)
     assert isinstance(jwt, SignedJwt)
