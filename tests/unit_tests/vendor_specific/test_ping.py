@@ -1,3 +1,5 @@
+import pytest
+
 from requests_oauth2client.vendor_specific import PingClient
 
 
@@ -34,3 +36,10 @@ def test_ping_client() -> None:
         ping_client.device_authorization_endpoint
         == "https://mydomain.tld/as/device_authz.oauth2"
     )
+
+
+def test_ping_invalid_domain() -> None:
+    with pytest.raises(ValueError):
+        PingClient("foo")
+    with pytest.raises(ValueError):
+        PingClient("ftp://foo.bar")

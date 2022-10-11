@@ -36,6 +36,10 @@ class Auth0Client(OAuth2Client):
             or tenant.endswith(".jp")
         ):
             tenant = f"{tenant}.auth0.com"
+        if "://" in tenant and not tenant.startswith("https://"):
+            raise ValueError(
+                "Invalid tenant name. It must be a tenant name like 'mytenant.myregion' or a full issuer like 'https://mytenant.myregion.auth0.com'."
+            )
         self.tenant = tenant
         token_endpoint = f"https://{tenant}/oauth/token"
         revocation_endpoint = f"https://{tenant}/oauth/revoke"

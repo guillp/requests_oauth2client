@@ -1,3 +1,5 @@
+import pytest
+
 from requests_oauth2client import OAuth2ClientCredentialsAuth
 from requests_oauth2client.vendor_specific import Auth0Client, Auth0ManagementApiClient
 
@@ -29,3 +31,8 @@ def test_auth0_client_short_tenant_name() -> None:
     assert auth0client.revocation_endpoint == "https://test.eu.auth0.com/oauth/revoke"
     assert auth0client.userinfo_endpoint == "https://test.eu.auth0.com/userinfo"
     assert auth0client.jwks_uri == "https://test.eu.auth0.com/.well-known/jwks.json"
+
+
+def test_auth0_invalid_domain() -> None:
+    with pytest.raises(ValueError):
+        Auth0Client("ftp://mytenant.eu")
