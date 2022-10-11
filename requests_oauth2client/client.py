@@ -1,6 +1,6 @@
 """This module contains the `OAuth2Client` class."""
 
-from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Literal, Optional, Tuple, Type, Union
 
 import requests
 from jwskate import Jwk, JwkSet, Jwt
@@ -508,8 +508,8 @@ class OAuth2Client:
         self,
         scope: Union[None, str, Iterable[str]] = "openid",
         response_type: str = "code",
-        state: Union[str, bool, None] = True,
-        nonce: Union[str, bool, None] = True,
+        state: Union[str, Literal[True], None] = True,
+        nonce: Union[str, Literal[True], None] = True,
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
         **kwargs: Any,

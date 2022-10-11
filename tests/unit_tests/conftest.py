@@ -1,6 +1,6 @@
 import base64
 import hashlib
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 
 import pytest
 import requests
@@ -321,7 +321,7 @@ def sub() -> str:
     scope="session",
     params=[None, "state", True],
 )
-def state(request: FixtureRequest) -> Union[None, bool, str]:
+def state(request: FixtureRequest) -> Union[None, Literal[True], str]:
     return request.param
 
 
@@ -373,8 +373,8 @@ def authorization_request(
     client_id: str,
     redirect_uri: str,
     scope: Union[None, str, List[str]],
-    state: Union[None, bool, str],
-    nonce: Union[None, bool, str],
+    state: Union[None, Literal[True], str],
+    nonce: Union[None, Literal[True], str],
     code_verifier: str,
     code_challenge_method: str,
     expected_issuer: Union[str, None],
@@ -416,7 +416,7 @@ def authorization_request(
         assert isinstance(generated_nonce, str)
         assert len(generated_nonce) > 20
         assert azr.nonce == generated_nonce
-    elif nonce is False or nonce is None:
+    elif nonce is None:
         assert azr.nonce is None
         assert "nonce" not in args
     elif isinstance(nonce, str):
@@ -430,7 +430,7 @@ def authorization_request(
         assert isinstance(generated_state, str)
         assert len(generated_state) > 20
         assert azr.state == generated_state
-    elif state is False:
+    elif state is None:
         assert "state" not in args
         assert azr.state is None
     elif isinstance(state, str):

@@ -5,7 +5,18 @@ import re
 import secrets
 import time
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Literal,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from binapy import BinaPy
 from furl import furl  # type: ignore[import]
@@ -201,7 +212,7 @@ class AuthorizationRequest:
         response_type: the response type to include in the request.
         state: the state to include in the request, or `True` to autogenerate one (default).
         nonce: the nonce to include in the request, or `True` to autogenerate one (default).
-        code_verifier: the state to include in the request, or `True` to autogenerate one (default).
+        code_verifier: the code verifier to include in the request. If left as `None` and `code_challenge_method` is set, a valid code_verifier will be generated.
         code_challenge_method: the method to use to derive the `code_challenge` from the `code_verifier`.
         acr_values: requested Authentication Context Class Reference values.
         issuer: Issuer Identifier value from the OAuth/OIDC Server, if using Server Issuer Identification.
@@ -215,6 +226,16 @@ class AuthorizationRequest:
         "consent_required": ConsentRequired,
     }
 
+    @classmethod
+    def generate_state(cls) -> str:
+        """Generate a random `state` parameter."""
+        return secrets.token_urlsafe(32)
+
+    @classmethod
+    def generate_nonce(cls) -> str:
+        """Generate a random `nonce`."""
+        return secrets.token_urlsafe(32)
+
     def __init__(
         self,
         authorization_endpoint: str,
@@ -222,8 +243,8 @@ class AuthorizationRequest:
         redirect_uri: Optional[str],
         scope: Union[None, str, Iterable[str]],
         response_type: str = "code",
-        state: Union[str, bool, None] = True,
-        nonce: Union[str, bool, None] = True,
+        state: Union[str, Literal[True], None] = True,
+        nonce: Union[str, Literal[True], None] = True,
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
         acr_values: Union[str, Iterable[str], None] = None,
@@ -231,17 +252,13 @@ class AuthorizationRequest:
         **kwargs: Any,
     ) -> None:
         if state is True:
-            state = secrets.token_urlsafe(32)
-        elif state is False:
-            state = None
+            state = self.generate_state()
 
         if scope is not None and isinstance(scope, str):
             scope = scope.split(" ")
 
         if nonce is True and scope is not None and "openid" in scope:
-            nonce = secrets.token_urlsafe(32)
-        elif nonce is False:
-            nonce = None
+            nonce = self.generate_nonce()
 
         if acr_values is not None:
             if isinstance(acr_values, str):
