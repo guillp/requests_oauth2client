@@ -5,22 +5,12 @@ import re
 import secrets
 import time
 from datetime import datetime
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Literal,
-    Mapping,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Type, Union
 
 from binapy import BinaPy
 from furl import furl  # type: ignore[import]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
+from typing_extensions import Literal
 
 from .exceptions import (
     AuthorizationResponseError,
