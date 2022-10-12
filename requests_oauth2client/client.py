@@ -509,6 +509,7 @@ class OAuth2Client:
         self,
         scope: Union[None, str, Iterable[str]] = "openid",
         response_type: str = "code",
+        redirect_uri: Optional[str] = None,
         state: Union[str, Literal[True], None] = True,
         nonce: Union[str, Literal[True], None] = True,
         code_verifier: Optional[str] = None,
@@ -520,6 +521,7 @@ class OAuth2Client:
         Args:
             scope: the scope to use
             response_type: the response_type to use
+            redirect_uri: the redirect_uri to include in the request. By default, the redirect_uri defined at init time is used.
             state: the state parameter to use. Leave default to generate a random value.
             nonce: a nonce. Leave default to generate a random value.
             code_verifier: the PKCE code verifier to use. Leave default to generate a random value.
@@ -531,7 +533,9 @@ class OAuth2Client:
         """
         if not self.authorization_endpoint:
             raise AttributeError("No 'authorization_endpoint' defined for this client.")
-        if not self.redirect_uri:
+
+        redirect_uri = redirect_uri or self.redirect_uri
+        if not redirect_uri:
             raise AttributeError("No 'redirect_uri' defined for this client.")
 
         if response_type != "code":
@@ -540,7 +544,7 @@ class OAuth2Client:
         return AuthorizationRequest(
             authorization_endpoint=self.authorization_endpoint,
             client_id=self.client_id,
-            redirect_uri=self.redirect_uri,
+            redirect_uri=redirect_uri,
             issuer=self.issuer,
             response_type=response_type,
             scope=scope,
