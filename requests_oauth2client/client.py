@@ -1,9 +1,10 @@
 """This module contains the `OAuth2Client` class."""
 
-from typing import Any, Dict, Iterable, Literal, Optional, Tuple, Type, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
 from jwskate import Jwk, JwkSet, Jwt
+from typing_extensions import Literal
 
 from .auth import BearerAuth
 from .authorization_request import (

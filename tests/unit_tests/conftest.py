@@ -1,11 +1,12 @@
 import base64
 import hashlib
-from typing import Any, Dict, List, Literal, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import pytest
 import requests
 from furl import furl  # type: ignore[import]
 from jwskate import Jwk
+from typing_extensions import Literal
 
 from requests_oauth2client import (
     ApiClient,
