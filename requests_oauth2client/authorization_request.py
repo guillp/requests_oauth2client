@@ -254,11 +254,17 @@ class AuthorizationRequest:
         if state is True:
             state = self.generate_state()
 
-        if scope is not None and isinstance(scope, str):
-            scope = scope.split(" ")
+        if scope is not None:
+            if isinstance(scope, str):
+                scope = scope.split(" ")
+            else:
+                scope = tuple(scope)
 
-        if nonce is True and scope is not None and "openid" in scope:
-            nonce = self.generate_nonce()
+        if nonce is True:
+            if scope is not None and "openid" in scope:
+                nonce = self.generate_nonce()
+            else:
+                nonce = None
 
         if acr_values is not None:
             if isinstance(acr_values, str):

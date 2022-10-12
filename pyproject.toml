@@ -95,3 +95,13 @@ pretty = true
 warn_unused_configs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
+
+
+[tool.pytest.ini_options]
+requests_mock_case_sensitive = true
+markers = [
+    "slow: marks tests as slow"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead."
+]

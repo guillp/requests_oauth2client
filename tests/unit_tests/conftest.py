@@ -337,7 +337,7 @@ def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "nonce", False],
+    params=[None, "nonce", True],
 )
 def nonce(request: FixtureRequest) -> Union[None, bool, str]:
     return request.param
@@ -345,8 +345,8 @@ def nonce(request: FixtureRequest) -> Union[None, bool, str]:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "openid", "openid profile email", ["openid", "profile", "email"], []],
-    ids=["None", "single", "space-separated", "list", "empty-list"],
+    params=[None, "openid", "openid profile email", ("openid", "profile", "email"), ()],
+    ids=["None", "single", "space-separated", "tuple", "empty"],
 )
 def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
     return request.param
@@ -412,10 +412,13 @@ def authorization_request(
     )
 
     if nonce is True:
-        generated_nonce = args.pop("nonce")
-        assert isinstance(generated_nonce, str)
-        assert len(generated_nonce) > 20
-        assert azr.nonce == generated_nonce
+        if scope is not None and "openid" in scope:
+            generated_nonce = args.pop("nonce")
+            assert isinstance(generated_nonce, str)
+            assert len(generated_nonce) > 20
+            assert azr.nonce == generated_nonce
+        else:
+            assert "nonce" not in args
     elif nonce is None:
         assert azr.nonce is None
         assert "nonce" not in args
@@ -441,7 +444,7 @@ def authorization_request(
         assert azr.scope is None
         assert "scope" not in args
         del expected_args["scope"]
-    elif isinstance(scope, list):
+    elif isinstance(scope, tuple):
         expected_args["scope"] = " ".join(scope)
         assert azr.scope == scope
     elif isinstance(scope, str):
