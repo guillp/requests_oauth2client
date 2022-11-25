@@ -1,4 +1,5 @@
 """This module contains the `OAuth2Client` class."""
+from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
@@ -15,6 +16,7 @@ from .authorization_request import (
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
+from .discovery import oidc_discovery_document_url
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -65,7 +67,7 @@ class OAuth2Client:
         device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
         jwks_uri: the JWKS URI to use to obtain the AS public keys
         session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy or client certificate must be used to connect to the AS.
-        extra_metadata: additional metadata for this client, unused by this class, but may be used by subclasses. Those will be accessible with the `extra_metadata` attribute.
+        **extra_metadata: additional metadata for this client, unused by this class, but may be used by subclasses. Those will be accessible with the `extra_metadata` attribute.
 
     Usage:
         ```python
@@ -121,6 +123,7 @@ class OAuth2Client:
         device_authorization_endpoint: Optional[str] = None,
         pushed_authorization_request_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
+        authorization_server_jwks: Optional[JwkSet] = None,
         issuer: Optional[str] = None,
         session: Optional[requests.Session] = None,
         id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
@@ -150,6 +153,9 @@ class OAuth2Client:
             else None
         )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
+        self.authorization_server_jwks = (
+            JwkSet(authorization_server_jwks) if authorization_server_jwks else None
+        )
         self.issuer = str(issuer) if issuer else None
         self.session = session or requests.Session()
         self.auth = client_auth_factory(
@@ -168,7 +174,7 @@ class OAuth2Client:
     def client_id(self) -> str:
         """Client ID."""
         if hasattr(self.auth, "client_id"):
-            return self.auth.client_id  # type: ignore[attr-defined, no-any-return]
+            return self.auth.client_id  # type: ignore[no-any-return]
         raise AttributeError(
             "This client uses a custom authentication method without client_id."
         )
@@ -177,7 +183,7 @@ class OAuth2Client:
     def client_secret(self) -> str:
         """Client Secret."""
         if hasattr(self.auth, "client_secret"):
-            return self.auth.client_secret  # type: ignore[attr-defined, no-any-return]
+            return self.auth.client_secret  # type: ignore[no-any-return]
         raise AttributeError(
             "This client uses a custom authentication method without client_secret."
         )
@@ -1125,21 +1131,27 @@ class OAuth2Client:
             error_json,
         )
 
-    def get_public_jwks(self) -> JwkSet:
-        """Fetch and parse the public keys from the JWKS endpoint.
+    def update_authorization_server_public_keys(self) -> JwkSet:
+        """Update the cached AS public keys by retrieving them from its `jwks_uri`.
+
+        Public keys are returned by this method, as a [JwkSet][jwskate.JwkSet], and they are also available in attribute `authorization_authorization_server_jwks`.
 
         Returns:
-            a `jwskate.JwkSet` based on the retrieved keys.
+            the retrieved public keys
+
+        Raises:
+            ValueError: if no jwks_uri is configured
         """
         if not self.jwks_uri:
             raise ValueError("No jwks uri defined for this client")
         jwks = self.session.get(self.jwks_uri, auth=None).json()
-        return JwkSet(jwks)
+        self.authorization_server_jwks = JwkSet(jwks)
+        return self.authorization_server_jwks
 
     @classmethod
     def from_discovery_endpoint(
         cls,
-        url: str,
+        url: Optional[str] = None,
         issuer: Optional[str] = None,
         auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
         client_id: Optional[str] = None,
@@ -1165,6 +1177,13 @@ class OAuth2Client:
         Returns:
             an OAuth2Client with endpoint initialized based on the obtained metadata
         """
+        if url is None and issuer is not None:
+            url = oidc_discovery_document_url(issuer)
+        if url is None:
+            raise ValueError("Please specify at least of of `issuer` or `url`")
+
+        validate_endpoint_uri(url, path=False)
+
         session = session or requests.Session()
         discovery = session.get(url).json()
 
@@ -1250,3 +1269,14 @@ class OAuth2Client:
             issuer=issuer,
             **kwargs,
         )
+
+    def __enter__(self) -> OAuth2Client:
+        """Allow using OAuth2Client as a context-manager.
+
+        The Authorization Server public keys are retrieved on __enter__.
+        """
+        self.update_authorization_server_public_keys()
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:  # noqa: D105
+        return True

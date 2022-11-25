@@ -4,16 +4,8 @@ import pprint
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 
+import jwskate
 from binapy import BinaPy
-from jwskate import (
-    InvalidJwe,
-    InvalidJwt,
-    JweCompact,
-    Jwt,
-    SignatureAlgs,
-    SignedJwt,
-    SymmetricJwk,
-)
 
 from .exceptions import (
     ExpiredIdToken,
@@ -33,7 +25,7 @@ if TYPE_CHECKING:
     from .client import OAuth2Client
 
 
-class IdToken(SignedJwt):
+class IdToken(jwskate.SignedJwt):
     """Represent an ID Token.
 
     An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be decoded
@@ -78,14 +70,14 @@ class BearerToken:
         self.expires_at = expires_at
         self.scope = scope
         self.refresh_token = refresh_token
-        self.id_token: Union[IdToken, JweCompact, None] = None
+        self.id_token: Union[IdToken, jwskate.JweCompact, None] = None
         if id_token:
             try:
                 self.id_token = IdToken(id_token)
-            except InvalidJwt:
+            except jwskate.InvalidJwt:
                 try:
-                    self.id_token = JweCompact(id_token)
-                except InvalidJwe:
+                    self.id_token = jwskate.JweCompact(id_token)
+                except jwskate.InvalidJwe:
                     raise InvalidIdToken(
                         "ID Token is invalid because it is  neither a JWT or a JWE."
                     )
@@ -127,12 +119,12 @@ class BearerToken:
         if not self.id_token:
             raise MissingIdToken()
 
-        id_token = self.id_token
+        raw_id_token = self.id_token
 
         id_token_encrypted_response_alg = client.extra_metadata.get(
             "id_token_encrypted_response_alg"
         )
-        if isinstance(id_token, JweCompact):
+        if isinstance(raw_id_token, jwskate.JweCompact):
             if id_token_encrypted_response_alg is None:
                 raise InvalidIdToken(
                     "ID Token is encrypted while it should be clear-text", self
@@ -143,14 +135,16 @@ class BearerToken:
                     "ID Token is clear-text while it should be encrypted", self
                 )
 
-        if isinstance(id_token, JweCompact):
+        if isinstance(raw_id_token, jwskate.JweCompact):
             enc_jwk = client.id_token_decryption_key
             if enc_jwk is None:
                 raise InvalidIdToken(
                     "ID Token is encrypted but client does not have a decryption key", self
                 )
-            nested_id_token = id_token.decrypt(enc_jwk)
+            nested_id_token = raw_id_token.decrypt(enc_jwk)
             id_token = IdToken(nested_id_token)
+        else:
+            id_token = raw_id_token
 
         if azr.issuer:
             if id_token.issuer != azr.issuer:
@@ -161,20 +155,6 @@ class BearerToken:
 
         if id_token.get_claim("azp") is not None and id_token.azp != client.client_id:
             raise MismatchingAzp(id_token.azp, client.client_id, self)
-
-        id_token_signed_response_alg = client.extra_metadata.get("id_token_signed_response_alg")
-        if (
-            id_token_signed_response_alg is not None
-            and id_token.alg != id_token_signed_response_alg
-        ):
-            raise MismatchingIdTokenAlg(id_token.alg, id_token_signed_response_alg)
-
-        if id_token.alg in SignatureAlgs.ALL_SYMMETRIC:
-            if not client.client_secret:
-                raise InvalidIdToken(
-                    "Returned ID Token is symmetrically signed but this client does not have a Client ID."
-                )
-            id_token.verify_signature(SymmetricJwk.from_bytes(client.client_secret))
 
         if id_token.is_expired():
             raise ExpiredIdToken(id_token)
@@ -187,9 +167,88 @@ class BearerToken:
             if id_token.acr not in azr.acr_values:
                 raise MismatchingAcr(id_token.acr, azr.acr_values)
 
-        if id_token.get_claim("at_hash"):
-            pass
-            # TODO
+        id_token_signed_response_alg = client.extra_metadata.get("id_token_signed_response_alg")
+        if (
+            id_token_signed_response_alg is not None
+            and id_token.alg != id_token_signed_response_alg
+        ):
+            raise MismatchingIdTokenAlg(id_token.alg, id_token_signed_response_alg)
+
+        hash_function: Callable[[str], str]  # method used to calculate at_hash, s_hash, etc.
+
+        if id_token.alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
+            if not client.client_secret:
+                raise InvalidIdToken(
+                    "Returned ID Token is symmetrically signed but this client does not have a Client ID."
+                )
+            id_token.verify_signature(jwskate.SymmetricJwk.from_bytes(client.client_secret))
+        elif id_token.alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
+            if not client.authorization_server_jwks:
+                raise InvalidIdToken(
+                    "Returned ID Token is asymmetrically signed but the Authorization Server JWKS is not available."
+                )
+            if not id_token.kid:
+                raise InvalidIdToken(
+                    "Returned ID Token is asymmetrically signed but does not contain a Key ID (kid)."
+                )
+            try:
+                verification_jwk = client.authorization_server_jwks.get_jwk_by_kid(id_token.kid)
+            except KeyError:
+                raise InvalidIdToken(
+                    "Returned ID Token is asymmetrically signed but the Key ID is not part of the Authorization Server JWKS."
+                )
+
+            id_token.verify_signature(verification_jwk)
+
+            alg_class = jwskate.select_alg_class(
+                verification_jwk.SIGNATURE_ALGORITHMS, jwk_alg=verification_jwk.alg
+            )
+            if alg_class == jwskate.EdDsa:
+                if verification_jwk.crv == "Ed25519":
+                    hash_function = (
+                        lambda token: BinaPy(token).to("sha512")[:32].to("b64u").ascii()
+                    )
+                elif verification_jwk.crv == "Ed448":
+                    hash_function = (
+                        lambda token: BinaPy(token).to("shake256", 456).to("b64u").ascii()
+                    )
+            else:
+                hash_alg = alg_class.hashing_alg.name  # type: ignore[attr-defined]
+                hash_size = alg_class.hashing_alg.digest_size  # type: ignore[attr-defined]
+                hash_function = (
+                    lambda token: BinaPy(token)
+                    .to(hash_alg)[: hash_size // 2]
+                    .to("b64u")
+                    .ascii()
+                )
+
+        at_hash = id_token.get_claim("at_hash")
+        if at_hash:
+            expected_at_hash = hash_function(self.access_token)
+            if expected_at_hash != at_hash:
+                raise InvalidIdToken(
+                    f"Mismatching at_hash value (expected '{expected_at_hash}', got '{at_hash}'"
+                )
+
+        c_hash = id_token.get_claim("c_hash")
+        if c_hash:
+            expected_c_hash = hash_function(azr.code)
+            if expected_c_hash != c_hash:
+                raise InvalidIdToken(
+                    f"Mismatching 'c_hash' value (expected '{expected_c_hash}', got '{c_hash}'"
+                )
+
+        s_hash = id_token.get_claim("s_hash")
+        if s_hash:
+            if azr.state is None:
+                raise InvalidIdToken(
+                    "ID Token has a 's_hash' claim but no state was included in the request."
+                )
+            expected_s_hash = hash_function(azr.state)
+            if expected_s_hash != s_hash:
+                raise InvalidIdToken(
+                    f"Mismatching 's_hash' value (expected '{expected_s_hash}', got '{s_hash}'"
+                )
 
         return id_token
 

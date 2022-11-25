@@ -290,8 +290,6 @@ def test_refresh_token_grant(
 
 def test_grants_with_invalid_response_objects_as_parameter(oauth2client: OAuth2Client) -> None:
     with pytest.raises(ValueError):
-        oauth2client.authorization_code(AuthorizationResponse())
-    with pytest.raises(ValueError):
         oauth2client.refresh_token(BearerToken(access_token="foo"))
     with pytest.raises(ValueError):
         oauth2client.ciba(BackChannelAuthenticationResponse(auth_req_id=None))
@@ -385,8 +383,7 @@ def test_token_exchange_grant(
     client_secret_jwt_auth_validator: RequestValidatorType,
     private_key_jwt_auth_validator: RequestValidatorType,
 ) -> None:
-    """.token_exchange() sends a requests to the Token Endpoint using the Token Exchange
-    grant."""
+    """.token_exchange() sends a requests to the Token Endpoint using the Token Exchange grant."""
     subject_token = secrets.token_urlsafe()
     actor_token = secrets.token_urlsafe()
     new_access_token = secrets.token_urlsafe()
@@ -593,8 +590,7 @@ def test_invalid_token_response(
 def test_invalid_token_response_200(
     requests_mock: RequestsMocker, token_endpoint: str, client_id: str
 ) -> None:
-    """Token Endpoint successful responses outside the standard raises an
-    InvalidTokenResponse."""
+    """Token Endpoint successful responses outside the standard raises an InvalidTokenResponse."""
     client = OAuth2Client(token_endpoint, auth=client_id)
     requests_mock.post(token_endpoint, status_code=200, json={"confusing": "data"})
     with pytest.raises(InvalidTokenResponse):
@@ -829,8 +825,8 @@ def test_revoke_token_with_bearer_token_as_param(
     refresh_token: str,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """if a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh
-    token from the BearerToken."""
+    """if a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh token
+    from the BearerToken."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
     )
@@ -945,17 +941,19 @@ def test_server_jwks(
     jwks_uri: str,
     server_public_jwks: JwkSet,
 ) -> None:
-    """get_public_jwks() fetches the AS public JWKS from its JWKS URI."""
+    """Use OAuth2Client as a context manager to automatically get the public JWKS from its JWKS
+    URI."""
     requests_mock.get(jwks_uri, json=dict(server_public_jwks))
-    assert oauth2client.get_public_jwks() == server_public_jwks
+    with oauth2client as client:
+        assert client.authorization_server_jwks == server_public_jwks
     assert requests_mock.called_once
 
 
 def test_server_jwks_no_jwks_uri(token_endpoint: str) -> None:
-    """If JWKS URI is not known, get_public_jwks() raises an exception."""
+    """If JWKS URI is not known, update_authorization_server_public_keys() raises an exception."""
     client = OAuth2Client(token_endpoint=token_endpoint, auth=("foo", "bar"))
     with pytest.raises(ValueError):
-        assert client.get_public_jwks()
+        assert client.update_authorization_server_public_keys()
 
 
 def test_server_jwks_not_json(
@@ -965,7 +963,7 @@ def test_server_jwks_not_json(
     requests_mock.get(jwks_uri, text="Hello World!")
     client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
     with pytest.raises(ValueError):
-        assert client.get_public_jwks()
+        assert client.update_authorization_server_public_keys()
     assert requests_mock.called_once
 
 
@@ -975,7 +973,7 @@ def test_server_jwks_invalid_doc(
     """If JWKS URI is an invalid document, get_public_jwks() raises an exception."""
     requests_mock.get(jwks_uri, json={"foo": "bar"})
     client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
-    jwks = client.get_public_jwks()
+    jwks = client.update_authorization_server_public_keys()
     assert requests_mock.called_once
     assert not jwks.jwks
 

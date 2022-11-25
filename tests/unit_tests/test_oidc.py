@@ -1,9 +1,14 @@
+from typing import Dict
+
+import jwskate
 import pytest
+from binapy import BinaPy
 from freezegun import freeze_time  # type: ignore[import]
 
 from requests_oauth2client import (
     AuthorizationResponse,
     BearerToken,
+    IdToken,
     InvalidIdToken,
     OAuth2Client,
 )
@@ -24,15 +29,52 @@ ID_TOKEN = (
 
 
 @freeze_time("2011-07-21 20:42:55")  # type: ignore[misc]
-def test_validate_oidc(token_endpoint: str) -> None:
-    assert ID_TOKEN == BearerToken(
-        access_token="jHkWEdUXMU1BwAsC4vtUsZwnNvTIxEl0z9K3vx5KF0Y",
+@pytest.mark.parametrize(
+    "kwargs, at_hash",
+    (
+        ({"alg": "PS256"}, "xsZZrUssMXjL3FBlzoSh2g"),
+        ({"alg": "PS384"}, "adt46pcdiB-l6eTNifgoVM-5AIJAxq84"),
+        ({"alg": "PS512"}, "p2LHG4H-8pYDc0hyVOo3iIHvZJUqe9tbj3jESOuXbkY"),
+        (
+            {"alg": "EdDSA", "crv": "Ed448"},
+            "sB_U72jyb0WgtX8TsVoqJnm6CD295W9gfSDRxkilB3LAL7REi9JYutRW_s1yE4lD8cOfMZf83gi4",
+        ),
+    ),
+)
+def test_validate_oidc(kwargs: Dict[str, str], at_hash: str) -> None:
+    signing_key = jwskate.Jwk.generate_for_alg(**kwargs).with_kid_thumbprint()
+    client_id = "s6BhdRkqt3"
+    access_token = (
+        "YmJiZTAwYmYtMzgyOC00NzhkLTkyOTItNjJjNDM3MGYzOWIy9sFhvH8K_x8UIHj1osisS57f5DduL"
+    )
+    code = "Qcb0Orv1zh30vL1MPRsbm-diHiMwcLyZvn1arpZv-Jxf_11jnpEX3Tgfvk"
+    nonce = "n-0S6_WzA2Mj"
+    id_token = IdToken.sign(
+        {
+            "iss": "http://server.example.com",
+            "sub": "248289761001",
+            "aud": client_id,
+            "nonce": nonce,
+            "exp": 1311281970,
+            "iat": 1311280970,
+            # "c_hash": BinaPy(code).to("sha256")[:16].to("b64u").ascii(),
+            "at_hash": at_hash,
+        },
+        signing_key,
+    )
+    assert id_token == BearerToken(
+        access_token=access_token,
         expires_in=60,
-        id_token=ID_TOKEN,
+        id_token=str(id_token),
     ).validate_id_token(
-        client=OAuth2Client(token_endpoint, client_id="s6BhdRkqt3"),
+        client=OAuth2Client(
+            "https://myas.local/token",
+            client_id=client_id,
+            authorization_server_jwks=signing_key.public_jwk().as_jwks(),
+        ),
         azr=AuthorizationResponse(
-            code="Qcb0Orv1zh30vL1MPRsbm-diHiMwcLyZvn1arpZv-Jxf_11jnpEX3Tgfvk"
+            code=code,
+            nonce=nonce,
         ),
     )
 

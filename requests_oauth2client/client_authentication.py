@@ -1,8 +1,8 @@
 """This modules implements OAuth 2.0 Client Authentication Methods.
 
-An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to the Token
-Endpoint, by including appropriate credentials. This module contains helper classes and methods
-that implement the standardised and commonly used Client Authentication Methods.
+An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to the Token Endpoint,
+by including appropriate credentials. This module contains helper classes and methods that implement
+the standardised and commonly used Client Authentication Methods.
 """
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
@@ -17,8 +17,8 @@ from jwskate import Jwk, Jwt, SymmetricJwk
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase].
 
-    This base class only checks that requests are suitable to add Client Authentication
-    parameters to, and doesn't modify the request.
+    This base class only checks that requests are suitable to add Client Authentication parameters
+    to, and doesn't modify the request.
     """
 
     def __init__(self, client_id: str):

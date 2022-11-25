@@ -146,7 +146,7 @@ class AuthorizationResponse:
 
     def __init__(
         self,
-        code: Optional[str] = None,
+        code: str,
         redirect_uri: Optional[str] = None,
         code_verifier: Optional[str] = None,
         state: Optional[str] = None,
@@ -452,7 +452,9 @@ class AuthorizationRequest:
             client_id=self.client_id, request=str(request_jwt)
         )
 
-    def validate_callback(self, response: str) -> AuthorizationResponse:
+    def validate_callback(
+        self, response: str, validate_issuer: bool = True
+    ) -> AuthorizationResponse:
         """Validate an Authorization Response against this Request.
 
         Validate a given Authorization Response URI against this Authorization
@@ -478,7 +480,7 @@ class AuthorizationRequest:
             return self.on_response_error(response)
 
         # validate 'iss' according to https://www.ietf.org/archive/id/draft-ietf-oauth-iss-auth-resp-05.html
-        if self.issuer is not None:
+        if validate_issuer and self.issuer is not None:
             received_issuer = response_url.args.get("iss")
             if received_issuer != self.issuer:
                 raise MismatchingIssuer(self.issuer, received_issuer)
@@ -670,8 +672,8 @@ class RequestUriParameterAuthorizationRequest:
 class AuthorizationRequestSerializer:
     """(De)Serializer for `AuthorizationRequest` instances.
 
-    You might need to store pending authorization requests in session, either server-side or
-    client-side. This class is here to help you do that.
+    You might need to store pending authorization requests in session, either server-side or client-
+    side. This class is here to help you do that.
     """
 
     def __init__(

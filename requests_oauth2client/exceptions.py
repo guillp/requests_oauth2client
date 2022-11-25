@@ -154,48 +154,48 @@ class InvalidAuthResponse(OAuth2Error):
 class MissingAuthCode(InvalidAuthResponse):
     """Raised when the Authorization Endpoint does not return the mandatory `code`.
 
-    This happens when the Authorization Endpoint does not return an error, but does not return
-    an authorization `code` either.
+    This happens when the Authorization Endpoint does not return an error, but does not return an
+    authorization `code` either.
     """
 
 
 class MissingIdToken(InvalidAuthResponse):
     """Raised when the Authorization Endpoint does not return a mandatory ID Token.
 
-    This happens when the Authorization Endpoint does not return an error, but does not return
-    an ID Token either.
+    This happens when the Authorization Endpoint does not return an error, but does not return an ID
+    Token either.
     """
 
 
 class MismatchingState(InvalidAuthResponse):
     """Raised on mismatching `state` value.
 
-    This happens when the Authorization Endpoints returns a 'state' parameter that doesn't match
-    the value passed in the Authorization Request.
+    This happens when the Authorization Endpoints returns a 'state' parameter that doesn't match the
+    value passed in the Authorization Request.
     """
 
 
 class MismatchingIssuer(InvalidAuthResponse):
     """Raised on mismatching `iss` value.
 
-    This happens when the Authorization Endpoints returns an 'iss' that doesn't match the
-    expected value.
+    This happens when the Authorization Endpoints returns an 'iss' that doesn't match the expected
+    value.
     """
 
 
 class MismatchingNonce(InvalidIdToken):
     """Raised on mismatching `nonce` value in an ID Token.
 
-    This happens when the authorization request includes a `nonce` but the returned ID Token
-    include a different value.
+    This happens when the authorization request includes a `nonce` but the returned ID Token include
+    a different value.
     """
 
 
 class MismatchingAcr(InvalidIdToken):
     """Raised when the returned ID Token doesn't contain one of the requested ACR Values.
 
-    This happens when the authorization request includes an `acr_values` parameter but the
-    returned ID Token includes a different value.
+    This happens when the authorization request includes an `acr_values` parameter but the returned
+    ID Token includes a different value.
     """
 
 
