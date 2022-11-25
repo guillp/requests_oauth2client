@@ -31,7 +31,7 @@ python = ">=3.7,<4.0"
 requests = ">=2.19.0"
 binapy = "^0.6"
 furl = ">=2.1.2"
-jwskate = "^0.4.1"
+jwskate = "^0.5"
 
 
 [tool.poetry.dev-dependencies]
@@ -53,7 +53,7 @@ pytest-cov = ">=3.0.0"
 pytest-mypy = ">=0.9.1"
 requests-mock = ">=1.9.3"
 toml = ">=0.10.2"
-tox = ">=3.20.1"
+tox = ">=3.27.1"
 types-requests = ">=2.25.10"
 types-cryptography = ">=3.3.15"
 virtualenv = ">=20.2.2"
