@@ -7,7 +7,7 @@ repos:
     -   id: forbid-tabs
     -   id: remove-tabs
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.3.0
+    rev: v4.4.0
     hooks:
     - id: debug-statements
     - id: mixed-line-ending
@@ -45,10 +45,10 @@ repos:
     - id: docformatter
       args:
       - --in-place
-      - --wrap-summaries=96
-      - --wrap-descriptions=96
+      - --wrap-summaries=100
+      - --wrap-descriptions=100
 -   repo: https://github.com/hadialqattan/pycln
-    rev: v2.1.1
+    rev: v2.1.2
     hooks:
     -   id: pycln
         args: [--config=pyproject.toml]
@@ -61,11 +61,11 @@ repos:
     hooks:
     -   id: black
         language_version: python3.8
--   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+-   repo: https://github.com/PyCQA/flake8
+    rev: 6.0.0
     hooks:
     -   id: flake8
-        additional_dependencies: [flake8-typing-imports==1.10.0]
+        additional_dependencies: [flake8-typing-imports==1.14.0]
 -   repo: https://github.com/asottile/blacken-docs
     rev: v1.12.1
     hooks:
@@ -80,7 +80,7 @@ repos:
             - toml
         exclude: 'tests/'
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.982
+    rev: v0.991
     hooks:
     -   id: mypy
         args:
@@ -91,7 +91,7 @@ repos:
         - --show-column-numbers
         additional_dependencies:
             - pytest-mypy
-            - jwskate>=0.4.1
+            - jwskate>=0.5.0
             - types-requests
             - requests_mock
             - flask
