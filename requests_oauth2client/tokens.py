@@ -347,6 +347,8 @@ class BearerToken:
             r["scope"] = self.scope
         if self.refresh_token:
             r["refresh_token"] = self.refresh_token
+        if self.id_token:
+            r["id_token"] = self.id_token
         if self.other:
             r.update(self.other)
         return r
