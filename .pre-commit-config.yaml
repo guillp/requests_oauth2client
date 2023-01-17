@@ -19,7 +19,7 @@ repos:
     - id: check-yaml
       args: [--unsafe]
 - repo: https://github.com/pre-commit/pygrep-hooks
-  rev: v1.9.0
+  rev: v1.10.0
   hooks:
   - id: python-check-blanket-noqa
   - id: python-check-blanket-type-ignore
@@ -27,7 +27,7 @@ repos:
   - id: python-use-type-annotations
   - id: text-unicode-replacement-char
 -   repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-    rev: v1.3.0
+    rev: v1.3.1
     hooks:
     -   id: python-safety-dependencies-check
         files: pyproject.toml
@@ -40,7 +40,7 @@ repos:
     additional_dependencies:
     - mdformat-black
 - repo: https://github.com/myint/docformatter
-  rev: v1.5.0
+  rev: v1.5.1
   hooks:
     - id: docformatter
       args:
@@ -48,7 +48,7 @@ repos:
       - --wrap-summaries=100
       - --wrap-descriptions=100
 -   repo: https://github.com/hadialqattan/pycln
-    rev: v2.1.2
+    rev: v2.1.3
     hooks:
     -   id: pycln
         args: [--config=pyproject.toml]
@@ -67,11 +67,11 @@ repos:
     -   id: flake8
         additional_dependencies: [flake8-typing-imports==1.14.0]
 -   repo: https://github.com/asottile/blacken-docs
-    rev: v1.12.1
+    rev: 1.13.0
     hooks:
         - id: blacken-docs
 -   repo: https://github.com/pycqa/pydocstyle
-    rev: 6.1.1
+    rev: 6.2.3
     hooks:
     -   id: pydocstyle
         args:
