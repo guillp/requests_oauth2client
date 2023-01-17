@@ -288,6 +288,30 @@ def test_refresh_token_grant(
         )
 
 
+def test_ressource_owner_password_grant(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    token_endpoint: str,
+) -> None:
+    username = "User01"
+    password = "Th1sI5aP4ssw0rd!"
+
+    scope = "foo"
+    new_access_token = secrets.token_urlsafe()
+    requests_mock.post(
+        token_endpoint,
+        json={
+            "access_token": new_access_token,
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "scope": scope,
+        },
+    )
+
+    oauth2client.resource_owner_password(username, password, scope=scope)
+    assert requests_mock.called_once
+
+
 def test_grants_with_invalid_response_objects_as_parameter(oauth2client: OAuth2Client) -> None:
     with pytest.raises(ValueError):
         oauth2client.refresh_token(BearerToken(access_token="foo"))

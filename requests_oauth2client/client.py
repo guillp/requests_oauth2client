@@ -511,6 +511,36 @@ class OAuth2Client:
 
         return self.token_request(data, **requests_kwargs)
 
+    def resource_owner_password(
+        self,
+        username: str,
+        password: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
+        """Send a request using the Resource Owner Password Grant.
+
+        This Grant Type is deprecated and should only be used when there is no other choice.
+
+        Args:
+            username: the resource owner user name
+            password: the resource owner password
+            requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
+            **token_kwargs: additional parameters to include in the request body.
+
+        Returns:
+            a `BearerToken` as returned by the Authorization Server
+        """
+        requests_kwargs = requests_kwargs or {}
+        data = dict(
+            grant_type="password",
+            username=username,
+            password=password,
+            **token_kwargs,
+        )
+
+        return self.token_request(data, **requests_kwargs)
+
     def authorization_request(
         self,
         scope: Union[None, str, Iterable[str]] = "openid",
