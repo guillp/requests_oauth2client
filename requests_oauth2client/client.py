@@ -66,6 +66,7 @@ class OAuth2Client:
         backchannel_authentication_endpoint: the BackChannel Authentication URI
         device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
         jwks_uri: the JWKS URI to use to obtain the AS public keys
+        code_challenge_method: challenge method to use for PKCE (should always be 'S256')
         session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy or client certificate must be used to connect to the AS.
         **extra_metadata: additional metadata for this client, unused by this class, but may be used by subclasses. Those will be accessible with the `extra_metadata` attribute.
 
@@ -99,6 +100,24 @@ class OAuth2Client:
 
     token_class: Type[BearerToken] = BearerToken
 
+    @property
+    def client_id(self) -> str:
+        """Client ID."""
+        if hasattr(self.auth, "client_id"):
+            return self.auth.client_id  # type: ignore[no-any-return]
+        raise AttributeError(
+            "This client uses a custom authentication method without client_id."
+        )
+
+    @property
+    def client_secret(self) -> str:
+        """Client Secret."""
+        if hasattr(self.auth, "client_secret"):
+            return self.auth.client_secret  # type: ignore[no-any-return]
+        raise AttributeError(
+            "This client uses a custom authentication method without client_secret."
+        )
+
     def __init__(
         self,
         token_endpoint: str,
@@ -125,8 +144,9 @@ class OAuth2Client:
         jwks_uri: Optional[str] = None,
         authorization_server_jwks: Optional[JwkSet] = None,
         issuer: Optional[str] = None,
-        session: Optional[requests.Session] = None,
         id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
+        code_challenge_method: str = "S256",
+        session: Optional[requests.Session] = None,
         **extra_metadata: Any,
     ):
         self.token_endpoint = str(token_endpoint)
@@ -168,25 +188,8 @@ class OAuth2Client:
         self.id_token_decryption_key = (
             Jwk(id_token_decryption_key) if id_token_decryption_key else None
         )
+        self.code_challenge_method = code_challenge_method
         self.extra_metadata = extra_metadata
-
-    @property
-    def client_id(self) -> str:
-        """Client ID."""
-        if hasattr(self.auth, "client_id"):
-            return self.auth.client_id  # type: ignore[no-any-return]
-        raise AttributeError(
-            "This client uses a custom authentication method without client_id."
-        )
-
-    @property
-    def client_secret(self) -> str:
-        """Client Secret."""
-        if hasattr(self.auth, "client_secret"):
-            return self.auth.client_secret  # type: ignore[no-any-return]
-        raise AttributeError(
-            "This client uses a custom authentication method without client_secret."
-        )
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
@@ -549,7 +552,6 @@ class OAuth2Client:
         state: Union[str, Literal[True], None] = True,
         nonce: Union[str, Literal[True], None] = True,
         code_verifier: Optional[str] = None,
-        code_challenge_method: Optional[str] = "S256",
         **kwargs: Any,
     ) -> AuthorizationRequest:
         """Generate an Authorization Request for this client.
@@ -561,7 +563,6 @@ class OAuth2Client:
             state: the state parameter to use. Leave default to generate a random value.
             nonce: a nonce. Leave default to generate a random value.
             code_verifier: the PKCE code verifier to use. Leave default to generate a random value.
-            code_challenge_method: the PKCE code challenge method to use.
             **kwargs: additional parameters to include in the auth request
 
         Returns:
@@ -587,7 +588,7 @@ class OAuth2Client:
             state=state,
             nonce=nonce,
             code_verifier=code_verifier,
-            code_challenge_method=code_challenge_method,
+            code_challenge_method=self.code_challenge_method,
             **kwargs,
         )
 
