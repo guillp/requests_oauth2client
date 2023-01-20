@@ -121,19 +121,16 @@ class BearerToken:
 
         raw_id_token = self.id_token
 
-        id_token_encrypted_response_alg = client.extra_metadata.get(
-            "id_token_encrypted_response_alg"
-        )
-        if isinstance(raw_id_token, jwskate.JweCompact):
-            if id_token_encrypted_response_alg is None:
-                raise InvalidIdToken(
-                    "ID Token is encrypted while it should be clear-text", self
-                )
-        else:
-            if id_token_encrypted_response_alg is not None:
-                raise InvalidIdToken(
-                    "ID Token is clear-text while it should be encrypted", self
-                )
+        if (
+            isinstance(raw_id_token, jwskate.JweCompact)
+            and client.id_token_encrypted_response_alg is None
+        ):
+            raise InvalidIdToken("ID Token is encrypted while it should be clear-text", self)
+        elif (
+            isinstance(raw_id_token, IdToken)
+            and client.id_token_encrypted_response_alg is not None
+        ):
+            raise InvalidIdToken("ID Token is clear-text while it should be encrypted", self)
 
         if isinstance(raw_id_token, jwskate.JweCompact):
             enc_jwk = client.id_token_decryption_key
@@ -167,35 +164,34 @@ class BearerToken:
             if id_token.acr not in azr.acr_values:
                 raise MismatchingAcr(id_token.acr, azr.acr_values)
 
-        id_token_signed_response_alg = client.extra_metadata.get("id_token_signed_response_alg")
         if (
-            id_token_signed_response_alg is not None
-            and id_token.alg != id_token_signed_response_alg
+            client.id_token_signed_response_alg is not None
+            and id_token.alg != client.id_token_signed_response_alg
         ):
-            raise MismatchingIdTokenAlg(id_token.alg, id_token_signed_response_alg)
+            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
 
         hash_function: Callable[[str], str]  # method used to calculate at_hash, s_hash, etc.
 
         if id_token.alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
             if not client.client_secret:
                 raise InvalidIdToken(
-                    "Returned ID Token is symmetrically signed but this client does not have a Client ID."
+                    "ID Token is symmetrically signed but this client does not have a Client Secret."
                 )
             id_token.verify_signature(jwskate.SymmetricJwk.from_bytes(client.client_secret))
         elif id_token.alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             if not client.authorization_server_jwks:
                 raise InvalidIdToken(
-                    "Returned ID Token is asymmetrically signed but the Authorization Server JWKS is not available."
-                )
-            if not id_token.kid:
-                raise InvalidIdToken(
-                    "Returned ID Token is asymmetrically signed but does not contain a Key ID (kid)."
+                    "ID Token is asymmetrically signed but the Authorization Server JWKS is not available."
                 )
             try:
                 verification_jwk = client.authorization_server_jwks.get_jwk_by_kid(id_token.kid)
+            except AttributeError:
+                raise InvalidIdToken(
+                    "ID Token is asymmetrically signed but is missing a Key ID (kid)."
+                )
             except KeyError:
                 raise InvalidIdToken(
-                    "Returned ID Token is asymmetrically signed but the Key ID is not part of the Authorization Server JWKS."
+                    "ID Token is asymmetrically signed but its Key ID is not part of the Authorization Server JWKS."
                 )
 
             id_token.verify_signature(verification_jwk)
@@ -227,7 +223,7 @@ class BearerToken:
             expected_at_hash = hash_function(self.access_token)
             if expected_at_hash != at_hash:
                 raise InvalidIdToken(
-                    f"Mismatching at_hash value (expected '{expected_at_hash}', got '{at_hash}'"
+                    f"Mismatching 'at_hash' value (expected '{expected_at_hash}', got '{at_hash}'"
                 )
 
         c_hash = id_token.get_claim("c_hash")
@@ -281,6 +277,8 @@ class BearerToken:
             return True
         elif key == "expires_in":
             return self.expires_at is not None
+        elif key == "id_token":
+            return self.id_token is not None
         else:
             return key in self.other
 

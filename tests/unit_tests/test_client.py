@@ -7,7 +7,6 @@ from jwskate import Jwk, JwkSet, Jwt
 
 from requests_oauth2client import (
     AuthorizationRequest,
-    AuthorizationResponse,
     BackChannelAuthenticationResponse,
     BaseClientAuthenticationMethod,
     BearerToken,
@@ -294,7 +293,7 @@ def test_ressource_owner_password_grant(
     token_endpoint: str,
 ) -> None:
     username = "User01"
-    password = "Th1sI5aP4ssw0rd!"
+    password = "Th1s_I5_a_P4ssw0rd!"
 
     scope = "foo"
     new_access_token = secrets.token_urlsafe()

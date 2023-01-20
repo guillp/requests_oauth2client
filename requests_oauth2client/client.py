@@ -110,13 +110,11 @@ class OAuth2Client:
         )
 
     @property
-    def client_secret(self) -> str:
+    def client_secret(self) -> Optional[str]:
         """Client Secret."""
         if hasattr(self.auth, "client_secret"):
             return self.auth.client_secret  # type: ignore[no-any-return]
-        raise AttributeError(
-            "This client uses a custom authentication method without client_secret."
-        )
+        return None
 
     def __init__(
         self,
@@ -144,6 +142,8 @@ class OAuth2Client:
         jwks_uri: Optional[str] = None,
         authorization_server_jwks: Optional[JwkSet] = None,
         issuer: Optional[str] = None,
+        id_token_signed_response_alg: Optional[str] = "RS256",
+        id_token_encrypted_response_alg: Optional[str] = None,
         id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
         code_challenge_method: str = "S256",
         session: Optional[requests.Session] = None,
@@ -185,6 +185,8 @@ class OAuth2Client:
             private_key=private_key,
             default_auth_handler=ClientSecretPost,
         )
+        self.id_token_signed_response_alg = id_token_signed_response_alg
+        self.id_token_encrypted_response_alg = id_token_encrypted_response_alg
         self.id_token_decryption_key = (
             Jwk(id_token_decryption_key) if id_token_decryption_key else None
         )

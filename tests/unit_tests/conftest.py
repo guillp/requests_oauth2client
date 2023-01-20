@@ -310,6 +310,7 @@ def oauth2client(
     assert client.jwks_uri == jwks_uri
     assert client.auth == client_auth_method
     assert client.client_id == client_id
+
     return client
 
 
