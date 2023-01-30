@@ -288,6 +288,7 @@ def oauth2client(
     jwks_uri: str,
     client_auth_method: BaseClientAuthenticationMethod,
     client_id: str,
+    client_secret: str,
 ) -> OAuth2Client:
     client = OAuth2Client(
         token_endpoint=token_endpoint,
@@ -310,6 +311,10 @@ def oauth2client(
     assert client.jwks_uri == jwks_uri
     assert client.auth == client_auth_method
     assert client.client_id == client_id
+    if not isinstance(client_auth_method, PublicApp):
+        assert client.client_secret == client_secret
+    else:
+        assert client.client_secret is None
 
     return client
 

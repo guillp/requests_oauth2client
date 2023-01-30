@@ -575,19 +575,24 @@ def test_from_discovery_endpoint(
     requests_mock: RequestsMocker,
     issuer: str,
     discovery_document: Dict[str, str],
+    jwks_uri: str,
+    as_public_jwks: JwkSet,
     client_auth_method: BaseClientAuthenticationMethod,
 ) -> None:
     discovery_url = oidc_discovery_document_url(issuer)
 
     requests_mock.get(discovery_url, json=discovery_document)
+    requests_mock.get(jwks_uri, json=as_public_jwks)
 
     client = OAuth2Client.from_discovery_endpoint(
         discovery_url, issuer, auth=client_auth_method
     )
 
-    assert requests_mock.called_once
+    assert requests_mock.request_history[0].url == discovery_url
+    assert requests_mock.request_history[1].url == jwks_uri
     assert isinstance(client, OAuth2Client)
     assert client.auth == client_auth_method
+    assert client.authorization_server_jwks == as_public_jwks
 
 
 def test_invalid_token_response(
@@ -1272,7 +1277,15 @@ def test_jwt_bearer_grant(
         json={"access_token": "access_token", "token_type": "Bearer", "scope": scope},
     )
 
+    # pass the assertion as a `Jwt`
     token = oauth2client.jwt_bearer(assertion=assertion, scope=scope)
+    assert isinstance(token, BearerToken)
+    assert requests_mock.called_once
+    assert token.scope == scope
+
+    # pass the assertion as `str`
+    requests_mock.reset_mock()
+    token = oauth2client.jwt_bearer(assertion=str(assertion), scope=scope)
     assert isinstance(token, BearerToken)
     assert requests_mock.called_once
     assert token.scope == scope
@@ -1285,3 +1298,13 @@ def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoin
     assert auth_req.authorization_endpoint == authorization_endpoint
     assert auth_req.response_type == "code"
     assert auth_req.scope == scope.split()
+
+    with pytest.raises(ValueError):
+        oauth2client.authorization_request(response_type="token")
+
+    with pytest.raises(AttributeError, match="No 'redirect_uri'"):
+        OAuth2Client(
+            auth=("client_id", "client_secret"),
+            token_endpoint="https://url.to.the/token_endpoint",
+            authorization_endpoint="https://url.to.the/authorization_endpoint",
+        ).authorization_request()
