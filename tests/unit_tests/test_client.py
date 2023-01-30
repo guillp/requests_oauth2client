@@ -980,7 +980,7 @@ def test_server_jwks(
 def test_server_jwks_no_jwks_uri(token_endpoint: str) -> None:
     """If JWKS URI is not known, update_authorization_server_public_keys() raises an exception."""
     client = OAuth2Client(token_endpoint=token_endpoint, auth=("foo", "bar"))
-    with pytest.raises(ValueError):
+    with pytest.raises(AttributeError):
         assert client.update_authorization_server_public_keys()
 
 
