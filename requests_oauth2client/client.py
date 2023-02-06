@@ -31,6 +31,7 @@ from .exceptions import (
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
+    MismatchingIssuer,
     RevocationError,
     ServerError,
     SlowDown,
@@ -1224,6 +1225,11 @@ class OAuth2Client:
 
         session = session or requests.Session()
         discovery = session.get(url).json()
+
+        if issuer and discovery.get("issuer") != issuer:
+            raise MismatchingIssuer(issuer, discovery.get("issuer"))
+        elif issuer is None and discovery.get("iss_parameter_supported", False):
+            issuer = discovery.get("issuer")
 
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri:
