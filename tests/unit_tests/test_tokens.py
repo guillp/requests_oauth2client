@@ -52,14 +52,14 @@ def test_bearer_token_complete() -> None:
             "sub": "myuserid",
         },
         Jwk.generate_for_alg("RS256"),
-    ).value
+    )
     token = BearerToken(
         access_token="foo",
         expires_in=180,
         scope="myscope1 myscope2",
         refresh_token="refresh_token",
         custom_attr="custom_value",
-        id_token=id_token,
+        id_token=str(id_token),
     )
     assert "access_token" in token
     assert "refresh_token" in token
@@ -80,7 +80,7 @@ def test_bearer_token_complete() -> None:
         "expires_in": token.expires_in,  # TODO: enhance
         "scope": "myscope1 myscope2",
         "custom_attr": "custom_value",
-        "id_token": id_token,
+        "id_token": str(id_token),
     }
 
     assert token.expires_in <= 180
