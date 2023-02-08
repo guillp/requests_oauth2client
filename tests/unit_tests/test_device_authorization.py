@@ -21,7 +21,6 @@ def test_device_authorization_response(
     verification_uri: str,
     verification_uri_complete: str,
 ) -> None:
-
     response = DeviceAuthorizationResponse(
         device_code=device_code,
         user_code=user_code,
@@ -72,7 +71,6 @@ def test_device_authorization_response_no_expiration(
     verification_uri: str,
     verification_uri_complete: str,
 ) -> None:
-
     response = DeviceAuthorizationResponse(
         device_code=device_code,
         user_code=user_code,

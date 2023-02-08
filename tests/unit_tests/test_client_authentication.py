@@ -43,7 +43,6 @@ def test_client_secret_basic(
     client_secret: str,
     client_secret_basic_auth_validator: RequestValidatorType,
 ) -> None:
-
     client = OAuth2Client(token_endpoint, ClientSecretBasic(client_id, client_secret))
 
     requests_mock.post(
@@ -67,7 +66,6 @@ def test_private_key_jwt(
     private_key_jwt_auth_validator: RequestValidatorType,
     public_jwk: Jwk,
 ) -> None:
-
     client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk))
 
     requests_mock.post(
@@ -119,7 +117,6 @@ def test_client_secret_jwt(
     client_secret: str,
     client_secret_jwt_auth_validator: RequestValidatorType,
 ) -> None:
-
     client = OAuth2Client(token_endpoint, ClientSecretJwt(client_id, client_secret))
 
     requests_mock.post(
@@ -145,7 +142,6 @@ def test_public_client(
     target_api: str,
     public_app_auth_validator: RequestValidatorType,
 ) -> None:
-
     client = OAuth2Client(token_endpoint, client_id)
 
     requests_mock.post(

@@ -146,7 +146,6 @@ def test_invalid_response(
     client_id: str,
     client_secret: str,
 ) -> None:
-
     da_client = OAuth2Client(
         token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,

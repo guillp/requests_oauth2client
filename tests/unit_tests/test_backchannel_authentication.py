@@ -69,7 +69,6 @@ def test_backchannel_authentication(
     scope: Union[None, str, List[str]],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-
     requests_mock.post(
         backchannel_authentication_endpoint,
         json={"auth_req_id": auth_req_id, "expires_in": 360, "interval": 3},
@@ -119,7 +118,6 @@ def test_backchannel_authentication_invalid_response(
     scope: Union[None, str, List[str]],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-
     requests_mock.post(
         backchannel_authentication_endpoint,
         json={"foo": "bar"},
@@ -145,7 +143,6 @@ def test_backchannel_authentication_jwt(
     scope: Union[None, str, List[str]],
     backchannel_auth_request_jwt_validator: RequestValidatorType,
 ) -> None:
-
     requests_mock.post(
         backchannel_authentication_endpoint,
         json={"auth_req_id": auth_req_id, "expires_in": 360, "interval": 3},
@@ -173,7 +170,6 @@ def test_backchannel_authentication_error(
     scope: Union[None, str, List[str]],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-
     requests_mock.post(
         backchannel_authentication_endpoint,
         status_code=400,
@@ -197,7 +193,6 @@ def test_backchannel_authentication_invalid_error(
     scope: Union[None, str, List[str]],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-
     requests_mock.post(
         backchannel_authentication_endpoint,
         status_code=400,
@@ -221,7 +216,6 @@ def test_backchannel_authentication_not_json_error(
     scope: Union[None, str, List[str]],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-
     requests_mock.post(
         backchannel_authentication_endpoint,
         status_code=400,
