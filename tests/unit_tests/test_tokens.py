@@ -42,6 +42,9 @@ def test_bearer_token_simple() -> None:
     assert str(token) == "foo"
     assert repr(token)
 
+    assert token == "foo"
+    assert token != 1.2
+
 
 def test_bearer_token_complete() -> None:
     id_token = IdToken.sign(
