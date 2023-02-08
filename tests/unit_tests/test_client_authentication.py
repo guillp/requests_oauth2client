@@ -82,6 +82,9 @@ def test_private_key_jwt(
         endpoint=token_endpoint,
     )
 
+    with pytest.raises(ValueError, match="requires a private key"):
+        PrivateKeyJwt(client_id, private_jwk.public_jwk())
+
 
 def test_private_key_jwt_with_kid(
     requests_mock: RequestsMocker,
@@ -190,3 +193,6 @@ def test_init_auth(
 
     with pytest.raises(ValueError):
         OAuth2Client(token_endpoint, (client_id, {"foo": "bar"}))
+
+    with pytest.raises(TypeError, match="not supported"):
+        OAuth2Client(token_endpoint, (client_id, object()))  # type: ignore[arg-type]
