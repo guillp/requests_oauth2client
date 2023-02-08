@@ -209,8 +209,8 @@ class BearerToken:
                         lambda token: BinaPy(token).to("shake256", 456).to("b64u").ascii()
                     )
             else:
-                hash_alg = alg_class.hashing_alg.name  # type: ignore[attr-defined]
-                hash_size = alg_class.hashing_alg.digest_size  # type: ignore[attr-defined]
+                hash_alg = alg_class.hashing_alg.name
+                hash_size = alg_class.hashing_alg.digest_size
                 hash_function = (
                     lambda token: BinaPy(token)
                     .to(hash_alg)[: hash_size // 2]
@@ -223,7 +223,7 @@ class BearerToken:
             expected_at_hash = hash_function(self.access_token)
             if expected_at_hash != at_hash:
                 raise InvalidIdToken(
-                    f"Mismatching 'at_hash' value (expected '{expected_at_hash}', got '{at_hash}'"
+                    f"Mismatching 'at_hash' value: expected '{expected_at_hash}', got '{at_hash}'"
                 )
 
         c_hash = id_token.get_claim("c_hash")
@@ -231,7 +231,7 @@ class BearerToken:
             expected_c_hash = hash_function(azr.code)
             if expected_c_hash != c_hash:
                 raise InvalidIdToken(
-                    f"Mismatching 'c_hash' value (expected '{expected_c_hash}', got '{c_hash}'"
+                    f"Mismatching 'c_hash' value: expected '{expected_c_hash}', got '{c_hash}'"
                 )
 
         s_hash = id_token.get_claim("s_hash")
@@ -303,26 +303,6 @@ class BearerToken:
         elif key == "token_type":
             return "Bearer"
         return self.other.get(key) or super().__getattribute__(key)
-
-    def __getitem__(self, key: str) -> Any:
-        """Allow subscription access to any attribute from this BearerToken.
-
-        This is useful is some key name returned by the AS is not valid as
-        attribute name (e.g. it contains special characters).
-
-        Args:
-            key: a key
-
-        Returns:
-            the associated value in this token response
-
-        Raises:
-            KeyError: if the attribute is not found in this response.
-        """
-        try:
-            return self.__getattr__(key)
-        except AttributeError as exc:
-            raise KeyError(key) from exc
 
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
         """Return all attributes from this BearerToken as a `dict`.
