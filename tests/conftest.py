@@ -126,6 +126,16 @@ def jwks_uri(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
+@pytest.fixture(scope="session")
+def as_private_jwks() -> JwkSet:
+    return Jwk.generate_for_alg("RS256").as_jwks()
+
+
+@pytest.fixture(scope="session")
+def as_public_jwks(as_private_jwks: JwkSet) -> JwkSet:
+    return as_private_jwks.public_jwks()
+
+
 @pytest.fixture(scope="session", params=["oauth/par"])
 def pushed_authorization_request_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)

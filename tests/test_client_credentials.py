@@ -41,7 +41,6 @@ def test_client_credentials_api(
     client_secret: str,
     target_api: str,
 ) -> None:
-
     client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     auth = OAuth2ClientCredentialsAuth(client)
 

@@ -15,6 +15,7 @@ from .auth import (
 )
 from .authorization_request import (
     AuthorizationRequest,
+    AuthorizationRequestSerializer,
     AuthorizationResponse,
     PkceUtils,
     RequestUriParameterAuthorizationRequest,

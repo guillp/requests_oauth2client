@@ -13,9 +13,10 @@ Report bugs at https://github.com/guillp/requests_oauth2client/issues.
 
 If you are reporting a bug, please include:
 
-- Your operating system name and version.
-- Any details about your local setup that might be helpful in troubleshooting.
 - Detailed steps to reproduce the bug.
+- _Full_ error message whenever there is one
+- Your Python version, operating system name and version.
+- Any details about your local setup that might be helpful in troubleshooting.
 
 ### Fix Bugs
 
@@ -29,7 +30,7 @@ and "help wanted" is open to whoever wants to implement it.
 
 ### Write Documentation
 
-requests_oauth2client could always use more documentation, whether as part of the
+`requests_oauth2client` could always use more documentation, whether as part of the
 official requests_oauth2client docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 

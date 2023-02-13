@@ -1,13 +1,13 @@
 [tool]
 [tool.poetry]
 name = "requests_oauth2client"
-version = "1.1.0"
+version = "1.2.0"
 homepage = "https://github.com/guillp/requests_oauth2client"
 description = "An OAuth2.x Client based on requests."
 authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
 readme = "README.md"
-license =  "Apache-2.0"
-classifiers=[
+license = "Apache-2.0"
+classifiers = [
     'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
     'Topic :: Security',
@@ -31,31 +31,31 @@ python = ">=3.7,<4.0"
 requests = ">=2.19.0"
 binapy = "^0.6"
 furl = ">=2.1.2"
-jwskate = "^0.3.0"
+jwskate = "^0.6"
+
 
 [tool.poetry.dev-dependencies]
-black  = ">=22.1.0"
+black = ">=22.10.0"
 coverage = ">=6.3.1"
-isort  = ">=5.9.3"
+isort = ">=5.9.3"
 flask = ">=2.0.1"
 livereload = ">=2.6.3"
 mypy = ">=0.931"
-mkdocs  = ">=1.3.1"
+mkdocs = ">=1.3.1"
 mkdocs-autorefs = ">=0.3.0"
-mkdocs-include-markdown-plugin  = ">=3.2.3"
-mkdocs-material  = ">=8.2.1"
-mkdocs-material-extensions  = ">=1.0.1"
+mkdocs-include-markdown-plugin = ">=3.2.3"
+mkdocs-material = ">=8.2.1"
+mkdocs-material-extensions = ">=1.0.1"
 mkdocstrings = { version = ">=0.18.0", extras = ["python"] }
 pre-commit = ">=2.12.0"
-pytest  = ">=7.0.1"
-pytest-cov  = ">=3.0.0"
+pytest = ">=7.0.1"
+pytest-cov = ">=3.0.0"
 pytest-mypy = ">=0.9.1"
 requests-mock = ">=1.9.3"
 toml = ">=0.10.2"
-tox  = ">=3.20.1"
 types-requests = ">=2.25.10"
 types-cryptography = ">=3.3.15"
-virtualenv  = ">=20.2.2"
+virtualenv = ">=20.2.2"
 pytest-freezegun = "^0.4.2"
 
 [tool.poetry.extras]
@@ -94,3 +94,13 @@ pretty = true
 warn_unused_configs = true
 warn_unused_ignores = true
 warn_redundant_casts = true
+
+
+[tool.pytest.ini_options]
+requests_mock_case_sensitive = true
+markers = [
+    "slow: marks tests as slow"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead."
+]

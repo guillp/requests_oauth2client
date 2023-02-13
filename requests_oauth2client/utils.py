@@ -1,7 +1,6 @@
 """Various utilities used in multiple places.
 
-This module contains helper methods that are used in multiple places within
-`requests_oauth2client`.
+This module contains helper methods that are used in multiple places within `requests_oauth2client`.
 """
 
 from datetime import datetime, timedelta

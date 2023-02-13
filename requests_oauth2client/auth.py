@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 import requests
 
+from .authorization_request import AuthorizationResponse
 from .device_authorization import DeviceAuthorizationResponse
 from .exceptions import ExpiredAccessToken
 from .tokens import BearerToken
@@ -13,13 +14,14 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class BearerAuth(requests.auth.AuthBase):
-    """An Auth Handler that includes a Bearer Token in API calls.
+    """An Auth Handler that includes a Bearer Token in API calls, as defined in [RFC6750$2.1].
 
-    Thus is as defined in [RFC6750$2.1](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
+    As a prerequisite to using this `AuthBase`, you have to obtain an access token manually.
+    You most likely don't want do to that by yourself, but instead use an instance of
+    [OAuth2Client][requests_oauth2client.client.OAuth2Client] to do that for you.
+    See the others Auth Handlers in this module, which will automatically obtain access tokens from an OAuth 2.x server.
 
-    As a prerequisite to using this AuthBase, you have to obtain an access token manually.
-    You most likely don't want do to that by yourself. See the others Auth Handlers in this module,
-    that will automatically obtain access tokens from an OAuth 2.x server.
+    [RFC6750$2.1]: https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
 
     Usage:
         ```python
@@ -43,7 +45,7 @@ class BearerAuth(requests.auth.AuthBase):
 
     @property
     def token(self) -> Optional[BearerToken]:
-        """Return the token that is used for authorization against the API.
+        """Return the [BearerToken] that is used for authorization against the API.
 
         Returns:
             the configured [BearerToken][requests_oauth2client.tokens.BearerToken] used with this AuthHandler.
@@ -69,7 +71,7 @@ class BearerAuth(requests.auth.AuthBase):
         This will add a properly formatted `Authorization: Bearer <token>` header in
         the request.
 
-        If the configuerd token is a instance of BearerToken with an expires_at attribute,
+        If the configured token is a instance of BearerToken with an expires_at attribute,
         raises [ExpiredAccessToken][requests_oauth2client.exceptions.ExpiredAccessToken] once the access token is expired.
 
         Args:
@@ -214,9 +216,14 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
         ````
     """
 
-    def __init__(self, client: "OAuth2Client", code: str, **token_kwargs: Any) -> None:
+    def __init__(
+        self,
+        client: "OAuth2Client",
+        code: Union[str, AuthorizationResponse],
+        **token_kwargs: Any,
+    ) -> None:
         super().__init__(client, None)
-        self.code: Optional[str] = code
+        self.code: Union[str, AuthorizationResponse, None] = code
         self.token_kwargs = token_kwargs
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
@@ -243,10 +250,10 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
 
 
 class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
-    """Authentication Handler for Device Code.
+    """Authentication Handler for the [Device Code Flow](https://www.rfc-editor.org/rfc/rfc8628).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges a Device Code for
-    an access token, then automatically refreshes it once it is expired.
+    an Access Token, then automatically refreshes it once it is expired.
 
     It needs a Device Code and an [OAuth2Client][requests_oauth2client.client.OAuth2Client] to be able to get
     a token from the AS Token Endpoint just before the first request using this Auth Handler is being sent.
@@ -261,9 +268,9 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
     Usage:
         ```python
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
-        device_code = "my_device_code"
-        oauth2ac_auth = OAuth2DeviceCodeAuth(client, device_code)
-        resp = requests.post("https://my.api.local/resource", auth=oauth2ac_auth)
+        device_code = client.device_authorization()
+        auth = OAuth2DeviceCodeAuth(client, device_code)
+        resp = requests.post("https://my.api.local/resource", auth=auth)
         ````
     """
 
@@ -284,25 +291,32 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Implement the Device Code grant as a request Authentication Handler.
 
-        This exchanges a Device Code for an access token and adds it in the request.
+        This exchanges a Device Code for an access token and adds it in HTTP requests.
 
         Args:
-            request: a [PreparedRequest][requests.PreparedRequest]
+            request: a [requests.PreparedRequest][]
 
         Returns:
-            a [PreparedRequest][requests.PreparedRequest] with an Access Token added in Authorization Header
+            a [requests.PreparedRequest][] with an Access Token added in Authorization Header
+        """
+        token = self.token
+        if token is None or token.is_expired():
+            self.exchange_device_code_for_token()
+        return super().__call__(request)
+
+    def exchange_device_code_for_token(self) -> None:
+        """Exchange the Device Code for an access token.
+
+        This will poll the Token Endpoint until the user finishes the authorization process.
         """
         from .device_authorization import DeviceAuthorizationPoolingJob
 
-        token = self.token
-        if token is None or token.is_expired():
-            if self.device_code:  # pragma: no branch
-                pooling_job = DeviceAuthorizationPoolingJob(
-                    client=self.client,
-                    device_code=self.device_code,
-                    interval=self.interval,
-                )
-                while self.token is None:
-                    self.token = pooling_job()
-                self.device_code = None
-        return super().__call__(request)
+        if self.device_code:  # pragma: no branch
+            pooling_job = DeviceAuthorizationPoolingJob(
+                client=self.client,
+                device_code=self.device_code,
+                interval=self.interval,
+            )
+            while self.token is None:
+                self.token = pooling_job()
+            self.device_code = None

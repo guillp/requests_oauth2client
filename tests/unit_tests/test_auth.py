@@ -110,7 +110,6 @@ def test_authorization_code_auth(
     access_token: str,
     refresh_token: str,
 ) -> None:
-
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     auth = OAuth2AuthorizationCodeAuth(client, authorization_code)
 
@@ -163,7 +162,6 @@ def test_device_code_auth(
     access_token: str,
     refresh_token: str,
 ) -> None:
-
     oauth2client = OAuth2Client(
         token_endpoint=token_endpoint,
         device_authorization_endpoint=device_authorization_endpoint,

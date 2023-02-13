@@ -7,7 +7,6 @@ from jwskate import (
     InvalidJwt,
     InvalidSignature,
     Jwk,
-    Jwt,
     SignedJwt,
 )
 
@@ -43,14 +42,27 @@ def test_bearer_token_simple() -> None:
     assert str(token) == "foo"
     assert repr(token)
 
+    assert token == "foo"
+    assert token != 1.2
+
 
 def test_bearer_token_complete() -> None:
+    id_token = IdToken.sign(
+        {
+            "iss": "https://issuer.local",
+            "iat": IdToken.timestamp(),
+            "exp": IdToken.timestamp(60),
+            "sub": "myuserid",
+        },
+        Jwk.generate_for_alg("RS256"),
+    )
     token = BearerToken(
         access_token="foo",
         expires_in=180,
         scope="myscope1 myscope2",
         refresh_token="refresh_token",
         custom_attr="custom_value",
+        id_token=str(id_token),
     )
     assert "access_token" in token
     assert "refresh_token" in token
@@ -59,6 +71,7 @@ def test_bearer_token_complete() -> None:
     assert "expires_in" in token
     assert "foo" not in token
     assert "custom_attr" in token
+    assert "id_token" in token
     assert token.expires_in is not None
     assert token.expires_at is not None
     assert token.token_type == "Bearer"
@@ -70,6 +83,7 @@ def test_bearer_token_complete() -> None:
         "expires_in": token.expires_in,  # TODO: enhance
         "scope": "myscope1 myscope2",
         "custom_attr": "custom_value",
+        "id_token": str(id_token),
     }
 
     assert token.expires_in <= 180
@@ -160,7 +174,7 @@ def test_id_token() -> None:
     )
 
     with pytest.raises(AttributeError):
-        id_token.not_found
+        id_token.attr_not_found
 
     id_token.validate(
         public_jwk,

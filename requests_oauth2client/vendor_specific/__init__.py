@@ -5,3 +5,4 @@ easier to work with specific OAuth 2.x providers and/or fix compatibility issues
 """
 
 from .auth0 import Auth0Client, Auth0ManagementApiClient
+from .ping import PingClient

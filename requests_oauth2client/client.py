@@ -1,9 +1,11 @@
 """This module contains the `OAuth2Client` class."""
+from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 import requests
 from jwskate import Jwk, JwkSet, Jwt
+from typing_extensions import Literal
 
 from .auth import BearerAuth
 from .authorization_request import (
@@ -14,6 +16,7 @@ from .authorization_request import (
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
+from .discovery import oidc_discovery_document_url
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -28,6 +31,7 @@ from .exceptions import (
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
+    MismatchingIssuer,
     RevocationError,
     ServerError,
     SlowDown,
@@ -41,25 +45,37 @@ from .utils import validate_endpoint_uri
 
 
 class OAuth2Client:
-    """An OAuth 2.0 client, that can send requests to an OAuth 2.0 Authorization Server.
+    """An OAuth 2.x client, that can send requests to an OAuth 2.x Authorization Server.
 
-    `OAuth2Client` is able to obtain tokens from the Token Endpoint using one of the standardised Grant Types,
+    `OAuth2Client` is able to obtain tokens from the Token Endpoint using any of the standardised Grant Types,
     and to communicate with the various backend endpoints like the Revocation, Introspection, and UserInfo Endpoint.
 
-    This class doesn't implement anything related to the end-user authentication or any request that goes in a browser.
+    To init an OAuth2Client, you only need the url to the Token Endpoint and the Credentials that will be used to authenticate
+    to that endpoint. Other endpoint urls, such as the  can be passed as parameter as well if you intend to use them.
+
+
+    This class is not intended to help with the end-user authentication or any request that goes in a browser.
     For authentication requests, see [AuthorizationRequest][requests_oauth2client.authorization_request.AuthorizationRequest].
+    You may use the helper method `authorization_request()` to generate `AuthorizationRequest`s with the preconfigured
+    `authorization_endpoint`, `client_id` and `redirect_uri' from this client.
 
     Args:
         token_endpoint: the Token Endpoint URI where this client will get access tokens
         auth: the authentication handler to use for client authentication on the token endpoint. Can be a [requests.auth.AuthBase][] instance (which will be as-is), or a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost], a `(client_id, jwk)` to initialize a [PrivateKeyJwt][requests_oauth2client.client_authentication.PrivateKeyJwt], or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
+        client_id: client ID
+        client_secret: client secret
+        private_key: private_key to use for client authentication
         revocation_endpoint: the Revocation Endpoint URI to use for revoking tokens
         introspection_endpoint: the Introspection Endpoint URI to use to get info about tokens
         userinfo_endpoint: the Userinfo Endpoint URI to use to get information about the user
+        authorization_endpoint: the Authorization Endpoint URI for initializing Authorization Requests
+        redirect_uri: the redirect_uri for this client
         backchannel_authentication_endpoint: the BackChannel Authentication URI
         device_authorization_endpoint: the Device Authorization Endpoint URI to use to authorize devices
         jwks_uri: the JWKS URI to use to obtain the AS public keys
+        code_challenge_method: challenge method to use for PKCE (should always be 'S256')
         session: a requests Session to use when sending HTTP requests. Useful if some extra parameters such as proxy or client certificate must be used to connect to the AS.
-        extra_metadata: additional metadata for this client, unused by this class, but may be used by subclasses. Those will be accessible with the `extra_metadata` attribute.
+        **extra_metadata: additional metadata for this client, unused by this class, but may be used by subclasses. Those will be accessible with the `extra_metadata` attribute.
 
     Usage:
         ```python
@@ -69,7 +85,7 @@ class OAuth2Client:
             auth=("client_id", "client_secret"),
         )
 
-        # once intialized, a client can send requests to its configured endpoints
+        # once initialized, a client can send requests to its configured endpoints
         cc_token = client.client_credentials(scope="my_scope")
         ac_token = client.authorization_code(code="my_code")
         client.revoke_access_token(cc_token)
@@ -89,6 +105,8 @@ class OAuth2Client:
         "unsupported_token_type": UnsupportedTokenType,
     }
 
+    token_class: Type[BearerToken] = BearerToken
+
     def __init__(
         self,
         token_endpoint: str,
@@ -98,15 +116,27 @@ class OAuth2Client:
             Tuple[str, Jwk],
             Tuple[str, Dict[str, Any]],
             str,
-        ],
+            None,
+        ] = None,
         *,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        private_key: Union[Jwk, Dict[str, Any], None] = None,
         revocation_endpoint: Optional[str] = None,
         introspection_endpoint: Optional[str] = None,
         userinfo_endpoint: Optional[str] = None,
+        authorization_endpoint: Optional[str] = None,
+        redirect_uri: Optional[str] = None,
         backchannel_authentication_endpoint: Optional[str] = None,
         device_authorization_endpoint: Optional[str] = None,
         pushed_authorization_request_endpoint: Optional[str] = None,
         jwks_uri: Optional[str] = None,
+        authorization_server_jwks: Union[JwkSet, Dict[str, Any], None] = None,
+        issuer: Optional[str] = None,
+        id_token_signed_response_alg: Optional[str] = "RS256",
+        id_token_encrypted_response_alg: Optional[str] = None,
+        id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
+        code_challenge_method: str = "S256",
         session: Optional[requests.Session] = None,
         **extra_metadata: Any,
     ):
@@ -116,6 +146,10 @@ class OAuth2Client:
             str(introspection_endpoint) if introspection_endpoint else None
         )
         self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
+        self.authorization_endpoint = (
+            str(authorization_endpoint) if authorization_endpoint else None
+        )
+        self.redirect_uri = str(redirect_uri) if redirect_uri else None
         self.backchannel_authentication_endpoint = (
             str(backchannel_authentication_endpoint)
             if backchannel_authentication_endpoint
@@ -130,9 +164,41 @@ class OAuth2Client:
             else None
         )
         self.jwks_uri = str(jwks_uri) if jwks_uri else None
+        self.authorization_server_jwks = (
+            JwkSet(authorization_server_jwks) if authorization_server_jwks else None
+        )
+        self.issuer = str(issuer) if issuer else None
         self.session = session or requests.Session()
-        self.auth = client_auth_factory(auth, ClientSecretPost)
+        self.auth = client_auth_factory(
+            auth,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
+            default_auth_handler=ClientSecretPost,
+        )
+        self.id_token_signed_response_alg = id_token_signed_response_alg
+        self.id_token_encrypted_response_alg = id_token_encrypted_response_alg
+        self.id_token_decryption_key = (
+            Jwk(id_token_decryption_key) if id_token_decryption_key else None
+        )
+        self.code_challenge_method = code_challenge_method
         self.extra_metadata = extra_metadata
+
+    @property
+    def client_id(self) -> str:
+        """Client ID."""
+        if hasattr(self.auth, "client_id"):
+            return self.auth.client_id  # type: ignore[no-any-return]
+        raise AttributeError(  # pragma: no cover
+            "This client uses a custom authentication method without client_id."
+        )
+
+    @property
+    def client_secret(self) -> Optional[str]:
+        """Client Secret."""
+        if hasattr(self.auth, "client_secret"):
+            return self.auth.client_secret  # type: ignore[no-any-return]
+        return None
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
@@ -147,8 +213,10 @@ class OAuth2Client:
              **requests_kwargs: additional parameters for requests.post()
 
         Returns:
-            the token endpoint response, as [BearerToken][requests_oauth2client.tokens.BearerToken] instance.
+            the token endpoint response, as [`BearerToken`][requests_oauth2client.tokens.BearerToken] instance.
         """
+        token_endpoint = self._require_endpoint("token_endpoint")
+
         requests_kwargs = {
             key: value
             for key, value in requests_kwargs.items()
@@ -156,7 +224,7 @@ class OAuth2Client:
         }
 
         response = self.session.post(
-            self.token_endpoint,
+            token_endpoint,
             auth=self.auth,
             data=data,
             timeout=timeout,
@@ -177,10 +245,10 @@ class OAuth2Client:
             response: the [Response][requests.Response] returned by the Token Endpoint.
 
         Returns:
-            a [BearerToken][requests_oauth2client.tokens.BearerToken] based on the response contents.
+            a [`BearerToken`][requests_oauth2client.tokens.BearerToken] based on the response contents.
         """
         try:
-            token_response = BearerToken(**response.json())
+            token_response = self.token_class(**response.json())
             return token_response
         except Exception as response_class_exc:
             try:
@@ -197,7 +265,7 @@ class OAuth2Client:
             response: the [Response][requests.Response] returned by the Token Endpoint.
 
         Returns:
-            nothing, and raises an exception instead. But a subclass may return a [BearerToken][requests_oauth2client.tokens.BearerToken] to implement a default behaviour if needed.
+            nothing, and raises an exception instead. But a subclass may return a [`BearerToken`][requests_oauth2client.tokens.BearerToken] to implement a default behaviour if needed.
         """
         error_json = response.json()
         error = error_json.get("error")
@@ -243,32 +311,35 @@ class OAuth2Client:
     def authorization_code(
         self,
         code: Union[str, AuthorizationResponse],
+        validate: bool = True,
         requests_kwargs: Optional[Dict[str, Any]] = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint with the `authorization_code` grant.
 
         Args:
-             code: an authorization code to exchange for tokens
+             code: an authorization code or an `AuthorizationResponse` to exchange for tokens
+             validate: if `True`, validate the received ID Token (this works only if `code` is an AuthorizationResponse)
              requests_kwargs: additional parameters for the call to requests
              **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `code`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
+        azr: Optional[AuthorizationResponse] = None
         if isinstance(code, AuthorizationResponse):
-            if code.code is None or not isinstance(code.code, str):
-                raise ValueError(
-                    "This AuthorizationResponse doesn't contain an authorization code"
-                )
-            token_kwargs.setdefault("code_verifer", code.code_verifier)
+            token_kwargs.setdefault("code_verifier", code.code_verifier)
             token_kwargs.setdefault("redirect_uri", code.redirect_uri)
+            azr = code
             code = code.code
 
         requests_kwargs = requests_kwargs or {}
 
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
-        return self.token_request(data, **requests_kwargs)
+        token = self.token_request(data, **requests_kwargs)
+        if isinstance(azr, AuthorizationResponse) and validate:
+            token.validate_id_token(self, azr)
+        return token
 
     def refresh_token(
         self,
@@ -279,12 +350,12 @@ class OAuth2Client:
         """Send a request to the token endpoint with the `refresh_token` grant.
 
         Args:
-            refresh_token: a refresh_token, as a string, or as a BearerToken. That BearerToken must have a `refresh_token`.
+            refresh_token: a refresh_token, as a string, or as a `BearerToken`. That `BearerToken` must have a `refresh_token`.
             requests_kwargs: additional parameters for the call to `requests`
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `refresh_token`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None or not isinstance(
@@ -309,12 +380,12 @@ class OAuth2Client:
         This needs a Device Code, or a `DeviceAuthorizationResponse` as parameter.
 
         Args:
-            device_code: a device code, as received during the Device Authorization request
+            device_code: a device code, or a `DeviceAuthorizationResponse`
             requests_kwargs: additional parameters for the call to requests
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(device_code, DeviceAuthorizationResponse):
             if device_code.device_code is None or not isinstance(device_code.device_code, str):
@@ -345,7 +416,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `auth_req_id`, etc.
 
         Returns:
-            a BearerToken
+            a `BearerToken`
         """
         if isinstance(auth_req_id, BackChannelAuthenticationResponse):
             if auth_req_id.auth_req_id is None or not isinstance(auth_req_id.auth_req_id, str):
@@ -388,7 +459,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters to include in the request body.
 
         Returns:
-            a BearerToken as returned by the Authorization Server.
+            a `BearerToken` as returned by the Authorization Server.
         """
         requests_kwargs = requests_kwargs or {}
 
@@ -419,6 +490,118 @@ class OAuth2Client:
         )
         return self.token_request(data, **requests_kwargs)
 
+    def jwt_bearer(
+        self,
+        assertion: Union[Jwt, str],
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
+        """Send a request using a JWT as authorization grant.
+
+        This is a defined in (RFC7523 $2.1)[https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1).
+
+        Args:
+            assertion: a JWT (as an instance of `jwskate.Jwt` or as a `str`) to use as authorization grant.
+            requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
+            **token_kwargs: additional parameters to include in the request body.
+
+        Returns:
+            a `BearerToken` as returned by the Authorization Server.
+        """
+        requests_kwargs = requests_kwargs or {}
+
+        if not isinstance(assertion, Jwt):
+            assertion = Jwt(assertion)
+
+        data = dict(
+            grant_type="urn:ietf:params:oauth:grant-type:jwt-bearer",
+            assertion=assertion,
+            **token_kwargs,
+        )
+
+        return self.token_request(data, **requests_kwargs)
+
+    def resource_owner_password(
+        self,
+        username: str,
+        password: str,
+        requests_kwargs: Optional[Dict[str, Any]] = None,
+        **token_kwargs: Any,
+    ) -> BearerToken:
+        """Send a request using the Resource Owner Password Grant.
+
+        This Grant Type is deprecated and should only be used when there is no other choice.
+
+        Args:
+            username: the resource owner user name
+            password: the resource owner password
+            requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
+            **token_kwargs: additional parameters to include in the request body.
+
+        Returns:
+            a `BearerToken` as returned by the Authorization Server
+        """
+        requests_kwargs = requests_kwargs or {}
+        data = dict(
+            grant_type="password",
+            username=username,
+            password=password,
+            **token_kwargs,
+        )
+
+        return self.token_request(data, **requests_kwargs)
+
+    def authorization_request(
+        self,
+        scope: Union[None, str, Iterable[str]] = "openid",
+        response_type: str = "code",
+        redirect_uri: Optional[str] = None,
+        state: Union[str, Literal[True], None] = True,
+        nonce: Union[str, Literal[True], None] = True,
+        code_verifier: Optional[str] = None,
+        **kwargs: Any,
+    ) -> AuthorizationRequest:
+        """Generate an Authorization Request for this client.
+
+        Args:
+            scope: the scope to use
+            response_type: the response_type to use
+            redirect_uri: the redirect_uri to include in the request. By default, the redirect_uri defined at init time is used.
+            state: the state parameter to use. Leave default to generate a random value.
+            nonce: a nonce. Leave default to generate a random value.
+            code_verifier: the PKCE code verifier to use. Leave default to generate a random value.
+            **kwargs: additional parameters to include in the auth request
+
+        Returns:
+            an AuthorizationRequest with the supplied parameters
+        """
+        authorization_endpoint = self._require_endpoint("authorization_endpoint")
+
+        redirect_uri = redirect_uri or self.redirect_uri
+        if not redirect_uri:
+            raise AttributeError(
+                "No 'redirect_uri' defined for this client. "
+                "You must either pass a redirect_uri as parameter to this method, "
+                "or include a redirect_uri when initializing your OAuth2Client."
+            )
+
+        if response_type != "code":
+            raise ValueError("Only response_type=code is supported.")
+
+        return AuthorizationRequest(
+            authorization_endpoint=authorization_endpoint,
+            client_id=self.client_id,
+            redirect_uri=redirect_uri,
+            issuer=self.issuer,
+            response_type=response_type,
+            scope=scope,
+            state=state,
+            nonce=nonce,
+            code_verifier=code_verifier,
+            code_challenge_method=self.code_challenge_method,
+            **kwargs,
+        )
+
     def pushed_authorization_request(
         self, authorization_request: AuthorizationRequest
     ) -> RequestUriParameterAuthorizationRequest:
@@ -431,15 +614,14 @@ class OAuth2Client:
             authorization_request: the authorization request to send
 
         Returns:
-            the RequestUriParameterAuthorizationRequest initialized based on the AS response
+            the `RequestUriParameterAuthorizationRequest` initialized based on the AS response
         """
-        if not self.pushed_authorization_request_endpoint:
-            raise AttributeError(
-                "No 'pushed_authorization_request_endpoint' defined for this client."
-            )
+        pushed_authorization_request_endpoint = self._require_endpoint(
+            "pushed_authorization_request_endpoint"
+        )
 
         response = self.session.post(
-            self.pushed_authorization_request_endpoint,
+            pushed_authorization_request_endpoint,
             data=authorization_request.args,
             auth=self.auth,
         )
@@ -497,10 +679,8 @@ class OAuth2Client:
         Returns:
             the [Response][requests.Response] returned by the userinfo endpoint.
         """
-        if not self.userinfo_endpoint:
-            raise AttributeError("No userinfo_endpoint defined for this client")
-
-        response = self.session.post(self.userinfo_endpoint, auth=BearerAuth(access_token))
+        userinfo_endpoint = self._require_endpoint("userinfo_endpoint")
+        response = self.session.post(userinfo_endpoint, auth=BearerAuth(access_token))
         return self.parse_userinfo_response(response)
 
     def parse_userinfo_response(self, resp: requests.Response) -> Any:
@@ -530,7 +710,7 @@ class OAuth2Client:
 
         Args:
             token_type: a token_type hint, as `str`. May be "access_token", "refresh_token" or "id_token" (optional)
-            token: a token value, as an instance of BearerToken or IdToken, or as a `str`.
+            token: a token value, as an instance of `BearerToken` or IdToken, or as a `str`.
 
         Returns:
             the token_type as defined in the Token Exchange RFC8693.
@@ -714,8 +894,7 @@ class OAuth2Client:
         Returns:
             the response as returned by the Introspection Endpoint.
         """
-        if not self.introspection_endpoint:
-            raise AttributeError("No introspection endpoint defined for this client")
+        introspection_endpoint = self._require_endpoint("introspection_endpoint")
 
         requests_kwargs = requests_kwargs or {}
 
@@ -729,7 +908,7 @@ class OAuth2Client:
             data["token_type_hint"] = token_type_hint
 
         response = self.session.post(
-            self.introspection_endpoint,
+            introspection_endpoint,
             data=data,
             auth=self.auth,
             **requests_kwargs,
@@ -818,10 +997,9 @@ class OAuth2Client:
         Returns:
             a BackChannelAuthenticationResponse as returned by AS
         """
-        if not self.backchannel_authentication_endpoint:
-            raise AttributeError(
-                "No backchannel authentication endpoint defined for this client"
-            )
+        backchannel_authentication_endpoint = self._require_endpoint(
+            "backchannel_authentication_endpoint"
+        )
 
         if not (login_hint or login_hint_token or id_token_hint):
             raise ValueError(
@@ -868,7 +1046,7 @@ class OAuth2Client:
             data = {"request": str(Jwt.sign(data, jwk=private_jwk, alg=alg))}
 
         response = self.session.post(
-            self.backchannel_authentication_endpoint,
+            backchannel_authentication_endpoint,
             data=data,
             auth=self.auth,
             **requests_kwargs,
@@ -935,12 +1113,9 @@ class OAuth2Client:
         Returns:
             a Device Authorization Response
         """
-        if self.device_authorization_endpoint is None:
-            raise AttributeError("No device authorization endpoint defined for this client")
+        device_authorization_endpoint = self._require_endpoint("device_authorization_endpoint")
 
-        response = self.session.post(
-            self.device_authorization_endpoint, data=data, auth=self.auth
-        )
+        response = self.session.post(device_authorization_endpoint, data=data, auth=self.auth)
 
         if response.ok:
             return self.parse_device_authorization_response(response)
@@ -989,73 +1164,130 @@ class OAuth2Client:
             error_json,
         )
 
-    def get_public_jwks(self) -> JwkSet:
-        """Fetch and parse the public keys from the JWKS endpoint.
+    def update_authorization_server_public_keys(self) -> JwkSet:
+        """Update the cached AS public keys by retrieving them from its `jwks_uri`.
+
+        Public keys are returned by this method, as a [JwkSet][jwskate.JwkSet].
+        They are also available in attribute `authorization_server_jwks`.
 
         Returns:
-            a JwkSet based on the retrieved keys.
+            the retrieved public keys
+
+        Raises:
+            ValueError: if no jwks_uri is configured
         """
-        if not self.jwks_uri:
-            raise ValueError("No jwks uri defined for this client")
-        jwks = self.session.get(self.jwks_uri, auth=None).json()
-        return JwkSet(jwks)
+        jwks_uri = self._require_endpoint("jwks_uri")
+
+        jwks = self.session.get(jwks_uri, auth=None).json()
+        self.authorization_server_jwks = JwkSet(jwks)
+        return self.authorization_server_jwks
 
     @classmethod
     def from_discovery_endpoint(
         cls,
-        url: str,
-        issuer: Optional[str],
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        url: Optional[str] = None,
+        issuer: Optional[str] = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        private_key: Union[Jwk, Dict[str, Any], None] = None,
         session: Optional[requests.Session] = None,
-    ) -> "OAuth2Client":
+        **kwargs: Any,
+    ) -> OAuth2Client:
         """Initialise an OAuth2Client based on Authorization Server Metadata.
 
-        This will retrieve the standardised metadata document available at `url`, and will extract all Endpoint Uris from that document,
-        then will initialize an OAuth2Client based on those endpoint.
+        This will retrieve the standardised metadata document available at `url`, and will extract all Endpoint Uris
+        from that document, will fetch the current public keys from its `jwks_uri`, then will initialize an OAuth2Client
+        based on those endpoints.
 
         Args:
              url: the url where the server metadata will be retrieved
              auth: the authentication handler to use for client authentication
+             client_id: client ID
+             client_secret: client secret to use to authenticate the client
+             private_key: private key to sign client assertions
              session: a requests Session to use to retrieve the document and initialise the client with
              issuer: if an issuer is given, check that it matches the one from the retrieved document
 
         Returns:
             an OAuth2Client with endpoint initialized based on the obtained metadata
+
+        Raises:
+            ValueError: if neither `url` or `issuer` are suitable urls.
+            requests.HTTPError: if an error happens while fetching the documents
         """
+        if url is None and issuer is not None:
+            url = oidc_discovery_document_url(issuer)
+        if url is None:
+            raise ValueError("Please specify at least one of `issuer` or `url`")
+
+        validate_endpoint_uri(url, path=False)
+
         session = session or requests.Session()
         discovery = session.get(url).json()
 
-        return cls.from_discovery_document(discovery, issuer=issuer, auth=auth, session=session)
+        jwks_uri = discovery.get("jwks_uri")
+        if jwks_uri:
+            jwks = JwkSet(session.get(jwks_uri).json())
+
+        return cls.from_discovery_document(
+            discovery,
+            issuer=issuer,
+            auth=auth,
+            session=session,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
+            authorization_server_jwks=jwks,
+            **kwargs,
+        )
 
     @classmethod
     def from_discovery_document(
         cls,
         discovery: Dict[str, Any],
-        issuer: Optional[str],
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str],
+        issuer: Optional[str] = None,
+        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
+        client_id: Optional[str] = None,
+        client_secret: Optional[str] = None,
+        private_key: Union[Jwk, Dict[str, Any], None] = None,
+        authorization_server_jwks: Union[JwkSet, Dict[str, Any], None] = None,
         session: Optional[requests.Session] = None,
         https: bool = True,
-    ) -> "OAuth2Client":
+        **kwargs: Any,
+    ) -> OAuth2Client:
         """Initialise an OAuth2Client, based on the server metadata from `discovery`.
 
         Args:
              discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
              issuer: if an issuer is given, check that it matches the one mentioned in the document
              auth: the authentication handler to use for client authentication
+             client_id: client ID
+             client_secret: client secret to use to authenticate the client
+             private_key: private key to sign client assertions
+             authorization_server_jwks: the current authorization server JWKS keys
              session: a requests Session to use to retrieve the document and initialise the client with
              https: if True, validates that urls in the discovery document use the https scheme
 
         Returns:
             an OAuth2Client
         """
-        if issuer:  # pragma: no branch
-            issuer_from_doc = discovery.get("issuer")
-            if issuer_from_doc != issuer:
-                raise ValueError("issuer mismatch!", issuer_from_doc)
+        if issuer and discovery.get("issuer") != issuer:
+            raise ValueError(
+                "Mismatching issuer value in discovery document: ",
+                issuer,
+                discovery.get("issuer"),
+            )
+        elif issuer is None and discovery.get("iss_parameter_supported", False):
+            issuer = discovery.get("issuer")
 
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
+        validate_endpoint_uri(token_endpoint, https=https)
+        authorization_endpoint = discovery.get("authorization_endpoint")
+        if authorization_endpoint is not None:
+            validate_endpoint_uri(authorization_endpoint, https=https)
         validate_endpoint_uri(token_endpoint, https=https)
         revocation_endpoint = discovery.get("revocation_endpoint")
         if revocation_endpoint is not None:
@@ -1072,10 +1304,39 @@ class OAuth2Client:
 
         return cls(
             token_endpoint=token_endpoint,
+            authorization_endpoint=authorization_endpoint,
             revocation_endpoint=revocation_endpoint,
             introspection_endpoint=introspection_endpoint,
             userinfo_endpoint=userinfo_endpoint,
             jwks_uri=jwks_uri,
+            authorization_server_jwks=authorization_server_jwks,
             auth=auth,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
             session=session,
+            issuer=issuer,
+            **kwargs,
         )
+
+    def __enter__(self) -> OAuth2Client:
+        """Allow using OAuth2Client as a context-manager.
+
+        The Authorization Server public keys are retrieved on __enter__.
+        """
+        self.update_authorization_server_public_keys()
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:  # noqa: D105
+        return True
+
+    def _require_endpoint(self, endpoint: str) -> str:
+        """Check that a required endpoint url is set."""
+        url = getattr(self, endpoint, None)
+        if not url:
+            raise AttributeError(
+                f"No '{endpoint}' defined for this client. "
+                f"Please provide the URL for that endpoint when initializing your {self.__class__.__name__} instance."
+            )
+
+        return str(url)

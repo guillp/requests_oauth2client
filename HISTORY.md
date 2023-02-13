@@ -1,5 +1,19 @@
 # History
 
+## 1.2
+
+- `OAuth2AuthorizationCodeAuth` now accepts an AuthorizationResponse
+- `AuthorizationRequest` now handles `nonce` and `acr_values`
+- `OAuth2Client` accepts `authorization_endpoint` and `redirect_uri` at init time, and has a `authorization_request()` method to generate AuthorizationRequests
+- `BearerToken` has a `validate_id_token()` method to handle ID Token validation has specified in OIDC
+- Added `PingClient` for PingFederate by PingID
+
+## 1.1
+
+- ApiClient now has `allow_redirects=False` by default
+- OAuth2Client now has `extra_metadata`
+- bugfixes, optimizations, introduce methods for easier subclassing
+
 ## 1.0.0
 
 - First properly documented version.

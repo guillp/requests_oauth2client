@@ -6,10 +6,12 @@ import pytest
 import requests
 from furl import furl  # type: ignore[import]
 from jwskate import Jwk
+from typing_extensions import Literal
 
 from requests_oauth2client import (
     ApiClient,
     AuthorizationRequest,
+    AuthorizationResponse,
     BearerAuth,
     ClientSecretBasic,
     ClientSecretJwt,
@@ -118,7 +120,7 @@ def client_id() -> str:
 def client_auth_method_handler(
     request: pytest.FixtureRequest,
 ) -> Type[BaseClientAuthenticationMethod]:
-    return request.param  # type: ignore[attr-defined,no-any-return]
+    return request.param  # type: ignore[no-any-return]
 
 
 @pytest.fixture(scope="session")
@@ -276,15 +278,23 @@ def discovery_document(
 @pytest.fixture(scope="session")
 def oauth2client(
     token_endpoint: str,
+    authorization_endpoint: str,
+    redirect_uri: str,
+    expected_issuer: str,
     revocation_endpoint: str,
     introspection_endpoint: str,
     userinfo_endpoint: str,
     pushed_authorization_request_endpoint: str,
     jwks_uri: str,
     client_auth_method: BaseClientAuthenticationMethod,
+    client_id: str,
+    client_secret: str,
 ) -> OAuth2Client:
-    return OAuth2Client(
-        token_endpoint,
+    client = OAuth2Client(
+        token_endpoint=token_endpoint,
+        authorization_endpoint=authorization_endpoint,
+        redirect_uri=redirect_uri,
+        issuer=expected_issuer,
         revocation_endpoint=revocation_endpoint,
         introspection_endpoint=introspection_endpoint,
         userinfo_endpoint=userinfo_endpoint,
@@ -292,6 +302,21 @@ def oauth2client(
         jwks_uri=jwks_uri,
         auth=client_auth_method,
     )
+    assert client.token_endpoint == token_endpoint
+    assert client.authorization_endpoint == authorization_endpoint
+    assert client.revocation_endpoint == revocation_endpoint
+    assert client.introspection_endpoint == introspection_endpoint
+    assert client.userinfo_endpoint == userinfo_endpoint
+    assert client.pushed_authorization_request_endpoint == pushed_authorization_request_endpoint
+    assert client.jwks_uri == jwks_uri
+    assert client.auth == client_auth_method
+    assert client.client_id == client_id
+    if not isinstance(client_auth_method, PublicApp):
+        assert client.client_secret == client_secret
+    else:
+        assert client.client_secret is None
+
+    return client
 
 
 @pytest.fixture(scope="session")
@@ -303,11 +328,11 @@ def sub() -> str:
     scope="session",
     params=[None, "state", True],
 )
-def state(request: FixtureRequest) -> Union[None, bool, str]:
+def state(request: FixtureRequest) -> Union[None, Literal[True], str]:
     return request.param
 
 
-@pytest.fixture(scope="session", params=[None, "https://myas.local", False])
+@pytest.fixture(scope="session", params=[None, "https://myas.local"])
 def expected_issuer(request: FixtureRequest) -> Optional[str]:
     return request.param
 
@@ -319,7 +344,7 @@ def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "nonce", False],
+    params=[None, "nonce", True],
 )
 def nonce(request: FixtureRequest) -> Union[None, bool, str]:
     return request.param
@@ -327,8 +352,8 @@ def nonce(request: FixtureRequest) -> Union[None, bool, str]:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "openid", "openid profile email", ["openid", "profile", "email"], []],
-    ids=["None", "single", "space-separated", "list", "empty-list"],
+    params=[None, "openid", "openid profile email", ("openid", "profile", "email"), ()],
+    ids=["None", "single", "space-separated", "tuple", "empty"],
 )
 def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
     return request.param
@@ -355,11 +380,11 @@ def authorization_request(
     client_id: str,
     redirect_uri: str,
     scope: Union[None, str, List[str]],
-    state: Union[None, bool, str],
-    nonce: Union[None, bool, str],
+    state: Union[None, Literal[True], str],
+    nonce: Union[None, Literal[True], str],
     code_verifier: str,
     code_challenge_method: str,
-    expected_issuer: Union[str, bool, None],
+    expected_issuer: Union[str, None],
     auth_request_kwargs: Dict[str, Any],
 ) -> AuthorizationRequest:
     azr = AuthorizationRequest(
@@ -394,11 +419,14 @@ def authorization_request(
     )
 
     if nonce is True:
-        generated_nonce = args.pop("nonce")
-        assert isinstance(generated_nonce, str)
-        assert len(generated_nonce) > 20
-        assert azr.nonce == generated_nonce
-    elif nonce is False or nonce is None:
+        if scope is not None and "openid" in scope:
+            generated_nonce = args.pop("nonce")
+            assert isinstance(generated_nonce, str)
+            assert len(generated_nonce) > 20
+            assert azr.nonce == generated_nonce
+        else:
+            assert "nonce" not in args
+    elif nonce is None:
         assert azr.nonce is None
         assert "nonce" not in args
     elif isinstance(nonce, str):
@@ -412,7 +440,7 @@ def authorization_request(
         assert isinstance(generated_state, str)
         assert len(generated_state) > 20
         assert azr.state == generated_state
-    elif state is False:
+    elif state is None:
         assert "state" not in args
         assert azr.state is None
     elif isinstance(state, str):
@@ -423,13 +451,11 @@ def authorization_request(
         assert azr.scope is None
         assert "scope" not in args
         del expected_args["scope"]
-    elif isinstance(scope, list):
-        joined_scope = " ".join(scope)
-        expected_args["scope"] = joined_scope
-        assert azr.scope == joined_scope
-    if isinstance(scope, str):
-        expected_args["scope"] = scope
+    elif isinstance(scope, tuple):
+        expected_args["scope"] = " ".join(scope)
         assert azr.scope == scope
+    elif isinstance(scope, str):
+        assert azr.scope == scope.split()
 
     if code_challenge_method is None:
         assert "code_challenge_method" not in args
@@ -468,3 +494,36 @@ def authorization_request(
     assert args == expected_args
 
     return azr
+
+
+@pytest.fixture()
+def authorization_response_uri(
+    authorization_request: AuthorizationRequest,
+    redirect_uri: str,
+    authorization_code: str,
+    expected_issuer: Union[str, bool, None],
+) -> furl:
+    auth_url = furl(redirect_uri).add(args={"code": authorization_code})
+    if authorization_request.state is not None:
+        auth_url.add(args={"state": authorization_request.state})
+    if expected_issuer:
+        auth_url.add(args={"iss": expected_issuer})
+
+    return auth_url
+
+
+@pytest.fixture()
+def authorization_response(
+    authorization_request: AuthorizationRequest,
+    authorization_response_uri: furl,
+    redirect_uri: str,
+    authorization_code: str,
+) -> AuthorizationResponse:
+    auth_response = authorization_request.validate_callback(authorization_response_uri)
+    assert isinstance(auth_response, AuthorizationResponse)
+    assert auth_response.code == authorization_code
+    assert auth_response.state == authorization_request.state
+    assert auth_response.redirect_uri == redirect_uri
+    assert auth_response.code_verifier == authorization_request.code_verifier
+
+    return auth_response
