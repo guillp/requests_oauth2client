@@ -1219,17 +1219,12 @@ class OAuth2Client:
         if url is None and issuer is not None:
             url = oidc_discovery_document_url(issuer)
         if url is None:
-            raise ValueError("Please specify at least of of `issuer` or `url`")
+            raise ValueError("Please specify at least one of `issuer` or `url`")
 
         validate_endpoint_uri(url, path=False)
 
         session = session or requests.Session()
         discovery = session.get(url).json()
-
-        if issuer and discovery.get("issuer") != issuer:
-            raise MismatchingIssuer(issuer, discovery.get("issuer"))
-        elif issuer is None and discovery.get("iss_parameter_supported", False):
-            issuer = discovery.get("issuer")
 
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri:
@@ -1277,11 +1272,13 @@ class OAuth2Client:
         Returns:
             an OAuth2Client
         """
-        if issuer:  # pragma: no branch
-            issuer_from_doc = discovery.get("issuer")
-            if issuer_from_doc != issuer:
-                raise ValueError("issuer mismatch!", issuer_from_doc)
-        else:
+        if issuer and discovery.get("issuer") != issuer:
+            raise ValueError(
+                "Mismatching issuer value in discovery document: ",
+                issuer,
+                discovery.get("issuer"),
+            )
+        elif issuer is None and discovery.get("iss_parameter_supported", False):
             issuer = discovery.get("issuer")
 
         token_endpoint = discovery.get("token_endpoint")
