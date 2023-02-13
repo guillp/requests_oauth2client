@@ -1,9 +1,10 @@
 from typing import Union
 
+import jwskate
 import pytest
 from freezegun import freeze_time  # type: ignore[import]
 from furl import furl  # type: ignore[import]
-from jwskate import Jwk, Jwt, SignedJwt
+from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (
     AuthorizationRequest,
@@ -54,11 +55,31 @@ def test_authorization_signed_request_with_lifetime(
     assert jwt.claims == args
 
 
-@pytest.fixture(params=["consent_required"])
-def error(request: FixtureRequest) -> str:
-    return request.param
+@pytest.fixture(scope="session")
+def enc_jwk() -> Jwk:
+    return Jwk.generate_for_alg(jwskate.KeyManagementAlgs.RSA_OAEP_256)
 
 
+def test_authorization_signed_and_encrypted_request(
+    authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk, enc_jwk: Jwk
+) -> None:
+    args = {
+        key: value for key, value in authorization_request.args.items() if value is not None
+    }
+    url = furl(
+        str(
+            authorization_request.sign_and_encrypt(
+                sign_jwk=private_jwk, enc_jwk=enc_jwk.public_jwk()
+            )
+        )
+    )
+    request = url.args.get("request")
+    jwt = Jwt(request)
+    assert isinstance(jwt, JweCompact)
+    assert Jwt.decrypt_and_verify(jwt, enc_jwk, public_jwk).claims == args
+
+
+@pytest.mark.parametrize("error", ("consent_required",))
 def test_error_response(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,
@@ -132,3 +153,33 @@ def test_authorization_request_serializer(authorization_request: AuthorizationRe
     serializer = AuthorizationRequestSerializer()
     serialized = serializer.dumps(authorization_request)
     assert serializer.loads(serialized) == authorization_request
+
+
+def test_acr_values() -> None:
+    # you may provide acr_values as a space separated list or as a real list
+    assert AuthorizationRequest(
+        "https://as.local/authorize",
+        client_id="foo",
+        redirect_uri="http://localhost/local",
+        scope="openid",
+        acr_values="1 2 3",
+    ).acr_values == ["1", "2", "3"]
+    assert AuthorizationRequest(
+        "https://as.local/authorize",
+        client_id="foo",
+        redirect_uri="http://localhost/local",
+        scope="openid",
+        acr_values=("1", "2", "3"),
+    ).acr_values == ["1", "2", "3"]
+
+
+def test_code_challenge() -> None:
+    # providing a code_challenge fails, you must provide the original code_verifier instead
+    with pytest.raises(ValueError):
+        AuthorizationRequest(
+            "https://as.local/authorize",
+            client_id="foo",
+            redirect_uri="http://localhost/local",
+            scope="openid",
+            code_challenge="my_code_challenge",
+        )

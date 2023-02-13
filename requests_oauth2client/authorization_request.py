@@ -449,7 +449,9 @@ class AuthorizationRequest:
             lifetime=lifetime,
         )
         return RequestParameterAuthorizationRequest(
-            client_id=self.client_id, request=str(request_jwt)
+            authorization_endpoint=self.authorization_endpoint,
+            client_id=self.client_id,
+            request=str(request_jwt),
         )
 
     def validate_callback(

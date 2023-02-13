@@ -16,6 +16,7 @@ from requests_oauth2client import (
     DeviceAuthorizationResponse,
     IdToken,
     InvalidTokenResponse,
+    MismatchingIssuer,
     OAuth2Client,
     PrivateKeyJwt,
     PublicApp,
@@ -531,6 +532,20 @@ def test_from_discovery_document(
     assert client.userinfo_endpoint == userinfo_endpoint
     assert client.jwks_uri == jwks_uri
 
+    with pytest.raises(ValueError):
+        OAuth2Client.from_discovery_document(
+            {
+                "issuer": "https://something.else",
+                "token_endpoint": token_endpoint,
+                "revocation_endpoint": revocation_endpoint,
+                "introspection_endpoint": introspection_endpoint,
+                "userinfo_endpoint": userinfo_endpoint,
+                "jwks_uri": jwks_uri,
+            },
+            issuer=issuer,
+            auth=client_id,
+        )
+
 
 def test_from_discovery_document_missing_token_endpoint(
     revocation_endpoint: str, client_id: str
@@ -593,6 +608,9 @@ def test_from_discovery_endpoint(
     assert isinstance(client, OAuth2Client)
     assert client.auth == client_auth_method
     assert client.authorization_server_jwks == as_public_jwks
+
+    with pytest.raises(ValueError, match="at least one of `issuer` or `url`"):
+        OAuth2Client.from_discovery_endpoint()
 
 
 def test_invalid_token_response(
