@@ -57,6 +57,7 @@ from .exceptions import (
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
     InvalidIdToken,
+    InvalidRequest,
     InvalidScope,
     InvalidTokenResponse,
     LoginRequired,

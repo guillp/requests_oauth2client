@@ -28,6 +28,7 @@ from .exceptions import (
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
     InvalidPushedAuthorizationResponse,
+    InvalidRequest,
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
@@ -94,6 +95,7 @@ class OAuth2Client:
 
     exception_classes: Dict[str, Type[Exception]] = {
         "server_error": ServerError,
+        "invalid_request": InvalidRequest,
         "invalid_scope": InvalidScope,
         "invalid_target": InvalidTarget,
         "invalid_grant": InvalidGrant,
