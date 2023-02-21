@@ -1326,3 +1326,22 @@ def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoin
             token_endpoint="https://url.to.the/token_endpoint",
             authorization_endpoint="https://url.to.the/authorization_endpoint",
         ).authorization_request()
+
+
+def test_custom_token_type(requests_mock: RequestsMocker) -> None:
+    class WeirdBearerToken(BearerToken):
+        TOKEN_TYPE = "BearerToken"
+
+    class WeirdOAuth2Client(OAuth2Client):
+        token_class = WeirdBearerToken
+
+    TOKEN_ENDPOINT = "https://as.local/token"
+    client = WeirdOAuth2Client(TOKEN_ENDPOINT, ("client_id", "client_secret"))
+
+    requests_mock.post(
+        TOKEN_ENDPOINT,
+        json={"access_token": "access_token", "token_type": "BearerToken"},
+    )
+
+    token = client.client_credentials()
+    assert isinstance(token, WeirdBearerToken)

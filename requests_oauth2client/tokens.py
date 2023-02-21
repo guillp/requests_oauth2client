@@ -52,6 +52,8 @@ class BearerToken:
         **kwargs: additional parameters as returned by the AS, if any.
     """
 
+    TOKEN_TYPE = "Bearer"
+
     @accepts_expires_in
     def __init__(
         self,
@@ -60,12 +62,12 @@ class BearerToken:
         expires_at: Optional[datetime] = None,
         scope: Optional[str] = None,
         refresh_token: Optional[str] = None,
-        token_type: str = "Bearer",
+        token_type: str = TOKEN_TYPE,
         id_token: Optional[str] = None,
         **kwargs: Any,
     ):
-        if token_type.title() != "Bearer":
-            raise ValueError("This is not a Bearer Token!", token_type)
+        if token_type.title() != self.TOKEN_TYPE.title():
+            raise ValueError(f"Token Type is not '{self.TOKEN_TYPE}'!", token_type)
         self.access_token = access_token
         self.expires_at = expires_at
         self.scope = scope
@@ -301,7 +303,7 @@ class BearerToken:
                 return None
             return int(self.expires_at.timestamp() - datetime.now().timestamp())
         elif key == "token_type":
-            return "Bearer"
+            return self.TOKEN_TYPE
         return self.other.get(key) or super().__getattribute__(key)
 
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
@@ -315,7 +317,7 @@ class BearerToken:
         """
         r: Dict[str, Any] = {
             "access_token": self.access_token,
-            "token_type": "Bearer",
+            "token_type": self.TOKEN_TYPE,
         }
         if self.expires_at:
             r["expires_in"] = self.expires_in
@@ -365,7 +367,7 @@ class BearerToken:
 
 
 class BearerTokenSerializer:
-    """An helper class to serialize Token Response returned by an AS.
+    """A helper class to serialize Token Response returned by an AS.
 
     This may be used to store BearerTokens in session or cookies.
 
