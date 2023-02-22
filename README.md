@@ -239,7 +239,7 @@ Obtaining tokens with the Authorization code grant is made in 3 steps:
 3. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
    Endpoint.
 
-`requests_oauth2client`, and more specifically [OAuth2Client] will help you will all those steps, as described below.
+`requests_oauth2client`, and more specifically [OAuth2Client] will help you with all those steps, as described below.
 
 #### Generating Authorization Requests
 
