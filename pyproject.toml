@@ -26,12 +26,12 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7,<4.0"
+python = ">=3.8,<3.12"
 
 requests = ">=2.19.0"
 binapy = "^0.6"
 furl = ">=2.1.2"
-jwskate = "^0.6"
+jwskate = ">=0.7"
 
 
 [tool.poetry.dev-dependencies]

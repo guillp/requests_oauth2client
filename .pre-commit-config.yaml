@@ -40,7 +40,7 @@ repos:
     additional_dependencies:
     - mdformat-black
 - repo: https://github.com/myint/docformatter
-  rev: v1.6.0.rc1
+  rev: v1.5.1
   hooks:
     - id: docformatter
       args:
@@ -79,7 +79,7 @@ repos:
             - toml
         exclude: 'tests/'
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.0.0
+    rev: v1.0.1
     hooks:
     -   id: mypy
         args:
