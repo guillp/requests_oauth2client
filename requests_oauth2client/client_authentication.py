@@ -123,15 +123,22 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         alg: the alg to use to sign generated Client Assertions.
         lifetime: the lifetime to use for generated Client Assertions.
         jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
+        aud: the audience value to use. If `None` (default), the endpoint URL will be used.
     """
 
     def __init__(
-        self, client_id: str, alg: str, lifetime: int, jti_gen: Callable[[], str]
+        self,
+        client_id: str,
+        alg: str,
+        lifetime: int,
+        jti_gen: Callable[[], str],
+        aud: Optional[str] = None,
     ) -> None:
         super().__init__(client_id)
         self.alg = alg
         self.lifetime = lifetime
         self.jti_gen = jti_gen
+        self.aud = aud
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion for a specific audience.
@@ -154,10 +161,10 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
             a [requests.PreparedRequest][] with the added `client_assertion` field.
         """
         request = super().__call__(request)
-        token_endpoint = request.url
-        assert token_endpoint is not None
+        audience = self.aud or request.url
+        assert audience is not None
         data = furl.Query(request.body)
-        client_assertion = self.client_assertion(token_endpoint)
+        client_assertion = self.client_assertion(audience)
         data.set(
             [
                 ("client_id", self.client_id),
@@ -184,6 +191,7 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
         alg: the alg to use to sign generated Client Assertions.
         lifetime: the lifetime to use for generated Client Assertions.
         jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
+        aud: the audience value to use. If `None` (default), the endpoint URL will be used.
     """
 
     def __init__(
@@ -193,8 +201,9 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
         alg: str = "HS256",
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
+        aud: Optional[str] = None,
     ) -> None:
-        super().__init__(client_id, alg, lifetime, jti_gen)
+        super().__init__(client_id, alg, lifetime, jti_gen, aud)
         self.client_secret = str(client_secret)
 
     def client_assertion(self, audience: str) -> str:
@@ -241,6 +250,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         alg: the alg to use to sign generated Client Assertions.
         lifetime: the lifetime to use for generated Client Assertions.
         jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
+        aud: the audience value to use. If `None` (default), the endpoint URL will be used.k
     """
 
     def __init__(
@@ -250,6 +260,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         alg: str = "RS256",
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
+        aud: Optional[str] = None,
     ) -> None:
         if not isinstance(private_jwk, Jwk):
             private_jwk = Jwk(private_jwk)
@@ -270,7 +281,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
                 "Asymmetric signing requires the private JWK to have a Key ID (kid)."
             )
 
-        super().__init__(client_id, alg, lifetime, jti_gen)
+        super().__init__(client_id, alg, lifetime, jti_gen, aud)
         self.private_jwk = private_jwk
 
     def client_assertion(self, audience: str) -> str:
