@@ -13,6 +13,7 @@ from requests_oauth2client import (
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
+    MissingIssuer,
 )
 from tests.conftest import FixtureRequest
 
@@ -133,7 +134,7 @@ def test_mismatching_iss(
     expected_issuer: Union[str, bool, None],
 ) -> None:
     authorization_response_uri.args["iss"] = "foo"
-    if isinstance(expected_issuer, str) or expected_issuer is False:
+    if expected_issuer:
         with pytest.raises(MismatchingIssuer):
             authorization_request.validate_callback(authorization_response_uri)
 
@@ -145,7 +146,7 @@ def test_missing_issuer(
 ) -> None:
     authorization_response_uri.args.pop("iss", None)
     if expected_issuer:
-        with pytest.raises(MismatchingIssuer):
+        with pytest.raises(MissingIssuer):
             authorization_request.validate_callback(authorization_response_uri)
 
 

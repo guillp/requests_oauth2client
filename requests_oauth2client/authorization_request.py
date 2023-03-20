@@ -20,6 +20,7 @@ from .exceptions import (
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
+    MissingIssuer,
     SessionSelectionRequired,
 )
 from .utils import accepts_expires_in
@@ -239,8 +240,14 @@ class AuthorizationRequest:
         code_challenge_method: Optional[str] = "S256",
         acr_values: Union[str, Iterable[str], None] = None,
         issuer: Optional[str] = None,
+        authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
     ) -> None:
+        if authorization_response_iss_parameter_supported and not issuer:
+            raise ValueError(
+                "When 'authorization_response_iss_parameter_supported' is True, you must provide the expected 'issuer' as parameter."
+            )
+
         if state is True:
             state = self.generate_state()
 
@@ -289,6 +296,9 @@ class AuthorizationRequest:
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
         self.acr_values = acr_values
+        self.authorization_response_iss_parameter_supported = (
+            authorization_response_iss_parameter_supported
+        )
         self.kwargs = kwargs
 
         self.args = dict(
@@ -324,6 +334,7 @@ class AuthorizationRequest:
             "code_verifier": self.code_verifier,
             "code_challenge_method": self.code_challenge_method,
             "issuer": self.issuer,
+            "authorization_response_iss_parameter_supported": self.authorization_response_iss_parameter_supported,
             "acr_values": self.acr_values,
             **self.kwargs,
         }
@@ -454,9 +465,7 @@ class AuthorizationRequest:
             request=str(request_jwt),
         )
 
-    def validate_callback(
-        self, response: str, validate_issuer: bool = True
-    ) -> AuthorizationResponse:
+    def validate_callback(self, response: str) -> AuthorizationResponse:
         """Validate an Authorization Response against this Request.
 
         Validate a given Authorization Response URI against this Authorization
@@ -472,21 +481,25 @@ class AuthorizationRequest:
             the extracted code, if all checks are successful
 
         Raises:
+            MismatchingIssuer: if the 'iss' received in the response doesn't match the expected value.
             MismatchingState: if the response `state` does not match the expected value.
             OAuth2Error: if the response includes an error.
             MissingAuthCode: if the response does not contain a `code`.
+            NotImplementedError: if response_type anything else than 'code'
         """
         try:
             response_url = furl(response)
         except ValueError:
             return self.on_response_error(response)
 
-        # validate 'iss' according to https://www.ietf.org/archive/id/draft-ietf-oauth-iss-auth-resp-05.html
-        if validate_issuer and self.issuer is not None:
-            received_issuer = response_url.args.get("iss")
-            if received_issuer != self.issuer:
-                raise MismatchingIssuer(self.issuer, received_issuer)
+        # validate 'iss' according to RFC9207
+        received_issuer = response_url.args.get("iss")
+        if self.authorization_response_iss_parameter_supported and received_issuer is None:
+            raise MissingIssuer()
+        if self.issuer and received_issuer != self.issuer:
+            raise MismatchingIssuer(self.issuer, received_issuer)
 
+        # validate state
         requested_state = self.state
         if requested_state:
             received_state = response_url.args.get("state")
@@ -501,6 +514,8 @@ class AuthorizationRequest:
             code: str = response_url.args.get("code")
             if code is None:
                 raise MissingAuthCode()
+        else:
+            raise NotImplementedError()
 
         return AuthorizationResponse(
             code_verifier=self.code_verifier,

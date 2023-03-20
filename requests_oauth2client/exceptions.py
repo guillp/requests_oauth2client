@@ -163,6 +163,16 @@ class MissingAuthCode(InvalidAuthResponse):
     """
 
 
+class MissingIssuer(InvalidAuthResponse):
+    """Raised when the Authorization Endpoint does not return an `iss` parameter as expected.
+
+    The Authorization Server advertises its support with a flag
+    `authorization_response_iss_parameter_supported` in its discovery document. If it is set to
+    `true`, it must include an `iss` parameter in its authorization responses, containing its issuer
+    identifier.
+    """
+
+
 class MissingIdToken(InvalidAuthResponse):
     """Raised when the Authorization Endpoint does not return a mandatory ID Token.
 

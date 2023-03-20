@@ -64,6 +64,7 @@ from .exceptions import (
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
+    MissingIssuer,
     OAuth2Error,
     ServerError,
     SessionSelectionRequired,

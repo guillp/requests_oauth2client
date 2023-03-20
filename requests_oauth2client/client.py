@@ -139,6 +139,7 @@ class OAuth2Client:
         id_token_encrypted_response_alg: Optional[str] = None,
         id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
         code_challenge_method: str = "S256",
+        authorization_response_iss_parameter_supported: bool = False,
         session: Optional[requests.Session] = None,
         **extra_metadata: Any,
     ):
@@ -184,6 +185,9 @@ class OAuth2Client:
             Jwk(id_token_decryption_key) if id_token_decryption_key else None
         )
         self.code_challenge_method = code_challenge_method
+        self.authorization_response_iss_parameter_supported = (
+            authorization_response_iss_parameter_supported
+        )
         self.extra_metadata = extra_metadata
 
     @property
@@ -1280,7 +1284,7 @@ class OAuth2Client:
                 issuer,
                 discovery.get("issuer"),
             )
-        elif issuer is None and discovery.get("iss_parameter_supported", False):
+        elif issuer is None:
             issuer = discovery.get("issuer")
 
         token_endpoint = discovery.get("token_endpoint")
@@ -1303,6 +1307,9 @@ class OAuth2Client:
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri is not None:
             validate_endpoint_uri(userinfo_endpoint, https=https)
+        authorization_response_iss_parameter_supported = discovery.get(
+            "authorization_response_iss_parameter_supported", False
+        )
 
         return cls(
             token_endpoint=token_endpoint,
@@ -1318,6 +1325,7 @@ class OAuth2Client:
             private_key=private_key,
             session=session,
             issuer=issuer,
+            authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
             **kwargs,
         )
 
