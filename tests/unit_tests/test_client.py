@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Type, Union
 
 import pytest
-from jwskate import Jwk, JwkSet, Jwt
+from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs
 
 from requests_oauth2client import (
     AuthorizationRequest,
@@ -1345,3 +1345,22 @@ def test_custom_token_type(requests_mock: RequestsMocker) -> None:
 
     token = client.client_credentials()
     assert isinstance(token, WeirdBearerToken)
+
+
+def test_client_jwks() -> None:
+    private_key = Jwk.generate_for_alg(KeyManagementAlgs.RSA_OAEP_256).with_kid_thumbprint()
+    id_token_decryption_key = Jwk.generate_for_alg(
+        KeyManagementAlgs.ECDH_ES_A256KW
+    ).with_kid_thumbprint()
+    client = OAuth2Client(
+        authorization_endpoint="https://as.local/authorize",
+        token_endpoint="https://as.local/token",
+        client_id="my_client_id",
+        private_key=private_key,
+        id_token_decryption_key=id_token_decryption_key,
+    )
+
+    jwks = client.client_jwks
+    assert not jwks.is_private
+    assert private_key.public_jwk() in jwks.jwks
+    assert id_token_decryption_key.public_jwk() in jwks.jwks

@@ -14,7 +14,7 @@ from .authorization_request import (
     RequestUriParameterAuthorizationRequest,
 )
 from .backchannel_authentication import BackChannelAuthenticationResponse
-from .client_authentication import ClientSecretPost, client_auth_factory
+from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
 from .exceptions import (
@@ -33,7 +33,6 @@ from .exceptions import (
     InvalidScope,
     InvalidTarget,
     InvalidTokenResponse,
-    MismatchingIssuer,
     RevocationError,
     ServerError,
     SlowDown,
@@ -207,6 +206,22 @@ class OAuth2Client:
         if hasattr(self.auth, "client_secret"):
             return self.auth.client_secret  # type: ignore[no-any-return]
         return None
+
+    @property
+    def client_jwks(self) -> JwkSet:
+        """A `JwkSet` containing the public keys for this client.
+
+        Keys are:
+
+        - the public key for client assertion signature verification (if using private_key_jwt)
+        - the ID Token encryption key
+        """
+        jwks = JwkSet()
+        if isinstance(self.auth, PrivateKeyJwt):
+            jwks.add_jwk(self.auth.private_jwk.public_jwk().with_usage_parameters())
+        if self.id_token_decryption_key:
+            jwks.add_jwk(self.id_token_decryption_key.public_jwk().with_usage_parameters())
+        return jwks
 
     def token_request(
         self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
