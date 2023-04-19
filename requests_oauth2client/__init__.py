@@ -54,6 +54,7 @@ from .exceptions import (
     ExpiredToken,
     InteractionRequired,
     InvalidBackChannelAuthenticationResponse,
+    InvalidClient,
     InvalidDeviceAuthorizationResponse,
     InvalidGrant,
     InvalidIdToken,

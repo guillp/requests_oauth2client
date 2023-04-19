@@ -52,6 +52,10 @@ class InvalidRequest(TokenEndpointError):
     """Raised when the Token Endpoint returns `error = invalid_request`."""
 
 
+class InvalidClient(TokenEndpointError):
+    """Raised when the Token Endpoint returns `error = invalid_client`."""
+
+
 class InvalidScope(TokenEndpointError):
     """Raised when the Token Endpoint returns `error = invalid_scope`."""
 
