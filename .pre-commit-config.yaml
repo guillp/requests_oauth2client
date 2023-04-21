@@ -94,3 +94,4 @@ repos:
             - types-requests
             - requests_mock
             - flask
+            - freezegun
