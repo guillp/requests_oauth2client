@@ -27,7 +27,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Generate Changelog
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
@@ -41,7 +41,7 @@ jobs:
           addSections: '{"documentation":{"prefix":"**Documentation:**","labels":["documentation"]}}'
           output: CHANGELOG.md
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-versions }}
 
