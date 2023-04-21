@@ -16,7 +16,6 @@ from requests_oauth2client import (
     DeviceAuthorizationResponse,
     IdToken,
     InvalidTokenResponse,
-    MismatchingIssuer,
     OAuth2Client,
     PrivateKeyJwt,
     PublicApp,

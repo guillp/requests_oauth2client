@@ -14,6 +14,7 @@ from requests_oauth2client import (
     MismatchingState,
     MissingAuthCode,
     MissingIssuer,
+    RequestUriParameterAuthorizationRequest,
 )
 
 
@@ -30,7 +31,9 @@ def test_authorization_signed_request(
     args = {
         key: value for key, value in authorization_request.args.items() if value is not None
     }
-    url = furl(str(authorization_request.sign(private_jwk)))
+    signed_request = authorization_request.sign(private_jwk)
+    assert isinstance(signed_request.uri, str)
+    url = signed_request.furl
     request = url.args.get("request")
     jwt = Jwt(request)
     assert isinstance(jwt, SignedJwt)
@@ -47,7 +50,10 @@ def test_authorization_signed_request_with_lifetime(
     }
     args["iat"] = 1665409020
     args["exp"] = 1665409080
-    url = authorization_request.sign(private_jwk, lifetime=60).furl
+    signed_request = authorization_request.sign(private_jwk, lifetime=60)
+    assert isinstance(signed_request.uri, str)
+
+    url = signed_request.furl
     request = url.args.get("request")
     jwt = Jwt(request)
     assert isinstance(jwt, SignedJwt)
@@ -69,13 +75,31 @@ def test_authorization_signed_and_encrypted_request(
     }
     args["iat"] = 1665409020
     args["exp"] = 1665409080
-    url = authorization_request.sign_and_encrypt(
+    signed_and_encrypted_request = authorization_request.sign_and_encrypt(
         sign_jwk=private_jwk, enc_jwk=enc_jwk.public_jwk(), lifetime=60
-    ).furl
+    )
+    assert isinstance(signed_and_encrypted_request.uri, str)
+    url = signed_and_encrypted_request.furl
     request = url.args.get("request")
     jwt = Jwt(request)
     assert isinstance(jwt, JweCompact)
     assert Jwt.decrypt_and_verify(jwt, enc_jwk, public_jwk).claims == args
+
+
+@pytest.mark.parametrize(
+    "request_uri", ("this_is_a_request_uri", "https://foo.bar/request_uri")
+)
+def test_request_uri_authorization_request(
+    authorization_endpoint: str, client_id: str, request_uri: str
+) -> None:
+    request_uri_azr = RequestUriParameterAuthorizationRequest(
+        authorization_endpoint=authorization_endpoint,
+        client_id=client_id,
+        request_uri=request_uri,
+    )
+    assert isinstance(request_uri_azr.uri, str)
+    url = request_uri_azr.furl
+    assert url.args == {"client_id": client_id, "request_uri": request_uri}
 
 
 @pytest.mark.parametrize("error", ("consent_required",))
