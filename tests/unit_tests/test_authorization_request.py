@@ -2,7 +2,7 @@ from typing import Union
 
 import jwskate
 import pytest
-from freezegun import freeze_time  # type: ignore[import]
+from freezegun import freeze_time
 from furl import furl  # type: ignore[import]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 
@@ -15,11 +15,10 @@ from requests_oauth2client import (
     MissingAuthCode,
     MissingIssuer,
 )
-from tests.conftest import FixtureRequest
 
 
 def test_authorization_url(authorization_request: AuthorizationRequest) -> None:
-    url = furl(str(authorization_request))
+    url = authorization_request.furl
     assert dict(url.args) == {
         key: val for key, val in authorization_request.args.items() if val is not None
     }
@@ -39,7 +38,7 @@ def test_authorization_signed_request(
     assert jwt.claims == args
 
 
-@freeze_time("2022-10-10 13:37:00")  # type: ignore[misc]
+@freeze_time("2022-10-10 13:37:00")
 def test_authorization_signed_request_with_lifetime(
     authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk
 ) -> None:
@@ -48,7 +47,7 @@ def test_authorization_signed_request_with_lifetime(
     }
     args["iat"] = 1665409020
     args["exp"] = 1665409080
-    url = furl(str(authorization_request.sign(private_jwk, lifetime=60)))
+    url = authorization_request.sign(private_jwk, lifetime=60).furl
     request = url.args.get("request")
     jwt = Jwt(request)
     assert isinstance(jwt, SignedJwt)
@@ -61,19 +60,18 @@ def enc_jwk() -> Jwk:
     return Jwk.generate_for_alg(jwskate.KeyManagementAlgs.RSA_OAEP_256)
 
 
+@freeze_time("2022-10-10 13:37:00")
 def test_authorization_signed_and_encrypted_request(
     authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk, enc_jwk: Jwk
 ) -> None:
     args = {
         key: value for key, value in authorization_request.args.items() if value is not None
     }
-    url = furl(
-        str(
-            authorization_request.sign_and_encrypt(
-                sign_jwk=private_jwk, enc_jwk=enc_jwk.public_jwk()
-            )
-        )
-    )
+    args["iat"] = 1665409020
+    args["exp"] = 1665409080
+    url = authorization_request.sign_and_encrypt(
+        sign_jwk=private_jwk, enc_jwk=enc_jwk.public_jwk(), lifetime=60
+    ).furl
     request = url.args.get("request")
     jwt = Jwt(request)
     assert isinstance(jwt, JweCompact)
@@ -183,4 +181,15 @@ def test_code_challenge() -> None:
             redirect_uri="http://localhost/local",
             scope="openid",
             code_challenge="my_code_challenge",
+        )
+
+
+def test_issuer_parameter() -> None:
+    with pytest.raises(ValueError, match="issuer"):
+        AuthorizationRequest(
+            "https://as.local/authorize",
+            client_id="foo",
+            redirect_uri="http://localhost/local",
+            authorization_response_iss_parameter_supported=True,
+            scope="openid",
         )

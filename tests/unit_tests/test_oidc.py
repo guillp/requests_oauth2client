@@ -2,7 +2,7 @@ from typing import Dict
 
 import jwskate
 import pytest
-from freezegun import freeze_time  # type: ignore[import]
+from freezegun import freeze_time
 from jwskate import EncryptionAlgs, Jwk, Jwt, KeyManagementAlgs, SignatureAlgs
 
 from requests_oauth2client import (
@@ -38,7 +38,7 @@ ID_TOKEN = (
 )
 
 
-@freeze_time("2011-07-21 20:42:55")  # type: ignore[misc]
+@freeze_time("2011-07-21 20:42:55")
 @pytest.mark.parametrize(
     "kwargs, at_hash",
     (

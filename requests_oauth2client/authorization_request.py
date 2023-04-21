@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 import secrets
-import time
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Type, Union
 
@@ -417,7 +416,8 @@ class AuthorizationRequest:
         """
         claims = {key: val for key, val in self.args.items() if val is not None}
         if lifetime:
-            claims["exp"] = int(time.time() + lifetime)
+            claims["iat"] = Jwt.timestamp()
+            claims["exp"] = Jwt.timestamp(lifetime)
         return Jwt.sign_and_encrypt(
             claims=claims,
             sign_jwk=sign_jwk,
@@ -543,36 +543,20 @@ class AuthorizationRequest:
         raise exception_class(error, error_description, error_uri)
 
     @property
-    def uri(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
-
-        You may also use `repr()` or `str()` on an AuthorizationRequest to obtain the same uri.
-
-        Authorization requests typically look like:
-        ```
-        https://myas.local/authorize?client_id=<client_id>&response_type=code&scope=openid&redirect_uri=<redirect_uri>
-        ```
-        Unless they have been signed, and optionally encrypted, into a `request` object, then they look like:
-        ```
-        https://myas.local/authorize?client_id=<client_id>&request=<request>
-        ```
-
-        Returns:
-            the Authorization Request URI.
-        """
-        return str(
-            furl(
-                self.authorization_endpoint,
-                args={key: value for key, value in self.args.items() if value is not None},
-            ).url
+    def furl(self) -> furl:
+        """Return the Authorization Request URI, as a `furl`."""
+        return furl(
+            self.authorization_endpoint,
+            args={key: value for key, value in self.args.items() if value is not None},
         )
 
-    def __repr__(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
+    @property
+    def uri(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
+        return str(self.furl.url)
 
-        Returns:
-            the Authorization Request URI.
-        """
+    def __repr__(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
         return self.uri
 
     def __eq__(self, other: Any) -> bool:
@@ -618,18 +602,17 @@ class RequestParameterAuthorizationRequest:
         self.expires_at = expires_at
 
     @property
-    def uri(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
-
-        Returns:
-            the Authorization Request URI
-        """
-        return str(
-            furl(
-                self.authorization_endpoint,
-                args={"client_id": self.client_id, "request": self.request},
-            ).url
+    def furl(self) -> furl:
+        """Return the Authorization Request URI, as a `furl` instance."""
+        return furl(
+            self.authorization_endpoint,
+            args={"client_id": self.client_id, "request": self.request},
         )
+
+    @property
+    def uri(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
+        return str(self.furl.url)
 
     def __repr__(self) -> str:
         """Return the Authorization Request URI, as a `str`.
@@ -664,25 +647,20 @@ class RequestUriParameterAuthorizationRequest:
         self.expires_at = expires_at
 
     @property
-    def uri(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
-
-        Returns:
-            the Authorization Request URI
-        """
-        return str(
-            furl(
-                self.authorization_endpoint,
-                args={"client_id": self.client_id, "request_uri": self.request_uri},
-            ).url
+    def furl(self) -> furl:
+        """Return the Authorization Request URI, as a `furl` instance."""
+        return furl(
+            self.authorization_endpoint,
+            args={"client_id": self.client_id, "request_uri": self.request_uri},
         )
 
-    def __repr__(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
+    @property
+    def uri(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
+        return str(self.furl.url)
 
-        Returns:
-             the Authorization Request URI
-        """
+    def __repr__(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
         return self.uri
 
 
