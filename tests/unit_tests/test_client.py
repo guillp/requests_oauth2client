@@ -870,7 +870,7 @@ def test_revoke_token_with_bearer_token_as_param(
     refresh_token: str,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
-    """if a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh token
+    """If a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh token
     from the BearerToken."""
     client = OAuth2Client(
         token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method
