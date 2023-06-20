@@ -296,12 +296,9 @@ class OAuth2Client:
         error_uri = error_json.get("error_uri")
         if error:
             exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
-            raise exception_class(error, error_description, error_uri)
+            raise exception_class(response, error, error_description, error_uri)
         else:
-            raise InvalidTokenResponse(
-                "token endpoint returned an HTTP error without error message",
-                error_json,
-            )
+            raise InvalidTokenResponse(response)
 
     def client_credentials(
         self,
@@ -684,12 +681,9 @@ class OAuth2Client:
         error_uri = error_json.get("error_uri")
         if error:
             exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
-            raise exception_class(error, error_description, error_uri)
+            raise exception_class(response, error, error_description, error_uri)
         else:
-            raise InvalidPushedAuthorizationResponse(
-                "pushed authorization endpoint returned an HTTP error without error message",
-                error_json,
-            )
+            raise InvalidPushedAuthorizationResponse(response)
 
     def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
         """Call the UserInfo endpoint.
@@ -1180,12 +1174,9 @@ class OAuth2Client:
         error_uri = error_json.get("error_uri")
         if error:
             exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
-            raise exception_class(error, error_description, error_uri)
+            raise exception_class(response, error, error_description, error_uri)
 
-        raise InvalidDeviceAuthorizationResponse(
-            "device authorization endpoint returned an HTTP error without an error message",
-            error_json,
-        )
+        raise InvalidDeviceAuthorizationResponse(response)
 
     def update_authorization_server_public_keys(self) -> JwkSet:
         """Update the cached AS public keys by retrieving them from its `jwks_uri`.

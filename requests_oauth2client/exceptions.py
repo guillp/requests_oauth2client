@@ -1,28 +1,50 @@
 """This module contains all exception classes from `requests_oauth2client`."""
+from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from jwskate import InvalidJwt
 
+if TYPE_CHECKING:
+    import requests
+
 
 class OAuth2Error(Exception):
-    """Base class for Exceptions raised by requests_oauth2client."""
+    """Base class for Exceptions raised when a backend endpoint returns an error.
+
+    Args:
+        response: the HTTP response containing the error
+    """
+
+    def __init__(self, response: requests.Response):
+        self.response = response
+
+    @property
+    def request(self) -> requests.PreparedRequest:
+        """The request leading to the error."""
+        return self.response.request
 
 
 class EndpointError(OAuth2Error):
-    """Base class for exceptions raised from the token endpoint errors.
+    """Base class for exceptions raised from backend endpoint errors.
 
-    An `EndpointError` contains the error message, description and uri that are returned by the AS in the OAuth 2.0 standardised way.
+    This contains the error message, description and uri that are returned by the AS in the OAuth 2.0 standardised way.
 
     Args:
-        error: the `error` identifier as returned by the AS
-        description: the `error_description` as returned by the AS
-        uri: the `error_uri` as returned by the AS
+        response: the raw requests.PreparedResponse containing the error.
+        error: the `error` identifier as returned by the AS.
+        description: the `error_description` as returned by the AS.
+        uri: the `error_uri` as returned by the AS.
     """
 
     def __init__(
-        self, error: str, description: Optional[str] = None, uri: Optional[str] = None
+        self,
+        response: requests.Response,
+        error: str,
+        description: Optional[str] = None,
+        uri: Optional[str] = None,
     ):
+        super().__init__(response)
         self.error = error
         self.description = description
         self.uri = uri
@@ -32,7 +54,7 @@ class InvalidTokenResponse(OAuth2Error):
     """Raised when the Token Endpoint returns a non-standard response."""
 
 
-class ExpiredAccessToken(OAuth2Error):
+class ExpiredAccessToken(RuntimeError):
     """Raised when an expired access token is used."""
 
 
@@ -89,7 +111,7 @@ class IntrospectionError(EndpointError):
 
 
 class UnknownIntrospectionError(OAuth2Error):
-    """Raised when the Introspection Endpoint retuns a non-standard error."""
+    """Raised when the Introspection Endpoint returns a non-standard error."""
 
 
 class DeviceAuthorizationError(EndpointError):
@@ -155,7 +177,7 @@ class ConsentRequired(InteractionRequired):
     """Raised when the Authorization Endpoint returns `error = consent_required`."""
 
 
-class InvalidAuthResponse(OAuth2Error):
+class InvalidAuthResponse(Exception):
     """Raised when the Authorization Endpoint returns an invalid response."""
 
 
