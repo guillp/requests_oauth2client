@@ -324,7 +324,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(InvalidIdToken, match="missing a Key ID"):
+    with pytest.raises(InvalidIdToken, match="does not contain a Key ID"):
         sig_jwk_no_kid = Jwk.generate(alg=SignatureAlgs.RS256)
         BearerToken(
             access_token="an_access_token",

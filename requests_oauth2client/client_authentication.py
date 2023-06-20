@@ -207,7 +207,7 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
         self.client_secret = str(client_secret)
 
     def client_assertion(self, audience: str) -> str:
-        """Generate a  symmetrically signed Client Assertion.
+        """Generate a symmetrically signed Client Assertion.
 
         Assertion is signed with the `client_secret` as key and the `alg` passed at init time.
 

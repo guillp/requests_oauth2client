@@ -145,6 +145,19 @@ class BearerToken:
         else:
             id_token = raw_id_token
 
+        if id_token.alg is None and client.id_token_signed_response_alg is None:
+            raise InvalidIdToken(
+                "ID Token does not contain an `alg` parameter to specify the signature algorithm, "
+                "and no algorithm has been configured for the client (using param id_token_signed_response_alg`."
+            )
+        elif (
+            client.id_token_signed_response_alg is not None
+            and id_token.alg != client.id_token_signed_response_alg
+        ):
+            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
+
+        id_token_alg = id_token.alg or client.id_token_signed_response_alg
+
         if azr.issuer:
             if id_token.issuer != azr.issuer:
                 raise MismatchingIssuer(id_token.issuer, azr.issuer, self)
@@ -166,37 +179,37 @@ class BearerToken:
             if id_token.acr not in azr.acr_values:
                 raise MismatchingAcr(id_token.acr, azr.acr_values)
 
-        if (
-            client.id_token_signed_response_alg is not None
-            and id_token.alg != client.id_token_signed_response_alg
-        ):
-            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
-
         hash_function: Callable[[str], str]  # method used to calculate at_hash, s_hash, etc.
 
-        if id_token.alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
+        if id_token_alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
             if not client.client_secret:
                 raise InvalidIdToken(
                     "ID Token is symmetrically signed but this client does not have a Client Secret."
                 )
             id_token.verify_signature(jwskate.SymmetricJwk.from_bytes(client.client_secret))
-        elif id_token.alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
+        elif id_token_alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             if not client.authorization_server_jwks:
                 raise InvalidIdToken(
                     "ID Token is asymmetrically signed but the Authorization Server JWKS is not available."
                 )
+
+            if id_token.get_header("kid") is None:
+                raise InvalidIdToken(
+                    "ID Token does not contain a Key ID (kid) to specify the asymmetric key to use for signature verification."
+                )
             try:
                 verification_jwk = client.authorization_server_jwks.get_jwk_by_kid(id_token.kid)
-            except AttributeError:
-                raise InvalidIdToken(
-                    "ID Token is asymmetrically signed but is missing a Key ID (kid)."
-                )
             except KeyError:
                 raise InvalidIdToken(
                     "ID Token is asymmetrically signed but its Key ID is not part of the Authorization Server JWKS."
                 )
 
-            id_token.verify_signature(verification_jwk)
+            if id_token_alg not in verification_jwk.supported_signing_algorithms():
+                raise InvalidIdToken(
+                    "ID Token is asymmetrically signed but its algorithm is not supported by the verification key."
+                )
+
+            id_token.verify_signature(verification_jwk, alg=id_token_alg)
 
             alg_class = jwskate.select_alg_class(
                 verification_jwk.SIGNATURE_ALGORITHMS, jwk_alg=verification_jwk.alg
