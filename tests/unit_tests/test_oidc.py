@@ -52,7 +52,7 @@ ID_TOKEN = (
     ),
 )
 def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
-    signing_key = jwskate.Jwk.generate_for_alg(**kwargs).with_kid_thumbprint()
+    signing_key = jwskate.Jwk.generate(**kwargs).with_kid_thumbprint()
     client_id = "s6BhdRkqt3"
     access_token = (
         "YmJiZTAwYmYtMzgyOC00NzhkLTkyOTItNjJjNDM3MGYzOWIy9sFhvH8K_x8UIHj1osisS57f5DduL"
@@ -105,8 +105,8 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code"),
         )
 
-    sig_jwk = Jwk.generate_for_alg(SignatureAlgs.RS256).with_kid_thumbprint()
-    enc_jwk = Jwk.generate_for_alg(KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
+    sig_jwk = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
+    enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
 
     issuer = "http://issuer.local"
     client_id = "my_client_id"
@@ -271,7 +271,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
                     "exp": Jwt.timestamp(60),
                     "azp": client_id,
                 },
-                Jwk.generate_for_alg(SignatureAlgs.HS256),
+                Jwk.generate(alg=SignatureAlgs.HS256),
             ).value,
         ).validate_id_token(
             client=OAuth2Client(
@@ -293,7 +293,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
                     "exp": Jwt.timestamp(60),
                     "azp": client_id,
                 },
-                Jwk.generate_for_alg(SignatureAlgs.HS256),
+                Jwk.generate(alg=SignatureAlgs.HS256),
             ).value,
         ).validate_id_token(
             client=OAuth2Client(
@@ -325,7 +325,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         )
 
     with pytest.raises(InvalidIdToken, match="missing a Key ID"):
-        sig_jwk_no_kid = Jwk.generate_for_alg(SignatureAlgs.RS256)
+        sig_jwk_no_kid = Jwk.generate(alg=SignatureAlgs.RS256)
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -366,7 +366,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             client=OAuth2Client(
                 token_endpoint,
                 client_id=client_id,
-                authorization_server_jwks=Jwk.generate_for_alg(SignatureAlgs.RS256)
+                authorization_server_jwks=Jwk.generate(alg=SignatureAlgs.RS256)
                 .with_kid_thumbprint()
                 .public_jwk()
                 .as_jwks(),
