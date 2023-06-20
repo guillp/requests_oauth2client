@@ -152,6 +152,7 @@ class AuthorizationResponse:
         state: Optional[str] = None,
         nonce: Optional[str] = None,
         acr_values: Optional[Iterable[str]] = None,
+        max_age: Optional[int] = None,
         **kwargs: str,
     ):
         self.code = code
@@ -160,6 +161,7 @@ class AuthorizationResponse:
         self.state = state
         self.nonce = nonce
         self.acr_values = list(acr_values) if acr_values is not None else None
+        self.max_age = max_age
         self.others = kwargs
 
     def __getattr__(self, item: str) -> Optional[str]:
@@ -238,6 +240,7 @@ class AuthorizationRequest:
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
         acr_values: Union[str, Iterable[str], None] = None,
+        max_age: Union[int, None] = None,
         issuer: Optional[str] = None,
         authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
@@ -283,6 +286,12 @@ class AuthorizationRequest:
                 code_verifier = PkceUtils.generate_code_verifier()
             code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
 
+        if max_age is not None:
+            if max_age < 0:
+                raise ValueError(
+                    "The `max_age` parameter is a number of seconds and cannot be negative."
+                )
+
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
         self.redirect_uri = redirect_uri
@@ -295,6 +304,7 @@ class AuthorizationRequest:
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
         self.acr_values = acr_values
+        self.max_age = max_age
         self.authorization_response_iss_parameter_supported = (
             authorization_response_iss_parameter_supported
         )
@@ -310,6 +320,7 @@ class AuthorizationRequest:
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
             acr_values=" ".join(acr_values) if acr_values is not None else None,
+            max_age=max_age,
             **kwargs,
         )
 
@@ -335,6 +346,7 @@ class AuthorizationRequest:
             "issuer": self.issuer,
             "authorization_response_iss_parameter_supported": self.authorization_response_iss_parameter_supported,
             "acr_values": self.acr_values,
+            "max_age": self.max_age,
             **self.kwargs,
         }
 
@@ -520,6 +532,9 @@ class AuthorizationRequest:
         return AuthorizationResponse(
             code_verifier=self.code_verifier,
             redirect_uri=self.redirect_uri,
+            nonce=self.nonce,
+            acr_values=self.acr_values,
+            max_age=self.max_age,
             **response_url.args,
         )
 

@@ -248,6 +248,19 @@ class BearerToken:
                     f"Mismatching 's_hash' value (expected '{expected_s_hash}', got '{s_hash}'"
                 )
 
+        if azr.max_age is not None:
+            auth_time = IdToken.timestamp_to_datetime(id_token.get_claim("auth_time"))
+            if auth_time is None:
+                raise InvalidIdToken(
+                    "A `max_age` parameter was included in the authorization request, "
+                    "but the ID Token does not contain an `auth_time` claim."
+                )
+            auth_age = datetime.now() - auth_time
+            if auth_age.seconds > azr.max_age + 60:
+                raise InvalidIdToken(
+                    f"The `auth_time` parameter from the ID Token indicate that the last Authentication Time was at {auth_time} ({auth_age.seconds} sec ago, but the authorization request `max_age` parameter specified that it must be maximum `{azr.max_age} sec ago."
+                )
+
         return id_token
 
     def __str__(self) -> str:
