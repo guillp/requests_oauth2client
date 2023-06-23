@@ -506,10 +506,11 @@ class AuthorizationRequest:
 
         # validate 'iss' according to RFC9207
         received_issuer = response_url.args.get("iss")
-        if self.authorization_response_iss_parameter_supported and received_issuer is None:
-            raise MissingIssuer()
-        if self.issuer and received_issuer != self.issuer:
-            raise MismatchingIssuer(self.issuer, received_issuer)
+        if self.authorization_response_iss_parameter_supported or received_issuer:
+            if received_issuer is None:
+                raise MissingIssuer()
+            if self.issuer and received_issuer != self.issuer:
+                raise MismatchingIssuer(self.issuer, received_issuer)
 
         # validate state
         requested_state = self.state

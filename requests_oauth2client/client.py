@@ -144,6 +144,12 @@ class OAuth2Client:
         session: Optional[requests.Session] = None,
         **extra_metadata: Any,
     ):
+        if authorization_response_iss_parameter_supported and not issuer:
+            raise ValueError(
+                "If the Authorization Server supports Issuer Identification, "
+                "as specified by `authorization_response_iss_parameter_supported=True`, "
+                "then you must specify the expected `issuer` value with parameter `issuer`."
+            )
         self.token_endpoint = str(token_endpoint)
         self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
         self.introspection_endpoint = (
