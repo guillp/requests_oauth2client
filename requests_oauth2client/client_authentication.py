@@ -232,7 +232,7 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
-            jwk=jwk,
+            key=jwk,
             alg=self.alg,
         )
         return str(jwt)
@@ -306,7 +306,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
                 "exp": exp,
                 "jti": jti,
             },
-            jwk=self.private_jwk,
+            key=self.private_jwk,
             alg=self.alg,
         )
         return str(jwt)

@@ -133,9 +133,9 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign_and_encrypt(
-                claims,
-                sign_jwk=sig_jwk,
-                enc_jwk=enc_jwk.public_jwk(),
+                claims=claims,
+                sign_key=sig_jwk,
+                enc_key=enc_jwk.public_jwk(),
                 enc=EncryptionAlgs.A256GCM,
             ).value,
         ).validate_id_token(
@@ -148,8 +148,8 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             access_token="an_access_token",
             id_token=Jwt.sign_and_encrypt(
                 claims,
-                sign_jwk=sig_jwk,
-                enc_jwk=enc_jwk.public_jwk(),
+                sign_key=sig_jwk,
+                enc_key=enc_jwk.public_jwk(),
                 enc=EncryptionAlgs.A256GCM,
             ).value,
         ).validate_id_token(
@@ -462,6 +462,58 @@ def test_invalid_id_token(token_endpoint: str) -> None:
                 token_endpoint,
                 client_id=client_id,
                 authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
+        )
+
+    with pytest.raises(InvalidIdToken, match="ID Token does not contain an `alg` parameter"):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign_arbitrary(
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                    "s_hash": "foo",
+                },
+                headers={"kid": sig_jwk.kid},
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg=None,
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
+        )
+
+    with pytest.raises(
+        InvalidIdToken, match="algorithm is not supported by the verification key"
+    ):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign_arbitrary(
+                headers={"alg": "ES512", "kid": sig_jwk.kid},
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                    "s_hash": "foo",
+                },
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg="ES512",
             ),
             azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
         )

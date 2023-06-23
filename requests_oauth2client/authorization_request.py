@@ -372,7 +372,7 @@ class AuthorizationRequest:
             claims["exp"] = Jwt.timestamp(lifetime)
         return Jwt.sign(
             claims,
-            jwk=jwk,
+            key=jwk,
             alg=alg,
         )
 
@@ -432,9 +432,9 @@ class AuthorizationRequest:
             claims["exp"] = Jwt.timestamp(lifetime)
         return Jwt.sign_and_encrypt(
             claims=claims,
-            sign_jwk=sign_jwk,
+            sign_key=sign_jwk,
             sign_alg=sign_alg,
-            enc_jwk=enc_jwk,
+            enc_key=enc_jwk,
             enc_alg=enc_alg,
             enc=enc,
         )

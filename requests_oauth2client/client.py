@@ -1066,7 +1066,7 @@ class OAuth2Client:
         )
 
         if private_jwk is not None:
-            data = {"request": str(Jwt.sign(data, jwk=private_jwk, alg=alg))}
+            data = {"request": str(Jwt.sign(data, key=private_jwk, alg=alg))}
 
         response = self.session.post(
             backchannel_authentication_endpoint,

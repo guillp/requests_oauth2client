@@ -145,7 +145,7 @@ class BearerToken:
         else:
             id_token = raw_id_token
 
-        if id_token.alg is None and client.id_token_signed_response_alg is None:
+        if id_token.get_header("alg") is None and client.id_token_signed_response_alg is None:
             raise InvalidIdToken(
                 "ID Token does not contain an `alg` parameter to specify the signature algorithm, "
                 "and no algorithm has been configured for the client (using param id_token_signed_response_alg`."

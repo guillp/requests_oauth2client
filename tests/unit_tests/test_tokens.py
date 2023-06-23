@@ -113,7 +113,7 @@ def test_empty_jwt() -> None:
         "e": "AQAB",
     }
 
-    assert jwt.verify_signature(jwk=public_jwk)
+    assert jwt.verify_signature(public_jwk)
     assert jwt.expires_at is None
     assert jwt.issued_at is None
     assert jwt.not_before is None
@@ -121,10 +121,10 @@ def test_empty_jwt() -> None:
     assert jwt.alg == "RS256"
 
     with pytest.raises(InvalidClaim):
-        jwt.validate(jwk=public_jwk, issuer="foo")
+        jwt.validate(key=public_jwk, issuer="foo")
 
     with pytest.raises(InvalidClaim):
-        jwt.validate(jwk=public_jwk, audience="foo")
+        jwt.validate(key=public_jwk, audience="foo")
 
 
 def test_jwt_iat_exp_nbf() -> None:
