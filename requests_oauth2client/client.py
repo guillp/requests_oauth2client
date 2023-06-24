@@ -296,15 +296,16 @@ class OAuth2Client:
         Returns:
             nothing, and raises an exception instead. But a subclass may return a [`BearerToken`][requests_oauth2client.tokens.BearerToken] to implement a default behaviour if needed.
         """
-        error_json = response.json()
-        error = error_json.get("error")
-        error_description = error_json.get("error_description")
-        error_uri = error_json.get("error_uri")
-        if error:
+        try:
+            data = response.json()
+            error = data["error"]
+            error_description = data.get("error_description")
+            error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
-            raise exception_class(response, error, error_description, error_uri)
-        else:
-            raise InvalidTokenResponse(response)
+            exception = exception_class(response, error, error_description, error_uri)
+        except Exception as exc:
+            raise InvalidTokenResponse(response) from exc
+        raise exception
 
     def client_credentials(
         self,
@@ -681,15 +682,16 @@ class OAuth2Client:
             InvalidPushedAuthorizationResponse: if the returned response is not following the specifications
             UnknownTokenEndpointError: for unknown/unhandled errors
         """
-        error_json = response.json()
-        error = error_json.get("error")
-        error_description = error_json.get("error_description")
-        error_uri = error_json.get("error_uri")
-        if error:
+        try:
+            data = response.json()
+            error = data["error"]
+            error_description = data.get("error_description")
+            error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
-            raise exception_class(response, error, error_description, error_uri)
-        else:
-            raise InvalidPushedAuthorizationResponse(response)
+            exception = exception_class(response, error, error_description, error_uri)
+        except Exception as exc:
+            raise InvalidPushedAuthorizationResponse(response) from exc
+        raise exception
 
     def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
         """Call the UserInfo endpoint.
@@ -890,15 +892,14 @@ class OAuth2Client:
         """
         try:
             data = response.json()
-        except ValueError:
-            return False
-        error = data.get("error")
-        error_description = data.get("error_description")
-        error_uri = data.get("error_uri")
-        if error is not None:
+            error = data["error"]
+            error_description = data.get("error_description")
+            error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, RevocationError)
-            raise exception_class(error, error_description, error_uri)
-        return False
+            exception = exception_class(error, error_description, error_uri)
+        except Exception:
+            return False
+        raise exception
 
     def introspect_token(
         self,
@@ -971,18 +972,14 @@ class OAuth2Client:
         """
         try:
             data = response.json()
-        except ValueError:
-            try:
-                response.raise_for_status()
-            except Exception as exc:
-                raise UnknownIntrospectionError(response) from exc
-        error = data.get("error")
-        error_description = data.get("error_description")
-        error_uri = data.get("error_uri")
-        if error is not None:
+            error = data["error"]
+            error_description = data.get("error_description")
+            error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, IntrospectionError)
-            raise exception_class(error, error_description, error_uri)
-        raise UnknownIntrospectionError(response)
+            exception = exception_class(error, error_description, error_uri)
+        except Exception as exc:
+            raise UnknownIntrospectionError(response) from exc
+        raise exception
 
     def backchannel_authentication_request(
         self,
@@ -1114,18 +1111,15 @@ class OAuth2Client:
             usually raises an exception. But a subclass can return a default response instead.
         """
         try:
-            error_json = response.json()
-        except ValueError as exc:
-            raise InvalidBackChannelAuthenticationResponse(response) from exc
-
-        error = error_json.get("error")
-        error_description = error_json.get("error_description")
-        error_uri = error_json.get("error_uri")
-        if error:
+            data = response.json()
+            error = data["error"]
+            error_description = data.get("error_description")
+            error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, BackChannelAuthenticationError)
-            raise exception_class(error, error_description, error_uri)
-
-        raise InvalidBackChannelAuthenticationResponse(response)
+            exception = exception_class(error, error_description, error_uri)
+        except Exception as exc:
+            raise InvalidBackChannelAuthenticationResponse(response) from exc
+        raise exception
 
     def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
         """Send a Device Authorization Request.
@@ -1174,15 +1168,16 @@ class OAuth2Client:
         Returns:
             usually raises an Exception. But a subclass may return a default response instead.
         """
-        error_json = response.json()
-        error = error_json.get("error")
-        error_description = error_json.get("error_description")
-        error_uri = error_json.get("error_uri")
-        if error:
+        try:
+            data = response.json()
+            error = data["error"]
+            error_description = data.get("error_description")
+            error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
-            raise exception_class(response, error, error_description, error_uri)
-
-        raise InvalidDeviceAuthorizationResponse(response)
+            exception = exception_class(response, error, error_description, error_uri)
+        except Exception as exc:
+            raise InvalidDeviceAuthorizationResponse(response) from exc
+        raise exception
 
     def update_authorization_server_public_keys(self) -> JwkSet:
         """Update the cached AS public keys by retrieving them from its `jwks_uri`.
