@@ -15,6 +15,7 @@ from requests_oauth2client import (
     ClientSecretPost,
     DeviceAuthorizationResponse,
     IdToken,
+    InvalidPushedAuthorizationResponse,
     InvalidTokenResponse,
     OAuth2Client,
     PrivateKeyJwt,
@@ -645,7 +646,7 @@ def test_invalid_token_response_200(
     requests_mock.post(
         token_endpoint,
         status_code=200,
-        json={"error_description": "this shouldn't happen"},
+        json={"foo": "this shouldn't happen"},
     )
     with pytest.raises(InvalidTokenResponse):
         client.authorization_code("mycode")
@@ -1281,6 +1282,11 @@ def test_pushed_authorization_request_error(
     with pytest.raises(ServerError):
         oauth2client.pushed_authorization_request(authorization_request)
 
+    requests_mock.post(pushed_authorization_request_endpoint, text="foobar", status_code=500)
+
+    with pytest.raises(InvalidPushedAuthorizationResponse):
+        oauth2client.pushed_authorization_request(authorization_request)
+
 
 def test_jwt_bearer_grant(
     requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str
@@ -1363,3 +1369,13 @@ def test_client_jwks() -> None:
     assert not jwks.is_private
     assert private_key.public_jwk() in jwks.jwks
     assert id_token_decryption_key.public_jwk() in jwks.jwks
+
+
+def test_issuer_identification_missing_issuer() -> None:
+    with pytest.raises(ValueError, match="issuer"):
+        OAuth2Client(
+            authorization_endpoint="https://as.local/authorize",
+            token_endpoint="https://as.local/token",
+            client_id="my_client_id",
+            authorization_response_iss_parameter_supported=True,
+        )
