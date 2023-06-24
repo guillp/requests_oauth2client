@@ -1,7 +1,7 @@
-"""This modules contain classes that represent Tokens used in OAuth2.0 / OIDC."""
+"""This module contain classes that represent Tokens used in OAuth2.0 / OIDC."""
 
 import pprint
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 
 import jwskate
@@ -31,6 +31,14 @@ class IdToken(jwskate.SignedJwt):
     An ID Token is actually a Signed JWT. If the ID Token is encrypted, it must be decoded
     beforehand.
     """
+
+    @property
+    def auth_time(self) -> datetime:
+        """The last user authentication time."""
+        auth_time = self.claims.get("auth_time")
+        if auth_time:
+            return self.timestamp_to_datetime(auth_time)
+        raise AttributeError("This ID Token doesn't have an `auth_time` attribute.")
 
 
 class BearerToken:
@@ -186,7 +194,9 @@ class BearerToken:
                 raise InvalidIdToken(
                     "ID Token is symmetrically signed but this client does not have a Client Secret."
                 )
-            id_token.verify_signature(jwskate.SymmetricJwk.from_bytes(client.client_secret))
+            id_token.verify_signature(
+                jwskate.SymmetricJwk.from_bytes(client.client_secret), alg=id_token_alg
+            )
         elif id_token_alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             if not client.authorization_server_jwks:
                 raise InvalidIdToken(
@@ -262,16 +272,20 @@ class BearerToken:
                 )
 
         if azr.max_age is not None:
-            auth_time = IdToken.timestamp_to_datetime(id_token.get_claim("auth_time"))
-            if auth_time is None:
+            try:
+                auth_time = id_token.auth_time
+            except AttributeError:
                 raise InvalidIdToken(
                     "A `max_age` parameter was included in the authorization request, "
                     "but the ID Token does not contain an `auth_time` claim."
                 )
-            auth_age = datetime.now() - auth_time
+            auth_age = datetime.now(tz=timezone.utc) - auth_time
             if auth_age.seconds > azr.max_age + 60:
                 raise InvalidIdToken(
-                    f"The `auth_time` parameter from the ID Token indicate that the last Authentication Time was at {auth_time} ({auth_age.seconds} sec ago, but the authorization request `max_age` parameter specified that it must be maximum `{azr.max_age} sec ago."
+                    "User authentication happened too long ago. "
+                    "The `auth_time` parameter from the ID Token indicate that the last Authentication Time "
+                    f"was at {auth_time} ({auth_age.seconds} sec ago), but the authorization request `max_age` "
+                    f"parameter specified that it must be maximum {azr.max_age} sec ago."
                 )
 
         return id_token

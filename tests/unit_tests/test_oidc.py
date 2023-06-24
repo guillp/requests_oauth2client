@@ -69,6 +69,7 @@ def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
             "iat": 1311280970,
             # "c_hash": BinaPy(code).to("sha256")[:16].to("b64u").ascii(),
             "at_hash": at_hash,
+            "auth_time": 1311280970,
         },
         signing_key,
     )
@@ -83,10 +84,7 @@ def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
             authorization_server_jwks=signing_key.public_jwk().as_jwks(),
             id_token_signed_response_alg=kwargs["alg"],
         ),
-        azr=AuthorizationResponse(
-            code=code,
-            nonce=nonce,
-        ),
+        azr=AuthorizationResponse(code=code, nonce=nonce, max_age=0),
     )
 
 
@@ -115,6 +113,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         "sub": "mysub",
         "iat": Jwt.timestamp(),
         "exp": Jwt.timestamp(60),
+        "auth_time": Jwt.timestamp(),
     }
 
     with pytest.raises(InvalidIdToken, match="should be encrypted"):
@@ -491,6 +490,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
         )
 
+    # ID Token signed with alg not supported by verification key
     with pytest.raises(
         InvalidIdToken, match="algorithm is not supported by the verification key"
     ):
@@ -517,3 +517,84 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             ),
             azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
         )
+
+    # auth_time too old for "max_age" parameter
+    with pytest.raises(InvalidIdToken, match="auth_time"):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign(
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                    "auth_time": Jwt.timestamp(-120),
+                },
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg="RS256",
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state", max_age=0),
+        )
+
+    # missing auth_time in ID Token
+    with pytest.raises(InvalidIdToken, match="auth_time"):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign(
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                },
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg="RS256",
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state", max_age=0),
+        )
+
+
+def test_id_token_signed_with_client_secret(token_endpoint: str) -> None:
+    client_id = "my_client_id"
+    client_secret = "Th1sIs5eCr3t"
+
+    issuer = "http://issuer.local"
+    claims = {
+        "iss": issuer,
+        "sub": "mysub",
+        "iat": Jwt.timestamp(),
+        "exp": Jwt.timestamp(60),
+        "auth_time": Jwt.timestamp(),
+        "azr": client_id,
+    }
+
+    alg = "HS256"
+
+    BearerToken(
+        access_token="access_token",
+        id_token=Jwt.sign(
+            claims, key=Jwk.from_cryptography_key(client_secret.encode()), alg=alg
+        ).value,
+    ).validate_id_token(
+        client=OAuth2Client(
+            token_endpoint,
+            client_id=client_id,
+            client_secret=client_secret,
+            id_token_signed_response_alg=alg,
+        ),
+        azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
+    )

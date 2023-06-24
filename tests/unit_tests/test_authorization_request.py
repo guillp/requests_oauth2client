@@ -217,3 +217,14 @@ def test_issuer_parameter() -> None:
             authorization_response_iss_parameter_supported=True,
             scope="openid",
         )
+
+
+def test_invalid_max_age() -> None:
+    with pytest.raises(ValueError, match="cannot be negative"):
+        AuthorizationRequest(
+            "https://as.local/authorize",
+            client_id="foo",
+            redirect_uri="http://localhost/local",
+            scope="openid",
+            max_age=-1,
+        )
