@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import re
 import secrets
-import time
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Type, Union
 
@@ -20,6 +19,7 @@ from .exceptions import (
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
+    MissingIssuer,
     SessionSelectionRequired,
 )
 from .utils import accepts_expires_in
@@ -152,6 +152,7 @@ class AuthorizationResponse:
         state: Optional[str] = None,
         nonce: Optional[str] = None,
         acr_values: Optional[Iterable[str]] = None,
+        max_age: Optional[int] = None,
         **kwargs: str,
     ):
         self.code = code
@@ -160,6 +161,7 @@ class AuthorizationResponse:
         self.state = state
         self.nonce = nonce
         self.acr_values = list(acr_values) if acr_values is not None else None
+        self.max_age = max_age
         self.others = kwargs
 
     def __getattr__(self, item: str) -> Optional[str]:
@@ -230,17 +232,24 @@ class AuthorizationRequest:
         self,
         authorization_endpoint: str,
         client_id: str,
-        redirect_uri: Optional[str],
-        scope: Union[None, str, Iterable[str]],
+        redirect_uri: Optional[str] = None,
+        scope: Union[None, str, Iterable[str]] = "openid",
         response_type: str = "code",
         state: Union[str, Literal[True], None] = True,
         nonce: Union[str, Literal[True], None] = True,
         code_verifier: Optional[str] = None,
         code_challenge_method: Optional[str] = "S256",
         acr_values: Union[str, Iterable[str], None] = None,
+        max_age: Union[int, None] = None,
         issuer: Optional[str] = None,
+        authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
     ) -> None:
+        if authorization_response_iss_parameter_supported and not issuer:
+            raise ValueError(
+                "When 'authorization_response_iss_parameter_supported' is True, you must provide the expected 'issuer' as parameter."
+            )
+
         if state is True:
             state = self.generate_state()
 
@@ -277,6 +286,12 @@ class AuthorizationRequest:
                 code_verifier = PkceUtils.generate_code_verifier()
             code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
 
+        if max_age is not None:
+            if max_age < 0:
+                raise ValueError(
+                    "The `max_age` parameter is a number of seconds and cannot be negative."
+                )
+
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
         self.redirect_uri = redirect_uri
@@ -289,6 +304,10 @@ class AuthorizationRequest:
         self.code_challenge = code_challenge
         self.code_challenge_method = code_challenge_method
         self.acr_values = acr_values
+        self.max_age = max_age
+        self.authorization_response_iss_parameter_supported = (
+            authorization_response_iss_parameter_supported
+        )
         self.kwargs = kwargs
 
         self.args = dict(
@@ -301,6 +320,7 @@ class AuthorizationRequest:
             code_challenge=code_challenge,
             code_challenge_method=code_challenge_method,
             acr_values=" ".join(acr_values) if acr_values is not None else None,
+            max_age=max_age,
             **kwargs,
         )
 
@@ -324,7 +344,9 @@ class AuthorizationRequest:
             "code_verifier": self.code_verifier,
             "code_challenge_method": self.code_challenge_method,
             "issuer": self.issuer,
+            "authorization_response_iss_parameter_supported": self.authorization_response_iss_parameter_supported,
             "acr_values": self.acr_values,
+            "max_age": self.max_age,
             **self.kwargs,
         }
 
@@ -350,7 +372,7 @@ class AuthorizationRequest:
             claims["exp"] = Jwt.timestamp(lifetime)
         return Jwt.sign(
             claims,
-            jwk=jwk,
+            key=jwk,
             alg=alg,
         )
 
@@ -406,12 +428,13 @@ class AuthorizationRequest:
         """
         claims = {key: val for key, val in self.args.items() if val is not None}
         if lifetime:
-            claims["exp"] = int(time.time() + lifetime)
+            claims["iat"] = Jwt.timestamp()
+            claims["exp"] = Jwt.timestamp(lifetime)
         return Jwt.sign_and_encrypt(
             claims=claims,
-            sign_jwk=sign_jwk,
+            sign_key=sign_jwk,
             sign_alg=sign_alg,
-            enc_jwk=enc_jwk,
+            enc_key=enc_jwk,
             enc_alg=enc_alg,
             enc=enc,
         )
@@ -454,9 +477,7 @@ class AuthorizationRequest:
             request=str(request_jwt),
         )
 
-    def validate_callback(
-        self, response: str, validate_issuer: bool = True
-    ) -> AuthorizationResponse:
+    def validate_callback(self, response: str) -> AuthorizationResponse:
         """Validate an Authorization Response against this Request.
 
         Validate a given Authorization Response URI against this Authorization
@@ -472,21 +493,26 @@ class AuthorizationRequest:
             the extracted code, if all checks are successful
 
         Raises:
+            MismatchingIssuer: if the 'iss' received in the response doesn't match the expected value.
             MismatchingState: if the response `state` does not match the expected value.
             OAuth2Error: if the response includes an error.
             MissingAuthCode: if the response does not contain a `code`.
+            NotImplementedError: if response_type anything else than 'code'
         """
         try:
             response_url = furl(response)
         except ValueError:
             return self.on_response_error(response)
 
-        # validate 'iss' according to https://www.ietf.org/archive/id/draft-ietf-oauth-iss-auth-resp-05.html
-        if validate_issuer and self.issuer is not None:
-            received_issuer = response_url.args.get("iss")
-            if received_issuer != self.issuer:
+        # validate 'iss' according to RFC9207
+        received_issuer = response_url.args.get("iss")
+        if self.authorization_response_iss_parameter_supported or received_issuer:
+            if received_issuer is None:
+                raise MissingIssuer()
+            if self.issuer and received_issuer != self.issuer:
                 raise MismatchingIssuer(self.issuer, received_issuer)
 
+        # validate state
         requested_state = self.state
         if requested_state:
             received_state = response_url.args.get("state")
@@ -501,10 +527,15 @@ class AuthorizationRequest:
             code: str = response_url.args.get("code")
             if code is None:
                 raise MissingAuthCode()
+        else:
+            raise NotImplementedError()
 
         return AuthorizationResponse(
             code_verifier=self.code_verifier,
             redirect_uri=self.redirect_uri,
+            nonce=self.nonce,
+            acr_values=self.acr_values,
+            max_age=self.max_age,
             **response_url.args,
         )
 
@@ -528,36 +559,20 @@ class AuthorizationRequest:
         raise exception_class(error, error_description, error_uri)
 
     @property
-    def uri(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
-
-        You may also use `repr()` or `str()` on an AuthorizationRequest to obtain the same uri.
-
-        Authorization requests typically look like:
-        ```
-        https://myas.local/authorize?client_id=<client_id>&response_type=code&scope=openid&redirect_uri=<redirect_uri>
-        ```
-        Unless they have been signed, and optionally encrypted, into a `request` object, then they look like:
-        ```
-        https://myas.local/authorize?client_id=<client_id>&request=<request>
-        ```
-
-        Returns:
-            the Authorization Request URI.
-        """
-        return str(
-            furl(
-                self.authorization_endpoint,
-                args={key: value for key, value in self.args.items() if value is not None},
-            ).url
+    def furl(self) -> furl:
+        """Return the Authorization Request URI, as a `furl`."""
+        return furl(
+            self.authorization_endpoint,
+            args={key: value for key, value in self.args.items() if value is not None},
         )
 
-    def __repr__(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
+    @property
+    def uri(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
+        return str(self.furl.url)
 
-        Returns:
-            the Authorization Request URI.
-        """
+    def __repr__(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
         return self.uri
 
     def __eq__(self, other: Any) -> bool:
@@ -603,18 +618,17 @@ class RequestParameterAuthorizationRequest:
         self.expires_at = expires_at
 
     @property
-    def uri(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
-
-        Returns:
-            the Authorization Request URI
-        """
-        return str(
-            furl(
-                self.authorization_endpoint,
-                args={"client_id": self.client_id, "request": self.request},
-            ).url
+    def furl(self) -> furl:
+        """Return the Authorization Request URI, as a `furl` instance."""
+        return furl(
+            self.authorization_endpoint,
+            args={"client_id": self.client_id, "request": self.request},
         )
+
+    @property
+    def uri(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
+        return str(self.furl.url)
 
     def __repr__(self) -> str:
         """Return the Authorization Request URI, as a `str`.
@@ -649,25 +663,20 @@ class RequestUriParameterAuthorizationRequest:
         self.expires_at = expires_at
 
     @property
-    def uri(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
-
-        Returns:
-            the Authorization Request URI
-        """
-        return str(
-            furl(
-                self.authorization_endpoint,
-                args={"client_id": self.client_id, "request_uri": self.request_uri},
-            ).url
+    def furl(self) -> furl:
+        """Return the Authorization Request URI, as a `furl` instance."""
+        return furl(
+            self.authorization_endpoint,
+            args={"client_id": self.client_id, "request_uri": self.request_uri},
         )
 
-    def __repr__(self) -> str:
-        """Return the Authorization Request URI, as a `str`.
+    @property
+    def uri(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
+        return str(self.furl.url)
 
-        Returns:
-             the Authorization Request URI
-        """
+    def __repr__(self) -> str:
+        """Return the Authorization Request URI, as a `str`."""
         return self.uri
 
 

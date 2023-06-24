@@ -18,18 +18,19 @@ jobs:
   # This workflow contains a single job called "build"
   release:
     name: Create Release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     strategy:
       matrix:
-        python-versions: [3.8]
+        python-versions: ['3.10']
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Generate Changelog
+        if: ${{ false }}
         uses: heinrichreimer/github-changelog-generator-action@v2.1.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -41,7 +42,7 @@ jobs:
           addSections: '{"documentation":{"prefix":"**Documentation:**","labels":["documentation"]}}'
           output: CHANGELOG.md
 
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-versions }}
 

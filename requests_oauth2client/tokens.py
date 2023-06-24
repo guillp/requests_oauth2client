@@ -1,7 +1,7 @@
-"""This modules contain classes that represent Tokens used in OAuth2.0 / OIDC."""
+"""This module contain classes that represent Tokens used in OAuth2.0 / OIDC."""
 
 import pprint
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
 
 import jwskate
@@ -32,6 +32,14 @@ class IdToken(jwskate.SignedJwt):
     beforehand.
     """
 
+    @property
+    def auth_time(self) -> datetime:
+        """The last user authentication time."""
+        auth_time = self.claims.get("auth_time")
+        if auth_time:
+            return self.timestamp_to_datetime(auth_time)
+        raise AttributeError("This ID Token doesn't have an `auth_time` attribute.")
+
 
 class BearerToken:
     """Represents a Bearer Token as returned by a Token Endpoint.
@@ -52,6 +60,8 @@ class BearerToken:
         **kwargs: additional parameters as returned by the AS, if any.
     """
 
+    TOKEN_TYPE = "Bearer"
+
     @accepts_expires_in
     def __init__(
         self,
@@ -60,12 +70,12 @@ class BearerToken:
         expires_at: Optional[datetime] = None,
         scope: Optional[str] = None,
         refresh_token: Optional[str] = None,
-        token_type: str = "Bearer",
+        token_type: str = TOKEN_TYPE,
         id_token: Optional[str] = None,
         **kwargs: Any,
     ):
-        if token_type.title() != "Bearer":
-            raise ValueError("This is not a Bearer Token!", token_type)
+        if token_type.title() != self.TOKEN_TYPE.title():
+            raise ValueError(f"Token Type is not '{self.TOKEN_TYPE}'!", token_type)
         self.access_token = access_token
         self.expires_at = expires_at
         self.scope = scope
@@ -143,6 +153,19 @@ class BearerToken:
         else:
             id_token = raw_id_token
 
+        if id_token.get_header("alg") is None and client.id_token_signed_response_alg is None:
+            raise InvalidIdToken(
+                "ID Token does not contain an `alg` parameter to specify the signature algorithm, "
+                "and no algorithm has been configured for the client (using param id_token_signed_response_alg`."
+            )
+        elif (
+            client.id_token_signed_response_alg is not None
+            and id_token.alg != client.id_token_signed_response_alg
+        ):
+            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
+
+        id_token_alg = id_token.alg or client.id_token_signed_response_alg
+
         if azr.issuer:
             if id_token.issuer != azr.issuer:
                 raise MismatchingIssuer(id_token.issuer, azr.issuer, self)
@@ -164,37 +187,39 @@ class BearerToken:
             if id_token.acr not in azr.acr_values:
                 raise MismatchingAcr(id_token.acr, azr.acr_values)
 
-        if (
-            client.id_token_signed_response_alg is not None
-            and id_token.alg != client.id_token_signed_response_alg
-        ):
-            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
-
         hash_function: Callable[[str], str]  # method used to calculate at_hash, s_hash, etc.
 
-        if id_token.alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
+        if id_token_alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
             if not client.client_secret:
                 raise InvalidIdToken(
                     "ID Token is symmetrically signed but this client does not have a Client Secret."
                 )
-            id_token.verify_signature(jwskate.SymmetricJwk.from_bytes(client.client_secret))
-        elif id_token.alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
+            id_token.verify_signature(
+                jwskate.SymmetricJwk.from_bytes(client.client_secret), alg=id_token_alg
+            )
+        elif id_token_alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             if not client.authorization_server_jwks:
                 raise InvalidIdToken(
                     "ID Token is asymmetrically signed but the Authorization Server JWKS is not available."
                 )
+
+            if id_token.get_header("kid") is None:
+                raise InvalidIdToken(
+                    "ID Token does not contain a Key ID (kid) to specify the asymmetric key to use for signature verification."
+                )
             try:
                 verification_jwk = client.authorization_server_jwks.get_jwk_by_kid(id_token.kid)
-            except AttributeError:
-                raise InvalidIdToken(
-                    "ID Token is asymmetrically signed but is missing a Key ID (kid)."
-                )
             except KeyError:
                 raise InvalidIdToken(
                     "ID Token is asymmetrically signed but its Key ID is not part of the Authorization Server JWKS."
                 )
 
-            id_token.verify_signature(verification_jwk)
+            if id_token_alg not in verification_jwk.supported_signing_algorithms():
+                raise InvalidIdToken(
+                    "ID Token is asymmetrically signed but its algorithm is not supported by the verification key."
+                )
+
+            id_token.verify_signature(verification_jwk, alg=id_token_alg)
 
             alg_class = jwskate.select_alg_class(
                 verification_jwk.SIGNATURE_ALGORITHMS, jwk_alg=verification_jwk.alg
@@ -244,6 +269,23 @@ class BearerToken:
             if expected_s_hash != s_hash:
                 raise InvalidIdToken(
                     f"Mismatching 's_hash' value (expected '{expected_s_hash}', got '{s_hash}'"
+                )
+
+        if azr.max_age is not None:
+            try:
+                auth_time = id_token.auth_time
+            except AttributeError:
+                raise InvalidIdToken(
+                    "A `max_age` parameter was included in the authorization request, "
+                    "but the ID Token does not contain an `auth_time` claim."
+                )
+            auth_age = datetime.now(tz=timezone.utc) - auth_time
+            if auth_age.seconds > azr.max_age + 60:
+                raise InvalidIdToken(
+                    "User authentication happened too long ago. "
+                    "The `auth_time` parameter from the ID Token indicate that the last Authentication Time "
+                    f"was at {auth_time} ({auth_age.seconds} sec ago), but the authorization request `max_age` "
+                    f"parameter specified that it must be maximum {azr.max_age} sec ago."
                 )
 
         return id_token
@@ -301,7 +343,7 @@ class BearerToken:
                 return None
             return int(self.expires_at.timestamp() - datetime.now().timestamp())
         elif key == "token_type":
-            return "Bearer"
+            return self.TOKEN_TYPE
         return self.other.get(key) or super().__getattribute__(key)
 
     def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
@@ -315,7 +357,7 @@ class BearerToken:
         """
         r: Dict[str, Any] = {
             "access_token": self.access_token,
-            "token_type": "Bearer",
+            "token_type": self.TOKEN_TYPE,
         }
         if self.expires_at:
             r["expires_in"] = self.expires_in
@@ -365,7 +407,7 @@ class BearerToken:
 
 
 class BearerTokenSerializer:
-    """An helper class to serialize Token Response returned by an AS.
+    """A helper class to serialize Token Response returned by an AS.
 
     This may be used to store BearerTokens in session or cookies.
 

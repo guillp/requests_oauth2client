@@ -1,7 +1,9 @@
 """Implementation of CIBA.
 
-CIBA stands for Client Initiated BackChannel Authentication and is standardised by the OpenID Fundation.
-https://openid.net/specs/openid-client-initiated-backchannel- authentication-core-1_0.html.
+CIBA stands for Client Initiated BackChannel Authentication and is standardised by the OpenID
+Fundation.
+https://openid.net/specs/openid-client-initiated-backchannel-
+authentication-core-1_0.html.
 """
 
 from datetime import datetime, timedelta

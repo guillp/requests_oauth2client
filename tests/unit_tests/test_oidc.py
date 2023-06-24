@@ -2,7 +2,7 @@ from typing import Dict
 
 import jwskate
 import pytest
-from freezegun import freeze_time  # type: ignore[import]
+from freezegun import freeze_time
 from jwskate import EncryptionAlgs, Jwk, Jwt, KeyManagementAlgs, SignatureAlgs
 
 from requests_oauth2client import (
@@ -38,7 +38,7 @@ ID_TOKEN = (
 )
 
 
-@freeze_time("2011-07-21 20:42:55")  # type: ignore[misc]
+@freeze_time("2011-07-21 20:42:55")
 @pytest.mark.parametrize(
     "kwargs, at_hash",
     (
@@ -52,7 +52,7 @@ ID_TOKEN = (
     ),
 )
 def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
-    signing_key = jwskate.Jwk.generate_for_alg(**kwargs).with_kid_thumbprint()
+    signing_key = jwskate.Jwk.generate(**kwargs).with_kid_thumbprint()
     client_id = "s6BhdRkqt3"
     access_token = (
         "YmJiZTAwYmYtMzgyOC00NzhkLTkyOTItNjJjNDM3MGYzOWIy9sFhvH8K_x8UIHj1osisS57f5DduL"
@@ -69,6 +69,7 @@ def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
             "iat": 1311280970,
             # "c_hash": BinaPy(code).to("sha256")[:16].to("b64u").ascii(),
             "at_hash": at_hash,
+            "auth_time": 1311280970,
         },
         signing_key,
     )
@@ -83,10 +84,7 @@ def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
             authorization_server_jwks=signing_key.public_jwk().as_jwks(),
             id_token_signed_response_alg=kwargs["alg"],
         ),
-        azr=AuthorizationResponse(
-            code=code,
-            nonce=nonce,
-        ),
+        azr=AuthorizationResponse(code=code, nonce=nonce, max_age=0),
     )
 
 
@@ -105,8 +103,8 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code"),
         )
 
-    sig_jwk = Jwk.generate_for_alg(SignatureAlgs.RS256).with_kid_thumbprint()
-    enc_jwk = Jwk.generate_for_alg(KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
+    sig_jwk = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
+    enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
 
     issuer = "http://issuer.local"
     client_id = "my_client_id"
@@ -115,6 +113,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         "sub": "mysub",
         "iat": Jwt.timestamp(),
         "exp": Jwt.timestamp(60),
+        "auth_time": Jwt.timestamp(),
     }
 
     with pytest.raises(InvalidIdToken, match="should be encrypted"):
@@ -133,9 +132,9 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign_and_encrypt(
-                claims,
-                sign_jwk=sig_jwk,
-                enc_jwk=enc_jwk.public_jwk(),
+                claims=claims,
+                sign_key=sig_jwk,
+                enc_key=enc_jwk.public_jwk(),
                 enc=EncryptionAlgs.A256GCM,
             ).value,
         ).validate_id_token(
@@ -148,8 +147,8 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             access_token="an_access_token",
             id_token=Jwt.sign_and_encrypt(
                 claims,
-                sign_jwk=sig_jwk,
-                enc_jwk=enc_jwk.public_jwk(),
+                sign_key=sig_jwk,
+                enc_key=enc_jwk.public_jwk(),
                 enc=EncryptionAlgs.A256GCM,
             ).value,
         ).validate_id_token(
@@ -271,7 +270,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
                     "exp": Jwt.timestamp(60),
                     "azp": client_id,
                 },
-                Jwk.generate_for_alg(SignatureAlgs.HS256),
+                Jwk.generate(alg=SignatureAlgs.HS256),
             ).value,
         ).validate_id_token(
             client=OAuth2Client(
@@ -293,7 +292,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
                     "exp": Jwt.timestamp(60),
                     "azp": client_id,
                 },
-                Jwk.generate_for_alg(SignatureAlgs.HS256),
+                Jwk.generate(alg=SignatureAlgs.HS256),
             ).value,
         ).validate_id_token(
             client=OAuth2Client(
@@ -324,8 +323,8 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(InvalidIdToken, match="missing a Key ID"):
-        sig_jwk_no_kid = Jwk.generate_for_alg(SignatureAlgs.RS256)
+    with pytest.raises(InvalidIdToken, match="does not contain a Key ID"):
+        sig_jwk_no_kid = Jwk.generate(alg=SignatureAlgs.RS256)
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -366,7 +365,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             client=OAuth2Client(
                 token_endpoint,
                 client_id=client_id,
-                authorization_server_jwks=Jwk.generate_for_alg(SignatureAlgs.RS256)
+                authorization_server_jwks=Jwk.generate(alg=SignatureAlgs.RS256)
                 .with_kid_thumbprint()
                 .public_jwk()
                 .as_jwks(),
@@ -465,3 +464,137 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             ),
             azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
         )
+
+    with pytest.raises(InvalidIdToken, match="ID Token does not contain an `alg` parameter"):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign_arbitrary(
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                    "s_hash": "foo",
+                },
+                headers={"kid": sig_jwk.kid},
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg=None,
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
+        )
+
+    # ID Token signed with alg not supported by verification key
+    with pytest.raises(
+        InvalidIdToken, match="algorithm is not supported by the verification key"
+    ):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign_arbitrary(
+                headers={"alg": "ES512", "kid": sig_jwk.kid},
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                    "s_hash": "foo",
+                },
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg="ES512",
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
+        )
+
+    # auth_time too old for "max_age" parameter
+    with pytest.raises(InvalidIdToken, match="auth_time"):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign(
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                    "auth_time": Jwt.timestamp(-120),
+                },
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg="RS256",
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state", max_age=0),
+        )
+
+    # missing auth_time in ID Token
+    with pytest.raises(InvalidIdToken, match="auth_time"):
+        BearerToken(
+            access_token="an_access_token",
+            id_token=Jwt.sign(
+                claims={
+                    "iss": issuer,
+                    "aud": client_id,
+                    "iat": Jwt.timestamp(),
+                    "exp": Jwt.timestamp(60),
+                    "azp": client_id,
+                },
+                key=sig_jwk,
+            ).value,
+        ).validate_id_token(
+            client=OAuth2Client(
+                token_endpoint,
+                client_id=client_id,
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
+                id_token_signed_response_alg="RS256",
+            ),
+            azr=AuthorizationResponse(code="code", issuer=issuer, state="state", max_age=0),
+        )
+
+
+def test_id_token_signed_with_client_secret(token_endpoint: str) -> None:
+    client_id = "my_client_id"
+    client_secret = "Th1sIs5eCr3t"
+
+    issuer = "http://issuer.local"
+    claims = {
+        "iss": issuer,
+        "sub": "mysub",
+        "iat": Jwt.timestamp(),
+        "exp": Jwt.timestamp(60),
+        "auth_time": Jwt.timestamp(),
+        "azr": client_id,
+    }
+
+    alg = "HS256"
+
+    BearerToken(
+        access_token="access_token",
+        id_token=Jwt.sign(
+            claims, key=Jwk.from_cryptography_key(client_secret.encode()), alg=alg
+        ).value,
+    ).validate_id_token(
+        client=OAuth2Client(
+            token_endpoint,
+            client_id=client_id,
+            client_secret=client_secret,
+            id_token_signed_response_alg=alg,
+        ),
+        azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
+    )

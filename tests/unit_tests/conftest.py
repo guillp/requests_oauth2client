@@ -387,6 +387,8 @@ def authorization_request(
     expected_issuer: Union[str, None],
     auth_request_kwargs: Dict[str, Any],
 ) -> AuthorizationRequest:
+    authorization_response_iss_parameter_supported = True if expected_issuer else False
+
     azr = AuthorizationRequest(
         authorization_endpoint=authorization_endpoint,
         client_id=client_id,
@@ -396,6 +398,7 @@ def authorization_request(
         nonce=nonce,
         code_verifier=code_verifier,
         code_challenge_method=code_challenge_method,
+        authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
         issuer=expected_issuer,
         **auth_request_kwargs,
     )
