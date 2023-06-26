@@ -222,7 +222,7 @@ class BearerToken:
             id_token.verify_signature(verification_jwk, alg=id_token_alg)
 
             alg_class = jwskate.select_alg_class(
-                verification_jwk.SIGNATURE_ALGORITHMS, jwk_alg=verification_jwk.alg
+                verification_jwk.SIGNATURE_ALGORITHMS, jwk_alg=id_token_alg
             )
             if alg_class == jwskate.EdDsa:
                 if verification_jwk.crv == "Ed25519":
