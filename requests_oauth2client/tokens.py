@@ -244,7 +244,7 @@ class BearerToken:
                 )
 
         at_hash = id_token.get_claim("at_hash")
-        if at_hash:
+        if at_hash is not None:
             expected_at_hash = hash_function(self.access_token)
             if expected_at_hash != at_hash:
                 raise InvalidIdToken(
@@ -252,7 +252,7 @@ class BearerToken:
                 )
 
         c_hash = id_token.get_claim("c_hash")
-        if c_hash:
+        if c_hash is not None:
             expected_c_hash = hash_function(azr.code)
             if expected_c_hash != c_hash:
                 raise InvalidIdToken(
@@ -260,7 +260,7 @@ class BearerToken:
                 )
 
         s_hash = id_token.get_claim("s_hash")
-        if s_hash:
+        if s_hash is not None:
             if azr.state is None:
                 raise InvalidIdToken(
                     "ID Token has a 's_hash' claim but no state was included in the request."
