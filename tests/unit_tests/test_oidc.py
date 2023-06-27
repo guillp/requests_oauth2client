@@ -23,41 +23,49 @@ from requests_oauth2client.exceptions import (
     MissingIdToken,
 )
 
-ID_TOKEN = (
-    "eyJraWQiOiIxZTlnZGs3IiwiYWxnIjoiUlMyNTYifQ.ewogIml"
-    "zcyI6ICJodHRwOi8vc2VydmVyLmV4YW1wbGUuY29tIiwKICJzdWIiOiAiMjQ"
-    "4Mjg5NzYxMDAxIiwKICJhdWQiOiAiczZCaGRSa3F0MyIsCiAibm9uY2UiOiA"
-    "ibi0wUzZfV3pBMk1qIiwKICJleHAiOiAxMzExMjgxOTcwLAogImlhdCI6IDE"
-    "zMTEyODA5NzAsCiAiY19oYXNoIjogIkxEa3RLZG9RYWszUGswY25YeENsdEE"
-    "iCn0.XW6uhdrkBgcGx6zVIrCiROpWURs-4goO1sKA4m9jhJIImiGg5muPUcN"
-    "egx6sSv43c5DSn37sxCRrDZZm4ZPBKKgtYASMcE20SDgvYJdJS0cyuFw7Ijp"
-    "_7WnIjcrl6B5cmoM6ylCvsLMwkoQAxVublMwH10oAxjzD6NEFsu9nipkszWh"
-    "sPePf_rM4eMpkmCbTzume-fzZIi5VjdWGGEmzTg32h3jiex-r5WTHbj-u5HL"
-    "7u_KP3rmbdYNzlzd1xWRYTUs4E8nOTgzAUwvwXkIQhOh5TPcSMBYy6X3E7-_"
-    "gr9Ue6n4ND7hTFhtjYs3cjNKIA08qm5cpVYFMFMG6PkhzLQ"
-)
-
 
 @freeze_time("2011-07-21 20:42:55")
 @pytest.mark.parametrize(
-    "kwargs, at_hash",
+    "kwargs, at_hash, c_hash, s_hash",
     (
-        ({"alg": "PS256"}, "xsZZrUssMXjL3FBlzoSh2g"),
-        ({"alg": "PS384"}, "adt46pcdiB-l6eTNifgoVM-5AIJAxq84"),
-        ({"alg": "PS512"}, "p2LHG4H-8pYDc0hyVOo3iIHvZJUqe9tbj3jESOuXbkY"),
+        (
+            {"alg": "PS256"},
+            "xsZZrUssMXjL3FBlzoSh2g",
+            "LDktKdoQak3Pk0cnXxCltA",
+            "GAsHrlqowzjqTW8xW7lyMw",
+        ),
+        (
+            {"alg": "PS384"},
+            "adt46pcdiB-l6eTNifgoVM-5AIJAxq84",
+            "Mq-knyaEMtWGfnBi2POEZb1kiLx10_DF",
+            "IIXrx5-tK3fM7Q80_DbXTWRb6ty48rOd",
+        ),
+        (
+            {"alg": "PS512"},
+            "p2LHG4H-8pYDc0hyVOo3iIHvZJUqe9tbj3jESOuXbkY",
+            "E9z1C-c0Az4eTEzE0Nm3OQ3BS2BhMgxuP7x5JAQj1_4",
+            "aVrO6_zIGuPg0pvBhlmB9jnpmFoY6MXEt1nJeHp1pmI",
+        ),
         (
             {"alg": "EdDSA", "crv": "Ed448"},
             "sB_U72jyb0WgtX8TsVoqJnm6CD295W9gfSDRxkilB3LAL7REi9JYutRW_s1yE4lD8cOfMZf83gi4",
+            "07UgYISe6yaAzmTIBr_f2vchFCIs6bAGk1-36iEH00fq4B3eBih5g0r_kEPHpuYLqbXOq7gDBVpr",
+            "ZPaPdOYbQ2dUGsQZHaSIcIveQMwWh4yG8lMT9Cfa_cSKSO8KGjx4rqI4zwmAfYJ6bPIxZWeUwvUn",
         ),
     ),
 )
-def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
+def test_validate_id_token(
+    kwargs: Dict[str, str], at_hash: str, c_hash: str, s_hash: str
+) -> None:
     signing_key = jwskate.Jwk.generate(**kwargs).with_kid_thumbprint()
+    jwks = signing_key.public_jwk().minimize().as_jwks()
     client_id = "s6BhdRkqt3"
     access_token = (
         "YmJiZTAwYmYtMzgyOC00NzhkLTkyOTItNjJjNDM3MGYzOWIy9sFhvH8K_x8UIHj1osisS57f5DduL"
     )
     code = "Qcb0Orv1zh30vL1MPRsbm-diHiMwcLyZvn1arpZv-Jxf_11jnpEX3Tgfvk"
+    state = "qu2pNLwFWBjakH2x4OxivEVtjKiM27SHrPdY3McJN4g"
+
     nonce = "n-0S6_WzA2Mj"
     id_token = IdToken.sign(
         {
@@ -67,8 +75,9 @@ def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
             "nonce": nonce,
             "exp": 1311281970,
             "iat": 1311280970,
-            # "c_hash": BinaPy(code).to("sha256")[:16].to("b64u").ascii(),
+            "c_hash": c_hash,
             "at_hash": at_hash,
+            "s_hash": s_hash,
             "auth_time": 1311280970,
         },
         signing_key,
@@ -81,10 +90,10 @@ def test_validate_id_token(kwargs: Dict[str, str], at_hash: str) -> None:
         client=OAuth2Client(
             "https://myas.local/token",
             client_id=client_id,
-            authorization_server_jwks=signing_key.public_jwk().as_jwks(),
+            authorization_server_jwks=jwks,
             id_token_signed_response_alg=kwargs["alg"],
         ),
-        azr=AuthorizationResponse(code=code, nonce=nonce, max_age=0),
+        azr=AuthorizationResponse(code=code, nonce=nonce, max_age=0, state=state),
     )
 
 
