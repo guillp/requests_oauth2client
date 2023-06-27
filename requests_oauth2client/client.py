@@ -364,7 +364,7 @@ class OAuth2Client:
 
         data = dict(grant_type="authorization_code", code=code, **token_kwargs)
         token = self.token_request(data, **requests_kwargs)
-        if isinstance(azr, AuthorizationResponse) and validate:
+        if validate and token.id_token and isinstance(azr, AuthorizationResponse):
             token.validate_id_token(self, azr)
         return token
 
