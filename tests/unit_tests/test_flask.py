@@ -23,13 +23,16 @@ def test_flask(
         from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
     except ImportError:
         pytest.skip("Flask is not available")
+        return
 
     oauth_client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
-    api_client = ApiClient(
-        auth=FlaskOAuth2ClientCredentialsAuth(
-            oauth_client, session_key=session_key, scope=scope
-        )
+    auth = FlaskOAuth2ClientCredentialsAuth(
+        session_key=session_key,
+        scope=scope,
+        client=oauth_client,
     )
+    api_client = ApiClient(auth=auth)
+    assert api_client.session.auth == auth
 
     app = Flask("testapp")
     app.config["TESTING"] = True
@@ -52,9 +55,10 @@ def test_flask(
         assert resp.json == json_resp
         resp = client.get("/api")
         assert resp.json == json_resp
-        # api_client.auth.token = None  # strangely this has no effect in a test session
-        with client.session_transaction() as sess:  # does what 'api_client.auth.token = None' should do
+        # api_client.session.auth.token = None  # strangely this has no effect in a test session
+        with client.session_transaction() as sess:  # does what 'api_client.session.auth.token = None' should do
             sess.pop("session_key", None)
+        # this should trigger a new token request then the API request
         resp = client.get("/api")
         assert resp.json == json_resp
 
