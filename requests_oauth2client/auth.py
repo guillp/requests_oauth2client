@@ -1,4 +1,5 @@
 """This module contains requests-compatible Auth Handlers that implement OAuth 2.0."""
+from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -99,15 +100,16 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
 
     Args:
         client: an OAuth2Client
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
         leeway: expiration leeway, in number of seconds
         token_kwargs: additional kwargs to include in token requests
     """
 
     def __init__(
         self,
-        client: "OAuth2Client",
+        client: OAuth2Client,
         token: Union[None, BearerToken, str] = None,
-        leeway: int = 10,
+        leeway: int = 20,
         **token_kwargs: Any,
     ) -> None:
         super().__init__(token)
@@ -115,7 +117,9 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
         self.leeway = leeway
         self.token_kwargs = token_kwargs
 
-    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+    def __call__(
+        self, request: requests.PreparedRequest
+    ) -> requests.PreparedRequest:  # noqa: D102
         token = self.token
         if token is None or token.is_expired(self.leeway):
             self.renew_token()
@@ -211,9 +215,9 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
 
     def __init__(
         self,
-        client: "OAuth2Client",
+        client: OAuth2Client,
         code: Union[str, AuthorizationResponse],
-        leeway: int = 0,
+        leeway: int = 20,
         **token_kwargs: Any,
     ) -> None:
         super().__init__(client, token=None, leeway=leeway, **token_kwargs)
@@ -269,9 +273,9 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
 
     def __init__(
         self,
-        client: "OAuth2Client",
+        client: OAuth2Client,
         device_code: Union[str, DeviceAuthorizationResponse],
-        leeway: int = 0,
+        leeway: int = 20,
         interval: int = 5,
         expires_in: int = 360,
         **token_kwargs: Any,
@@ -280,7 +284,6 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
         self.device_code: Union[str, DeviceAuthorizationResponse, None] = device_code
         self.interval = interval
         self.expires_in = expires_in
-        self.token_kwargs = token_kwargs
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Implement the Device Code grant as a request Authentication Handler.

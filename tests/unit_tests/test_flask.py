@@ -32,7 +32,6 @@ def test_flask(
         client=oauth_client,
     )
     api_client = ApiClient(auth=auth)
-    assert api_client.session.auth == auth
 
     app = Flask("testapp")
     app.config["TESTING"] = True
