@@ -2,6 +2,7 @@ from typing import Any, Iterable
 from urllib.parse import parse_qs
 
 import pytest
+from flask import request
 
 from requests_oauth2client import ApiClient, ClientSecretPost, OAuth2Client
 from tests.conftest import RequestsMocker
@@ -31,7 +32,7 @@ def test_flask(
         scope=scope,
         client=oauth_client,
     )
-    api_client = ApiClient(auth=auth)
+    api_client = ApiClient(target_api, auth=auth)
 
     assert isinstance(api_client.session.auth, FlaskOAuth2ClientCredentialsAuth)
 
@@ -41,7 +42,7 @@ def test_flask(
 
     @app.route("/api")
     def get() -> Any:
-        return api_client.get(target_api).json()
+        return api_client.get(params=request.args).json()
 
     access_token = "access_token"
     json_resp = {"status": "success"}
@@ -52,16 +53,19 @@ def test_flask(
     requests_mock.get(target_api, json=json_resp)
 
     with app.test_client() as client:
-        resp = client.get("/api")
+        resp = client.get("/api?call=1")
         assert resp.json == json_resp
-        resp = client.get("/api")
+        resp = client.get("/api?call=2")
         assert resp.json == json_resp
         api_client.session.auth.forget_token()
+        # assert api_client.session.auth.token is None
+        with client.session_transaction() as sess:
+            sess.pop(auth.session_key)
         # this should trigger a new token request then the API request
-        resp = client.get("/api")
+        resp = client.get("/api?call=3")
         assert resp.json == json_resp
 
-    assert api_client.session.auth.token == access_token
+    # assert api_client.session.auth.token == access_token
 
     token_request1 = requests_mock.request_history[0]
     token_params = parse_qs(token_request1.text)

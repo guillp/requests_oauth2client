@@ -4,8 +4,8 @@ from typing import Any, Optional, Union
 
 from flask import session
 
-from ..client import OAuth2Client
 from ..auth import OAuth2ClientCredentialsAuth
+from ..client import OAuth2Client
 from ..tokens import BearerToken, BearerTokenSerializer
 
 
@@ -59,7 +59,7 @@ class FlaskSessionAuthMixin:
             session.pop(self.session_key, None)
 
 
-class FlaskOAuth2ClientCredentialsAuth(OAuth2ClientCredentialsAuth, FlaskSessionAuthMixin):
+class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth):
     """A `requests` Auth handler for CC grant that stores its token in Flask session.
 
     It will automatically get Access Tokens from an OAuth 2.x AS
@@ -72,20 +72,3 @@ class FlaskOAuth2ClientCredentialsAuth(OAuth2ClientCredentialsAuth, FlaskSession
         serializer: a serializer that will be used to serialize the access token in Flask session
         **token_kwargs: additional kwargs for the Token Request
     """
-
-    def __init__(
-        self,
-        client: OAuth2Client,
-        session_key: str = "ccat",
-        serializer: Optional[BearerTokenSerializer] = None,
-        leeway: int = 20,
-        **token_kwargs: Any,
-    ) -> None:
-        super().__init__(
-            client=client,
-            token=None,
-            leeway=leeway,
-            session_key=session_key,
-            serializer=serializer,
-            **token_kwargs,
-        )
