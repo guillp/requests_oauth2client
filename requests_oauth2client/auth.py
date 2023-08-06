@@ -132,6 +132,10 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
         """
         raise NotImplementedError
 
+    def forget_token(self) -> None:
+        """Forget the current token, forcing a renewal on the next usage of this Auth Handler."""
+        self.token = None
+
 
 class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
     """An Auth Handler for the Client Credentials grant.

@@ -33,6 +33,8 @@ def test_flask(
     )
     api_client = ApiClient(auth=auth)
 
+    assert isinstance(api_client.session.auth, FlaskOAuth2ClientCredentialsAuth)
+
     app = Flask("testapp")
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "thisissecret"
@@ -54,7 +56,7 @@ def test_flask(
         assert resp.json == json_resp
         resp = client.get("/api")
         assert resp.json == json_resp
-        api_client.session.auth.token = None
+        api_client.session.auth.forget_token()
         # this should trigger a new token request then the API request
         resp = client.get("/api")
         assert resp.json == json_resp
@@ -91,4 +93,3 @@ def test_flask(
 
     api_request3 = requests_mock.request_history[4]
     assert api_request3.headers.get("Authorization") == f"Bearer {access_token}"
-
