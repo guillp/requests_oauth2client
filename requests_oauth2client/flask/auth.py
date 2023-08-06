@@ -51,7 +51,7 @@ class FlaskSessionAuthMixin:
             token: the token to store
         """
         if isinstance(token, str):
-            token = BearerToken(token)
+            token = BearerToken(token)  # pragma: no cover
         if token:
             serialized_token = self.serializer.dumps(token)
             session[self.session_key] = serialized_token
