@@ -103,7 +103,7 @@ class BearerToken:
             `True` if the access token is expired, `False` if it is still valid, `None` if there is no expires_in hint.
         """
         if self.expires_at:
-            return datetime.now() - timedelta(seconds=leeway) > self.expires_at
+            return datetime.now() + timedelta(seconds=leeway) > self.expires_at
         return None
 
     def authorization_header(self) -> str:
