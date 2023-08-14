@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import pytest
+from freezegun import freeze_time
 from jwskate import (
     ExpiredJwt,
     InvalidClaim,
@@ -94,6 +95,20 @@ def test_bearer_token_complete() -> None:
 
     assert str(token) == "foo"
     assert repr(token)
+
+
+@freeze_time("2021-08-17 12:50:18")
+def test_nearly_expired_token() -> None:
+    token = BearerToken(access_token="foo", expires_at=datetime(2021, 8, 17, 12, 50, 20))
+    assert not token.is_expired()
+    assert token.is_expired(3)
+
+@freeze_time("2021-08-17 12:50:21")
+def test_recently_expired_token() -> None:
+    token = BearerToken(access_token="foo", expires_at=datetime(2021, 8, 17, 12, 50, 20))
+    assert token.is_expired()
+    assert token.is_expired(3)
+    assert not token.is_expired(-3)
 
 
 def test_invalid_token_type() -> None:
@@ -195,6 +210,7 @@ def test_id_token() -> None:
     assert id_token == id_token
     assert id_token.aud == audience
     assert id_token.is_expired()
+    assert id_token.is_expired(1000)
     assert id_token.expires_at == datetime(2021, 8, 17, 12, 50, 20, tzinfo=timezone.utc)
     assert id_token.issued_at == datetime(2021, 8, 17, 12, 49, 20, tzinfo=timezone.utc)
 
