@@ -12,6 +12,7 @@ from requests_oauth2client import (
     OAuth2AuthorizationCodeAuth,
     OAuth2Client,
     OAuth2DeviceCodeAuth,
+    OAuth2ResourceOwnerPasswordAuth,
 )
 from tests.conftest import RequestsMocker
 
@@ -146,6 +147,62 @@ def test_authorization_code_auth(
     requests_mock.reset_mock()
     requests.post(target_api, auth=auth)
     assert len(requests_mock.request_history) == 1
+
+
+def test_ropc_auth(
+    requests_mock: RequestsMocker,
+    target_api: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    oauth2client = OAuth2Client(
+        token_endpoint=token_endpoint,
+        client_id=client_id,
+        client_secret=client_secret,
+    )
+    username = "my_user1"
+    password = "T0t@lly_5eCur3!"
+
+    auth = OAuth2ResourceOwnerPasswordAuth(
+        client=oauth2client, username=username, password=password
+    )
+
+    requests_mock.post(
+        token_endpoint,
+        json={
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "Bearer",
+            "expires_in": "3600",
+        },
+    )
+    requests_mock.post(target_api)
+
+    assert requests.post(target_api, auth=auth).ok
+
+    assert len(requests_mock.request_history) == 2
+
+    token_request = requests_mock.request_history[0]
+    token_params = parse_qs(token_request.body)
+    assert token_params["grant_type"] == ["password"]
+    assert token_params["username"] == [username]
+    assert token_params["password"] == [password]
+
+    api_request = requests_mock.request_history[1]
+    assert api_request.url == target_api
+    assert api_request.headers.get("Authorization") == f"Bearer {access_token}"
+
+    assert auth.token is not None
+    assert auth.token.access_token == access_token
+    assert auth.token.refresh_token == refresh_token
+
+    requests_mock.reset_mock()
+    requests.post(target_api, auth=auth)
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.url == target_api
 
 
 def test_device_code_auth(
