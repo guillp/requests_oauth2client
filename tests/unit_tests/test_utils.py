@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Optional
 
 import pytest
 
@@ -18,7 +19,7 @@ def test_validate_uri() -> None:
 
 def test_accepts_expires_in() -> None:
     @accepts_expires_in
-    def foo(expires_at: Optional[datetime] = None) -> Optional[datetime]:
+    def foo(expires_at: datetime | None = None) -> datetime | None:
         return expires_at
 
     now = datetime.now()

@@ -2,9 +2,10 @@
 
 See [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628).
 """
+from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from .pooling import TokenEndpointPoolingJob
 from .tokens import BearerToken
@@ -35,9 +36,9 @@ class DeviceAuthorizationResponse:
         device_code: str,
         user_code: str,
         verification_uri: str,
-        verification_uri_complete: Optional[str] = None,
-        expires_at: Optional[datetime] = None,
-        interval: Optional[int] = None,
+        verification_uri_complete: str | None = None,
+        expires_at: datetime | None = None,
+        interval: int | None = None,
         **kwargs: Any,
     ):
         self.device_code = device_code
@@ -48,7 +49,7 @@ class DeviceAuthorizationResponse:
         self.interval = interval
         self.other = kwargs
 
-    def is_expired(self, leeway: int = 0) -> Optional[bool]:
+    def is_expired(self, leeway: int = 0) -> bool | None:
         """Check if the `device_code` within this response is expired.
 
         Returns:
@@ -88,11 +89,11 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
 
     def __init__(
         self,
-        client: "OAuth2Client",
-        device_code: Union[str, DeviceAuthorizationResponse],
-        interval: Optional[int] = None,
+        client: OAuth2Client,
+        device_code: str | DeviceAuthorizationResponse,
+        interval: int | None = None,
         slow_down_interval: int = 5,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ):
         super().__init__(

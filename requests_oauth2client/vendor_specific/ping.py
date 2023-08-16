@@ -1,5 +1,5 @@
 """PingID specific client."""
-from typing import Optional, Tuple, Union
+from __future__ import annotations
 
 import requests
 
@@ -17,10 +17,10 @@ class PingClient(OAuth2Client):
     def __init__(
         self,
         issuer: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        session: Optional[requests.Session] = None,
+        auth: requests.auth.AuthBase | tuple[str, str] | str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        session: requests.Session | None = None,
     ):
         if not issuer.startswith("https://"):
             if issuer.__contains__("://"):

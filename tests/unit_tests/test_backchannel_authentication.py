@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Union
 
 import pytest
 from jwskate import Jwk
@@ -66,7 +67,7 @@ def test_backchannel_authentication(
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
     auth_req_id: str,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
     requests_mock.post(
@@ -115,7 +116,7 @@ def test_backchannel_authentication_invalid_response(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
     requests_mock.post(
@@ -140,7 +141,7 @@ def test_backchannel_authentication_jwt(
     private_jwk: Jwk,
     public_jwk: Jwk,
     auth_req_id: str,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
     backchannel_auth_request_jwt_validator: RequestValidatorType,
 ) -> None:
     requests_mock.post(
@@ -167,7 +168,7 @@ def test_backchannel_authentication_error(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
     requests_mock.post(
@@ -190,7 +191,7 @@ def test_backchannel_authentication_invalid_error(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
     requests_mock.post(
@@ -213,7 +214,7 @@ def test_backchannel_authentication_not_json_error(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
     requests_mock.post(
@@ -234,7 +235,7 @@ def test_backchannel_authentication_not_json_error(
 
 def test_backchannel_authentication_missing_hint(
     bca_client: OAuth2Client,
-    scope: Union[None, str, List[str]],
+    scope: None | str | list[str],
 ) -> None:
     with pytest.raises(ValueError):
         bca_client.backchannel_authentication_request(scope=scope)

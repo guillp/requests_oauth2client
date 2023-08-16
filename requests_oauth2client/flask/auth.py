@@ -1,6 +1,7 @@
 """Helper classes for the [Flask](https://flask.palletsprojects.com) framework."""
+from __future__ import annotations
 
-from typing import Any, Optional, Union
+from typing import Any
 
 from flask import session
 
@@ -23,7 +24,7 @@ class FlaskSessionAuthMixin:
     def __init__(
         self,
         session_key: str,
-        serializer: Optional[BearerTokenSerializer] = None,
+        serializer: BearerTokenSerializer | None = None,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -32,7 +33,7 @@ class FlaskSessionAuthMixin:
         self.session_key = session_key
 
     @property
-    def token(self) -> Optional[BearerToken]:
+    def token(self) -> BearerToken | None:
         """Return the Access Token stored in session.
 
         Returns:
@@ -44,7 +45,7 @@ class FlaskSessionAuthMixin:
         return self.serializer.loads(serialized_token)
 
     @token.setter
-    def token(self, token: Union[BearerToken, str, None]) -> None:
+    def token(self, token: BearerToken | str | None) -> None:
         """Store an Access Token in session.
 
         Args:

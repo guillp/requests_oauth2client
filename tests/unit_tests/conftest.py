@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import base64
 import hashlib
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 import pytest
 import requests
@@ -119,7 +121,7 @@ def client_id() -> str:
 )
 def client_auth_method_handler(
     request: pytest.FixtureRequest,
-) -> Type[BaseClientAuthenticationMethod]:
+) -> type[BaseClientAuthenticationMethod]:
     return request.param  # type: ignore[no-any-return]
 
 
@@ -159,16 +161,16 @@ def client_secret() -> str:
 
 @pytest.fixture(scope="session")
 def client_credential(
-    client_auth_method_handler: Union[
-        Type[PublicApp],
-        Type[ClientSecretPost],
-        Type[ClientSecretBasic],
-        Type[ClientSecretJwt],
-        Type[PrivateKeyJwt],
-    ],
+    client_auth_method_handler: (
+        type[PublicApp]
+        | type[ClientSecretPost]
+        | type[ClientSecretBasic]
+        | type[ClientSecretJwt]
+        | type[PrivateKeyJwt]
+    ),
     client_secret: str,
     private_jwk: Jwk,
-) -> Union[None, str, Jwk]:
+) -> None | str | Jwk:
     if client_auth_method_handler == PublicApp:
         return None
     elif client_auth_method_handler in (
@@ -184,15 +186,15 @@ def client_credential(
 
 @pytest.fixture(scope="session")
 def client_auth_method(
-    client_auth_method_handler: Union[
-        Type[PublicApp],
-        Type[ClientSecretPost],
-        Type[ClientSecretBasic],
-        Type[ClientSecretJwt],
-        Type[PrivateKeyJwt],
-    ],
+    client_auth_method_handler: (
+        type[PublicApp]
+        | type[ClientSecretPost]
+        | type[ClientSecretBasic]
+        | type[ClientSecretJwt]
+        | type[PrivateKeyJwt]
+    ),
     client_id: str,
-    client_credential: Union[None, str, Jwk],
+    client_credential: None | str | Jwk,
 ) -> BaseClientAuthenticationMethod:
     if client_auth_method_handler == PublicApp:
         return client_auth_method_handler(client_id)  # type: ignore[call-arg]
@@ -263,7 +265,7 @@ def discovery_document(
     introspection_endpoint: str,
     userinfo_endpoint: str,
     jwks_uri: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     return {
         "issuer": issuer,
         "authorization_endpoint": authorization_endpoint,
@@ -328,17 +330,17 @@ def sub() -> str:
     scope="session",
     params=[None, "state", True],
 )
-def state(request: FixtureRequest) -> Union[None, Literal[True], str]:
+def state(request: FixtureRequest) -> None | Literal[True] | str:
     return request.param
 
 
 @pytest.fixture(scope="session", params=[None, "https://myas.local"])
-def expected_issuer(request: FixtureRequest) -> Optional[str]:
+def expected_issuer(request: FixtureRequest) -> str | None:
     return request.param
 
 
 @pytest.fixture(scope="session", params=[None, {"foo": "bar"}])
-def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
+def auth_request_kwargs(request: FixtureRequest) -> dict[str, Any]:
     return request.param or {}  # type: ignore[return-value]
 
 
@@ -346,7 +348,7 @@ def auth_request_kwargs(request: FixtureRequest) -> Dict[str, Any]:
     scope="session",
     params=[None, "nonce", True],
 )
-def nonce(request: FixtureRequest) -> Union[None, bool, str]:
+def nonce(request: FixtureRequest) -> None | bool | str:
     return request.param
 
 
@@ -355,7 +357,7 @@ def nonce(request: FixtureRequest) -> Union[None, bool, str]:
     params=[None, "openid", "openid profile email", ("openid", "profile", "email"), ()],
     ids=["None", "single", "space-separated", "tuple", "empty"],
 )
-def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
+def scope(request: FixtureRequest) -> None | str | list[str]:
     return request.param
 
 
@@ -364,12 +366,12 @@ def scope(request: FixtureRequest) -> Union[None, str, List[str]]:
     params=[None, "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"],
     ids=["None", "rfc7636"],
 )
-def code_verifier(request: FixtureRequest) -> Optional[str]:
+def code_verifier(request: FixtureRequest) -> str | None:
     return request.param
 
 
 @pytest.fixture(scope="session", params=[None, "plain", "S256"])
-def code_challenge_method(request: FixtureRequest) -> Optional[str]:
+def code_challenge_method(request: FixtureRequest) -> str | None:
     return request.param
 
 
@@ -379,13 +381,13 @@ def authorization_request(
     authorization_endpoint: str,
     client_id: str,
     redirect_uri: str,
-    scope: Union[None, str, List[str]],
-    state: Union[None, Literal[True], str],
-    nonce: Union[None, Literal[True], str],
+    scope: None | str | list[str],
+    state: None | Literal[True] | str,
+    nonce: None | Literal[True] | str,
     code_verifier: str,
     code_challenge_method: str,
-    expected_issuer: Union[str, None],
-    auth_request_kwargs: Dict[str, Any],
+    expected_issuer: str | None,
+    auth_request_kwargs: dict[str, Any],
 ) -> AuthorizationRequest:
     authorization_response_iss_parameter_supported = True if expected_issuer else False
 
@@ -504,7 +506,7 @@ def authorization_response_uri(
     authorization_request: AuthorizationRequest,
     redirect_uri: str,
     authorization_code: str,
-    expected_issuer: Union[str, bool, None],
+    expected_issuer: str | bool | None,
 ) -> furl:
     auth_url = furl(redirect_uri).add(args={"code": authorization_code})
     if authorization_request.state is not None:

@@ -1,7 +1,7 @@
 """This module contains all exception classes from `requests_oauth2client`."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from jwskate import InvalidJwt
 
@@ -41,8 +41,8 @@ class EndpointError(OAuth2Error):
         self,
         response: requests.Response,
         error: str,
-        description: Optional[str] = None,
-        uri: Optional[str] = None,
+        description: str | None = None,
+        uri: str | None = None,
     ):
         super().__init__(response)
         self.error = error
@@ -149,9 +149,7 @@ class AuthorizationResponseError(Exception):
         uri: the `error_uri` as returned by the AS
     """
 
-    def __init__(
-        self, error: str, description: Optional[str] = None, uri: Optional[str] = None
-    ):
+    def __init__(self, error: str, description: str | None = None, uri: str | None = None):
         self.error = error
         self.description = description
         self.uri = uri

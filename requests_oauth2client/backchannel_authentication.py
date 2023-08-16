@@ -5,9 +5,10 @@ Fundation.
 https://openid.net/specs/openid-client-initiated-backchannel-
 authentication-core-1_0.html.
 """
+from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from .pooling import TokenEndpointPoolingJob
 from .tokens import BearerToken
@@ -35,8 +36,8 @@ class BackChannelAuthenticationResponse:
     def __init__(
         self,
         auth_req_id: str,
-        expires_at: Optional[datetime] = None,
-        interval: Optional[int] = 20,
+        expires_at: datetime | None = None,
+        interval: int | None = 20,
         **kwargs: Any,
     ):
         self.auth_req_id = auth_req_id
@@ -44,7 +45,7 @@ class BackChannelAuthenticationResponse:
         self.interval = interval
         self.other = kwargs
 
-    def is_expired(self, leeway: int = 0) -> Optional[bool]:
+    def is_expired(self, leeway: int = 0) -> bool | None:
         """Return `True` if the `auth_req_id` within this response is expired.
 
         Expiration is evaluated at the time of the call.
@@ -108,12 +109,12 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
 
     def __init__(
         self,
-        client: "OAuth2Client",
-        auth_req_id: Union[str, BackChannelAuthenticationResponse],
+        client: OAuth2Client,
+        auth_req_id: str | BackChannelAuthenticationResponse,
         *,
-        interval: Optional[int] = None,
+        interval: int | None = None,
         slow_down_interval: int = 5,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ):
         if isinstance(auth_req_id, BackChannelAuthenticationResponse) and interval is None:

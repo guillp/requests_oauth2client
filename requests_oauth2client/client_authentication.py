@@ -4,8 +4,10 @@ An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to t
 by including appropriate credentials. This module contains helper classes and methods that implement
 the standardised and commonly used Client Authentication Methods.
 """
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Any, Callable
 from uuid import uuid4
 
 import furl  # type: ignore[import]
@@ -132,7 +134,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         alg: str,
         lifetime: int,
         jti_gen: Callable[[], str],
-        aud: Optional[str] = None,
+        aud: str | None = None,
     ) -> None:
         super().__init__(client_id)
         self.alg = alg
@@ -201,7 +203,7 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
         alg: str = "HS256",
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
-        aud: Optional[str] = None,
+        aud: str | None = None,
     ) -> None:
         super().__init__(client_id, alg, lifetime, jti_gen, aud)
         self.client_secret = str(client_secret)
@@ -256,11 +258,11 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
     def __init__(
         self,
         client_id: str,
-        private_jwk: Union[Jwk, Dict[str, Any]],
+        private_jwk: Jwk | dict[str, Any],
         alg: str = "RS256",
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
-        aud: Optional[str] = None,
+        aud: str | None = None,
     ) -> None:
         if not isinstance(private_jwk, Jwk):
             private_jwk = Jwk(private_jwk)
@@ -342,21 +344,21 @@ class PublicApp(BaseClientAuthenticationMethod):
 
 
 def client_auth_factory(
-    auth: Union[
-        requests.auth.AuthBase,
-        Tuple[str, str],
-        Tuple[str, Jwk],
-        Tuple[str, Dict[str, Any]],
-        str,
-        None,
-    ],
+    auth: (
+        requests.auth.AuthBase
+        | tuple[str, str]
+        | tuple[str, Jwk]
+        | tuple[str, dict[str, Any]]
+        | str
+        | None
+    ),
     *,
-    client_id: Optional[str] = None,
-    client_secret: Optional[str] = None,
-    private_key: Union[Jwk, Dict[str, Any], None] = None,
-    default_auth_handler: Union[
-        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJwt]
-    ] = ClientSecretPost,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    private_key: Jwk | dict[str, Any] | None = None,
+    default_auth_handler: (
+        type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt]
+    ) = ClientSecretPost,
 ) -> requests.auth.AuthBase:
     """Initialize the appropriate Auth Handler based on the provided parameters.
 

@@ -1,6 +1,7 @@
 """Implements subclasses for [Auth0](https://auth0.com)."""
+from __future__ import annotations
 
-from typing import Any, Optional, Tuple, Union
+from typing import Any
 
 import requests
 
@@ -23,10 +24,10 @@ class Auth0Client(OAuth2Client):
     def __init__(
         self,
         tenant: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        session: Optional[requests.Session] = None,
+        auth: requests.auth.AuthBase | tuple[str, str] | str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        session: requests.Session | None = None,
     ):
         if (
             "." not in tenant
@@ -79,10 +80,10 @@ class Auth0ManagementApiClient(ApiClient):
     def __init__(
         self,
         tenant: str,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        session: Optional[requests.Session] = None,
+        auth: requests.auth.AuthBase | tuple[str, str] | str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        session: requests.Session | None = None,
         **kwargs: Any,
     ):
         client = Auth0Client(

@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.1
+    rev: v1.5.4
     hooks:
     -   id: forbid-crlf
     -   id: remove-crlf
@@ -27,7 +27,7 @@ repos:
   - id: python-use-type-annotations
   - id: text-unicode-replacement-char
 -   repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-    rev: v1.3.1
+    rev: v1.3.2
     hooks:
     -   id: python-safety-dependencies-check
         files: pyproject.toml
@@ -40,7 +40,7 @@ repos:
     additional_dependencies:
     - mdformat-black
 - repo: https://github.com/myint/docformatter
-  rev: v1.7.3
+  rev: v1.7.5
   hooks:
     - id: docformatter
       args:
@@ -48,25 +48,34 @@ repos:
       - --wrap-summaries=100
       - --wrap-descriptions=100
 -   repo: https://github.com/hadialqattan/pycln
-    rev: v2.1.5
+    rev: v2.2.2
     hooks:
     -   id: pycln
         args: [--config=pyproject.toml]
+-   repo: https://github.com/frostming/fix-future-annotations
+    rev: 0.5.0
+    hooks:
+      - id: fix-future-annotations
+-   repo: https://github.com/asottile/pyupgrade
+    rev: v3.10.1
+    hooks:
+    -   id: pyupgrade
+        args: [--py38-plus]
 -   repo: https://github.com/pre-commit/mirrors-isort
     rev: v5.10.1
     hooks:
     - id: isort
 -   repo: https://github.com/ambv/black
-    rev: 23.3.0
+    rev: 23.7.0
     hooks:
     -   id: black
 -   repo: https://github.com/PyCQA/flake8
-    rev: 6.0.0
+    rev: 6.1.0
     hooks:
     -   id: flake8
         additional_dependencies: [flake8-typing-imports==1.14.0]
 -   repo: https://github.com/asottile/blacken-docs
-    rev: 1.14.0
+    rev: 1.16.0
     hooks:
         - id: blacken-docs
 -   repo: https://github.com/pycqa/pydocstyle
@@ -79,7 +88,7 @@ repos:
             - toml
         exclude: 'tests/'
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.4.0
+    rev: v1.5.0
     hooks:
     -   id: mypy
         args:
@@ -90,7 +99,7 @@ repos:
         - --show-column-numbers
         additional_dependencies:
             - pytest-mypy
-            - jwskate>=0.8.0
+            - jwskate>=0.9.0
             - types-requests
             - requests_mock
             - flask

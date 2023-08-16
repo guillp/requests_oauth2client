@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 import secrets
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple, Type, Union
+from typing import Any, Callable, Iterable, Mapping
 
 from binapy import BinaPy
 from furl import furl  # type: ignore[import]
@@ -44,7 +44,7 @@ class PkceUtils:
         return secrets.token_urlsafe(96)
 
     @classmethod
-    def derive_challenge(cls, verifier: Union[str, bytes], method: str = "S256") -> str:
+    def derive_challenge(cls, verifier: str | bytes, method: str = "S256") -> str:
         """Derive the `code_challenge` from a given `code_verifier`.
 
         Args:
@@ -71,7 +71,7 @@ class PkceUtils:
             raise ValueError("Unsupported code_challenge_method", method)
 
     @classmethod
-    def generate_code_verifier_and_challenge(cls, method: str = "S256") -> Tuple[str, str]:
+    def generate_code_verifier_and_challenge(cls, method: str = "S256") -> tuple[str, str]:
         """Generate a valid `code_verifier` and derive its `code_challenge`.
 
         Args:
@@ -147,12 +147,12 @@ class AuthorizationResponse:
     def __init__(
         self,
         code: str,
-        redirect_uri: Optional[str] = None,
-        code_verifier: Optional[str] = None,
-        state: Optional[str] = None,
-        nonce: Optional[str] = None,
-        acr_values: Optional[Iterable[str]] = None,
-        max_age: Optional[int] = None,
+        redirect_uri: str | None = None,
+        code_verifier: str | None = None,
+        state: str | None = None,
+        nonce: str | None = None,
+        acr_values: Iterable[str] | None = None,
+        max_age: int | None = None,
         **kwargs: str,
     ):
         self.code = code
@@ -164,7 +164,7 @@ class AuthorizationResponse:
         self.max_age = max_age
         self.others = kwargs
 
-    def __getattr__(self, item: str) -> Optional[str]:
+    def __getattr__(self, item: str) -> str | None:
         """Make additional parameters available as attributes.
 
         Args:
@@ -211,7 +211,7 @@ class AuthorizationRequest:
         **kwargs: extra parameters to include in the request, as-is.
     """
 
-    exception_classes: Dict[str, Type[Exception]] = {
+    exception_classes: dict[str, type[Exception]] = {
         "interaction_required": InteractionRequired,
         "login_required": LoginRequired,
         "session_selection_required": SessionSelectionRequired,
@@ -232,16 +232,16 @@ class AuthorizationRequest:
         self,
         authorization_endpoint: str,
         client_id: str,
-        redirect_uri: Optional[str] = None,
-        scope: Union[None, str, Iterable[str]] = "openid",
+        redirect_uri: str | None = None,
+        scope: None | str | Iterable[str] = "openid",
         response_type: str = "code",
-        state: Union[str, Literal[True], None] = True,
-        nonce: Union[str, Literal[True], None] = True,
-        code_verifier: Optional[str] = None,
-        code_challenge_method: Optional[str] = "S256",
-        acr_values: Union[str, Iterable[str], None] = None,
-        max_age: Union[int, None] = None,
-        issuer: Optional[str] = None,
+        state: str | Literal[True] | None = True,
+        nonce: str | Literal[True] | None = True,
+        code_verifier: str | None = None,
+        code_challenge_method: str | None = "S256",
+        acr_values: str | Iterable[str] | None = None,
+        max_age: int | None = None,
+        issuer: str | None = None,
         authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -352,9 +352,9 @@ class AuthorizationRequest:
 
     def sign_request_jwt(
         self,
-        jwk: Union[Jwk, Dict[str, Any]],
-        alg: Optional[str] = None,
-        lifetime: Optional[int] = None,
+        jwk: Jwk | dict[str, Any],
+        alg: str | None = None,
+        lifetime: int | None = None,
     ) -> SignedJwt:
         """Sign the `request` object that matches this Authorization Request parameters.
 
@@ -378,9 +378,9 @@ class AuthorizationRequest:
 
     def sign(
         self,
-        jwk: Union[Jwk, Dict[str, Any]],
-        alg: Optional[str] = None,
-        lifetime: Optional[int] = None,
+        jwk: Jwk | dict[str, Any],
+        alg: str | None = None,
+        lifetime: int | None = None,
     ) -> RequestParameterAuthorizationRequest:
         """Sign this Authorization Request and return a new one.
 
@@ -404,12 +404,12 @@ class AuthorizationRequest:
 
     def sign_and_encrypt_request_jwt(
         self,
-        sign_jwk: Union[Jwk, Dict[str, Any]],
-        enc_jwk: Union[Jwk, Dict[str, Any]],
-        sign_alg: Optional[str] = None,
-        enc_alg: Optional[str] = None,
+        sign_jwk: Jwk | dict[str, Any],
+        enc_jwk: Jwk | dict[str, Any],
+        sign_alg: str | None = None,
+        enc_alg: str | None = None,
         enc: str = "A128CBC-HS256",
-        lifetime: Optional[int] = None,
+        lifetime: int | None = None,
     ) -> JweCompact:
         """Sign and encrypt a `request` object for this Authorization Request.
 
@@ -441,12 +441,12 @@ class AuthorizationRequest:
 
     def sign_and_encrypt(
         self,
-        sign_jwk: Union[Jwk, Dict[str, Any]],
-        enc_jwk: Union[Jwk, Dict[str, Any]],
-        sign_alg: Optional[str] = None,
-        enc_alg: Optional[str] = None,
+        sign_jwk: Jwk | dict[str, Any],
+        enc_jwk: Jwk | dict[str, Any],
+        sign_alg: str | None = None,
+        enc_alg: str | None = None,
         enc: str = "A128CBC-HS256",
-        lifetime: Optional[int] = None,
+        lifetime: int | None = None,
     ) -> RequestParameterAuthorizationRequest:
         """Sign and encrypt the current Authorization Request.
 
@@ -610,7 +610,7 @@ class RequestParameterAuthorizationRequest:
         authorization_endpoint: str,
         client_id: str,
         request: str,
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
     ):
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
@@ -655,7 +655,7 @@ class RequestUriParameterAuthorizationRequest:
         authorization_endpoint: str,
         client_id: str,
         request_uri: str,
-        expires_at: Optional[datetime] = None,
+        expires_at: datetime | None = None,
     ):
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
@@ -689,8 +689,8 @@ class AuthorizationRequestSerializer:
 
     def __init__(
         self,
-        dumper: Optional[Callable[[AuthorizationRequest], str]] = None,
-        loader: Optional[Callable[[str], AuthorizationRequest]] = None,
+        dumper: Callable[[AuthorizationRequest], str] | None = None,
+        loader: Callable[[str], AuthorizationRequest] | None = None,
     ):
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
@@ -711,7 +711,7 @@ class AuthorizationRequestSerializer:
         return BinaPy.serialize_to("json", azr.as_dict()).to("deflate").to("b64u").ascii()
 
     def default_loader(
-        self, serialized: str, azr_class: Type[AuthorizationRequest] = AuthorizationRequest
+        self, serialized: str, azr_class: type[AuthorizationRequest] = AuthorizationRequest
     ) -> AuthorizationRequest:
         """Provide a default deserializer implementation.
 
