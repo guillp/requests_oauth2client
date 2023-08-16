@@ -1,8 +1,9 @@
 """This module contain classes that represent Tokens used in OAuth2.0 / OIDC."""
+from __future__ import annotations
 
 import pprint
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, Callable
 
 import jwskate
 from binapy import BinaPy
@@ -67,11 +68,11 @@ class BearerToken:
         self,
         access_token: str,
         *,
-        expires_at: Optional[datetime] = None,
-        scope: Optional[str] = None,
-        refresh_token: Optional[str] = None,
+        expires_at: datetime | None = None,
+        scope: str | None = None,
+        refresh_token: str | None = None,
         token_type: str = TOKEN_TYPE,
-        id_token: Optional[str] = None,
+        id_token: str | None = None,
         **kwargs: Any,
     ):
         if token_type.title() != self.TOKEN_TYPE.title():
@@ -80,7 +81,7 @@ class BearerToken:
         self.expires_at = expires_at
         self.scope = scope
         self.refresh_token = refresh_token
-        self.id_token: Union[IdToken, jwskate.JweCompact, None] = None
+        self.id_token: IdToken | jwskate.JweCompact | None = None
         if id_token:
             try:
                 self.id_token = IdToken(id_token)
@@ -93,7 +94,7 @@ class BearerToken:
                     )
         self.other = kwargs
 
-    def is_expired(self, leeway: int = 0) -> Optional[bool]:
+    def is_expired(self, leeway: int = 0) -> bool | None:
         """Check if the access token is expired.
 
         Args:
@@ -117,7 +118,7 @@ class BearerToken:
         return f"Bearer {self.access_token}"
 
     def validate_id_token(  # noqa: C901
-        self, client: "OAuth2Client", azr: "AuthorizationResponse"
+        self, client: OAuth2Client, azr: AuthorizationResponse
     ) -> IdToken:
         """Validate that a token response is valid, and return the ID Token.
 
@@ -346,7 +347,7 @@ class BearerToken:
             return self.TOKEN_TYPE
         return self.other.get(key) or super().__getattribute__(key)
 
-    def as_dict(self, expires_at: bool = False) -> Dict[str, Any]:
+    def as_dict(self, expires_at: bool = False) -> dict[str, Any]:
         """Return all attributes from this BearerToken as a `dict`.
 
         Args:
@@ -355,7 +356,7 @@ class BearerToken:
         Returns
             a `dict` containing this BearerToken attributes.
         """
-        r: Dict[str, Any] = {
+        r: dict[str, Any] = {
             "access_token": self.access_token,
             "token_type": self.TOKEN_TYPE,
         }
@@ -421,8 +422,8 @@ class BearerTokenSerializer:
 
     def __init__(
         self,
-        dumper: Optional[Callable[[BearerToken], str]] = None,
-        loader: Optional[Callable[[str], BearerToken]] = None,
+        dumper: Callable[[BearerToken], str] | None = None,
+        loader: Callable[[str], BearerToken] | None = None,
     ):
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
@@ -440,7 +441,7 @@ class BearerTokenSerializer:
         return BinaPy.serialize_to("json", token.as_dict(True)).to("deflate").to("b64u").ascii()
 
     def default_loader(
-        self, serialized: str, token_class: Type[BearerToken] = BearerToken
+        self, serialized: str, token_class: type[BearerToken] = BearerToken
     ) -> BearerToken:
         """Deserialize a BearerToken.
 

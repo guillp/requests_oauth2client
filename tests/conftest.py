@@ -1,16 +1,8 @@
+from __future__ import annotations
+
 import base64
 from datetime import datetime
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterable
 from urllib.parse import parse_qs
 
 import pytest
@@ -157,18 +149,18 @@ def client_secret() -> str:
 )
 def client_auth_method_handler(
     request: FixtureRequest,
-) -> Type[BaseClientAuthenticationMethod]:
+) -> type[BaseClientAuthenticationMethod]:
     return request.param  # type: ignore[return-value]
 
 
 @pytest.fixture(scope="session")
 def client_auth_method(
-    client_auth_method_handler: Union[
-        Type[ClientSecretPost], Type[ClientSecretBasic], Type[ClientSecretJwt]
-    ],
+    client_auth_method_handler: (
+        type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt]
+    ),
     client_id: str,
     client_secret: str,
-) -> Union[ClientSecretPost, ClientSecretBasic, ClientSecretJwt]:
+) -> ClientSecretPost | ClientSecretBasic | ClientSecretJwt:
     return client_auth_method_handler(client_id, client_secret)
 
 
@@ -258,9 +250,7 @@ def private_key_jwt_auth_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def client_credentials_grant_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, scope: Optional[str] = None, **kwargs: Any
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, scope: str | None = None, **kwargs: Any) -> None:
         params = Query(req.text).params
         assert params.get("grant_type") == "client_credentials"
         if scope is not None and not isinstance(scope, str):
@@ -335,7 +325,7 @@ def ciba_request_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def backchannel_auth_request_validator() -> RequestValidatorType:
     def validator(
-        req: _RequestObjectProxy, *, scope: Union[None, str, List[str]], **kwargs: Any
+        req: _RequestObjectProxy, *, scope: None | str | list[str], **kwargs: Any
     ) -> None:
         params = Query(req.text).params
         if scope is None:
@@ -402,7 +392,7 @@ def revocation_request_validator() -> RequestValidatorType:
     def validator(
         req: _RequestObjectProxy,
         token: str,
-        type_hint: Optional[str] = None,
+        type_hint: str | None = None,
         **kwargs: Any,
     ) -> None:
         params = Query(req.text).params
@@ -420,7 +410,7 @@ def introspection_request_validator() -> RequestValidatorType:
     def validator(
         req: _RequestObjectProxy,
         token: str,
-        type_hint: Optional[str] = None,
+        type_hint: str | None = None,
         **kwargs: Any,
     ) -> None:
         params = Query(req.text).params
@@ -437,7 +427,7 @@ def introspection_request_validator() -> RequestValidatorType:
     scope="session",
     params=[None, "resource", "/resource", "resource/foo", "/resource/foo"],
 )
-def target_path(request: FixtureRequest) -> Optional[str]:
+def target_path(request: FixtureRequest) -> str | None:
     return request.param
 
 
@@ -490,7 +480,7 @@ def discovery_document(
     revocation_endpoint: str,
     userinfo_endpoint: str,
     jwks_uri: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     return {
         "issuer": issuer,
         "authorization_endpoint": authorization_endpoint,

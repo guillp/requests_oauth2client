@@ -1,8 +1,9 @@
 """Contains base classes for pooling jobs."""
+from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from .exceptions import AuthorizationPending, SlowDown
 from .tokens import BearerToken
@@ -30,10 +31,10 @@ class TokenEndpointPoolingJob(ABC):
 
     def __init__(
         self,
-        client: "OAuth2Client",
-        interval: Optional[int] = None,
+        client: OAuth2Client,
+        interval: int | None = None,
         slow_down_interval: int = 5,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ):
         self.client = client
@@ -42,7 +43,7 @@ class TokenEndpointPoolingJob(ABC):
         self.requests_kwargs = requests_kwargs
         self.token_kwargs = token_kwargs
 
-    def __call__(self) -> Optional[BearerToken]:
+    def __call__(self) -> BearerToken | None:
         """Wrap the actual Token Endpoint call with a pooling interval.
 
         Everytime this method is called, it will wait for the entire duration of the pooling interval before calling

@@ -1,4 +1,4 @@
-from typing import Dict
+from __future__ import annotations
 
 import jwskate
 import pytest
@@ -55,7 +55,7 @@ from requests_oauth2client.exceptions import (
     ),
 )
 def test_validate_id_token(
-    kwargs: Dict[str, str], at_hash: str, c_hash: str, s_hash: str
+    kwargs: dict[str, str], at_hash: str, c_hash: str, s_hash: str
 ) -> None:
     signing_key = jwskate.Jwk.generate(**kwargs).with_kid_thumbprint()
     jwks = signing_key.public_jwk().minimize().as_jwks()

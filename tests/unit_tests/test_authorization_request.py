@@ -1,4 +1,4 @@
-from typing import Union
+from __future__ import annotations
 
 import jwskate
 import pytest
@@ -131,7 +131,7 @@ def test_not_an_url(authorization_request: AuthorizationRequest) -> None:
 def test_mismatching_state(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,
-    state: Union[None, bool, str],
+    state: None | bool | str,
 ) -> None:
     authorization_response_uri.args["state"] = "foo"
     if state:
@@ -142,7 +142,7 @@ def test_mismatching_state(
 def test_missing_state(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,
-    state: Union[None, bool, str],
+    state: None | bool | str,
 ) -> None:
     authorization_response_uri.args.pop("state", None)
     if state:
@@ -153,7 +153,7 @@ def test_missing_state(
 def test_mismatching_iss(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,
-    expected_issuer: Union[str, bool, None],
+    expected_issuer: str | bool | None,
 ) -> None:
     authorization_response_uri.args["iss"] = "foo"
     if expected_issuer:
@@ -164,7 +164,7 @@ def test_mismatching_iss(
 def test_missing_issuer(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,
-    expected_issuer: Union[str, bool, None],
+    expected_issuer: str | bool | None,
 ) -> None:
     authorization_response_uri.args.pop("iss", None)
     if expected_issuer:

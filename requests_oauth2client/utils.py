@@ -2,10 +2,11 @@
 
 This module contains helper methods that are used in multiple places within `requests_oauth2client`.
 """
+from __future__ import annotations
 
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from furl import furl  # type: ignore[import]
 
@@ -60,8 +61,8 @@ def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(f)
     def decorator(
         *args: Any,
-        expires_in: Optional[int] = None,
-        expires_at: Optional[datetime] = None,
+        expires_in: int | None = None,
+        expires_at: datetime | None = None,
         **kwargs: Any,
     ) -> Any:
         if expires_in is None and expires_at is None:
