@@ -2,18 +2,7 @@
 
 from __future__ import annotations
 
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import IO, Any, Callable, Iterable, Mapping, MutableMapping
 from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
@@ -69,16 +58,16 @@ class ApiClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        auth: Optional[requests.auth.AuthBase] = None,
-        timeout: Optional[int] = 60,
+        base_url: str | None = None,
+        auth: requests.auth.AuthBase | None = None,
+        timeout: int | None = 60,
         raise_for_status: bool = True,
         none_fields: Literal["include", "exclude", "empty"] = "exclude",
-        bool_fields: Optional[Tuple[Any, Any]] = ("true", "false"),
-        session: Optional[requests.Session] = None,
+        bool_fields: tuple[Any, Any] | None = ("true", "false"),
+        session: requests.Session | None = None,
         **kwargs: Any,
     ):
-        super(ApiClient, self).__init__()
+        super().__init__()
 
         self.base_url = base_url
         self.raise_for_status = raise_for_status
@@ -95,45 +84,46 @@ class ApiClient:
     def request(  # noqa: C901
         self,
         method: str,
-        url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
-        params: Union[None, bytes, MutableMapping[str, str]] = None,
-        data: Union[
-            Iterable[bytes],
-            str,
-            bytes,
-            List[Tuple[Any, Any]],
-            Tuple[Tuple[Any, Any], ...],
-            Mapping[Any, Any],
-            None,
-        ] = None,
-        headers: Optional[MutableMapping[str, str]] = None,
-        cookies: Union[None, RequestsCookieJar, MutableMapping[str, str]] = None,
-        files: Optional[MutableMapping[str, IO[Any]]] = None,
-        auth: Union[
-            None,
-            Tuple[str, str],
-            requests.auth.AuthBase,
-            Callable[[requests.PreparedRequest], requests.PreparedRequest],
-        ] = None,
-        timeout: Union[None, float, Tuple[float, float], Tuple[float, None]] = None,
+        url: None | str | bytes | Iterable[str | bytes | int] = None,
+        params: None | bytes | MutableMapping[str, str] = None,
+        data: (
+            Iterable[bytes]
+            | str
+            | bytes
+            | list[tuple[Any, Any]]
+            | tuple[tuple[Any, Any], ...]
+            | Mapping[Any, Any]
+            | None
+        ) = None,
+        headers: MutableMapping[str, str] | None = None,
+        cookies: None | RequestsCookieJar | MutableMapping[str, str] = None,
+        files: MutableMapping[str, IO[Any]] | None = None,
+        auth: (
+            None
+            | tuple[str, str]
+            | requests.auth.AuthBase
+            | Callable[[requests.PreparedRequest], requests.PreparedRequest]
+        ) = None,
+        timeout: None | float | tuple[float, float] | tuple[float, None] = None,
         allow_redirects: bool = False,
-        proxies: Optional[MutableMapping[str, str]] = None,
-        hooks: Optional[
+        proxies: MutableMapping[str, str] | None = None,
+        hooks: None
+        | (
             MutableMapping[
                 str,
-                Union[
-                    Iterable[Callable[[requests.Response], Any]],
-                    Callable[[requests.Response], Any],
-                ],
+                (
+                    Iterable[Callable[[requests.Response], Any]]
+                    | Callable[[requests.Response], Any]
+                ),
             ]
-        ] = None,
-        stream: Optional[bool] = None,
-        verify: Optional[Union[str, bool]] = None,
-        cert: Optional[Union[str, Tuple[str, str]]] = None,
-        json: Optional[Mapping[str, Any]] = None,
-        raise_for_status: Optional[bool] = None,
-        none_fields: Optional[Literal["include", "exclude", "empty"]] = None,
-        bool_fields: Optional[Tuple[Any, Any]] = None,
+        ) = None,
+        stream: bool | None = None,
+        verify: str | bool | None = None,
+        cert: str | tuple[str, str] | None = None,
+        json: Mapping[str, Any] | None = None,
+        raise_for_status: bool | None = None,
+        none_fields: Literal["include", "exclude", "empty"] | None = None,
+        bool_fields: tuple[Any, Any] | None = None,
     ) -> requests.Response:
         """Overridden `request` method with extra features.
 
@@ -222,7 +212,7 @@ class ApiClient:
         return response
 
     def to_absolute_url(
-        self, relative_url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None
+        self, relative_url: None | str | bytes | Iterable[str | bytes | int] = None
     ) -> str:
         """Convert a relative url to an absolute url.
 
@@ -286,8 +276,8 @@ class ApiClient:
 
     def get(
         self,
-        url: Union[None, str, bytes, Iterable[Union[str, bytes, int]]] = None,
-        raise_for_status: Optional[bool] = None,
+        url: None | str | bytes | Iterable[str | bytes | int] = None,
+        raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
         """Send a GET request. Return a [Response][requests.Response] object.
@@ -311,8 +301,8 @@ class ApiClient:
 
     def post(
         self,
-        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
-        raise_for_status: Optional[bool] = None,
+        url: str | bytes | Iterable[str | bytes] | None = None,
+        raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
         """Send a POST request. Return a [Response][requests.Response] object.
@@ -335,8 +325,8 @@ class ApiClient:
 
     def patch(
         self,
-        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
-        raise_for_status: Optional[bool] = None,
+        url: str | bytes | Iterable[str | bytes] | None = None,
+        raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
         """Send a PATCH request. Return a [Response][requests.Response] object.
@@ -359,8 +349,8 @@ class ApiClient:
 
     def put(
         self,
-        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
-        raise_for_status: Optional[bool] = None,
+        url: str | bytes | Iterable[str | bytes] | None = None,
+        raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
         """Send a PUT request. Return a [Response][requests.Response] object.
@@ -383,8 +373,8 @@ class ApiClient:
 
     def delete(
         self,
-        url: Optional[Union[str, bytes, Iterable[Union[str, bytes]]]] = None,
-        raise_for_status: Optional[bool] = None,
+        url: str | bytes | Iterable[str | bytes] | None = None,
+        raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
         """Send a DELETE request. Return a [Response][requests.Response] object.

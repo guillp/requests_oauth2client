@@ -1,7 +1,7 @@
 """This module contains requests-compatible Auth Handlers that implement OAuth 2.0."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import requests
 from typing_extensions import override
@@ -42,11 +42,11 @@ class BearerAuth(requests.auth.AuthBase):
         token: a [BearerToken][requests_oauth2client.tokens.BearerToken] or a string to use as token for this Auth Handler. If `None`, this Auth Handler is a no op.
     """
 
-    def __init__(self, token: Union[str, BearerToken, None] = None) -> None:
+    def __init__(self, token: str | BearerToken | None = None) -> None:
         self.token = token  # type: ignore[assignment] # until https://github.com/python/mypy/issues/3004 is fixed
 
     @property
-    def token(self) -> Optional[BearerToken]:
+    def token(self) -> BearerToken | None:
         """Return the [BearerToken] that is used for authorization against the API.
 
         Returns:
@@ -55,7 +55,7 @@ class BearerAuth(requests.auth.AuthBase):
         return self._token
 
     @token.setter
-    def token(self, token: Union[str, BearerToken, None]) -> None:
+    def token(self, token: str | BearerToken | None) -> None:
         """Change the access token used with this AuthHandler.
 
         Accepts a [BearerToken][requests_oauth2client.tokens.BearerToken] or an access token as `str`.
@@ -109,7 +109,7 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
     def __init__(
         self,
         client: OAuth2Client,
-        token: Union[None, BearerToken, str] = None,
+        token: None | BearerToken | str = None,
         leeway: int = 20,
         **token_kwargs: Any,
     ) -> None:
@@ -221,12 +221,12 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
     def __init__(
         self,
         client: OAuth2Client,
-        code: Union[str, AuthorizationResponse],
+        code: str | AuthorizationResponse,
         leeway: int = 20,
         **token_kwargs: Any,
     ) -> None:
         super().__init__(client, token=None, leeway=leeway, **token_kwargs)
-        self.code: Union[str, AuthorizationResponse, None] = code
+        self.code: str | AuthorizationResponse | None = code
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Implement the Authorization Code grant as an Authentication Handler.
@@ -323,14 +323,14 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
     def __init__(
         self,
         client: OAuth2Client,
-        device_code: Union[str, DeviceAuthorizationResponse],
+        device_code: str | DeviceAuthorizationResponse,
         leeway: int = 20,
         interval: int = 5,
         expires_in: int = 360,
         **token_kwargs: Any,
     ) -> None:
         super().__init__(client=client, leeway=leeway, token=None, **token_kwargs)
-        self.device_code: Union[str, DeviceAuthorizationResponse, None] = device_code
+        self.device_code: str | DeviceAuthorizationResponse | None = device_code
         self.interval = interval
         self.expires_in = expires_in
 

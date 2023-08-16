@@ -1,7 +1,7 @@
 """This module contains the `OAuth2Client` class."""
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
+from typing import Any, Iterable
 
 import requests
 from jwskate import Jwk, JwkSet, Jwt
@@ -93,7 +93,7 @@ class OAuth2Client:
         ```
     """
 
-    exception_classes: Dict[str, Type[Exception]] = {
+    exception_classes: dict[str, type[Exception]] = {
         "server_error": ServerError,
         "invalid_request": InvalidRequest,
         "invalid_client": InvalidClient,
@@ -108,40 +108,40 @@ class OAuth2Client:
         "unsupported_token_type": UnsupportedTokenType,
     }
 
-    token_class: Type[BearerToken] = BearerToken
+    token_class: type[BearerToken] = BearerToken
 
     def __init__(
         self,
         token_endpoint: str,
-        auth: Union[
-            requests.auth.AuthBase,
-            Tuple[str, str],
-            Tuple[str, Jwk],
-            Tuple[str, Dict[str, Any]],
-            str,
-            None,
-        ] = None,
+        auth: (
+            requests.auth.AuthBase
+            | tuple[str, str]
+            | tuple[str, Jwk]
+            | tuple[str, dict[str, Any]]
+            | str
+            | None
+        ) = None,
         *,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        private_key: Union[Jwk, Dict[str, Any], None] = None,
-        revocation_endpoint: Optional[str] = None,
-        introspection_endpoint: Optional[str] = None,
-        userinfo_endpoint: Optional[str] = None,
-        authorization_endpoint: Optional[str] = None,
-        redirect_uri: Optional[str] = None,
-        backchannel_authentication_endpoint: Optional[str] = None,
-        device_authorization_endpoint: Optional[str] = None,
-        pushed_authorization_request_endpoint: Optional[str] = None,
-        jwks_uri: Optional[str] = None,
-        authorization_server_jwks: Union[JwkSet, Dict[str, Any], None] = None,
-        issuer: Optional[str] = None,
-        id_token_signed_response_alg: Optional[str] = "RS256",
-        id_token_encrypted_response_alg: Optional[str] = None,
-        id_token_decryption_key: Union[Jwk, Dict[str, Any], None] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        private_key: Jwk | dict[str, Any] | None = None,
+        revocation_endpoint: str | None = None,
+        introspection_endpoint: str | None = None,
+        userinfo_endpoint: str | None = None,
+        authorization_endpoint: str | None = None,
+        redirect_uri: str | None = None,
+        backchannel_authentication_endpoint: str | None = None,
+        device_authorization_endpoint: str | None = None,
+        pushed_authorization_request_endpoint: str | None = None,
+        jwks_uri: str | None = None,
+        authorization_server_jwks: JwkSet | dict[str, Any] | None = None,
+        issuer: str | None = None,
+        id_token_signed_response_alg: str | None = "RS256",
+        id_token_encrypted_response_alg: str | None = None,
+        id_token_decryption_key: Jwk | dict[str, Any] | None = None,
         code_challenge_method: str = "S256",
         authorization_response_iss_parameter_supported: bool = False,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
         **extra_metadata: Any,
     ):
         if authorization_response_iss_parameter_supported and not issuer:
@@ -207,7 +207,7 @@ class OAuth2Client:
         )
 
     @property
-    def client_secret(self) -> Optional[str]:
+    def client_secret(self) -> str | None:
         """Client Secret."""
         if hasattr(self.auth, "client_secret"):
             return self.auth.client_secret  # type: ignore[no-any-return]
@@ -230,7 +230,7 @@ class OAuth2Client:
         return jwks
 
     def token_request(
-        self, data: Dict[str, Any], timeout: int = 10, **requests_kwargs: Any
+        self, data: dict[str, Any], timeout: int = 10, **requests_kwargs: Any
     ) -> BearerToken:
         """Send a request to the token endpoint.
 
@@ -309,8 +309,8 @@ class OAuth2Client:
 
     def client_credentials(
         self,
-        scope: Optional[Union[str, Iterable[str]]] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        scope: str | Iterable[str] | None = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint using the `client_credentials` grant.
@@ -337,9 +337,9 @@ class OAuth2Client:
 
     def authorization_code(
         self,
-        code: Union[str, AuthorizationResponse],
+        code: str | AuthorizationResponse,
         validate: bool = True,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint with the `authorization_code` grant.
@@ -353,7 +353,7 @@ class OAuth2Client:
         Returns:
             a `BearerToken`
         """
-        azr: Optional[AuthorizationResponse] = None
+        azr: AuthorizationResponse | None = None
         if isinstance(code, AuthorizationResponse):
             token_kwargs.setdefault("code_verifier", code.code_verifier)
             token_kwargs.setdefault("redirect_uri", code.redirect_uri)
@@ -370,8 +370,8 @@ class OAuth2Client:
 
     def refresh_token(
         self,
-        refresh_token: Union[str, BearerToken],
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        refresh_token: str | BearerToken,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint with the `refresh_token` grant.
@@ -397,8 +397,8 @@ class OAuth2Client:
 
     def device_code(
         self,
-        device_code: Union[str, DeviceAuthorizationResponse],
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        device_code: str | DeviceAuthorizationResponse,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint using the Device Code grant.
@@ -429,8 +429,8 @@ class OAuth2Client:
 
     def ciba(
         self,
-        auth_req_id: Union[str, BackChannelAuthenticationResponse],
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        auth_req_id: str | BackChannelAuthenticationResponse,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a CIBA request to the Token Endpoint.
@@ -462,12 +462,12 @@ class OAuth2Client:
 
     def token_exchange(
         self,
-        subject_token: Union[str, BearerToken, IdToken],
-        subject_token_type: Optional[str] = None,
-        actor_token: Union[None, str, BearerToken, IdToken] = None,
-        actor_token_type: Optional[str] = None,
-        requested_token_type: Optional[str] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        subject_token: str | BearerToken | IdToken,
+        subject_token_type: str | None = None,
+        actor_token: None | str | BearerToken | IdToken = None,
+        actor_token_type: str | None = None,
+        requested_token_type: str | None = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a Token Exchange request.
@@ -519,8 +519,8 @@ class OAuth2Client:
 
     def jwt_bearer(
         self,
-        assertion: Union[Jwt, str],
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        assertion: Jwt | str,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request using a JWT as authorization grant.
@@ -552,7 +552,7 @@ class OAuth2Client:
         self,
         username: str,
         password: str,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request using the Resource Owner Password Grant.
@@ -580,12 +580,12 @@ class OAuth2Client:
 
     def authorization_request(
         self,
-        scope: Union[None, str, Iterable[str]] = "openid",
+        scope: None | str | Iterable[str] = "openid",
         response_type: str = "code",
-        redirect_uri: Optional[str] = None,
-        state: Union[str, Literal[True], None] = True,
-        nonce: Union[str, Literal[True], None] = True,
-        code_verifier: Optional[str] = None,
+        redirect_uri: str | None = None,
+        state: str | Literal[True] | None = True,
+        nonce: str | Literal[True] | None = True,
+        code_verifier: str | None = None,
         **kwargs: Any,
     ) -> AuthorizationRequest:
         """Generate an Authorization Request for this client.
@@ -693,7 +693,7 @@ class OAuth2Client:
             raise InvalidPushedAuthorizationResponse(response) from exc
         raise exception
 
-    def userinfo(self, access_token: Union[BearerToken, str]) -> Any:
+    def userinfo(self, access_token: BearerToken | str) -> Any:
         """Call the UserInfo endpoint.
 
         This sends a request to the UserInfo endpoint, with the specified access_token, and returns the parsed result.
@@ -725,8 +725,8 @@ class OAuth2Client:
     @classmethod
     def get_token_type(
         cls,
-        token_type: Optional[str] = None,
-        token: Union[None, str, BearerToken, IdToken] = None,
+        token_type: str | None = None,
+        token: None | str | BearerToken | IdToken = None,
     ) -> str:
         """Get standardised token type identifiers.
 
@@ -787,8 +787,8 @@ class OAuth2Client:
 
     def revoke_access_token(
         self,
-        access_token: Union[BearerToken, str],
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        access_token: BearerToken | str,
+        requests_kwargs: dict[str, Any] | None = None,
         **revoke_kwargs: Any,
     ) -> bool:
         """Send a request to the Revocation Endpoint to revoke an access token.
@@ -807,8 +807,8 @@ class OAuth2Client:
 
     def revoke_refresh_token(
         self,
-        refresh_token: Union[str, BearerToken],
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        refresh_token: str | BearerToken,
+        requests_kwargs: dict[str, Any] | None = None,
         **revoke_kwargs: Any,
     ) -> bool:
         """Send a request to the Revocation Endpoint to revoke a refresh token.
@@ -835,9 +835,9 @@ class OAuth2Client:
 
     def revoke_token(
         self,
-        token: Union[str, BearerToken],
-        token_type_hint: Optional[str] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        token: str | BearerToken,
+        token_type_hint: str | None = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **revoke_kwargs: Any,
     ) -> bool:
         """Send a Token Revocation request.
@@ -903,9 +903,9 @@ class OAuth2Client:
 
     def introspect_token(
         self,
-        token: Union[str, BearerToken],
-        token_type_hint: Optional[str] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        token: str | BearerToken,
+        token_type_hint: str | None = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **introspect_kwargs: Any,
     ) -> Any:
         """Send a request to the configured Introspection Endpoint.
@@ -983,18 +983,18 @@ class OAuth2Client:
 
     def backchannel_authentication_request(
         self,
-        scope: Union[None, str, Iterable[str]] = "openid",
-        client_notification_token: Optional[str] = None,
-        acr_values: Union[None, str, Iterable[str]] = None,
-        login_hint_token: Optional[str] = None,
-        id_token_hint: Optional[str] = None,
-        login_hint: Optional[str] = None,
-        binding_message: Optional[str] = None,
-        user_code: Optional[str] = None,
-        requested_expiry: Optional[int] = None,
-        private_jwk: Union[Jwk, Dict[str, Any], None] = None,
-        alg: Optional[str] = None,
-        requests_kwargs: Optional[Dict[str, Any]] = None,
+        scope: None | str | Iterable[str] = "openid",
+        client_notification_token: str | None = None,
+        acr_values: None | str | Iterable[str] = None,
+        login_hint_token: str | None = None,
+        id_token_hint: str | None = None,
+        login_hint: str | None = None,
+        binding_message: str | None = None,
+        user_code: str | None = None,
+        requested_expiry: int | None = None,
+        private_jwk: Jwk | dict[str, Any] | None = None,
+        alg: str | None = None,
+        requests_kwargs: dict[str, Any] | None = None,
         **ciba_kwargs: Any,
     ) -> BackChannelAuthenticationResponse:
         """Send a CIBA Authentication Request.
@@ -1200,13 +1200,13 @@ class OAuth2Client:
     @classmethod
     def from_discovery_endpoint(
         cls,
-        url: Optional[str] = None,
-        issuer: Optional[str] = None,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        private_key: Union[Jwk, Dict[str, Any], None] = None,
-        session: Optional[requests.Session] = None,
+        url: str | None = None,
+        issuer: str | None = None,
+        auth: requests.auth.AuthBase | tuple[str, str] | str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        private_key: Jwk | dict[str, Any] | None = None,
+        session: requests.Session | None = None,
         **kwargs: Any,
     ) -> OAuth2Client:
         """Initialise an OAuth2Client based on Authorization Server Metadata.
@@ -1260,14 +1260,14 @@ class OAuth2Client:
     @classmethod
     def from_discovery_document(
         cls,
-        discovery: Dict[str, Any],
-        issuer: Optional[str] = None,
-        auth: Union[requests.auth.AuthBase, Tuple[str, str], str, None] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        private_key: Union[Jwk, Dict[str, Any], None] = None,
-        authorization_server_jwks: Union[JwkSet, Dict[str, Any], None] = None,
-        session: Optional[requests.Session] = None,
+        discovery: dict[str, Any],
+        issuer: str | None = None,
+        auth: requests.auth.AuthBase | tuple[str, str] | str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        private_key: Jwk | dict[str, Any] | None = None,
+        authorization_server_jwks: JwkSet | dict[str, Any] | None = None,
+        session: requests.Session | None = None,
         https: bool = True,
         **kwargs: Any,
     ) -> OAuth2Client:
