@@ -12,6 +12,7 @@ from .auth import (
     OAuth2AuthorizationCodeAuth,
     OAuth2ClientCredentialsAuth,
     OAuth2DeviceCodeAuth,
+    OAuth2ResourceOwnerPasswordAuth,
 )
 from .authorization_request import (
     AuthorizationRequest,

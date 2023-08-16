@@ -103,6 +103,7 @@ def test_nearly_expired_token() -> None:
     assert not token.is_expired()
     assert token.is_expired(3)
 
+
 @freeze_time("2021-08-17 12:50:21")
 def test_recently_expired_token() -> None:
     token = BearerToken(access_token="foo", expires_at=datetime(2021, 8, 17, 12, 50, 20))

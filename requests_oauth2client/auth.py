@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 import requests
+from typing_extensions import override
 
 from .authorization_request import AuthorizationResponse
 from .device_authorization import DeviceAuthorizationResponse
@@ -248,6 +249,50 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
         if self.code:  # pragma: no branch
             self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
             self.code = None
+
+
+class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
+    """Authentication Handler for the [Resource Owner Password Flow](https://www.rfc-editor.org/rfc/rfc6749#section-4.3).
+
+    This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges the user credentials for
+    an Access Token, then automatically obtains a new one once it is expired.
+
+    Note that this flow is considered *deprecated*, and the Authorization Code flow should be used whenever possible.
+    Among other bad things, ROPC does not support SSO nor MFA and depends on the user typing its credentials directly
+    inside the application instead of on a dedicated login page, which makes it totally insecure for 3rd party apps.
+
+    It needs the username and password and an [OAuth2Client][requests_oauth2client.client.OAuth2Client] to be able to get
+    a token from the AS Token Endpoint just before the first request using this Auth Handler is being sent.
+
+    Args:
+        client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] to use to obtain Access Tokens.
+        username: the username.
+        password: the user password.
+        leeway: an amount of time, in seconds.
+        **token_kwargs: additional kwargs to pass to the token endpoint.
+
+    """
+
+    def __init__(
+        self,
+        client: OAuth2Client,
+        username: str,
+        password: str,
+        leeway: int = 20,
+        **token_kwargs: Any,
+    ):
+        super().__init__(client=client, leeway=leeway, **token_kwargs)
+        self.username = username
+        self.password = password
+
+    @override
+    def renew_token(self) -> None:
+        """Exchange the user credentials for an Access Token."""
+        self.token = self.client.resource_owner_password(
+            username=self.username,
+            password=self.password,
+            **self.token_kwargs,
+        )
 
 
 class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
