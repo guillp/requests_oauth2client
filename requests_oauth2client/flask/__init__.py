@@ -1,4 +1,4 @@
-"""This modules contains helper classes for the Flask Framework.
+"""This module contains helper classes for the Flask Framework.
 
 See [Flask framework](https://flask.palletsprojects.com).
 """

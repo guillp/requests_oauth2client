@@ -9,9 +9,9 @@ from requests_oauth2client import OAuth2Client
 class PingClient(OAuth2Client):
     """A client for PingID Authorization Server.
 
-    This will initialize all endpoints with the PingID specific urls, without using the metadata.
-    Excepted for avoiding a round-trip to get the metadata url, this does not provide any advantage over using
-    `OAuth2Client.from_discovery_endpoint(issuer="https://myissuer.domain.tld")`
+    This will initialize all endpoints with PingID specific urls, without using the metadata.
+    Excepted for avoiding a round-trip to get the metadata url, this does not provide any
+    advantage over using `OAuth2Client.from_discovery_endpoint(issuer="https://myissuer.domain.tld")`
     """
 
     def __init__(
@@ -23,13 +23,16 @@ class PingClient(OAuth2Client):
         session: requests.Session | None = None,
     ):
         if not issuer.startswith("https://"):
-            if issuer.__contains__("://"):
-                raise ValueError("Invalid issuer, must be an https:// url or a domain name")
+            if "://" in issuer:
+                msg = (
+                    "Invalid issuer. "
+                    "It must be an https:// url or a domain name without a scheme."
+                )
+                raise ValueError(msg)
             issuer = f"https://{issuer}"
         if "." not in issuer:
-            raise ValueError(
-                "Invalid issuer. It must contain at least a dot in the domain name"
-            )
+            msg = "Invalid issuer. It must contain at least a dot in the domain name."
+            raise ValueError(msg)
 
         super().__init__(
             authorization_endpoint=f"{issuer}/as/authorization.oauth2",

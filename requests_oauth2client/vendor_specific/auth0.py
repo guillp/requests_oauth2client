@@ -68,7 +68,7 @@ class Auth0ManagementApiClient(ApiClient):
         tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
         auth: client credentials. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
         session: requests session. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
-        **kwargs: additional kwargs to pass to the ApiClient base class
+        **session_kwargs: additional kwargs to pass to the ApiClient base class
 
     Usage:
         ```python
@@ -84,7 +84,7 @@ class Auth0ManagementApiClient(ApiClient):
         client_id: str | None = None,
         client_secret: str | None = None,
         session: requests.Session | None = None,
-        **kwargs: Any,
+        **session_kwargs: Any,
     ):
         client = Auth0Client(
             tenant, auth=auth, client_id=client_id, client_secret=client_secret, session=session
@@ -95,5 +95,5 @@ class Auth0ManagementApiClient(ApiClient):
             base_url=audience,
             auth=api_auth,
             session=session,
-            **kwargs,
+            **session_kwargs,
         )

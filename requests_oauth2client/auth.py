@@ -1,4 +1,4 @@
-"""This module contains requests-compatible Auth Handlers that implement OAuth 2.0."""
+"""This module contains `requests`-compatible Auth Handlers that implement OAuth 2.0."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -11,7 +11,7 @@ from .device_authorization import DeviceAuthorizationResponse
 from .exceptions import ExpiredAccessToken
 from .tokens import BearerToken
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import OAuth2Client
 
 
@@ -39,7 +39,8 @@ class BearerAuth(requests.auth.AuthBase):
         ```
 
     Args:
-        token: a [BearerToken][requests_oauth2client.tokens.BearerToken] or a string to use as token for this Auth Handler. If `None`, this Auth Handler is a no op.
+        token: a [BearerToken][requests_oauth2client.tokens.BearerToken] or a string
+            to use as token for this Auth Handler. If `None`, this Auth Handler is a no-op.
     """
 
     def __init__(self, token: str | BearerToken | None = None) -> None:

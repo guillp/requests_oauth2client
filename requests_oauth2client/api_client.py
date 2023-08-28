@@ -1,4 +1,4 @@
-"""ApiClient main module."""
+"""`ApiClient` main module."""
 
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ from typing_extensions import Literal
 
 
 class ApiClient:
-    """A Wrapper around [requests.Session][] with extra features for Rest API calls.
+    """A Wrapper around [requests.Session][] with extra features for REST API calls.
 
-    Additional features compared to [requests.Session][]:
+    Additional features compared to using a [requests.Session][] directly:
 
     - Allows setting a root url at creation time, then passing relative urls at request time.
     - It may also raise exceptions instead of returning error responses.
@@ -40,7 +40,7 @@ class ApiClient:
         session.proxies = {"https": "https://localhost:3128"}
         api = ApiClient("https://myapi.local/resource", session=session)
 
-        # or you can let ApiClient init it's own session and provide additional configuration parameters:
+        # or you can let ApiClient init its own session and provide additional configuration parameters:
         api = ApiClient(
             "https://myapi.local/resource", proxies={"https": "https://localhost:3128"}
         )
@@ -53,7 +53,8 @@ class ApiClient:
         raise_for_status: if `True`, exceptions will be raised everytime a request returns an error code (>= 400).
         none_fields: if `"exclude"` (default), `data` or `json` fields whose values are `None` are not included in the request. If `"include"`, they are included with string value `None` (this is the default behavior of `requests`). If "empty", they are included with an empty value (as an empty string).
         bool_fields: a tuple of (true_value, false_value). Fields from `data` or `params` with a boolean value (`True` or `False`) will be serialized to the corresponding value. This can be useful since some APIs expect a `'true'` or `'false'` value as boolean, and requests serialises `True` to `'True'` and `False` to `'False'`. Set it to `None` to restore default requests behaviour.
-        **kwargs: additional kwargs to configure this session. This parameter may be overridden at request time.
+        session: a preconfigured `requests.Session` to use with this `ApiClient`.
+        **session_kwargs: additional kwargs to configure the underlying `requests.Session`.
     """
 
     def __init__(
@@ -65,7 +66,7 @@ class ApiClient:
         none_fields: Literal["include", "exclude", "empty"] = "exclude",
         bool_fields: tuple[Any, Any] | None = ("true", "false"),
         session: requests.Session | None = None,
-        **kwargs: Any,
+        **session_kwargs: Any,
     ):
         super().__init__()
 
@@ -78,7 +79,7 @@ class ApiClient:
         self.session = session or requests.Session()
         self.auth = auth
 
-        for key, val in kwargs.items():
+        for key, val in session_kwargs.items():
             setattr(self.session, key, val)
 
     def request(  # noqa: C901
