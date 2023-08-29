@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 import requests
 from furl import Query, furl  # type: ignore[import-not-found]
@@ -37,7 +37,7 @@ def test_authorization_code(
 
     authorization_request = AuthorizationRequest(
         authorization_endpoint,
-        client_id,
+        client_id=client_id,
         redirect_uri=redirect_uri,
         scope=scope,
         audience=audience,
@@ -47,9 +47,7 @@ def test_authorization_code(
 
     state = authorization_request.state
 
-    authorization_response = furl(
-        redirect_uri, query={"code": authorization_code, "state": state}
-    ).url
+    authorization_response = furl(redirect_uri, query={"code": authorization_code, "state": state}).url
     requests_mock.get(
         authorization_request.uri,
         status_code=302,
@@ -86,18 +84,16 @@ def test_authorization_code(
         token_endpoint,
         json={"access_token": access_token, "token_type": "Bearer", "expires_in": 3600},
     )
-    token = client.authorization_code(
-        code=auth_response, redirect_uri=redirect_uri, validate=False
-    )
+    token = client.authorization_code(code=auth_response, redirect_uri=redirect_uri, validate=False)
 
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token
     assert not token.is_expired()
     assert token.expires_at is not None
     assert (
-        datetime.now() + timedelta(seconds=3598)
+        datetime.now(tz=UTC) + timedelta(seconds=3598)
         <= token.expires_at
-        <= datetime.now() + timedelta(seconds=3600)
+        <= datetime.now(tz=UTC) + timedelta(seconds=3600)
     )
 
     assert requests_mock.last_request is not None

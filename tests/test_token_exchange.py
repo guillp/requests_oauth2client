@@ -29,9 +29,7 @@ def test_token_exchange(
 
     subject_token = "accVkjcJyb4BWCxGsndESCJQbdFMogUC5PbRDqceLTC"
     resource = "https://backend.example.com/api"
-    token_response = client.token_exchange(
-        subject_token=BearerToken(subject_token), resource=resource
-    )
+    token_response = client.token_exchange(subject_token=BearerToken(subject_token), resource=resource)
 
     assert token_response.access_token == access_token
     assert token_response.issued_token_type == "urn:ietf:params:oauth:token-type:access_token"
@@ -70,32 +68,18 @@ def test_token_type() -> None:
         OAuth2Client.get_token_type("urn:ietf:params:oauth:token-type:saml2")
         == "urn:ietf:params:oauth:token-type:saml2"
     )
-    assert (
-        OAuth2Client.get_token_type("urn:ietf:params:oauth:token-type:jwt")
-        == "urn:ietf:params:oauth:token-type:jwt"
-    )
+    assert OAuth2Client.get_token_type("urn:ietf:params:oauth:token-type:jwt") == "urn:ietf:params:oauth:token-type:jwt"
 
-    assert (
-        OAuth2Client.get_token_type("access_token")
-        == "urn:ietf:params:oauth:token-type:access_token"
-    )
-    assert (
-        OAuth2Client.get_token_type("refresh_token")
-        == "urn:ietf:params:oauth:token-type:refresh_token"
-    )
-    assert (
-        OAuth2Client.get_token_type("id_token") == "urn:ietf:params:oauth:token-type:id_token"
-    )
+    assert OAuth2Client.get_token_type("access_token") == "urn:ietf:params:oauth:token-type:access_token"
+    assert OAuth2Client.get_token_type("refresh_token") == "urn:ietf:params:oauth:token-type:refresh_token"
+    assert OAuth2Client.get_token_type("id_token") == "urn:ietf:params:oauth:token-type:id_token"
     assert OAuth2Client.get_token_type("saml1") == "urn:ietf:params:oauth:token-type:saml1"
     assert OAuth2Client.get_token_type("saml2") == "urn:ietf:params:oauth:token-type:saml2"
     assert OAuth2Client.get_token_type("jwt") == "urn:ietf:params:oauth:token-type:jwt"
 
     assert OAuth2Client.get_token_type("foobar") == "foobar"
 
-    assert (
-        OAuth2Client.get_token_type(token=BearerToken("mytoken"))
-        == "urn:ietf:params:oauth:token-type:access_token"
-    )
+    assert OAuth2Client.get_token_type(token=BearerToken("mytoken")) == "urn:ietf:params:oauth:token-type:access_token"
     assert (
         OAuth2Client.get_token_type(
             token_type="refresh_token",
@@ -103,10 +87,7 @@ def test_token_type() -> None:
         )
         == "urn:ietf:params:oauth:token-type:refresh_token"
     )
-    assert (
-        OAuth2Client.get_token_type("id_token", token="foo")
-        == "urn:ietf:params:oauth:token-type:id_token"
-    )
+    assert OAuth2Client.get_token_type("id_token", token="foo") == "urn:ietf:params:oauth:token-type:id_token"
     assert OAuth2Client.get_token_type("saml1") == "urn:ietf:params:oauth:token-type:saml1"
     assert OAuth2Client.get_token_type("saml2") == "urn:ietf:params:oauth:token-type:saml2"
     assert OAuth2Client.get_token_type("jwt") == "urn:ietf:params:oauth:token-type:jwt"

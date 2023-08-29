@@ -29,6 +29,7 @@ class PkceUtils:
     """Contains helper methods for PKCE, as described in RFC7636.
 
     See [RFC7636](https://tools.ietf.org/html/rfc7636).
+
     """
 
     code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
@@ -40,6 +41,7 @@ class PkceUtils:
 
         Returns:
             a code_verifier ready to use for PKCE
+
         """
         return secrets.token_urlsafe(96)
 
@@ -53,13 +55,15 @@ class PkceUtils:
 
         Returns:
             a code_challenge derived from the given verifier
+
         """
         if isinstance(verifier, bytes):
             verifier = verifier.decode()
 
         if not cls.code_verifier_re.match(verifier):
+            msg = f"Invalid code verifier, does not match {cls.code_verifier_re}"
             raise ValueError(
-                f"Invalid code verifier, does not match {cls.code_verifier_re}",
+                msg,
                 verifier,
             )
 
@@ -68,7 +72,8 @@ class PkceUtils:
         elif method == "plain":
             return verifier
         else:
-            raise ValueError("Unsupported code_challenge_method", method)
+            msg = "Unsupported code_challenge_method"
+            raise ValueError(msg, method)
 
     @classmethod
     def generate_code_verifier_and_challenge(cls, method: str = "S256") -> tuple[str, str]:
@@ -79,15 +84,14 @@ class PkceUtils:
 
         Returns:
             a (code_verifier, code_challenge) tuple.
+
         """
         verifier = cls.generate_code_verifier()
         challenge = cls.derive_challenge(verifier, method)
         return verifier, challenge
 
     @classmethod
-    def validate_code_verifier(
-        cls, verifier: str, challenge: str, method: str = "S256"
-    ) -> bool:
+    def validate_code_verifier(cls, verifier: str, challenge: str, method: str = "S256") -> bool:
         """Validate a `code_verifier` against a `code_challenge`.
 
         Args:
@@ -97,51 +101,36 @@ class PkceUtils:
 
         Returns:
             `True` if verifier is valid, or `False` otherwise
+
         """
-        return (
-            cls.code_verifier_re.match(verifier) is not None
-            and cls.derive_challenge(verifier, method) == challenge
-        )
+        return cls.code_verifier_re.match(verifier) is not None and cls.derive_challenge(verifier, method) == challenge
 
 
 class AuthorizationResponse:
     """Represent a successful Authorization Response.
 
-    An Authorization Response is the redirection initiated by the AS
-    to the client's redirection endpoint (redirect_uri) after an Authorization Request.
-    This Response is typically created with a call to `AuthorizationRequest.validate_callback()` once the call
-    to the client Redirection Endpoint is made.
-    AuthorizationResponse contains the following, all accessible as attributes:
-     - all the parameters that have been returned by the AS, most notably the `code`, and optional parameters such as `state`.
+    An Authorization Response is the redirection initiated by the AS to the client's redirection
+    endpoint (redirect_uri) after an Authorization Request. This Response is typically created with
+    a call to `AuthorizationRequest.validate_callback()` once the call to the client Redirection
+    Endpoint is made. AuthorizationResponse contains the following, all accessible as attributes:
+
+     - all the parameters that have been returned by the AS, most notably the `code`, and optional
+       parameters such as `state`.
      - the redirect_uri that was used for the Authorization Request
      - the code_verifier matching the code_challenge that was used for the Authorization Request
 
-    Parameters `redirect_uri` and `code_verifier` must be those from the matching `AuthorizationRequest`.
-    All other parameters including `code` and `state` must be those extracted from the Authorization Response parameters.
+    Parameters `redirect_uri` and `code_verifier` must be those from the matching
+    `AuthorizationRequest`. All other parameters including `code` and `state` must be those
+    extracted from the Authorization Response parameters.
 
     Args:
         code: the authorization code returned by the AS
         redirect_uri: the redirect_uri that was passed as parameter in the AuthorizationRequest
-        code_verifier: the code_verifier matching the code_challenge that was passed as parameter in the AuthorizationRequest
+        code_verifier: the code_verifier matching the code_challenge that was passed as
+            parameter in the AuthorizationRequest
         state: the state returned by the AS
         **kwargs: other parameters as returned by the AS
 
-    Usage:
-        ```python
-        request = AuthorizationRequest(
-            client_id, scope="openid", redirect_uri="http://localhost:54121/callback"
-        )
-        webbrowser.open(request)  # open the authorization request in a browser
-        response_uri = ...  # at this point, manage to get the response uri
-        response = request.validate_callback(
-            response_uri
-        )  # get an AuthorizationResponse at this point
-
-        client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
-        client.authorization_code(
-            response
-        )  # you can pass this response on a call to `OAuth2Client.authorization_code()`
-        ```
     """
 
     def __init__(
@@ -172,6 +161,7 @@ class AuthorizationResponse:
 
         Returns:
             the attribute value, or None if it isn't part of the returned attributes
+
         """
         return self.others.get(item)
 
@@ -179,27 +169,31 @@ class AuthorizationResponse:
 class AuthorizationRequest:
     """Represents an Authorization Request.
 
-    This class makes it easy to generate valid Authorization Request URI (possibly including a state, nonce, PKCE, and custom args),
-    to store all parameters, and to validate an Authorization Response.
+    This class makes it easy to generate valid Authorization Request URI (possibly including a
+    state, nonce, PKCE, and custom args), to store all parameters, and to validate an Authorization
+    Response.
 
     All parameters passed at init time will be included in the request query parameters as-is,
     excepted for a few parameters which have a special behaviour:
 
-    * `state`: if True (default), a random state parameter will be generated for you. You may pass your own state as `str`,
-    or set it to `None` so that the state parameter will not be included in the request. You may access that state in the
-    `state` attribute from this request.
-    * `nonce`: if True (default) and scope includes 'openid', a random nonce will be generated and included in the request.
-     You may access that nonce in the `nonce` attribute from this request.
-    * `code_verifier`: if `None`, and `code_challenge_method` is `'S256'` or `'plain'`, a valid `code_challenge`
-    and `code_verifier` for PKCE will be automatically generated, and the `code_challenge` will be included
-    in the request. You may pass your own `code_verifier` as a `str` parameter, in which case the appropriate
-    `code_challenge` will be included in the request, according to the `code_challenge_method`.
+    * `state`: if True (default), a random state parameter will be generated for you. You may pass
+      your own state as `str`,
+    or set it to `None` so that the state parameter will not be included in the request. You may
+    access that state in the `state` attribute from this request. * `nonce`: if True (default) and
+    scope includes 'openid', a random nonce will be generated and included in the request. You may
+    access that nonce in the `nonce` attribute from this request. * `code_verifier`: if `None`, and
+    `code_challenge_method` is `'S256'` or `'plain'`, a valid `code_challenge` and `code_verifier`
+    for PKCE will be automatically generated, and the `code_challenge` will be included in the
+    request. You may pass your own `code_verifier` as a `str` parameter, in which case the
+    appropriate `code_challenge` will be included in the request, according to the
+    `code_challenge_method`.
 
     Args:
         authorization_endpoint: the uri for the authorization endpoint.
         client_id: the client_id to include in the request.
         redirect_uri: the redirect_uri to include in the request. This is required in OAuth 2.0 and optional
-            in OAuth 2.1. Pass `None` if you don't need any redirect_uri in the Authorization Request.
+            in OAuth 2.1. Pass `None` if you don't need any redirect_uri in the Authorization
+            Request.
         scope: the scope to include in the request, as an iterable of `str`, or a single space-separated `str`.
         response_type: the response type to include in the request.
         state: the state to include in the request, or `True` to autogenerate one (default).
@@ -209,6 +203,7 @@ class AuthorizationRequest:
         acr_values: requested Authentication Context Class Reference values.
         issuer: Issuer Identifier value from the OAuth/OIDC Server, if using Server Issuer Identification.
         **kwargs: extra parameters to include in the request, as-is.
+
     """
 
     exception_classes: dict[str, type[Exception]] = {
@@ -231,6 +226,7 @@ class AuthorizationRequest:
     def __init__(
         self,
         authorization_endpoint: str,
+        *,
         client_id: str,
         redirect_uri: str | None = None,
         scope: None | str | Iterable[str] = "openid",
@@ -246,24 +242,20 @@ class AuthorizationRequest:
         **kwargs: Any,
     ) -> None:
         if authorization_response_iss_parameter_supported and not issuer:
-            raise ValueError(
-                "When 'authorization_response_iss_parameter_supported' is True, you must provide the expected 'issuer' as parameter."
+            msg = (
+                "When 'authorization_response_iss_parameter_supported' is True, you must"
+                " provide the expected 'issuer' as parameter."
             )
+            raise ValueError(msg)
 
         if state is True:
             state = self.generate_state()
 
         if scope is not None:
-            if isinstance(scope, str):
-                scope = scope.split(" ")
-            else:
-                scope = tuple(scope)
+            scope = scope.split(" ") if isinstance(scope, str) else tuple(scope)
 
         if nonce is True:
-            if scope is not None and "openid" in scope:
-                nonce = self.generate_nonce()
-            else:
-                nonce = None
+            nonce = self.generate_nonce() if scope is not None and "openid" in scope else None
 
         if acr_values is not None:
             if isinstance(acr_values, str):
@@ -272,12 +264,12 @@ class AuthorizationRequest:
                 acr_values = list(acr_values)
 
         if "code_challenge" in kwargs:
-            raise ValueError(
-                "A code_challenge must not be passed as parameter. "
-                "Pass the code_verifier instead, and the appropriate code_challenge "
-                "will automatically be derived from it and included in the request, "
-                "based on code_challenge_method."
+            msg = (
+                "A code_challenge must not be passed as parameter. Pass the code_verifier"
+                " instead, and the appropriate code_challenge will automatically be derived"
+                " from it and included in the request, based on code_challenge_method."
             )
+            raise ValueError(msg)
 
         if not code_challenge_method:
             code_verifier = code_challenge = code_challenge_method = None
@@ -286,11 +278,9 @@ class AuthorizationRequest:
                 code_verifier = PkceUtils.generate_code_verifier()
             code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
 
-        if max_age is not None:
-            if max_age < 0:
-                raise ValueError(
-                    "The `max_age` parameter is a number of seconds and cannot be negative."
-                )
+        if max_age is not None and max_age < 0:
+            msg = "The `max_age` parameter is a number of seconds and cannot be negative."
+            raise ValueError(msg)
 
         self.authorization_endpoint = authorization_endpoint
         self.client_id = client_id
@@ -305,9 +295,7 @@ class AuthorizationRequest:
         self.code_challenge_method = code_challenge_method
         self.acr_values = acr_values
         self.max_age = max_age
-        self.authorization_response_iss_parameter_supported = (
-            authorization_response_iss_parameter_supported
-        )
+        self.authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported
         self.kwargs = kwargs
 
         self.args = dict(
@@ -327,11 +315,12 @@ class AuthorizationRequest:
     def as_dict(self) -> Mapping[str, Any]:
         """Return a dict with all the parameters used to init this Authorization Request.
 
-        Used for serialization of this request. A new AuthorizationRequest initialized with the same parameters will be
-        equal to this one.
+        Used for serialization of this request. A new AuthorizationRequest initialized with the same
+        parameters will be equal to this one.
 
         Returns:
             a dict of parameters
+
         """
         return {
             "authorization_endpoint": self.authorization_endpoint,
@@ -360,11 +349,13 @@ class AuthorizationRequest:
 
         Args:
             jwk: the JWK to use to sign the request
-            alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
-            lifetime: an optional number of seconds of validity for the signed reqeust. If present, `iat` an `exp` claims will be included in the signed JWT.
+            alg: the alg to use to sign the request, if the provided `jwk` has no `alg` parameter.
+            lifetime: an optional number of seconds of validity for the signed request.
+                If present, `iat` an `exp` claims will be included in the signed JWT.
 
         Returns:
             a `Jwt` that contains the signed request object.
+
         """
         claims = {key: val for key, val in self.args.items() if val is not None}
         if lifetime:
@@ -388,11 +379,13 @@ class AuthorizationRequest:
 
         Args:
             jwk: the JWK to use to sign the request
-            alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
-            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim). By default, don't use an 'exp' claim.
+            alg: the alg to use to sign the request, if the provided `jwk` has no `alg` parameter.
+            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim).
+                By default, don't use an 'exp' claim.
 
         Returns:
             the signed Authorization Request
+
         """
         request_jwt = self.sign_request_jwt(jwk, alg, lifetime)
         return RequestParameterAuthorizationRequest(
@@ -418,13 +411,15 @@ class AuthorizationRequest:
         Args:
             sign_jwk: the JWK to use to sign the request
             enc_jwk: the JWK to use to encrypt the request
-            sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
-            enc_alg: the alg to use to encrypt the request, if the passed `jwk` has no `alg` parameter.
-            enc: the encoding to use to encrypt the request, if the passed `jwk` has no `enc` parameter.
-            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim). By default, do not include an 'exp' claim.
+            sign_alg: the alg to use to sign the request, if `sign_jwk` has no `alg` parameter.
+            enc_alg: the alg to use to encrypt the request, if `enc_jwk` has no `alg` parameter.
+            enc: the encoding to use to encrypt the request.
+            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim).
+                By default, do not include an 'exp' claim.
 
         Returns:
             the signed and encrypted request object, as a `jwskate.Jwt`
+
         """
         claims = {key: val for key, val in self.args.items() if val is not None}
         if lifetime:
@@ -455,13 +450,15 @@ class AuthorizationRequest:
         Args:
             sign_jwk: the JWK to use to sign the request
             enc_jwk: the JWK to use to encrypt the request
-            sign_alg: the alg to use to sign the request, if the passed `jwk` has no `alg` parameter.
-            enc_alg: the alg to use to encrypt the request, if the passed `jwk` has no `alg` parameter.
-            enc: the encoding to use to encrypt the request, if the passed `jwk` has no `enc` parameter.
-            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim). By default, do not include an 'exp' claim.
+            sign_alg: the alg to use to sign the request, if `sign_jwk` has no `alg` parameter.
+            enc_alg: the alg to use to encrypt the request, if `enc_jwk` has no `alg` parameter.
+            enc: the encoding to use to encrypt the request.
+            lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim).
+                By default, do not include an 'exp' claim.
 
         Returns:
-            the same AuthorizationRequest, with a request object as parameter
+            a `RequestParameterAuthorizationRequest , with a request object as parameter
+
         """
         request_jwt = self.sign_and_encrypt_request_jwt(
             sign_jwk=sign_jwk,
@@ -480,24 +477,28 @@ class AuthorizationRequest:
     def validate_callback(self, response: str) -> AuthorizationResponse:
         """Validate an Authorization Response against this Request.
 
-        Validate a given Authorization Response URI against this Authorization
-        Request, and return an [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
+        Validate a given Authorization Response URI against this Authorization Request, and return
+        an
+        [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
 
-        This includes matching the `state` parameter, checking for returned errors, and extracting the returned `code`
-        and other parameters.
+        This includes matching the `state` parameter, checking for returned errors, and extracting
+        the returned `code` and other parameters.
 
         Args:
-            response: the Authorization Response URI. This can be the full URL, or just the query parameters.
+            response: the Authorization Response URI. This can be the full URL, or just the
+                query parameters (still encoded as x-www-form-urlencoded).
 
         Returns:
             the extracted code, if all checks are successful
 
         Raises:
-            MismatchingIssuer: if the 'iss' received in the response doesn't match the expected value.
+            MismatchingIssuer: if the 'iss' received from the response does not match the
+                expected value.
             MismatchingState: if the response `state` does not match the expected value.
             OAuth2Error: if the response includes an error.
             MissingAuthCode: if the response does not contain a `code`.
-            NotImplementedError: if response_type anything else than 'code'
+            NotImplementedError: if response_type anything else than 'code'.
+
         """
         try:
             response_url = furl(response)
@@ -542,14 +543,17 @@ class AuthorizationRequest:
     def on_response_error(self, response: str) -> AuthorizationResponse:
         """Error handler for Authorization Response errors.
 
-        Triggered by [validate_callback()][requests_oauth2client.authorization_request.AuthorizationRequest.validate_callback] if the response uri contains
-        an error.
+        Triggered by
+        [validate_callback()][requests_oauth2client.authorization_request.AuthorizationRequest.validate_callback]
+        if the response uri contains an error.
 
         Args:
             response: the Authorization Response URI. This can be the full URL, or just the query parameters.
 
         Returns:
-            may return a default code that will be returned by `validate_callback`. But this method will most likely raise exceptions instead.
+            may return a default code that will be returned by `validate_callback`. But this method
+            will most likely raise exceptions instead.
+
         """
         response_url = furl(response)
         error = response_url.args.get("error")
@@ -583,12 +587,10 @@ class AuthorizationRequest:
 
         Returns:
             `True` if the other AuthorizationRequest is the same as this one, `False` otherwise
+
         """
         if isinstance(other, AuthorizationRequest):
-            return (
-                self.authorization_endpoint == other.authorization_endpoint
-                and self.args == other.args
-            )
+            return self.authorization_endpoint == other.authorization_endpoint and self.args == other.args
         elif isinstance(other, str):
             return self.uri == other
         return super().__eq__(other)
@@ -602,6 +604,7 @@ class RequestParameterAuthorizationRequest:
         client_id: the client_id
         request: the request JWT
         expires_at: the expiration date for this request
+
     """
 
     @accepts_expires_in
@@ -635,6 +638,7 @@ class RequestParameterAuthorizationRequest:
 
         Returns:
              the Authorization Request URI
+
         """
         return self.uri
 
@@ -647,6 +651,7 @@ class RequestUriParameterAuthorizationRequest:
         client_id: the client_id
         request_uri: the request_uri
         expires_at: the expiration date for this request
+
     """
 
     @accepts_expires_in
@@ -685,6 +690,7 @@ class AuthorizationRequestSerializer:
 
     You might need to store pending authorization requests in session, either server-side or client-
     side. This class is here to help you do that.
+
     """
 
     def __init__(
@@ -699,14 +705,15 @@ class AuthorizationRequestSerializer:
     def default_dumper(azr: AuthorizationRequest) -> str:
         """Provide a default dumper implementation.
 
-        Serialize an AuthorizationRequest as JSON, then compress with deflate, then encodes
-        as base64url.
+        Serialize an AuthorizationRequest as JSON, then compress with deflate, then encodes as
+        base64url.
 
         Args:
             azr: the `AuthorizationRequest` to serialize
 
         Returns:
             the serialized value
+
         """
         return BinaPy.serialize_to("json", azr.as_dict()).to("deflate").to("b64u").ascii()
 
@@ -719,9 +726,11 @@ class AuthorizationRequestSerializer:
 
         Args:
             serialized: the serialized AuthorizationRequest
+            azr_class: the class to deserialize the Authorization Request to
 
         Returns:
             an AuthorizationRequest
+
         """
         args = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
         return azr_class(**args)
@@ -734,6 +743,7 @@ class AuthorizationRequestSerializer:
 
         Returns:
             the serialized AuthorizationRequest, as a str
+
         """
         return self.dumper(azr)
 
@@ -745,5 +755,6 @@ class AuthorizationRequestSerializer:
 
         Returns:
             the deserialized AuthorizationRequest
+
         """
         return self.loader(serialized)

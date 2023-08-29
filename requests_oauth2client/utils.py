@@ -1,20 +1,19 @@
 """Various utilities used in multiple places.
 
-This module contains helper methods that are used in multiple places within `requests_oauth2client`.
+This module contains helper methods that are used in multiple places.
+
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 from typing import Any, Callable
 
 from furl import furl  # type: ignore[import-not-found]
 
 
-def validate_endpoint_uri(
-    uri: str, https: bool = True, no_fragment: bool = True, path: bool = True
-) -> None:
-    """Validate that an URI is suitable as an endpoint URI.
+def validate_endpoint_uri(uri: str, *, https: bool = True, no_fragment: bool = True, path: bool = True) -> None:
+    """Validate that a URI is suitable as an endpoint URI.
 
     It checks:
 
@@ -22,7 +21,11 @@ def validate_endpoint_uri(
     - that no fragment is included
     - that a path is present
 
-    Those check can be individually disabled using the parameters `https`, `no_fragment` and `path`.
+    Those checks can be individually disabled using the parameters
+
+    - `https`
+    - `no_fragment`
+    - `path`
 
     Args:
         uri: the uri
@@ -32,14 +35,19 @@ def validate_endpoint_uri(
 
     Raises:
         ValueError: if the supplied url is not suitable
+
     """
     url = furl(uri)
+    msg: list[str] = []
     if https and url.scheme != "https":
-        raise ValueError("url must use https")
+        msg += "url must use https"
     if no_fragment and url.fragment:
-        raise ValueError("url must not contain a fragment")
+        msg += "url must not contain a fragment"
     if path and (not url.path or url.path == "/"):
-        raise ValueError("url has no path")
+        msg += "url has no path"
+
+    if msg:
+        raise ValueError(", ".join(msg))
 
 
 def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
@@ -48,14 +56,15 @@ def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
     This decorates methods that accept an `expires_at` datetime parameter, to also allow an
     `expires_in` parameter in seconds.
 
-    If supplied, `expires_in` will be converted to a datetime `expires_in` seconds in the future, and passed as `expires_at`
-    in the decorated method.
+    If supplied, `expires_in` will be converted to a datetime `expires_in` seconds in the future,
+    and passed as `expires_at` in the decorated method.
 
     Args:
         f: the method to decorate, with an `expires_at` parameter
 
     Returns:
         a decorated method that accepts either `expires_in` or `expires_at`.
+
     """
 
     @wraps(f)

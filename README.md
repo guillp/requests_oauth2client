@@ -17,7 +17,7 @@ grant types are easy to add if needed.
 It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-core-1_0.html),
 [PKCE](https://www.rfc-editor.org/rfc/rfc7636.html),
 [Client Assertions](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.2),
-[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html), and
+[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html) and
 [Introspection](https://www.rfc-editor.org/rfc/rfc7662.html),
 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html),
 [JWT-secured Authorization Requests](https://datatracker.ietf.org/doc/rfc9101/),

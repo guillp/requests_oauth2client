@@ -10,8 +10,9 @@ class PingClient(OAuth2Client):
     """A client for PingID Authorization Server.
 
     This will initialize all endpoints with PingID specific urls, without using the metadata.
-    Excepted for avoiding a round-trip to get the metadata url, this does not provide any
-    advantage over using `OAuth2Client.from_discovery_endpoint(issuer="https://myissuer.domain.tld")`
+    Excepted for avoiding a round-trip to get the metadata url, this does not provide any advantage
+    over using `OAuth2Client.from_discovery_endpoint(issuer="https://myissuer.domain.tld")`
+
     """
 
     def __init__(
@@ -24,10 +25,7 @@ class PingClient(OAuth2Client):
     ):
         if not issuer.startswith("https://"):
             if "://" in issuer:
-                msg = (
-                    "Invalid issuer. "
-                    "It must be an https:// url or a domain name without a scheme."
-                )
+                msg = "Invalid issuer. It must be an https:// url or a domain name without a scheme."
                 raise ValueError(msg)
             issuer = f"https://{issuer}"
         if "." not in issuer:

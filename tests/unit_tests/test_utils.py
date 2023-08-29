@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pytest
 
@@ -23,7 +23,7 @@ def test_accepts_expires_in(expires_in: int | str) -> None:
     def foo(expires_at: datetime | None = None) -> datetime | None:
         return expires_at
 
-    now = datetime.now()
+    now = datetime.now(tz=UTC)
     assert foo(expires_at=now) == now
     assert foo(now) == now
     assert isinstance(foo(expires_in=expires_in), datetime)

@@ -30,9 +30,7 @@ def test_client_secret_post(
 
     assert client.client_credentials()
     assert requests_mock.called_once
-    client_secret_post_auth_validator(
-        requests_mock.last_request, client_id=client_id, client_secret=client_secret
-    )
+    client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
 def test_client_secret_basic(
@@ -52,9 +50,7 @@ def test_client_secret_basic(
 
     assert client.client_credentials()
     assert requests_mock.called_once
-    client_secret_basic_auth_validator(
-        requests_mock.last_request, client_id=client_id, client_secret=client_secret
-    )
+    client_secret_basic_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
 def test_private_key_jwt(
@@ -157,9 +153,7 @@ def test_public_client(
     public_app_auth_validator(requests_mock.last_request, client_id=client_id)
 
 
-def test_invalid_request(
-    requests_mock: RequestsMocker, client_id: str, client_secret: str
-) -> None:
+def test_invalid_request(requests_mock: RequestsMocker, client_id: str, client_secret: str) -> None:
     requests_mock.get(ANY)
     with pytest.raises(RuntimeError):
         requests.get("http://localhost", auth=ClientSecretBasic(client_id, client_secret))
@@ -178,9 +172,7 @@ def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:
         PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk_without_kid)
 
 
-def test_init_auth(
-    token_endpoint: str, client_id: str, client_secret: str, private_jwk: Jwk
-) -> None:
+def test_init_auth(token_endpoint: str, client_id: str, client_secret: str, private_jwk: Jwk) -> None:
     csp_client = OAuth2Client(token_endpoint, (client_id, client_secret))
     assert isinstance(csp_client.auth, ClientSecretPost)
     assert csp_client.auth.client_id == client_id

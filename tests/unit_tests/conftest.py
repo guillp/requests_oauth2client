@@ -162,11 +162,7 @@ def client_secret() -> str:
 @pytest.fixture(scope="session")
 def client_credential(
     client_auth_method_handler: (
-        type[PublicApp]
-        | type[ClientSecretPost]
-        | type[ClientSecretBasic]
-        | type[ClientSecretJwt]
-        | type[PrivateKeyJwt]
+        type[PublicApp] | type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] | type[PrivateKeyJwt]
     ),
     client_secret: str,
     private_jwk: Jwk,
@@ -187,11 +183,7 @@ def client_credential(
 @pytest.fixture(scope="session")
 def client_auth_method(
     client_auth_method_handler: (
-        type[PublicApp]
-        | type[ClientSecretPost]
-        | type[ClientSecretBasic]
-        | type[ClientSecretJwt]
-        | type[PrivateKeyJwt]
+        type[PublicApp] | type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] | type[PrivateKeyJwt]
     ),
     client_id: str,
     client_credential: None | str | Jwk,

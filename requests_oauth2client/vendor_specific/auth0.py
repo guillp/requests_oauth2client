@@ -11,14 +11,16 @@ from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentia
 class Auth0Client(OAuth2Client):
     """An OAuth2Client for an Auth0 tenant.
 
-    Instead of providing each endpoint URL separately, you only have to provide a
-    tenant name and all endpoints will be initialized to work with your tenant.
+    Instead of providing each endpoint URL separately, you only have to provide a tenant name and
+    all endpoints will be initialized to work with your tenant.
 
     Args:
-        tenant: the tenant name or FQDN. If it doesn't contain a `.` or it ends with `.eu`, `.us`, or `.au`,
-            then `.auth0.com` will automatically be suffixed to the provided tenant name.
+        tenant: the tenant name or FQDN. If it doesn't contain a `.` or it ends with `.eu`,
+            `.us`, or `.au`, then `.auth0.com` will automatically be suffixed to the provided
+            tenant name.
         auth: the client credentials, same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
         session: the session to use, same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
+
     """
 
     def __init__(
@@ -38,9 +40,12 @@ class Auth0Client(OAuth2Client):
         ):
             tenant = f"{tenant}.auth0.com"
         if "://" in tenant and not tenant.startswith("https://"):
-            raise ValueError(
-                "Invalid tenant name. It must be a tenant name like 'mytenant.myregion' or a full issuer like 'https://mytenant.myregion.auth0.com'."
+            msg = (
+                "Invalid tenant name. "
+                "It must be a tenant name like 'mytenant.myregion' "
+                "or a full issuer like 'https://mytenant.myregion.auth0.com'."
             )
+            raise ValueError(msg)
         self.tenant = tenant
         token_endpoint = f"https://{tenant}/oauth/token"
         revocation_endpoint = f"https://{tenant}/oauth/revoke"
@@ -61,8 +66,9 @@ class Auth0Client(OAuth2Client):
 class Auth0ManagementApiClient(ApiClient):
     """A wrapper around the Auth0 Management API.
 
-    See [Auth0 Management API v2](https://auth0.com/docs/api/management/v2).
-    You must provide the target tenant name and the credentials for a client that is allowed access to the Management API.
+    See [Auth0 Management API v2](https://auth0.com/docs/api/management/v2). You must provide the
+    target tenant name and the credentials for a client that is allowed access to the Management
+    API.
 
     Args:
         tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
@@ -70,11 +76,9 @@ class Auth0ManagementApiClient(ApiClient):
         session: requests session. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
         **session_kwargs: additional kwargs to pass to the ApiClient base class
 
-    Usage:
-        ```python
-        a0mgmt = Auth0ManagementApiClient("mytenant.eu", (client_id, client_secret))
-        users = a0mgmt.get("users", params={"page": 0, "per_page": 100})
-        ```
+    Usage: ```python a0mgmt = Auth0ManagementApiClient("mytenant.eu", (client_id, client_secret))
+    users = a0mgmt.get("users", params={"page": 0, "per_page": 100}) ```
+
     """
 
     def __init__(
@@ -86,9 +90,7 @@ class Auth0ManagementApiClient(ApiClient):
         session: requests.Session | None = None,
         **session_kwargs: Any,
     ):
-        client = Auth0Client(
-            tenant, auth=auth, client_id=client_id, client_secret=client_secret, session=session
-        )
+        client = Auth0Client(tenant, auth=auth, client_id=client_id, client_secret=client_secret, session=session)
         audience = f"https://{client.tenant}/api/v2/"
         api_auth = OAuth2ClientCredentialsAuth(client, audience=audience)
         super().__init__(

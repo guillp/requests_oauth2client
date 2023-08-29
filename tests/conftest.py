@@ -154,9 +154,7 @@ def client_auth_method_handler(
 
 @pytest.fixture(scope="session")
 def client_auth_method(
-    client_auth_method_handler: (
-        type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt]
-    ),
+    client_auth_method_handler: (type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt]),
     client_id: str,
     client_secret: str,
 ) -> ClientSecretPost | ClientSecretBasic | ClientSecretJwt:
@@ -187,9 +185,7 @@ def public_app_auth_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def client_secret_basic_auth_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
-        encoded_username_password = base64.b64encode(
-            f"{client_id}:{client_secret}".encode("ascii")
-        ).decode()
+        encoded_username_password = base64.b64encode(f"{client_id}:{client_secret}".encode("ascii")).decode()
         assert req.headers.get("Authorization") == f"Basic {encoded_username_password}"
         assert "client_secret" not in req.text
 
@@ -198,9 +194,7 @@ def client_secret_basic_auth_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def client_secret_jwt_auth_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str) -> None:
         params = Query(req.text).params
         assert params.get("client_id") == client_id
         assert "client_assertion" in params
@@ -335,9 +329,7 @@ def ciba_request_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def backchannel_auth_request_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, scope: None | str | list[str], **kwargs: Any
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, scope: None | str | list[str], **kwargs: Any) -> None:
         params = Query(req.text).params
         if scope is None:
             assert "scope" not in params

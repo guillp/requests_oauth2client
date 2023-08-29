@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pytest
 from freezegun import freeze_time
@@ -99,14 +99,20 @@ def test_bearer_token_complete() -> None:
 
 @freeze_time("2021-08-17 12:50:18")
 def test_nearly_expired_token() -> None:
-    token = BearerToken(access_token="foo", expires_at=datetime(2021, 8, 17, 12, 50, 20))
+    token = BearerToken(
+        access_token="foo",
+        expires_at=datetime(year=2021, month=8, day=17, hour=12, minute=50, second=20, tzinfo=UTC),
+    )
     assert not token.is_expired()
     assert token.is_expired(3)
 
 
 @freeze_time("2021-08-17 12:50:21")
 def test_recently_expired_token() -> None:
-    token = BearerToken(access_token="foo", expires_at=datetime(2021, 8, 17, 12, 50, 20))
+    token = BearerToken(
+        access_token="foo",
+        expires_at=datetime(year=2021, month=8, day=17, hour=12, minute=50, second=20, tzinfo=UTC),
+    )
     assert token.is_expired()
     assert token.is_expired(3)
     assert not token.is_expired(-3)
@@ -156,15 +162,9 @@ def test_jwt_iat_exp_nbf() -> None:
     }
 
     assert jwt.verify_signature(public_jwk, alg="RS256")
-    assert jwt.issued_at == datetime(
-        year=2021, month=8, day=19, hour=14, minute=55, second=28, tzinfo=timezone.utc
-    )
-    assert jwt.expires_at == datetime(
-        year=2021, month=8, day=19, hour=14, minute=56, second=28, tzinfo=timezone.utc
-    )
-    assert jwt.not_before == datetime(
-        year=2021, month=8, day=19, hour=14, minute=54, second=28, tzinfo=timezone.utc
-    )
+    assert jwt.issued_at == datetime(year=2021, month=8, day=19, hour=14, minute=55, second=28, tzinfo=timezone.utc)
+    assert jwt.expires_at == datetime(year=2021, month=8, day=19, hour=14, minute=56, second=28, tzinfo=timezone.utc)
+    assert jwt.not_before == datetime(year=2021, month=8, day=19, hour=14, minute=54, second=28, tzinfo=timezone.utc)
 
     assert jwt.iat == 1629384928
     assert jwt.exp == 1629384988
@@ -202,9 +202,7 @@ def test_id_token() -> None:
     )
 
     with pytest.raises(ExpiredJwt):
-        id_token.validate(
-            public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=True
-        )
+        id_token.validate(public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=True)
 
     assert id_token.alg == "RS256"
     assert id_token.kid == "my_key"
@@ -232,33 +230,24 @@ def test_invalid_jwt() -> None:
 
     id_token = IdToken(ID_TOKEN)
     modified_id_token = IdToken(
-        ID_TOKEN[:-4]  # strips a few chars from the signature
-        + "abcd"  # replace them with arbitrary data
+        ID_TOKEN[:-4] + "abcd"  # strips a few chars from the signature  # replace them with arbitrary data
     )
 
     # invalid signature
     with pytest.raises(InvalidSignature):
-        modified_id_token.validate(
-            public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=False
-        )
+        modified_id_token.validate(public_jwk, issuer=issuer, audience=audience, nonce=nonce, check_exp=False)
 
     # invalid issuer
     with pytest.raises(InvalidClaim):
-        id_token.validate(
-            public_jwk, issuer="foo", audience=audience, nonce=nonce, check_exp=False
-        )
+        id_token.validate(public_jwk, issuer="foo", audience=audience, nonce=nonce, check_exp=False)
 
     # invalid audience
     with pytest.raises(InvalidClaim):
-        id_token.validate(
-            public_jwk, issuer=issuer, audience="foo", nonce=nonce, check_exp=False
-        )
+        id_token.validate(public_jwk, issuer=issuer, audience="foo", nonce=nonce, check_exp=False)
 
     # invalid nonce
     with pytest.raises(InvalidClaim):
-        id_token.validate(
-            public_jwk, issuer=issuer, audience=audience, nonce="foo", check_exp=False
-        )
+        id_token.validate(public_jwk, issuer=issuer, audience=audience, nonce="foo", check_exp=False)
 
     # invalid claim
     with pytest.raises(InvalidClaim):
@@ -298,10 +287,5 @@ def test_id_token_eq() -> None:
 
 def test_token_serializer() -> None:
     serializer = BearerTokenSerializer()
-    assert (
-        serializer.dumps(BearerToken("access_token"))
-        == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
-    )
-    assert serializer.loads(
-        "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
-    ) == BearerToken("access_token")
+    assert serializer.dumps(BearerToken("access_token")) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
+    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA") == BearerToken("access_token")

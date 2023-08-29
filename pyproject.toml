@@ -67,8 +67,15 @@ doc = ["mdformat", "mkdocs", "mkdocs-autorefs", "mkdocs-include-markdown-plugin"
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.docformatter]
+black = true
+recursive = true
+wrap-summaries = 100
+wrap-descriptions = 100
+blank = true
+
 [tool.black]
-line-length = 96
+line-length = 120
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -87,7 +94,7 @@ exclude = '''
 
 [tool.ruff]
 target-version = "py38"
-line-length = 96
+line-length = 120
 select = [
     "A",
     "B",
@@ -127,10 +134,18 @@ ignore = [
     "N818", # Exception names should be named with an Error suffix
     "PLR0912", # Too many branches
     "D107", # Missing docstring in `__init__`
+    "S105", # Possible hardcoded password
 ]
 exclude = [
     "tests"
 ]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+ignore-decorators = ['override']
+
+[tool.ruff.pylint]
+max-args = 10
 
 [tool.mypy]
 strict = true

@@ -20,17 +20,13 @@ from requests_oauth2client import (
 
 def test_authorization_url(authorization_request: AuthorizationRequest) -> None:
     url = authorization_request.furl
-    assert dict(url.args) == {
-        key: val for key, val in authorization_request.args.items() if val is not None
-    }
+    assert dict(url.args) == {key: val for key, val in authorization_request.args.items() if val is not None}
 
 
 def test_authorization_signed_request(
     authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk
 ) -> None:
-    args = {
-        key: value for key, value in authorization_request.args.items() if value is not None
-    }
+    args = {key: value for key, value in authorization_request.args.items() if value is not None}
     signed_request = authorization_request.sign(private_jwk)
     assert isinstance(signed_request.uri, str)
     url = signed_request.furl
@@ -45,9 +41,7 @@ def test_authorization_signed_request(
 def test_authorization_signed_request_with_lifetime(
     authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk
 ) -> None:
-    args = {
-        key: value for key, value in authorization_request.args.items() if value is not None
-    }
+    args = {key: value for key, value in authorization_request.args.items() if value is not None}
     args["iat"] = 1665409020
     args["exp"] = 1665409080
     signed_request = authorization_request.sign(private_jwk, lifetime=60)
@@ -70,9 +64,7 @@ def enc_jwk() -> Jwk:
 def test_authorization_signed_and_encrypted_request(
     authorization_request: AuthorizationRequest, private_jwk: Jwk, public_jwk: Jwk, enc_jwk: Jwk
 ) -> None:
-    args = {
-        key: value for key, value in authorization_request.args.items() if value is not None
-    }
+    args = {key: value for key, value in authorization_request.args.items() if value is not None}
     args["iat"] = 1665409020
     args["exp"] = 1665409080
     signed_and_encrypted_request = authorization_request.sign_and_encrypt(
@@ -86,12 +78,8 @@ def test_authorization_signed_and_encrypted_request(
     assert Jwt.decrypt_and_verify(jwt, enc_jwk, public_jwk).claims == args
 
 
-@pytest.mark.parametrize(
-    "request_uri", ("this_is_a_request_uri", "https://foo.bar/request_uri")
-)
-def test_request_uri_authorization_request(
-    authorization_endpoint: str, client_id: str, request_uri: str
-) -> None:
+@pytest.mark.parametrize("request_uri", ("this_is_a_request_uri", "https://foo.bar/request_uri"))
+def test_request_uri_authorization_request(authorization_endpoint: str, client_id: str, request_uri: str) -> None:
     request_uri_azr = RequestUriParameterAuthorizationRequest(
         authorization_endpoint=authorization_endpoint,
         client_id=client_id,
@@ -114,9 +102,7 @@ def test_error_response(
         authorization_request.validate_callback(authorization_response_uri)
 
 
-def test_missing_code(
-    authorization_request: AuthorizationRequest, authorization_response_uri: furl
-) -> None:
+def test_missing_code(authorization_request: AuthorizationRequest, authorization_response_uri: furl) -> None:
     authorization_response_uri.args.pop("code")
     with pytest.raises(MissingAuthCode):
         authorization_request.validate_callback(authorization_response_uri)

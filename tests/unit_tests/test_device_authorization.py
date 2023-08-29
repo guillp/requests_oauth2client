@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pytest
 
@@ -36,7 +36,7 @@ def test_device_authorization_response(
     assert response.verification_uri == verification_uri
     assert response.verification_uri_complete == verification_uri_complete
     assert isinstance(response.expires_at, datetime)
-    assert response.expires_at > datetime.now()
+    assert response.expires_at > datetime.now(tz=UTC)
     assert response.interval == 10
 
 
@@ -46,7 +46,7 @@ def test_device_authorization_response_expires_at(
     verification_uri: str,
     verification_uri_complete: str,
 ) -> None:
-    expires_at = datetime(year=2021, month=1, day=1, hour=0, minute=0, second=0)
+    expires_at = datetime(year=2021, month=1, day=1, hour=0, minute=0, second=0, tzinfo=UTC)
     response = DeviceAuthorizationResponse(
         device_code=device_code,
         user_code=user_code,
@@ -135,9 +135,7 @@ def test_device_authorization_client(
 
     device_authorization_client.authorize_device()
     assert requests_mock.called_once
-    client_secret_post_auth_validator(
-        requests_mock.last_request, client_id=client_id, client_secret=client_secret
-    )
+    client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
 def test_device_authorization_client_error(
@@ -159,9 +157,7 @@ def test_device_authorization_client_error(
     with pytest.raises(UnauthorizedClient):
         device_authorization_client.authorize_device()
     assert requests_mock.called_once
-    client_secret_post_auth_validator(
-        requests_mock.last_request, client_id=client_id, client_secret=client_secret
-    )
+    client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
 def test_device_authorization_invalid_errors(
@@ -183,9 +179,7 @@ def test_device_authorization_invalid_errors(
     with pytest.raises(DeviceAuthorizationError):
         device_authorization_client.authorize_device()
     assert requests_mock.called_once
-    client_secret_post_auth_validator(
-        requests_mock.last_request, client_id=client_id, client_secret=client_secret
-    )
+    client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
     requests_mock.reset_mock()
     requests_mock.post(
@@ -199,9 +193,7 @@ def test_device_authorization_invalid_errors(
     with pytest.raises(InvalidDeviceAuthorizationResponse):
         device_authorization_client.authorize_device()
     assert requests_mock.called_once
-    client_secret_post_auth_validator(
-        requests_mock.last_request, client_id=client_id, client_secret=client_secret
-    )
+    client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
 def test_device_authorization_pooling_job(
@@ -242,9 +234,7 @@ def test_device_authorization_pooling_job(
     assert token.access_token == access_token
 
 
-def test_no_device_authorization_endpoint(
-    token_endpoint: str, client_id: str, client_secret: str
-) -> None:
+def test_no_device_authorization_endpoint(token_endpoint: str, client_id: str, client_secret: str) -> None:
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     with pytest.raises(AttributeError):
         client.authorize_device()
