@@ -39,8 +39,8 @@ class ApiClient:
         from requests_oauth2client import ApiClient
 
         api = ApiClient("https://myapi.local/resource", timeout=10)
-        resp = api.get("/myid") # this will send a GET request
-                             # to https://myapi.local/resource/myid
+        resp = api.get("/myid")  # this will send a GET request
+        # to https://myapi.local/resource/myid
 
         # you can pass an underlying requests.Session at init time
         session = requests.Session()
@@ -48,10 +48,10 @@ class ApiClient:
         api = ApiClient("https://myapi.local/resource", session=session)
 
         # or you can let ApiClient init its own session and provide additional configuration
-        parameters:
+        # parameters:
         api = ApiClient(
             "https://myapi.local/resource",
-             proxies={"https": "https://localhost:3128"}
+            proxies={"https": "https://localhost:3128"},
         )
         ```
 
@@ -104,7 +104,7 @@ class ApiClient:
         for key, val in session_kwargs.items():
             setattr(self.session, key, val)
 
-    def request(  # noqa: C901, PLR0913
+    def request(  # noqa: C901, PLR0913, D417
         self,
         method: str,
         url: None | str | bytes | Iterable[str | bytes | int] = None,
@@ -438,10 +438,12 @@ class ApiClient:
 
         Usage:
             ```python
+            from requests_oauth2client import ApiClient
+
             api = ApiClient("https://myapi.local")
-            resource1 = api.resource1.get() # GET https://myapi.local/resource1
-            resource2 = api.resource2.get() # GET https://myapi.local/resource2
-        ```
+            resource1 = api.resource1.get()  # GET https://myapi.local/resource1
+            resource2 = api.resource2.get()  # GET https://myapi.local/resource2
+            ```
 
         """
         return self[item]
@@ -457,9 +459,11 @@ class ApiClient:
 
         Usage:
             ```python
+            from requests_oauth2client import ApiClient
+
             api = ApiClient("https://myapi.local")
-            resource1 = api["resource1"].get() # GET https://myapi.local/resource1
-            resource2 = api["resource2"].get() # GET https://myapi.local/resource2
+            resource1 = api["resource1"].get()  # GET https://myapi.local/resource1
+            resource2 = api["resource2"].get()  # GET https://myapi.local/resource2
             ```
 
         """

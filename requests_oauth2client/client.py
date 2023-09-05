@@ -42,7 +42,7 @@ from .exceptions import (
     UnknownTokenEndpointError,
     UnsupportedTokenType,
 )
-from .tokens import BearerToken, IdToken
+from .tokens import BearerToken, IdToken, TokenType
 from .utils import validate_endpoint_uri
 
 T = TypeVar("T")
@@ -71,9 +71,12 @@ class OAuth2Client:
             Can be:
 
             - a [requests.auth.AuthBase][] instance (which will be used as-is)
-            - a tuple of `(client_id, client_secret)` which will initialize an instance of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost]
-            - a `(client_id, jwk)` to initialize a [PrivateKeyJwt][requests_oauth2client.client_authentication.PrivateKeyJwt],
-            - or a `client_id` which will use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
+            - a tuple of `(client_id, client_secret)` which will initialize an instance
+            of [ClientSecretPost][requests_oauth2client.client_authentication.ClientSecretPost]
+            - a `(client_id, jwk)` to initialize
+            a [PrivateKeyJwt][requests_oauth2client.client_authentication.PrivateKeyJwt],
+            - or a `client_id` which will
+            use [PublicApp][requests_oauth2client.client_authentication.PublicApp] authentication.
 
         client_id: client ID (use either this or `auth`)
         client_secret: client secret (use either this or `auth`)
@@ -127,7 +130,7 @@ class OAuth2Client:
 
     token_class: type[BearerToken] = BearerToken
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         token_endpoint: str,
         auth: (
@@ -148,7 +151,7 @@ class OAuth2Client:
         jwks_uri: str | None = None,
         authorization_server_jwks: JwkSet | dict[str, Any] | None = None,
         issuer: str | None = None,
-        id_token_signed_response_alg: str | None = "RS256",
+        id_token_signed_response_alg: str | None = "RS256",  # noqa: S107
         id_token_encrypted_response_alg: str | None = None,
         id_token_decryption_key: Jwk | dict[str, Any] | None = None,
         code_challenge_method: str = "S256",
@@ -278,7 +281,8 @@ class OAuth2Client:
         Authentication will be added automatically based on the defined `auth` for this client.
 
         Args:
-             data: parameters to send to the token endpoint. Items with a None or empty value will not be sent in the request.
+             data: parameters to send to the token endpoint. Items with a None or empty value
+                will not be sent in the request.
              timeout: a timeout value for the call
              **requests_kwargs: additional parameters for requests.post()
 
@@ -314,12 +318,13 @@ class OAuth2Client:
         """
         try:
             token_response = self.token_class(**response.json())
-            return token_response
         except Exception as response_class_exc:
             try:
                 return self.on_token_error(response)
             except Exception as token_error_exc:
                 raise token_error_exc from response_class_exc
+        else:
+            return token_response
 
     def on_token_error(self, response: requests.Response) -> BearerToken:
         """Error handler for `token_request()`.
@@ -380,6 +385,7 @@ class OAuth2Client:
     def authorization_code(
         self,
         code: str | AuthorizationResponse,
+        *,
         validate: bool = True,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
@@ -543,13 +549,13 @@ class OAuth2Client:
             subject_token_type = self.get_token_type(subject_token_type, subject_token)
         except ValueError:
             msg = "Cannot determine the kind of 'subject_token' you provided. Please specify a 'subject_token_type'."
-            raise TypeError(msg)
+            raise TypeError(msg) from None
         if actor_token:  # pragma: no branch
             try:
                 actor_token_type = self.get_token_type(actor_token_type, actor_token)
             except ValueError:
                 msg = "Cannot determine the kind of 'actor_token' you provided. Please specify an 'actor_token_type'."
-                raise TypeError(msg)
+                raise TypeError(msg) from None
 
         data = dict(
             grant_type=GrantType.TOKEN_EXCHANGE,
@@ -627,6 +633,7 @@ class OAuth2Client:
 
     def authorization_request(
         self,
+        *,
         scope: None | str | Iterable[str] = "openid",
         response_type: str = "code",
         redirect_uri: str | None = None,
@@ -638,12 +645,13 @@ class OAuth2Client:
         """Generate an Authorization Request for this client.
 
         Args:
-            scope: the scope to use
-            response_type: the response_type to use
-            redirect_uri: the redirect_uri to include in the request. By default, the redirect_uri defined at init time is used.
-            state: the state parameter to use. Leave default to generate a random value.
-            nonce: a nonce. Leave default to generate a random value.
-            code_verifier: the PKCE code verifier to use. Leave default to generate a random value.
+            scope: the `scope` to use
+            response_type: the `response_type` to use
+            redirect_uri: the `redirect_uri` to include in the request. By default,
+                the `redirect_uri` defined at init time is used.
+            state: the `state` parameter to use. Leave default to generate a random value.
+            nonce: a `nonce`. Leave default to generate a random value.
+            code_verifier: the PKCE `code_verifier` to use. Leave default to generate a random value.
             **kwargs: additional parameters to include in the auth request
 
         Returns:
@@ -803,18 +811,19 @@ class OAuth2Client:
         resp.raise_for_status()
 
     @classmethod
-    def get_token_type(
+    def get_token_type(  # noqa: C901
         cls,
         token_type: str | None = None,
         token: None | str | BearerToken | IdToken = None,
     ) -> str:
-        """Get standardised token type identifiers.
+        """Get standardized token type identifiers.
 
-        Return a standardised token type identifier, based on a short `token_type` hint and/or a
+        Return a standardized token type identifier, based on a short `token_type` hint and/or a
         token value.
 
         Args:
-            token_type: a token_type hint, as `str`. May be "access_token", "refresh_token" or "id_token" (optional)
+            token_type: a token_type hint, as `str`. May be "access_token", "refresh_token"
+                or "id_token"
             token: a token value, as an instance of `BearerToken` or IdToken, or as a `str`.
 
         Returns:
@@ -839,7 +848,7 @@ class OAuth2Client:
                     msg,
                     type(token),
                 )
-        elif token_type == "access_token":
+        elif token_type == TokenType.ACCESS_TOKEN:
             if token is not None and not isinstance(token, (str, BearerToken)):
                 msg = "The supplied token is not a BearerToken or a string representation of it."
                 raise TypeError(
@@ -847,7 +856,7 @@ class OAuth2Client:
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:access_token"
-        elif token_type == "refresh_token":
+        elif token_type == TokenType.REFRESH_TOKEN:
             if token is not None and isinstance(token, BearerToken) and not token.refresh_token:
                 msg = "The supplied BearerToken doesn't have a refresh_token."
                 raise ValueError(msg)
@@ -883,7 +892,7 @@ class OAuth2Client:
         """
         return self.revoke_token(
             access_token,
-            token_type_hint="access_token",
+            token_type_hint=TokenType.ACCESS_TOKEN,
             requests_kwargs=requests_kwargs,
             **revoke_kwargs,
         )
@@ -914,7 +923,7 @@ class OAuth2Client:
 
         return self.revoke_token(
             refresh_token,
-            token_type_hint="refresh_token",
+            token_type_hint=TokenType.REFRESH_TOKEN,
             requests_kwargs=requests_kwargs,
             **revoke_kwargs,
         )
@@ -943,7 +952,7 @@ class OAuth2Client:
         """
         requests_kwargs = requests_kwargs or {}
 
-        if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
+        if token_type_hint == TokenType.REFRESH_TOKEN and isinstance(token, BearerToken):
             if token.refresh_token is None:
                 msg = "The supplied BearerToken doesn't have a refresh token."
                 raise ValueError(msg)
@@ -1023,9 +1032,9 @@ class OAuth2Client:
         requests_kwargs = requests_kwargs or {}
 
         if isinstance(token, BearerToken):
-            if token_type_hint is None or token_type_hint == "access_token":
+            if token_type_hint is None or token_type_hint == TokenType.ACCESS_TOKEN:
                 token = token.access_token
-            elif token_type_hint == "refresh_token":
+            elif token_type_hint == TokenType.REFRESH_TOKEN:
                 if token.refresh_token is None:
                     msg = "The supplied BearerToken doesn't have a refresh token."
                     raise ValueError(msg)
@@ -1080,7 +1089,7 @@ class OAuth2Client:
             response: the response as returned by the Introspection Endpoint.
 
         Returns:
-            usually raises exeptions. A subclass can return a default response instead.
+            usually raises exceptions. A subclass can return a default response instead.
 
         """
         try:
@@ -1094,9 +1103,10 @@ class OAuth2Client:
             raise UnknownIntrospectionError(response) from exc
         raise exception
 
-    def backchannel_authentication_request(
+    def backchannel_authentication_request(  # noqa: PLR0913
         self,
         scope: None | str | Iterable[str] = "openid",
+        *,
         client_notification_token: str | None = None,
         acr_values: None | str | Iterable[str] = None,
         login_hint_token: str | None = None,

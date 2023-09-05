@@ -71,9 +71,12 @@ class Auth0ManagementApiClient(ApiClient):
     API.
 
     Args:
-        tenant: the tenant name. Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
-        auth: client credentials. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
-        session: requests session. Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
+        tenant: the tenant name.
+            Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
+        auth: client credentials.
+            Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
+        session: requests session.
+            Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
         **session_kwargs: additional kwargs to pass to the ApiClient base class
 
     Usage: ```python a0mgmt = Auth0ManagementApiClient("mytenant.eu", (client_id, client_secret))

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pprint
 from datetime import UTC, datetime, timedelta, timezone
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable
 
 import jwskate
@@ -24,6 +25,20 @@ from .utils import accepts_expires_in
 if TYPE_CHECKING:
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
+
+
+class TokenType(str, Enum):
+    """An enum of standardised `token_type` values."""
+
+    ACCESS_TOKEN = "access_token"
+    REFRESH_TOKEN = "refresh_token"
+    ID_TOKEN = "id_token"
+
+
+class AccessTokenType(str, Enum):
+    """An enum of standardised `access_token` types."""
+
+    BEARER = "Bearer"
 
 
 class IdToken(jwskate.SignedJwt):
@@ -66,7 +81,7 @@ class BearerToken:
 
     """
 
-    TOKEN_TYPE = "Bearer"  # noqa: S105
+    TOKEN_TYPE: str = AccessTokenType.BEARER
 
     @accepts_expires_in
     def __init__(
@@ -129,7 +144,7 @@ class BearerToken:
         """
         return f"Bearer {self.access_token}"
 
-    def validate_id_token(self, client: OAuth2Client, azr: AuthorizationResponse) -> IdToken:  # noqa: C901
+    def validate_id_token(self, client: OAuth2Client, azr: AuthorizationResponse) -> IdToken:  # noqa: C901, PLR0915
         """Validate that a token response is valid, and return the ID Token.
 
         This will validate the id_token as described in [OIDC 1.0

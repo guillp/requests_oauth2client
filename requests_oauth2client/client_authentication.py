@@ -7,7 +7,7 @@ the standardized and commonly used Client Authentication Methods.
 """
 from __future__ import annotations
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Any, Callable
 from uuid import uuid4
 

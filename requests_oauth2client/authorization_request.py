@@ -198,7 +198,9 @@ class AuthorizationRequest:
         response_type: the response type to include in the request.
         state: the state to include in the request, or `True` to autogenerate one (default).
         nonce: the nonce to include in the request, or `True` to autogenerate one (default).
-        code_verifier: the code verifier to include in the request. If left as `None` and `code_challenge_method` is set, a valid code_verifier will be generated.
+        code_verifier: the code verifier to include in the request.
+            If left as `None` and `code_challenge_method` is set, a valid code_verifier
+            will be generated.
         code_challenge_method: the method to use to derive the `code_challenge` from the `code_verifier`.
         acr_values: requested Authentication Context Class Reference values.
         issuer: Issuer Identifier value from the OAuth/OIDC Server, if using Server Issuer Identification.
@@ -223,7 +225,7 @@ class AuthorizationRequest:
         """Generate a random `nonce`."""
         return secrets.token_urlsafe(32)
 
-    def __init__(
+    def __init__(  # noqa: C901, PLR0913
         self,
         authorization_endpoint: str,
         *,
