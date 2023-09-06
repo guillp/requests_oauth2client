@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any, Callable
+from urllib.parse import parse_qs
 from uuid import uuid4
 
 import furl  # type: ignore[import-not-found]
@@ -117,14 +118,15 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
 
         """
         request = super().__call__(request)
-        data = furl.Query(request.body)
-        data.set([("client_id", self.client_id), ("client_secret", self.client_secret)])
-        request.prepare_body(data.params, files=None)
+        params = parse_qs(request.body, strict_parsing=True, keep_blank_values=True) if request.body else {}
+        params[b"client_id"] = [self.client_id.encode()]
+        params[b"client_secret"] = [self.client_secret.encode()]
+        request.prepare_body(params, files=None)
         return request
 
 
 class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
-    """Base class for assertion based client authentication methods.
+    """Base class for assertion-based client authentication methods.
 
     Args:
         client_id: the client_id to use
@@ -176,28 +178,21 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         if audience is None:
             msg = "No url defined for this request. This should never happen..."
             raise ValueError(msg)  # pragma: no cover
-        data = furl.Query(request.body)
+        params = parse_qs(request.body, strict_parsing=True, keep_blank_values=True) if request.body else {}
         client_assertion = self.client_assertion(audience)
-        data.set(
-            [
-                ("client_id", self.client_id),
-                ("client_assertion", client_assertion),
-                (
-                    "client_assertion_type",
-                    "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-                ),
-            ]
-        )
-        request.prepare_body(data.params, files=None)
+        params[b"client_id"] = [self.client_id.encode()]
+        params[b"client_assertion"] = [client_assertion.encode()]
+        params[b"client_assertion_type"] = [b"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]
+        request.prepare_body(params, files=None)
         return request
 
 
 class ClientSecretJwt(ClientAssertionAuthenticationMethod):
     """Implement `client_secret_jwt` client authentication method.
 
-     With this method, client generates and signs a client assertion that is symmetrically signed
-     with its Client Secret. The assertion is then sent to the AS in a `client_assertion` field with
-     each authenticated request.
+    With this method, the client generates and signs a client assertion that is symmetrically
+    signed with its Client Secret. The assertion is then sent to the AS in a `client_assertion`
+    field with each authenticated request.
 
     Args:
         client_id: the `client_id` to use.
@@ -352,9 +347,9 @@ class PublicApp(BaseClientAuthenticationMethod):
 
         """
         request = super().__call__(request)
-        data = furl.Query(request.body)
-        data.set([("client_id", self.client_id)])
-        request.prepare_body(data.params, files=None)
+        params = parse_qs(request.body, strict_parsing=True, keep_blank_values=True) if request.body else {}
+        params[b"client_id"] = [self.client_id.encode()]
+        request.prepare_body(params, files=None)
         return request
 
 
