@@ -372,7 +372,7 @@ class OAuth2Client:
         """
         requests_kwargs = requests_kwargs or {}
 
-        if scope is not None and not isinstance(scope, str):
+        if scope and not isinstance(scope, str):
             try:
                 scope = " ".join(scope)
             except Exception as exc:
