@@ -32,12 +32,15 @@ Please note that despite the name, this library has no relationship with Google
 [oauth2client](https://github.com/googleapis/oauth2client) library.
 
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
-[![Downloads](https://pepy.tech/badge/requests_oauth2client/month)](https://pepy.tech/project/requests_oauth2client)
+[![PyPi version](https://img.shields.io/pypi/v/black)](https://pypi.org/project/black/)
+[![Downloads](https://static.pepy.tech/badge/requests_oauth2client/month)](https://pepy.tech/project/requests_oauth2client)
 [![Supported Versions](https://img.shields.io/pypi/pyversions/requests_oauth2client.svg)](https://pypi.org/project/requests_oauth2client)
 [![PyPi license](https://badgen.net/pypi/license/requests_oauth2client/)](https://pypi.com/project/requests_oauth2client/)
 [![PyPI status](https://img.shields.io/pypi/status/requests_oauth2client.svg)](https://pypi.python.org/pypi/requests_oauth2client/)
 [![GitHub commits](https://badgen.net/github/commits/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
 [![GitHub latest commit](https://badgen.net/github/last-commit/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # Documentation
 
