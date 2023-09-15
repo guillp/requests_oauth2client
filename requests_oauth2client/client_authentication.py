@@ -118,7 +118,11 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
 
         """
         request = super().__call__(request)
-        params = parse_qs(request.body, strict_parsing=True, keep_blank_values=True) if request.body else {}
+        params = (
+            parse_qs(request.body, strict_parsing=True, keep_blank_values=True)  # type: ignore[type-var]
+            if isinstance(request.body, (str, bytes))
+            else {}
+        )
         params[b"client_id"] = [self.client_id.encode()]
         params[b"client_secret"] = [self.client_secret.encode()]
         request.prepare_body(params, files=None)
@@ -178,7 +182,11 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         if audience is None:
             msg = "No url defined for this request. This should never happen..."
             raise ValueError(msg)  # pragma: no cover
-        params = parse_qs(request.body, strict_parsing=True, keep_blank_values=True) if request.body else {}
+        params = (
+            parse_qs(request.body, strict_parsing=True, keep_blank_values=True)  # type: ignore[type-var]
+            if request.body
+            else {}
+        )
         client_assertion = self.client_assertion(audience)
         params[b"client_id"] = [self.client_id.encode()]
         params[b"client_assertion"] = [client_assertion.encode()]
@@ -347,7 +355,11 @@ class PublicApp(BaseClientAuthenticationMethod):
 
         """
         request = super().__call__(request)
-        params = parse_qs(request.body, strict_parsing=True, keep_blank_values=True) if request.body else {}
+        params = (
+            parse_qs(request.body, strict_parsing=True, keep_blank_values=True)  # type: ignore[type-var]
+            if request.body
+            else {}
+        )
         params[b"client_id"] = [self.client_id.encode()]
         request.prepare_body(params, files=None)
         return request

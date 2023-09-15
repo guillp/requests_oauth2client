@@ -1,12 +1,14 @@
 import secrets
 
 import pytest
+from freezegun import freeze_time
 from furl import Query  # type: ignore[import-not-found]
 
 from requests_oauth2client import BearerToken, ClientSecretPost, IdToken, OAuth2Client
 from tests.conftest import RequestsMocker
 
 
+@freeze_time()
 def test_token_exchange(
     requests_mock: RequestsMocker,
     client_id: str,
@@ -34,7 +36,7 @@ def test_token_exchange(
     assert token_response.access_token == access_token
     assert token_response.issued_token_type == "urn:ietf:params:oauth:token-type:access_token"
     assert token_response.token_type == "Bearer"
-    assert 58 <= token_response.expires_in <= 60
+    assert token_response.expires_in == 60
 
     assert requests_mock.last_request is not None
     params = Query(requests_mock.last_request.text).params

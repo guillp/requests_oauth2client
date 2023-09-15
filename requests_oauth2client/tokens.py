@@ -1,12 +1,12 @@
-"""This module contain classes that represent Tokens used in OAuth2.0 / OIDC."""
+"""This module contains classes that represent Tokens used in OAuth2.0 / OIDC."""
 from __future__ import annotations
 
-import pprint
 from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import jwskate
+from attrs import Factory, asdict, frozen
 from binapy import BinaPy
 
 from .exceptions import (
@@ -59,6 +59,7 @@ class IdToken(jwskate.SignedJwt):
         raise AttributeError(msg)
 
 
+@frozen(init=False)
 class BearerToken:
     """Represents a Bearer Token as returned by a Token Endpoint.
 
@@ -81,7 +82,15 @@ class BearerToken:
 
     """
 
-    TOKEN_TYPE: str = AccessTokenType.BEARER
+    TOKEN_TYPE: ClassVar[str] = AccessTokenType.BEARER
+
+    access_token: str
+    expires_at: datetime | None = None
+    scope: str | None = None
+    refresh_token: str | None = None
+    token_type: str = TOKEN_TYPE
+    id_token: IdToken | jwskate.JweCompact | None = None
+    kwargs: dict[str, Any] = Factory(dict)
 
     @accepts_expires_in
     def __init__(
@@ -98,21 +107,25 @@ class BearerToken:
         if token_type.title() != self.TOKEN_TYPE.title():
             msg = f"Token Type is not '{self.TOKEN_TYPE}'!"
             raise ValueError(msg, token_type)
-        self.access_token = access_token
-        self.expires_at = expires_at
-        self.scope = scope
-        self.refresh_token = refresh_token
-        self.id_token: IdToken | jwskate.JweCompact | None = None
+        id_token_jwt: IdToken | jwskate.JweCompact | None = None
         if id_token:
             try:
-                self.id_token = IdToken(id_token)
+                id_token_jwt = IdToken(id_token)
             except jwskate.InvalidJwt:
                 try:
-                    self.id_token = jwskate.JweCompact(id_token)
+                    id_token_jwt = jwskate.JweCompact(id_token)
                 except jwskate.InvalidJwe:
                     msg = "ID Token is invalid because it is  neither a JWT or a JWE."
                     raise InvalidIdToken(msg) from None
-        self.other = kwargs
+        self.__attrs_init__(
+            access_token=access_token,
+            expires_at=expires_at,
+            scope=scope,
+            refresh_token=refresh_token,
+            token_type=token_type,
+            id_token=id_token_jwt,
+            kwargs=kwargs,
+        )
 
     def is_expired(self, leeway: int = 0) -> bool | None:
         """Check if the access token is expired.
@@ -312,37 +325,27 @@ class BearerToken:
         """
         return self.access_token
 
-    def __contains__(self, key: str) -> bool:
-        """Check the existence of a key in the token response.
+    def as_dict(self) -> dict[str, Any]:
+        """Return a dict of parameters.
 
-        Allows testing like `assert "refresh_token" in token_response`.
-
-        Args:
-            key: a key
-
-        Returns:
-            `True` if the key exists in the token response, `False` otherwise
+        That is suitable for serialization or to init another BearerToken.
 
         """
-        if key == "access_token":
-            return True
-        elif key == "refresh_token":
-            return self.refresh_token is not None
-        elif key == "scope":
-            return self.scope is not None
-        elif key == "token_type":
-            return True
-        elif key == "expires_in":
-            return self.expires_at is not None
-        elif key == "id_token":
-            return self.id_token is not None
-        else:
-            return key in self.other
+        d = asdict(self)
+        d.pop("expires_at")
+        d["expires_in"] = self.expires_in
+        d.update(**d.pop("kwargs", {}))
+        return {key: val for key, val in d.items() if val is not None}
+
+    @property
+    def expires_in(self) -> int | None:
+        """Number of seconds until expiration."""
+        if self.expires_at:
+            return int(self.expires_at.timestamp() - datetime.now(tz=UTC).timestamp())
+        return None
 
     def __getattr__(self, key: str) -> Any:
-        """Return attributes from this BearerToken.
-
-        Allows `token_response.expires_in` or `token_response.any_custom_attribute`.
+        """Return custom attributes from this BearerToken.
 
         Args:
             key: a key
@@ -354,75 +357,7 @@ class BearerToken:
             AttributeError: if the attribute is not found in this response.
 
         """
-        if key == "expires_in":
-            if self.expires_at is None:
-                return None
-            return int(self.expires_at.timestamp() - datetime.now(tz=UTC).timestamp())
-        elif key == "token_type":
-            return self.TOKEN_TYPE
-        return self.other.get(key) or super().__getattribute__(key)
-
-    def as_dict(self, *, expires_at: bool = False) -> dict[str, Any]:
-        """Return all attributes from this BearerToken as a `dict`.
-
-        Args:
-            expires_at: if `True`, the dict will contain an extra `expires_at` field with the token expiration date.
-
-        Returns:
-            a `dict` containing this BearerToken attributes.
-
-        """
-        r: dict[str, Any] = {
-            "access_token": self.access_token,
-            "token_type": self.TOKEN_TYPE,
-        }
-        if self.expires_at:
-            r["expires_in"] = self.expires_in
-            if expires_at:
-                r["expires_at"] = self.expires_at
-        if self.scope:
-            r["scope"] = self.scope
-        if self.refresh_token:
-            r["refresh_token"] = self.refresh_token
-        if self.id_token:
-            r["id_token"] = str(self.id_token)
-        if self.other:
-            r.update(self.other)
-        return r
-
-    def __repr__(self) -> str:
-        """Return a representation of this BearerToken.
-
-        This representation is a pretty formatted `dict` that looks like a Token Endpoint response.
-
-        Returns:
-            a `str` representation of this BearerToken.
-
-        """
-        return pprint.pformat(self.as_dict())
-
-    def __eq__(self, other: object) -> bool:
-        """Check if this BearerToken is equal to another.
-
-        It supports comparison with another BearerToken, or with an `access_token` as `str`.
-
-        Args:
-            other: another token to compare to
-
-        Returns:
-            `True` if equal, `False` otherwise
-
-        """
-        if isinstance(other, BearerToken):
-            return (
-                self.access_token == other.access_token
-                and self.refresh_token == other.refresh_token
-                and self.expires_at == other.expires_at
-                and self.token_type == other.token_type
-            )
-        elif isinstance(other, str):
-            return self.access_token == other
-        return super().__eq__(other)
+        return self.kwargs.get(key) or super().__getattribute__(key)
 
 
 class BearerTokenSerializer:
@@ -436,7 +371,7 @@ class BearerTokenSerializer:
 
     Args:
         dumper: a function to serialize a token into a `str`.
-        loader: a function do deserialize a serialized token representation.
+        loader: a function to deserialize a serialized token representation.
 
     """
 
@@ -459,7 +394,7 @@ class BearerTokenSerializer:
             the serialized value
 
         """
-        return BinaPy.serialize_to("json", token.as_dict(expires_at=True)).to("deflate").to("b64u").ascii()
+        return BinaPy.serialize_to("json", token.as_dict()).to("deflate").to("b64u").ascii()
 
     def default_loader(self, serialized: str, token_class: type[BearerToken] = BearerToken) -> BearerToken:
         """Deserialize a BearerToken.

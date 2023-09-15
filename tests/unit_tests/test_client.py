@@ -1265,7 +1265,7 @@ def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoin
     assert isinstance(auth_req, AuthorizationRequest)
     assert auth_req.authorization_endpoint == authorization_endpoint
     assert auth_req.response_type == "code"
-    assert auth_req.scope == scope.split()
+    assert auth_req.scope == tuple(scope.split())
 
     with pytest.raises(ValueError):
         oauth2client.authorization_request(response_type="token")

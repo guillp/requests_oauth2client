@@ -17,6 +17,7 @@ from .auth import (
     OAuth2ResourceOwnerPasswordAuth,
 )
 from .authorization_request import (
+    GENERATE,
     AuthorizationRequest,
     AuthorizationRequestSerializer,
     AuthorizationResponse,
@@ -135,6 +136,7 @@ __all__ = [
     "ExpiredAccessToken",
     "ExpiredIdToken",
     "ExpiredToken",
+    "GENERATE",
     "GrantType",
     "IdToken",
     "InteractionRequired",

@@ -172,14 +172,14 @@ def test_acr_values() -> None:
         redirect_uri="http://localhost/local",
         scope="openid",
         acr_values="1 2 3",
-    ).acr_values == ["1", "2", "3"]
+    ).acr_values == ("1", "2", "3")
     assert AuthorizationRequest(
         "https://as.local/authorize",
         client_id="foo",
         redirect_uri="http://localhost/local",
         scope="openid",
         acr_values=("1", "2", "3"),
-    ).acr_values == ["1", "2", "3"]
+    ).acr_values == ("1", "2", "3")
 
 
 def test_code_challenge() -> None:

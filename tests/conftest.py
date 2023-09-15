@@ -32,8 +32,7 @@ if TYPE_CHECKING:
         param: str
 
     class RequestsMocker(Mocker):
-        def reset_mock(self) -> None:
-            ...
+        def reset_mock(self) -> None: ...
 
 else:
     from pytest import FixtureRequest

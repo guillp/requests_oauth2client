@@ -25,15 +25,14 @@ ID_TOKEN = (
 
 def test_bearer_token_simple() -> None:
     token = BearerToken(access_token="foo")
-    assert "access_token" in token
-    assert "refresh_token" not in token
-    assert "scope" not in token
-    assert "token_type" in token
-    assert "expires_in" not in token
-    assert "foo" not in token
-    assert token.expires_in is None
-    assert token.expires_at is None
+    assert token.access_token == "foo"
+    assert token.refresh_token is None
+    assert token.scope is None
     assert token.token_type == "Bearer"
+    assert token.expires_at is None
+    assert token.expires_in is None
+    with pytest.raises(AttributeError):
+        token.foo
 
     assert token.as_dict() == {
         "access_token": "foo",
@@ -43,10 +42,11 @@ def test_bearer_token_simple() -> None:
     assert str(token) == "foo"
     assert repr(token)
 
-    assert token == "foo"
-    assert token != 1.2
+    assert str(token) == "foo"
+    assert token != 1.2  # type: ignore[comparison-overlap]
 
 
+@freeze_time("2021-08-17 12:50:18")
 def test_bearer_token_complete() -> None:
     id_token = IdToken.sign(
         {
@@ -65,33 +65,26 @@ def test_bearer_token_complete() -> None:
         custom_attr="custom_value",
         id_token=str(id_token),
     )
-    assert "access_token" in token
-    assert "refresh_token" in token
-    assert "scope" in token
-    assert "token_type" in token
-    assert "expires_in" in token
-    assert "foo" not in token
-    assert "custom_attr" in token
-    assert "id_token" in token
-    assert token.expires_in is not None
-    assert token.expires_at is not None
+    assert token.access_token == "foo"
+    assert token.refresh_token == "refresh_token"
+    assert token.scope == "myscope1 myscope2"
     assert token.token_type == "Bearer"
+    assert token.expires_in == 180
+    assert token.custom_attr == "custom_value"
+    assert token.id_token == id_token
+    assert token.expires_at == datetime(year=2021, month=8, day=17, hour=12, minute=53, second=18, tzinfo=UTC)
+    with pytest.raises(AttributeError):
+        token.foo
 
     assert token.as_dict() == {
         "access_token": "foo",
         "token_type": "Bearer",
         "refresh_token": "refresh_token",
-        "expires_in": token.expires_in,  # TODO: enhance
+        "expires_in": 180,
         "scope": "myscope1 myscope2",
         "custom_attr": "custom_value",
         "id_token": str(id_token),
     }
-
-    assert token.expires_in <= 180
-    assert token.custom_attr == "custom_value"
-
-    with pytest.raises(AttributeError):
-        token.foo
 
     assert str(token) == "foo"
     assert repr(token)
