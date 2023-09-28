@@ -61,13 +61,20 @@ def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(f)
     def decorator(
         *args: Any,
-        expires_in: int | None = None,
+        expires_in: int | str | None = None,
         expires_at: datetime | None = None,
         **kwargs: Any,
     ) -> Any:
         if expires_in is None and expires_at is None:
             return f(*args, **kwargs)
-        if expires_in and isinstance(expires_in, int) and expires_in >= 1:
+        if (
+            expires_in
+            and isinstance(expires_in, str)
+            and expires_in.isdigit()
+            and int(expires_in) >= 1
+        ):
+            expires_at = datetime.now() + timedelta(seconds=int(expires_in))
+        elif expires_in and isinstance(expires_in, int) and expires_in >= 1:
             expires_at = datetime.now() + timedelta(seconds=expires_in)
         return f(*args, expires_at=expires_at, **kwargs)
 
