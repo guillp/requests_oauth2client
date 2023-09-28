@@ -295,4 +295,4 @@ def test_missing_backchannel_authentication_endpoint(
 ) -> None:
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     with pytest.raises(AttributeError):
-        client.backchannel_authentication_request("openid")
+        client.backchannel_authentication_request(login_hint="username@foo.bar")

@@ -1,7 +1,7 @@
 """This module contains the `OAuth2Client` class."""
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable, TypeVar
 
 import requests
 from jwskate import Jwk, JwkSet, Jwt
@@ -43,6 +43,8 @@ from .exceptions import (
 )
 from .tokens import BearerToken, IdToken
 from .utils import validate_endpoint_uri
+
+T = TypeVar("T")
 
 
 class OAuth2Client:
@@ -229,6 +231,48 @@ class OAuth2Client:
             jwks.add_jwk(self.id_token_decryption_key.public_jwk().with_usage_parameters())
         return jwks
 
+    def _request(
+        self,
+        endpoint: str,
+        on_success: Callable[[requests.Response], T],
+        on_failure: Callable[[requests.Response], T],
+        accept: str = "application/json",
+        method: str = "POST",
+        **requests_kwargs: Any,
+    ) -> T:
+        """Send a request to one of the endpoints.
+
+        This is an helper method that takes care of the following tasks:
+
+        - make sure the endpoint as been configured
+        - set `Accept: application/json` header
+        - send the HTTP POST request, then
+            - apply `on_success` to a successful response
+            - or apply `on_failure` otherwise
+        - return the result
+
+        Args:
+            endpoint: name of the endpoint to use
+            on_success: a callable to apply to successful responses
+            on_failure: a callable to apply to error responses
+            accept: the Accept header to include in the request
+            method: the HTTP method to use
+            **requests_kwargs: keyword arguments for the request
+        """
+        endpoint_uri = self._require_endpoint(endpoint)
+        requests_kwargs.setdefault("headers", {})
+        requests_kwargs["headers"]["Accept"] = accept
+
+        response = self.session.request(
+            method,
+            endpoint_uri,
+            **requests_kwargs,
+        )
+        if response.ok:
+            return on_success(response)
+
+        return on_failure(response)
+
     def token_request(
         self, data: dict[str, Any], timeout: int = 10, **requests_kwargs: Any
     ) -> BearerToken:
@@ -244,25 +288,15 @@ class OAuth2Client:
         Returns:
             the token endpoint response, as [`BearerToken`][requests_oauth2client.tokens.BearerToken] instance.
         """
-        token_endpoint = self._require_endpoint("token_endpoint")
-
-        requests_kwargs = {
-            key: value
-            for key, value in requests_kwargs.items()
-            if value is not None and value != ""
-        }
-
-        response = self.session.post(
-            token_endpoint,
+        return self._request(
+            "token_endpoint",
             auth=self.auth,
             data=data,
             timeout=timeout,
+            on_success=self.parse_token_response,
+            on_failure=self.on_token_error,
             **requests_kwargs,
         )
-        if response.ok:
-            return self.parse_token_response(response)
-
-        return self.on_token_error(response)
 
     def parse_token_response(self, response: requests.Response) -> BearerToken:
         """Parse a Response returned by the Token Endpoint.
@@ -525,7 +559,7 @@ class OAuth2Client:
     ) -> BearerToken:
         """Send a request using a JWT as authorization grant.
 
-        This is a defined in (RFC7523 $2.1)[https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1).
+        This is defined in (RFC7523 $2.1)[https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1).
 
         Args:
             assertion: a JWT (as an instance of `jwskate.Jwt` or as a `str`) to use as authorization grant.
@@ -630,7 +664,9 @@ class OAuth2Client:
         )
 
     def pushed_authorization_request(
-        self, authorization_request: AuthorizationRequest
+        self,
+        authorization_request: AuthorizationRequest,
+        requests_kwargs: dict[str, Any] | None = None,
     ) -> RequestUriParameterAuthorizationRequest:
         """Send a Pushed Authorization Request.
 
@@ -643,25 +679,34 @@ class OAuth2Client:
         Returns:
             the `RequestUriParameterAuthorizationRequest` initialized based on the AS response
         """
-        pushed_authorization_request_endpoint = self._require_endpoint(
-            "pushed_authorization_request_endpoint"
-        )
-
-        response = self.session.post(
-            pushed_authorization_request_endpoint,
+        requests_kwargs = requests_kwargs or {}
+        return self._request(
+            "pushed_authorization_request_endpoint",
             data=authorization_request.args,
             auth=self.auth,
+            on_success=self.parse_pushed_authorization_response,
+            on_failure=self.on_pushed_authorization_request_error,
+            **requests_kwargs,
         )
-        if not response.ok:
-            return self.on_pushed_authorization_request_error(response)
 
+    def parse_pushed_authorization_response(
+        self, response: requests.Response
+    ) -> RequestUriParameterAuthorizationRequest:
+        """Parse the response obtained by `pushed_authorization_request()`.
+
+        Args:
+            response: the `requests.Response` returned by the PAR endpoint
+
+        Returns:
+            a RequestUriParameterAuthorizationRequest instance
+        """
         response_json = response.json()
         request_uri = response_json.get("request_uri")
         expires_in = response_json.get("expires_in")
 
         return RequestUriParameterAuthorizationRequest(
-            authorization_endpoint=authorization_request.authorization_endpoint,
-            client_id=authorization_request.client_id,
+            authorization_endpoint=self.authorization_endpoint,
+            client_id=self.client_id,
             request_uri=request_uri,
             expires_in=expires_in,
         )
@@ -704,9 +749,12 @@ class OAuth2Client:
         Returns:
             the [Response][requests.Response] returned by the userinfo endpoint.
         """
-        userinfo_endpoint = self._require_endpoint("userinfo_endpoint")
-        response = self.session.post(userinfo_endpoint, auth=BearerAuth(access_token))
-        return self.parse_userinfo_response(response)
+        return self._request(
+            "userinfo_endpoint",
+            auth=BearerAuth(access_token),
+            on_success=self.parse_userinfo_response,
+            on_failure=self.on_userinfo_error,
+        )
 
     def parse_userinfo_response(self, resp: requests.Response) -> Any:
         """Parse the response obtained by `userinfo()`.
@@ -721,6 +769,17 @@ class OAuth2Client:
             the parsed JSON content from this response.
         """
         return resp.json()
+
+    def on_userinfo_error(self, resp: requests.Response) -> Any:
+        """Parse UserInfo error response.
+
+        Args:
+            resp: a [Response][requests.Response] returned from the UserInfo endpoint.
+
+        Returns:
+            nothing, raises exception instead.
+        """
+        resp.raise_for_status()
 
     @classmethod
     def get_token_type(
@@ -854,9 +913,6 @@ class OAuth2Client:
             `True` if the revocation succeeds,
             `False` if no revocation endpoint is present or a non-standardised error is returned.
         """
-        if not self.revocation_endpoint:
-            return False
-
         requests_kwargs = requests_kwargs or {}
 
         if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
@@ -868,16 +924,14 @@ class OAuth2Client:
         if token_type_hint:
             data["token_type_hint"] = token_type_hint
 
-        response = self.session.post(
-            self.revocation_endpoint,
+        return self._request(
+            "revocation_endpoint",
             data=data,
             auth=self.auth,
+            on_success=lambda resp: True,
+            on_failure=self.on_revocation_error,
             **requests_kwargs,
         )
-        if response.ok:
-            return True
-
-        return self.on_revocation_error(response)
 
     def on_revocation_error(self, response: requests.Response) -> bool:
         """Error handler for `revoke_token()`.
@@ -918,8 +972,6 @@ class OAuth2Client:
         Returns:
             the response as returned by the Introspection Endpoint.
         """
-        introspection_endpoint = self._require_endpoint("introspection_endpoint")
-
         requests_kwargs = requests_kwargs or {}
 
         if token_type_hint == "refresh_token" and isinstance(token, BearerToken):
@@ -931,16 +983,14 @@ class OAuth2Client:
         if token_type_hint:
             data["token_type_hint"] = token_type_hint
 
-        response = self.session.post(
-            introspection_endpoint,
+        return self._request(
+            "introspection_endpoint",
             data=data,
             auth=self.auth,
+            on_success=self.parse_introspection_response,
+            on_failure=self.on_introspection_error,
             **requests_kwargs,
         )
-        if response.ok:
-            return self.parse_introspection_response(response)
-
-        return self.on_introspection_error(response)
 
     def parse_introspection_response(self, response: requests.Response) -> Any:
         """Parse Token Introspection Responses received by `introspect_token()`.
@@ -1017,13 +1067,9 @@ class OAuth2Client:
         Returns:
             a BackChannelAuthenticationResponse as returned by AS
         """
-        backchannel_authentication_endpoint = self._require_endpoint(
-            "backchannel_authentication_endpoint"
-        )
-
         if not (login_hint or login_hint_token or id_token_hint):
             raise ValueError(
-                "One of `login_hint`, `login_hint_token` or `ìd_token_hint` must be provided"
+                "One of `login_hint`, `login_hint_token` or `ìd_token_hint` must be provided."
             )
 
         if (
@@ -1065,17 +1111,14 @@ class OAuth2Client:
         if private_jwk is not None:
             data = {"request": str(Jwt.sign(data, key=private_jwk, alg=alg))}
 
-        response = self.session.post(
-            backchannel_authentication_endpoint,
+        return self._request(
+            "backchannel_authentication_endpoint",
             data=data,
             auth=self.auth,
+            on_success=self.parse_backchannel_authentication_response,
+            on_failure=self.on_backchannel_authentication_error,
             **requests_kwargs,
         )
-
-        if response.ok:
-            return self.parse_backchannel_authentication_response(response)
-
-        return self.on_backchannel_authentication_error(response)
 
     def parse_backchannel_authentication_response(
         self, response: requests.Response
@@ -1121,7 +1164,9 @@ class OAuth2Client:
             raise InvalidBackChannelAuthenticationResponse(response) from exc
         raise exception
 
-    def authorize_device(self, **data: Any) -> DeviceAuthorizationResponse:
+    def authorize_device(
+        self, requests_kwargs: dict[str, Any] | None = None, **data: Any
+    ) -> DeviceAuthorizationResponse:
         """Send a Device Authorization Request.
 
         Args:
@@ -1130,14 +1175,16 @@ class OAuth2Client:
         Returns:
             a Device Authorization Response
         """
-        device_authorization_endpoint = self._require_endpoint("device_authorization_endpoint")
+        requests_kwargs = requests_kwargs or {}
 
-        response = self.session.post(device_authorization_endpoint, data=data, auth=self.auth)
-
-        if response.ok:
-            return self.parse_device_authorization_response(response)
-
-        return self.on_device_authorization_error(response)
+        return self._request(
+            "device_authorization_endpoint",
+            data=data,
+            auth=self.auth,
+            on_success=self.parse_device_authorization_response,
+            on_failure=self.on_device_authorization_error,
+            **requests_kwargs,
+        )
 
     def parse_device_authorization_response(
         self, response: requests.Response
@@ -1179,7 +1226,9 @@ class OAuth2Client:
             raise InvalidDeviceAuthorizationResponse(response) from exc
         raise exception
 
-    def update_authorization_server_public_keys(self) -> JwkSet:
+    def update_authorization_server_public_keys(
+        self, requests_kwargs: dict[str, Any] | None = None
+    ) -> JwkSet:
         """Update the cached AS public keys by retrieving them from its `jwks_uri`.
 
         Public keys are returned by this method, as a [JwkSet][jwskate.JwkSet].
@@ -1189,11 +1238,18 @@ class OAuth2Client:
             the retrieved public keys
 
         Raises:
-            ValueError: if no jwks_uri is configured
+            ValueError: if no `jwks_uri` is configured
         """
-        jwks_uri = self._require_endpoint("jwks_uri")
+        requests_kwargs = requests_kwargs or {}
 
-        jwks = self.session.get(jwks_uri, auth=None).json()
+        jwks = self._request(
+            "jwks_uri",
+            auth=None,
+            method="GET",
+            on_success=lambda resp: resp.json(),
+            on_failure=lambda resp: resp.raise_for_status(),
+            **requests_kwargs,
+        )
         self.authorization_server_jwks = JwkSet(jwks)
         return self.authorization_server_jwks
 
