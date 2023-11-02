@@ -1315,7 +1315,7 @@ class OAuth2Client:
             validate_endpoint_uri(userinfo_endpoint, https=https)
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri is not None:
-            validate_endpoint_uri(userinfo_endpoint, https=https)
+            validate_endpoint_uri(jwks_uri, https=https)
         authorization_response_iss_parameter_supported = discovery.get(
             "authorization_response_iss_parameter_supported", False
         )
