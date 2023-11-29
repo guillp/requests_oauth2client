@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Callable, Iterable, Mapping
 
 from binapy import BinaPy
-from furl import furl  # type: ignore[import]
+from furl import furl  # type: ignore[import-not-found]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 from typing_extensions import Literal
 

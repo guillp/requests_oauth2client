@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Callable
 
-from furl import furl  # type: ignore[import]
+from furl import furl  # type: ignore[import-not-found]
 
 
 def validate_endpoint_uri(

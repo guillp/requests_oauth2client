@@ -4,7 +4,7 @@ This is as defined in [RFC8615](https://datatracker.ietf.org/doc/html/rfc8615)
 and [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
 """
 
-from furl import Path, furl  # type: ignore[import]
+from furl import Path, furl  # type: ignore[import-not-found]
 
 
 def well_known_uri(origin: str, name: str, at_root: bool = True) -> str:

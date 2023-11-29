@@ -3,7 +3,7 @@ from __future__ import annotations
 import jwskate
 import pytest
 from freezegun import freeze_time
-from furl import furl  # type: ignore[import]
+from furl import furl  # type: ignore[import-not-found]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (

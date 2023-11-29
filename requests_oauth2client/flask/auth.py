@@ -6,7 +6,6 @@ from typing import Any
 from flask import session
 
 from ..auth import OAuth2ClientCredentialsAuth
-from ..client import OAuth2Client
 from ..tokens import BearerToken, BearerTokenSerializer
 
 

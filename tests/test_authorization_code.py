@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime, timedelta
 
 import requests
-from furl import Query, furl  # type: ignore[import]
+from furl import Query, furl  # type: ignore[import-not-found]
 from requests_mock import Mocker
 
 from requests_oauth2client import (

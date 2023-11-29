@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 import requests
-from furl import furl  # type: ignore[import]
+from furl import furl  # type: ignore[import-not-found]
 from jwskate import Jwk
 from typing_extensions import Literal
 
