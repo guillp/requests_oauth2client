@@ -76,7 +76,7 @@ class ApiClient:
         self.timeout = timeout
 
         self.session = session or requests.Session()
-        self.session.auth = auth
+        self.auth = auth
 
         for key, val in kwargs.items():
             setattr(self.session, key, val)
@@ -194,7 +194,7 @@ class ApiClient:
             headers=headers,
             cookies=cookies,
             files=files,
-            auth=auth,
+            auth=auth or self.auth,
             timeout=timeout,
             allow_redirects=allow_redirects,
             proxies=proxies,
