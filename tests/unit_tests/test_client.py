@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs
+from requests import HTTPError
 
 from requests_oauth2client import (
     AuthorizationRequest,
@@ -491,9 +492,10 @@ def test_userinfo(
     userinfo = {"sub": sub}
     requests_mock.post(userinfo_endpoint, json=userinfo)
     resp = oauth2client.userinfo(access_token)
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     assert resp == userinfo
     bearer_auth_validator(requests_mock.last_request, access_token=access_token)
+    assert requests_mock.last_request.headers["Accept"] == "application/json"
 
 
 def test_userinfo_no_uri(token_endpoint: str, client_id: str) -> None:
@@ -501,6 +503,17 @@ def test_userinfo_no_uri(token_endpoint: str, client_id: str) -> None:
     client = OAuth2Client(token_endpoint, auth=client_id)
     with pytest.raises(AttributeError):
         client.userinfo("access_token")
+
+
+def test_userinfo_error(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    userinfo_endpoint: str,
+    access_token: str,
+) -> None:
+    requests_mock.post(userinfo_endpoint, json={"error": "access_denied"}, status_code=401)
+    with pytest.raises(HTTPError):
+        oauth2client.userinfo(access_token)
 
 
 def test_from_discovery_document(
@@ -974,12 +987,11 @@ def test_revoke_token_error_non_standard(
 
 
 def test_revoke_token_no_revocation_endpoint(token_endpoint: str, client_id: str) -> None:
-    """Revocation methods return False if no revocation_endpoint is configured."""
+    """Revocation methods raise AttributeError if no revocation_endpoint is configured."""
     client = OAuth2Client(token_endpoint, revocation_endpoint=None, auth=client_id)
 
-    assert client.revoke_access_token("foo") is False
-    assert client.revoke_refresh_token("foo") is False
-    assert client.revoke_token("foo") is False
+    with pytest.raises(AttributeError):
+        client.revoke_token("foo", token_type_hint="access_token")
 
 
 def test_server_jwks(

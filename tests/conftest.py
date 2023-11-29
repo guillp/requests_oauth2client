@@ -12,7 +12,6 @@ from furl import Query, furl  # type: ignore[import]
 from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
 from requests_mock.request import _RequestObjectProxy
-from typing_extensions import Literal
 
 from requests_oauth2client import (
     ApiClient,
@@ -260,6 +259,8 @@ def client_credentials_grant_validator() -> RequestValidatorType:
         for key, val in kwargs.items():
             assert params.get(key) == val
 
+        assert req.headers["Accept"] == "application/json"
+
     return validator
 
 
@@ -270,6 +271,8 @@ def authorization_code_grant_validator() -> RequestValidatorType:
         assert params.get("grant_type") == "authorization_code"
         for key, val in kwargs.items():
             assert params.get(key) == val
+
+        assert req.headers["Accept"] == "application/json"
 
     return validator
 
@@ -283,6 +286,8 @@ def refresh_token_grant_validator() -> RequestValidatorType:
         for key, val in kwargs.items():
             assert params.get(key) == val
 
+        assert req.headers["Accept"] == "application/json"
+
     return validator
 
 
@@ -294,6 +299,8 @@ def device_code_grant_validator() -> RequestValidatorType:
         assert params.get("device_code") == device_code
         for key, val in kwargs.items():
             assert params.get(key) == val
+
+        assert req.headers["Accept"] == "application/json"
 
     return validator
 
@@ -307,6 +314,8 @@ def token_exchange_grant_validator() -> RequestValidatorType:
         for key, val in kwargs.items():
             assert params.get(key) == val
 
+        assert req.headers["Accept"] == "application/json"
+
     return validator
 
 
@@ -318,6 +327,8 @@ def ciba_request_validator() -> RequestValidatorType:
         assert params.get("auth_req_id") == auth_req_id
         for key, val in kwargs.items():
             assert params.get(key) == val
+
+        assert req.headers["Accept"] == "application/json"
 
     return validator
 
@@ -345,6 +356,8 @@ def backchannel_auth_request_validator() -> RequestValidatorType:
         )
         for key, val in kwargs.items():
             assert params.get(key) == val
+
+        assert req.headers["Accept"] == "application/json"
 
     return validator
 
@@ -384,6 +397,8 @@ def backchannel_auth_request_jwt_validator() -> RequestValidatorType:
         for key, val in kwargs.items():
             assert claims.get(key) == val
 
+        assert req.headers["Accept"] == "application/json"
+
     return validator
 
 
@@ -419,6 +434,8 @@ def introspection_request_validator() -> RequestValidatorType:
             assert params.get("token_type_hint") == type_hint
         for key, val in kwargs.items():
             assert params.get(key) == val
+
+        assert req.headers["Accept"] == "application/json"
 
     return validator
 
