@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Callable
 from uuid import uuid4
 
-import furl  # type: ignore[import]
+import furl  # type: ignore[import-not-found]
 import requests
 from binapy import BinaPy
 from jwskate import Jwk, Jwt, SymmetricJwk
