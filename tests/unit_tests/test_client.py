@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs
+from requests import HTTPError
 
 from requests_oauth2client import (
     AuthorizationRequest,
@@ -502,6 +503,17 @@ def test_userinfo_no_uri(token_endpoint: str, client_id: str) -> None:
     client = OAuth2Client(token_endpoint, auth=client_id)
     with pytest.raises(AttributeError):
         client.userinfo("access_token")
+
+
+def test_userinfo_error(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    userinfo_endpoint: str,
+    access_token: str,
+) -> None:
+    requests_mock.post(userinfo_endpoint, json={"error": "access_denied"}, status_code=401)
+    with pytest.raises(HTTPError):
+        oauth2client.userinfo(access_token)
 
 
 def test_from_discovery_document(
