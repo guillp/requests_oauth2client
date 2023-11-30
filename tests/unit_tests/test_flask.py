@@ -24,7 +24,6 @@ def test_flask(
         from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
     except ImportError:
         pytest.skip("Flask is not available")
-        return
 
     oauth_client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
     auth = FlaskOAuth2ClientCredentialsAuth(
@@ -34,7 +33,7 @@ def test_flask(
     )
     api_client = ApiClient(target_api, auth=auth)
 
-    assert isinstance(api_client.session.auth, FlaskOAuth2ClientCredentialsAuth)
+    assert isinstance(api_client.auth, FlaskOAuth2ClientCredentialsAuth)
 
     app = Flask("testapp")
     app.config["TESTING"] = True
@@ -57,7 +56,7 @@ def test_flask(
         assert resp.json == json_resp
         resp = client.get("/api?call=2")
         assert resp.json == json_resp
-        api_client.session.auth.forget_token()
+        api_client.auth.forget_token()
         # assert api_client.session.auth.token is None
         with client.session_transaction() as sess:
             sess.pop(auth.session_key)
