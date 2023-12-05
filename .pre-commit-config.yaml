@@ -21,19 +21,16 @@ repos:
       - tomli
       args:
       - --in-place
--   repo: https://github.com/psf/black
-    rev: 23.9.1
-    hooks:
-    - id: black
-      args: [--preview]
 -   repo: https://github.com/asottile/blacken-docs
     rev: 1.16.0
     hooks:
         - id: blacken-docs
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.287
+    rev: v0.1.7
     hooks:
         - id: ruff
+          args: [ --fix ]
+        - id: ruff-format
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.7.1
     hooks:

@@ -1,4 +1,5 @@
 """This module contains classes that represent Tokens used in OAuth2.0 / OIDC."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone

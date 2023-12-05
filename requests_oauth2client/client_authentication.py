@@ -5,6 +5,7 @@ by including appropriate credentials. This module contains helper classes and me
 the standardized and commonly used Client Authentication Methods.
 
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -12,7 +13,6 @@ from typing import Any, Callable
 from urllib.parse import parse_qs
 from uuid import uuid4
 
-import furl  # type: ignore[import-not-found]
 import requests
 from binapy import BinaPy
 from jwskate import Jwk, Jwt, SymmetricJwk
@@ -366,12 +366,12 @@ class PublicApp(BaseClientAuthenticationMethod):
 
 
 def client_auth_factory(
-    auth: (requests.auth.AuthBase | tuple[str, str] | tuple[str, Jwk] | tuple[str, dict[str, Any]] | str | None),
+    auth: requests.auth.AuthBase | tuple[str, str] | tuple[str, Jwk] | tuple[str, dict[str, Any]] | str | None,
     *,
     client_id: str | None = None,
     client_secret: str | None = None,
     private_key: Jwk | dict[str, Any] | None = None,
-    default_auth_handler: (type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt]) = ClientSecretPost,
+    default_auth_handler: type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] = ClientSecretPost,
 ) -> requests.auth.AuthBase:
     """Initialize the appropriate Auth Handler based on the provided parameters.
 

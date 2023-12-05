@@ -135,6 +135,7 @@ ignore = [
     "PLR0912", # Too many branches
     "D107", # Missing docstring in `__init__`
     "S105", # Possible hardcoded password
+    "ISC001", # single-line-implicit-string-concatenation
 ]
 exclude = [
     "tests"

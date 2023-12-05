@@ -1,4 +1,5 @@
 """Implements subclasses for [Auth0](https://auth0.com)."""
+
 from __future__ import annotations
 
 from typing import Any

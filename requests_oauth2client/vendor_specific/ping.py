@@ -1,4 +1,5 @@
 """PingID specific client."""
+
 from __future__ import annotations
 
 import requests

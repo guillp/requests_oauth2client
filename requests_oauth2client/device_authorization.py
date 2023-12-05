@@ -3,6 +3,7 @@
 See [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628).
 
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

@@ -1,4 +1,5 @@
 """This module contains `requests`-compatible Auth Handlers that implement OAuth 2.0."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

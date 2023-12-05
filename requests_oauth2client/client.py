@@ -1,4 +1,5 @@
 """This module contains the `OAuth2Client` class."""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -46,6 +47,7 @@ from .tokens import BearerToken, IdToken, TokenType
 from .utils import validate_endpoint_uri
 
 T = TypeVar("T")
+
 
 class OAuth2Client:
     """An OAuth 2.x client, that can send requests to an OAuth 2.x Authorization Server.
@@ -258,6 +260,7 @@ class OAuth2Client:
             accept: the Accept header to include in the request
             method: the HTTP method to use
             **requests_kwargs: keyword arguments for the request
+
         """
         endpoint_uri = self._require_endpoint(endpoint)
         requests_kwargs.setdefault("headers", {})
@@ -273,9 +276,7 @@ class OAuth2Client:
 
         return on_failure(response)
 
-    def token_request(
-        self, data: dict[str, Any], timeout: int = 10, **requests_kwargs: Any
-    ) -> BearerToken:
+    def token_request(self, data: dict[str, Any], timeout: int = 10, **requests_kwargs: Any) -> BearerToken:
         """Send a request to the token endpoint.
 
         Authentication will be added automatically based on the defined `auth` for this client.
@@ -305,7 +306,7 @@ class OAuth2Client:
         """Parse a Response returned by the Token Endpoint.
 
         Invoked by [token_request][requests_oauth2client.client.OAuth2Client.token_request] to parse
-        responses returned by the Token Endpoint. Those response contain an `access_token` and
+        responses returned by the Token Endpoint. Those responses contain an `access_token` and
         additional attributes.
 
         Args:
@@ -699,6 +700,7 @@ class OAuth2Client:
 
         Args:
             authorization_request: the authorization request to send
+            requests_kwargs: additional parameters for `requests.request()`
 
         Returns:
             the `RequestUriParameterAuthorizationRequest` initialized based on the AS response
@@ -724,6 +726,7 @@ class OAuth2Client:
 
         Returns:
             a RequestUriParameterAuthorizationRequest instance
+
         """
         response_json = response.json()
         request_uri = response_json.get("request_uri")
@@ -807,6 +810,7 @@ class OAuth2Client:
 
         Returns:
             nothing, raises exception instead.
+
         """
         resp.raise_for_status()
 
@@ -1244,6 +1248,7 @@ class OAuth2Client:
 
         Args:
             **data: additional data to send to the Device Authorization Endpoint
+            requests_kwargs: additional parameters for `requests.request()`
 
         Returns:
             a Device Authorization Response
@@ -1301,9 +1306,7 @@ class OAuth2Client:
             raise InvalidDeviceAuthorizationResponse(response) from exc
         raise exception
 
-    def update_authorization_server_public_keys(
-        self, requests_kwargs: dict[str, Any] | None = None
-    ) -> JwkSet:
+    def update_authorization_server_public_keys(self, requests_kwargs: dict[str, Any] | None = None) -> JwkSet:
         """Update the cached AS public keys by retrieving them from its `jwks_uri`.
 
         Public keys are returned by this method, as a `jwskate.JwkSet`. They are also
@@ -1314,6 +1317,7 @@ class OAuth2Client:
 
         Raises:
             ValueError: if no `jwks_uri` is configured
+
         """
         requests_kwargs = requests_kwargs or {}
 

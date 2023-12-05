@@ -1,4 +1,5 @@
 """Classes and utilities related to Authorization Requests and Responses."""
+
 from __future__ import annotations
 
 import re

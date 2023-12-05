@@ -3,6 +3,7 @@
 This module contains helper methods that are used in multiple places.
 
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -76,15 +77,10 @@ def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
     ) -> Any:
         if expires_in is None and expires_at is None:
             return f(*args, **kwargs)
-        if (
-            expires_in
-            and isinstance(expires_in, str)
-            and expires_in.isdigit()
-            and int(expires_in) >= 1
-        ):
-            expires_at = datetime.now() + timedelta(seconds=int(expires_in))
+        if expires_in and isinstance(expires_in, str) and expires_in.isdigit() and int(expires_in) >= 1:
+            expires_at = datetime.now(tz=UTC) + timedelta(seconds=int(expires_in))
         elif expires_in and isinstance(expires_in, int) and expires_in >= 1:
-            expires_at = datetime.now() + timedelta(seconds=expires_in)
+            expires_at = datetime.now(tz=UTC) + timedelta(seconds=expires_in)
         return f(*args, expires_at=expires_at, **kwargs)
 
     return decorator

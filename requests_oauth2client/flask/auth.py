@@ -1,4 +1,5 @@
 """Helper classes for the [Flask](https://flask.palletsprojects.com) framework."""
+
 from __future__ import annotations
 
 from typing import Any

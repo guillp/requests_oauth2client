@@ -6,6 +6,7 @@ https://openid.net/specs/openid-client-initiated-backchannel-
 authentication-core-1_0.html.
 
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
