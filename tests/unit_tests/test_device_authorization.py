@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 
 import pytest
 
@@ -36,7 +36,7 @@ def test_device_authorization_response(
     assert response.verification_uri == verification_uri
     assert response.verification_uri_complete == verification_uri_complete
     assert isinstance(response.expires_at, datetime)
-    assert response.expires_at > datetime.now(tz=UTC)
+    assert response.expires_at > datetime.now(tz=timezone.utc)
     assert response.interval == 10
 
 
@@ -46,7 +46,7 @@ def test_device_authorization_response_expires_at(
     verification_uri: str,
     verification_uri_complete: str,
 ) -> None:
-    expires_at = datetime(year=2021, month=1, day=1, hour=0, minute=0, second=0, tzinfo=UTC)
+    expires_at = datetime(year=2021, month=1, day=1, hour=0, minute=0, second=0, tzinfo=timezone.utc)
     response = DeviceAuthorizationResponse(
         device_code=device_code,
         user_code=user_code,

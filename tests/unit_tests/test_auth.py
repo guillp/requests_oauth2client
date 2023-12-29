@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs
 
 import pytest
@@ -19,7 +19,7 @@ from tests.conftest import RequestsMocker
 
 @pytest.fixture()
 def minutes_ago() -> datetime:
-    return datetime.now(tz=UTC) - timedelta(minutes=3)
+    return datetime.now(tz=timezone.utc) - timedelta(minutes=3)
 
 
 def test_bearer_auth(

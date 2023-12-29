@@ -8,7 +8,7 @@ the standardized and commonly used Client Authentication Methods.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.parse import parse_qs
 from uuid import uuid4
@@ -236,7 +236,7 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
             a Client Assertion, as `str`.
 
         """
-        iat = int(datetime.now(tz=UTC).timestamp())
+        iat = int(datetime.now(tz=timezone.utc).timestamp())
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 
@@ -311,7 +311,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
             a Client Assertion.
 
         """
-        iat = int(datetime.now(tz=UTC).timestamp())
+        iat = int(datetime.now(tz=timezone.utc).timestamp())
         exp = iat + self.lifetime
         jti = str(self.jti_gen())
 

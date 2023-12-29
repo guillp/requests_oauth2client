@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import secrets
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 
 import requests
 from furl import Query, furl  # type: ignore[import-untyped]
@@ -91,9 +91,9 @@ def test_authorization_code(
     assert not token.is_expired()
     assert token.expires_at is not None
     assert (
-        datetime.now(tz=UTC) + timedelta(seconds=3598)
+        datetime.now(tz=timezone.utc) + timedelta(seconds=3598)
         <= token.expires_at
-        <= datetime.now(tz=UTC) + timedelta(seconds=3600)
+        <= datetime.now(tz=timezone.utc) + timedelta(seconds=3600)
     )
 
     assert requests_mock.last_request is not None

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, UTC
+from datetime import datetime, timezone
 
 import pytest
 from freezegun import freeze_time
@@ -72,7 +72,7 @@ def test_bearer_token_complete() -> None:
     assert token.expires_in == 180
     assert token.custom_attr == "custom_value"
     assert token.id_token == id_token
-    assert token.expires_at == datetime(year=2021, month=8, day=17, hour=12, minute=53, second=18, tzinfo=UTC)
+    assert token.expires_at == datetime(year=2021, month=8, day=17, hour=12, minute=53, second=18, tzinfo=timezone.utc)
     with pytest.raises(AttributeError):
         token.foo
 
@@ -94,7 +94,7 @@ def test_bearer_token_complete() -> None:
 def test_nearly_expired_token() -> None:
     token = BearerToken(
         access_token="foo",
-        expires_at=datetime(year=2021, month=8, day=17, hour=12, minute=50, second=20, tzinfo=UTC),
+        expires_at=datetime(year=2021, month=8, day=17, hour=12, minute=50, second=20, tzinfo=timezone.utc),
     )
     assert not token.is_expired()
     assert token.is_expired(3)
@@ -104,7 +104,7 @@ def test_nearly_expired_token() -> None:
 def test_recently_expired_token() -> None:
     token = BearerToken(
         access_token="foo",
-        expires_at=datetime(year=2021, month=8, day=17, hour=12, minute=50, second=20, tzinfo=UTC),
+        expires_at=datetime(year=2021, month=8, day=17, hour=12, minute=50, second=20, tzinfo=timezone.utc),
     )
     assert token.is_expired()
     assert token.is_expired(3)

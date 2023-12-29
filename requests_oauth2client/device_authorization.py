@@ -6,7 +6,7 @@ See [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from .pooling import TokenEndpointPoolingJob
@@ -62,7 +62,7 @@ class DeviceAuthorizationResponse:
 
         """
         if self.expires_at:
-            return datetime.now(tz=UTC) - timedelta(seconds=leeway) > self.expires_at
+            return datetime.now(tz=timezone.utc) - timedelta(seconds=leeway) > self.expires_at
         return None
 
 

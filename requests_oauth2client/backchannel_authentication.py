@@ -9,7 +9,7 @@ authentication-core-1_0.html.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from .pooling import TokenEndpointPoolingJob
@@ -62,7 +62,7 @@ class BackChannelAuthenticationResponse:
 
         """
         if self.expires_at:
-            return datetime.now(tz=UTC) - timedelta(seconds=leeway) > self.expires_at
+            return datetime.now(tz=timezone.utc) - timedelta(seconds=leeway) > self.expires_at
         return None
 
     def __getattr__(self, key: str) -> Any:
@@ -84,7 +84,7 @@ class BackChannelAuthenticationResponse:
         if key == "expires_in":
             if self.expires_at is None:
                 return None
-            return int(self.expires_at.timestamp() - datetime.now(tz=UTC).timestamp())
+            return int(self.expires_at.timestamp() - datetime.now(tz=timezone.utc).timestamp())
         return self.other.get(key) or super().__getattribute__(key)
 
 

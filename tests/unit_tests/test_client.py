@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs
@@ -1213,7 +1213,7 @@ def test_pushed_authorization_request(
     razr = oauth2client.pushed_authorization_request(authorization_request)
     assert isinstance(razr, RequestUriParameterAuthorizationRequest)
     assert razr.request_uri == request_uri
-    assert isinstance(razr.expires_at, datetime) and datetime.now(tz=UTC) - timedelta(
+    assert isinstance(razr.expires_at, datetime) and datetime.now(tz=timezone.utc) - timedelta(
         seconds=2
     ) < razr.expires_at - timedelta(seconds=expires_in)
 

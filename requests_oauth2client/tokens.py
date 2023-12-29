@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
@@ -144,7 +144,7 @@ class BearerToken:
 
         """
         if self.expires_at:
-            return datetime.now(tz=UTC) + timedelta(seconds=leeway) > self.expires_at
+            return datetime.now(tz=timezone.utc) + timedelta(seconds=leeway) > self.expires_at
         return None
 
     def authorization_header(self) -> str:
@@ -342,7 +342,7 @@ class BearerToken:
     def expires_in(self) -> int | None:
         """Number of seconds until expiration."""
         if self.expires_at:
-            return int(self.expires_at.timestamp() - datetime.now(tz=UTC).timestamp())
+            return int(self.expires_at.timestamp() - datetime.now(tz=timezone.utc).timestamp())
         return None
 
     def __getattr__(self, key: str) -> Any:
@@ -413,7 +413,7 @@ class BearerTokenSerializer:
         attrs = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
         expires_at = attrs.get("expires_at")
         if expires_at:
-            attrs["expires_at"] = datetime.fromtimestamp(expires_at, tz=UTC)
+            attrs["expires_at"] = datetime.fromtimestamp(expires_at, tz=timezone.utc)
         return token_class(**attrs)
 
     def dumps(self, token: BearerToken) -> str:
