@@ -43,6 +43,7 @@ class BearerAuth(requests.auth.AuthBase):
     Args:
         token: a [BearerToken][requests_oauth2client.tokens.BearerToken] or a string
             to use as token for this Auth Handler. If `None`, this Auth Handler is a no-op.
+
     """
 
     def __init__(self, token: str | BearerToken | None = None) -> None:
@@ -68,6 +69,7 @@ class BearerAuth(requests.auth.AuthBase):
 
         Args:
             token: an access token to use for this Auth Handler
+
         """
         if token is not None and not isinstance(token, BearerToken):
             token = BearerToken(token)
@@ -112,6 +114,7 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
         token: an initial Access Token, if you have one already. In most cases, leave `None`.
         leeway: expiration leeway, in number of seconds
         token_kwargs: additional kwargs to include in token requests
+
     """
 
     def __init__(
@@ -165,6 +168,7 @@ class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
         oauth2cc = OAuth2ClientCredentialsAuth(client, scope="my_scope")
         resp = requests.post("https://my.api.local/resource", auth=oauth2cc)
         ```
+
     """
 
     @override
@@ -199,6 +203,7 @@ class OAuth2AccessTokenAuth(BaseOAuth2RenewableTokenAuth):
         oauth2at_auth = OAuth2ClientCredentialsAuth(client, token, scope="my_scope")
         resp = requests.post("https://my.api.local/resource", auth=oauth2at_auth)
         ````
+
     """
 
     @override
@@ -225,6 +230,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
         code = "my_code" # you must obtain this code yourself
         resp = requests.post("https://my.api.local/resource", auth=OAuth2AuthorizationCodeAuth(client, code))
         ````
+
     """
 
     def __init__(
@@ -361,6 +367,7 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
 
         Returns:
             a [requests.PreparedRequest][] with an Access Token added in Authorization Header
+
         """
         token = self.token
         if token is None or token.is_expired():
@@ -371,6 +378,7 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
         """Exchange the Device Code for an access token.
 
         This will poll the Token Endpoint until the user finishes the authorization process.
+
         """
         from .device_authorization import DeviceAuthorizationPoolingJob
 
