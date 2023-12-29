@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from functools import wraps
 from typing import Any, Callable
 
-from furl import furl  # type: ignore[import-not-found]
+from furl import furl  # type: ignore[import-untyped]
 
 
 def validate_endpoint_uri(uri: str, *, https: bool = True, no_fragment: bool = True, path: bool = True) -> None:

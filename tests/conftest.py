@@ -8,7 +8,7 @@ from urllib.parse import parse_qs
 import pytest
 import requests
 import requests_mock
-from furl import Query, furl  # type: ignore[import-not-found]
+from furl import Query, furl  # type: ignore[import-untyped]
 from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
 from requests_mock.request import _RequestObjectProxy

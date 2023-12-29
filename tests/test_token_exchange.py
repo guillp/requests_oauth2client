@@ -2,7 +2,7 @@ import secrets
 
 import pytest
 from freezegun import freeze_time
-from furl import Query  # type: ignore[import-not-found]
+from furl import Query  # type: ignore[import-untyped]
 
 from requests_oauth2client import BearerToken, ClientSecretPost, IdToken, OAuth2Client
 from tests.conftest import RequestsMocker

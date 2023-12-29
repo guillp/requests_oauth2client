@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 import requests
-from furl import furl  # type: ignore[import-not-found]
+from furl import furl  # type: ignore[import-untyped]
 from jwskate import Jwk
 
 from requests_oauth2client import (

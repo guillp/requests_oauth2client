@@ -5,7 +5,7 @@ Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html#Provid
 
 """
 
-from furl import Path, furl  # type: ignore[import-not-found]
+from furl import Path, furl  # type: ignore[import-untyped]
 
 
 def well_known_uri(origin: str, name: str, *, at_root: bool = True) -> str:

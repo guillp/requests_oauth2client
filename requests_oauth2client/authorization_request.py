@@ -9,7 +9,7 @@ from typing import Any, Callable, ClassVar, Final, Iterable, Sequence
 
 from attrs import Factory, asdict, field, fields, frozen
 from binapy import BinaPy
-from furl import furl  # type: ignore[import-not-found]
+from furl import furl  # type: ignore[import-untyped]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 
 from .exceptions import (
