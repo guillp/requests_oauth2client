@@ -1,11 +1,12 @@
 """This module contains the `OAuth2Client` class."""
 from __future__ import annotations
 
+import warnings
 from typing import Any, Callable, Iterable, TypeVar
 
 import requests
 from jwskate import Jwk, JwkSet, Jwt
-from typing_extensions import Literal
+from typing_extensions import Literal, override
 
 from .auth import BearerAuth
 from .authorization_request import (
@@ -42,7 +43,7 @@ from .exceptions import (
     UnsupportedTokenType,
 )
 from .tokens import BearerToken, IdToken
-from .utils import validate_endpoint_uri
+from .utils import validate_endpoint_uri, validate_issuer_uri
 
 T = TypeVar("T")
 
@@ -152,34 +153,44 @@ class OAuth2Client:
                 "as specified by `authorization_response_iss_parameter_supported=True`, "
                 "then you must specify the expected `issuer` value with parameter `issuer`."
             )
-        self.token_endpoint = str(token_endpoint)
-        self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
+        self.token_endpoint = self.validate_endpoint_uri(token_endpoint)
+        self.revocation_endpoint = (
+            self.validate_endpoint_uri(revocation_endpoint) if revocation_endpoint else None
+        )
         self.introspection_endpoint = (
-            str(introspection_endpoint) if introspection_endpoint else None
+            self.validate_endpoint_uri(introspection_endpoint)
+            if introspection_endpoint
+            else None
         )
-        self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
+        self.userinfo_endpoint = (
+            self.validate_endpoint_uri(userinfo_endpoint) if userinfo_endpoint else None
+        )
         self.authorization_endpoint = (
-            str(authorization_endpoint) if authorization_endpoint else None
+            self.validate_endpoint_uri(authorization_endpoint)
+            if authorization_endpoint
+            else None
         )
-        self.redirect_uri = str(redirect_uri) if redirect_uri else None
+        self.redirect_uri = redirect_uri if redirect_uri else None
         self.backchannel_authentication_endpoint = (
-            str(backchannel_authentication_endpoint)
+            self.validate_endpoint_uri(backchannel_authentication_endpoint)
             if backchannel_authentication_endpoint
             else None
         )
         self.device_authorization_endpoint = (
-            str(device_authorization_endpoint) if device_authorization_endpoint else None
+            self.validate_endpoint_uri(device_authorization_endpoint)
+            if device_authorization_endpoint
+            else None
         )
         self.pushed_authorization_request_endpoint = (
-            str(pushed_authorization_request_endpoint)
+            self.validate_endpoint_uri(pushed_authorization_request_endpoint)
             if pushed_authorization_request_endpoint
             else None
         )
-        self.jwks_uri = str(jwks_uri) if jwks_uri else None
+        self.jwks_uri = self.validate_endpoint_uri(jwks_uri) if jwks_uri else None
         self.authorization_server_jwks = (
             JwkSet(authorization_server_jwks) if authorization_server_jwks else None
         )
-        self.issuer = str(issuer) if issuer else None
+        self.issuer = self.validate_issuer_uri(issuer) if issuer else None
         self.session = session or requests.Session()
         self.auth = client_auth_factory(
             auth,
@@ -198,6 +209,23 @@ class OAuth2Client:
             authorization_response_iss_parameter_supported
         )
         self.extra_metadata = extra_metadata
+
+    @classmethod
+    def validate_endpoint_uri(cls, uri: str) -> str:
+        """Validate that an endpoint URI is suitable for use.
+
+        If you need to disable some checks (for AS testing purposes only!), provide a different
+        method here.
+        """
+        return validate_endpoint_uri(uri)
+
+    @classmethod
+    def validate_issuer_uri(cls, uri: str) -> str:
+        """Validate that an Issuer identifier is suitable for use.
+
+        This is the same check than an endpoint URI, but the path may be (and usually is) empty.
+        """
+        return validate_issuer_uri(uri)
 
     @property
     def client_id(self) -> str:
@@ -1338,11 +1366,16 @@ class OAuth2Client:
              private_key: private key to sign client assertions
              authorization_server_jwks: the current authorization server JWKS keys
              session: a requests Session to use to retrieve the document and initialise the client with
-             https: if True, validates that urls in the discovery document use the https scheme
+             https: if `True`, validates that urls in the discovery document use the https scheme
 
         Returns:
-            an OAuth2Client
+            an `OAuth2Client`
         """
+        if not https:
+            warnings.warn(
+                "The https parameter is deprecrated. Use the TestingOAuth2Client subclass instead."
+            )
+            cls = TestingOAuth2Client
         if issuer and discovery.get("issuer") != issuer:
             raise ValueError(
                 "Mismatching issuer value in discovery document: ",
@@ -1355,20 +1388,11 @@ class OAuth2Client:
         token_endpoint = discovery.get("token_endpoint")
         if token_endpoint is None:
             raise ValueError("token_endpoint not found in that discovery document")
-        validate_endpoint_uri(token_endpoint, https=https)
+
         authorization_endpoint = discovery.get("authorization_endpoint")
-        if authorization_endpoint is not None:
-            validate_endpoint_uri(authorization_endpoint, https=https)
-        validate_endpoint_uri(token_endpoint, https=https)
         revocation_endpoint = discovery.get("revocation_endpoint")
-        if revocation_endpoint is not None:
-            validate_endpoint_uri(revocation_endpoint, https=https)
         introspection_endpoint = discovery.get("introspection_endpoint")
-        if introspection_endpoint is not None:
-            validate_endpoint_uri(introspection_endpoint, https=https)
         userinfo_endpoint = discovery.get("userinfo_endpoint")
-        if userinfo_endpoint is not None:
-            validate_endpoint_uri(userinfo_endpoint, https=https)
         jwks_uri = discovery.get("jwks_uri")
         if jwks_uri is not None:
             validate_endpoint_uri(jwks_uri, https=https)
@@ -1395,9 +1419,9 @@ class OAuth2Client:
         )
 
     def __enter__(self) -> OAuth2Client:
-        """Allow using OAuth2Client as a context-manager.
+        """Allow using `OAuth2Client` as a context-manager.
 
-        The Authorization Server public keys are retrieved on __enter__.
+        The Authorization Server public keys are retrieved on `__enter__`.
         """
         self.update_authorization_server_public_keys()
         return self
@@ -1415,3 +1439,90 @@ class OAuth2Client:
             )
 
         return str(url)
+
+
+class TestingOAuth2Client(OAuth2Client):
+    """A testing-purposes OAuth2Client, for local AS testing and debugging only.
+
+    Compared to the OAuth2Client base class, this will:
+    - allow arbitrary URLs for the authorization server, including:
+        - non-HTTPS
+        - custom ports
+        - things not allowed by the standards: fragments, username and passwords in URI, etc.
+    - disable server certificate verification
+    """
+
+    def __init__(
+        self,
+        token_endpoint: str,
+        auth: (
+            requests.auth.AuthBase
+            | tuple[str, str]
+            | tuple[str, Jwk]
+            | tuple[str, dict[str, Any]]
+            | str
+            | None
+        ) = None,
+        *,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        private_key: Jwk | dict[str, Any] | None = None,
+        revocation_endpoint: str | None = None,
+        introspection_endpoint: str | None = None,
+        userinfo_endpoint: str | None = None,
+        authorization_endpoint: str | None = None,
+        redirect_uri: str | None = None,
+        backchannel_authentication_endpoint: str | None = None,
+        device_authorization_endpoint: str | None = None,
+        pushed_authorization_request_endpoint: str | None = None,
+        jwks_uri: str | None = None,
+        authorization_server_jwks: JwkSet | dict[str, Any] | None = None,
+        issuer: str | None = None,
+        id_token_signed_response_alg: str | None = "RS256",
+        id_token_encrypted_response_alg: str | None = None,
+        id_token_decryption_key: Jwk | dict[str, Any] | None = None,
+        code_challenge_method: str = "S256",
+        authorization_response_iss_parameter_supported: bool = False,
+        session: requests.Session | None = None,
+        **extra_metadata: Any,
+    ):
+        if session is None:
+            session = requests.Session()
+            session.verify = False
+        super().__init__(
+            token_endpoint,
+            auth,
+            client_id=client_id,
+            client_secret=client_secret,
+            private_key=private_key,
+            revocation_endpoint=revocation_endpoint,
+            introspection_endpoint=introspection_endpoint,
+            userinfo_endpoint=userinfo_endpoint,
+            authorization_endpoint=authorization_endpoint,
+            redirect_uri=redirect_uri,
+            backchannel_authentication_endpoint=backchannel_authentication_endpoint,
+            device_authorization_endpoint=device_authorization_endpoint,
+            pushed_authorization_request_endpoint=pushed_authorization_request_endpoint,
+            jwks_uri=jwks_uri,
+            authorization_server_jwks=authorization_server_jwks,
+            issuer=issuer,
+            id_token_signed_response_alg=id_token_signed_response_alg,
+            id_token_encrypted_response_alg=id_token_encrypted_response_alg,
+            id_token_decryption_key=id_token_decryption_key,
+            code_challenge_method=code_challenge_method,
+            authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
+            session=session,
+            **extra_metadata,
+        )
+
+    @override
+    @classmethod
+    def validate_endpoint_uri(cls, uri: str) -> str:
+        """Disable endpoint URIs validation, for testing purposes."""
+        return uri
+
+    @override
+    @classmethod
+    def validate_issuer_uri(cls, uri: str) -> str:
+        """Disable issuer URI validation, for testing purposes."""
+        return uri
