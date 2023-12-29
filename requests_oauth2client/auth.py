@@ -118,6 +118,7 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
         self.leeway = leeway
         self.token_kwargs = token_kwargs
 
+    @override
     def __call__(
         self, request: requests.PreparedRequest
     ) -> requests.PreparedRequest:  # noqa: D102
@@ -159,6 +160,7 @@ class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
         ```
     """
 
+    @override
     def renew_token(self) -> None:
         """Obtain a new token for use within this Auth Handler."""
         self.token = self.client.client_credentials(**self.token_kwargs)
@@ -191,6 +193,7 @@ class OAuth2AccessTokenAuth(BaseOAuth2RenewableTokenAuth):
         ````
     """
 
+    @override
     def renew_token(self) -> None:
         """Obtain a new token, using the Refresh Token, if available."""
         if self.token and self.token.refresh_token and self.client is not None:
@@ -228,6 +231,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
         super().__init__(client, token=None, leeway=leeway, **token_kwargs)
         self.code: str | AuthorizationResponse | None = code
 
+    @override
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Implement the Authorization Code grant as an Authentication Handler.
 
@@ -334,6 +338,7 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
         self.interval = interval
         self.expires_in = expires_in
 
+    @override
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Implement the Device Code grant as a request Authentication Handler.
 
