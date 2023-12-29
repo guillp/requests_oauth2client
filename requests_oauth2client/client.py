@@ -244,7 +244,7 @@ class OAuth2Client:
     ) -> T:
         """Send a request to one of the endpoints.
 
-        This is an helper method that takes care of the following tasks:
+        This is a helper method that takes care of the following tasks:
 
         - make sure the endpoint as been configured
         - set `Accept: application/json` header
@@ -282,10 +282,10 @@ class OAuth2Client:
         Authentication will be added automatically based on the defined `auth` for this client.
 
         Args:
-             data: parameters to send to the token endpoint. Items with a None or empty value
-                will not be sent in the request.
-             timeout: a timeout value for the call
-             **requests_kwargs: additional parameters for requests.post()
+          data: parameters to send to the token endpoint. Items with a `None`
+               or empty value will not be sent in the request.
+          timeout: a timeout value for the call
+          **requests_kwargs: additional parameters for requests.post()
 
         Returns:
             the token endpoint response, as
