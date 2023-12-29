@@ -40,7 +40,6 @@ Please note that despite the name, this library has no relationship with Google
 [![GitHub commits](https://badgen.net/github/commits/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
 [![GitHub latest commit](https://badgen.net/github/last-commit/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # Documentation
 
@@ -79,8 +78,8 @@ token = "an_access_token"
 resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 ```
 
-This authentication handler will add a properly formatted `Authorization: Bearer <access_token>` header in the request,
-with your access token according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
+This authentication handler will add a `Authorization: Bearer <access_token>` header in the request,
+with your access token, properly formatted according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
 
 ## Using an OAuth2Client
 
@@ -91,8 +90,8 @@ BackChannel Authentication and Device Authorization Endpoints.
 You have to provide the URLs for those endpoints if you intend to use them. Otherwise, only the Token Endpoint is
 mandatory to initialize an `OAuth2Client`.
 
-To initialize an [OAuth2Client], you only need a Token Endpoint URI from your AS, and the credentials for your
-application, which are often a `client_id` and a `client_secret`, usually also provided by the AS:
+To initialize an instance of `OAuth2Client`, you only need a Token Endpoint URI from your AS, and the credentials for your
+application, which are typically a `client_id` and a `client_secret`, usually also provided by the AS:
 
 ```python
 from requests_oauth2client import OAuth2Client
@@ -110,6 +109,8 @@ are the direct equivalent of a username and a password, but meant for an applica
 default authentication method used by `OAuth2Client` is *Client Secret Post*, but other standardised methods such as
 *Client Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See
 [more about client authentication methods below](#supported-client-authentication-methods).
+
+Instead of providing each endpoint URL yourself, you may also [use the AS metadata endpoint URI](#initializing-an-oauth2client-from-a-discovery-document), or the document data itself, to initialize your OAuth 2.0 client with the appropriate endpoints.
 
 ## Obtaining tokens
 
@@ -175,7 +176,8 @@ from requests_oauth2client import OAuth2Client
 
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
-    auth=("client_id", "client_secret"),
+    client_id="client_id",
+    client_secret="client_secret",
 )
 
 token = oauth2client.client_credentials(scope="myscope")
@@ -195,7 +197,7 @@ client level (but it might be required by your AS to serve your request).
 
 You can use the
 [OAuth2ClientCredentialsAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
-auth handler. It takes an [OAuth2Client] as parameter, and the additional kwargs to pass to the token endpoint:
+auth handler. It takes an `OAuth2Client` as parameter, and the additional kwargs to pass to the token endpoint:
 
 ```python
 import requests
@@ -203,7 +205,8 @@ from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
 
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
-    auth=("client_id", "client_secret"),
+    client_id="client_id",
+    client_secret="client_secret",
 )
 
 auth = OAuth2ClientCredentialsAuth(
@@ -228,9 +231,20 @@ will automatically retrieve an access token from the AS using the Client Credent
 request. Next requests will use the same token, as long as it is valid. A new token will be automatically retrieved once
 the previous one is expired.
 
+You can configure a leeway, which is a period of time before the actual expiration, in seconds, when a new token will be
+obtained. This may help getting continuous access to the API when the client and API clocks are slightly out of sync. Use the parameter `leeway` to `OAuth2ClientCredentialsAuth`:
+
+```python
+auth = OAuth2ClientCredentialsAuth(
+    oauth2client,
+    scope="myscope",
+    leeway=30,
+)
+```
+
 ### Authorization Code Grant
 
-Obtaining tokens with the Authorization code grant is made in 3 steps:
+Obtaining tokens using the Authorization code grant is made in 3 steps:
 
 1. your application must open a specific url called the *Authentication Request* in a browser.
 
@@ -242,25 +256,26 @@ Obtaining tokens with the Authorization code grant is made in 3 steps:
 3. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
    Endpoint.
 
-`requests_oauth2client`, and more specifically [OAuth2Client] will help you with all those steps, as described below.
+Using an `OAuth2Client` will help you with all those steps, as described below.
 
 #### Generating Authorization Requests
 
-To be able to use the Authorization Code grant, you need two urls:
+To be able to use the Authorization Code grant, you need 2 (optionally 3) URIs:
 
 - the URL for Authorization Endpoint, which is the url where you must send your Authorization Requests
 - the Redirect URI, which is the url pointing to your application, where the Authorization Server will reply with
   Authorization Response
+- optionally, the issuer identifier, if your AS uses [Issuer Identification](RFC9207).
 
-You can declare those urls when initializing your OAuth2Client instance. Then you can generate valid Authorization
-Requests by calling the method `.authorization_request()`:
+You can declare those URIs when initializing your `OAuth2Client` instance, or you can [use the AS discovery endpoint](#initializing-an-oauth2client-from-a-discovery-document) to initialize those URLs automatically.
+Then you can generate valid Authorization Requests by calling the method `.authorization_request()`, with the request specific parameters, such as `scope`, `state`, `nonce` as parameter:
 
 ```python
 from requests_oauth2client import OAuth2Client
 
-client = OAuth2Client(
-    token_endpoint="https://url.to.the/token_endoint",
-    authorization_endpoint="https://url.to.the/authorization_endpoint",
+# let's use the discovery endpoint to init our OAuth2Client
+client = OAuth2Client.from_discovery_endpoint(
+    issuer="https://url.to.the.as",
     redirect_uri="https://url.to.my.application/redirect_uri",
     client_id="client_id",
     client_secret="client_secret",
@@ -270,7 +285,7 @@ az_request = client.authorization_request(scope="openid email profile")
 
 print(az_request)
 # this will look like this, with line feeds for display purposes only:
-# https://url.to.the/authorization_endpoint
+# https://url.to.the.as/authorization_endpoint
 # ?client_id=client_id
 # &redirect_uri=https%3A%2F%2Furl.to.my.application%2Fredirect_uri
 # &response_type=code
@@ -289,7 +304,7 @@ webbrowser.open(az_request.uri)
 Note that the `state`, `nonce` and `code_challenge` parameters are generated with secure random values by default.
 Should you wish to use your own values, you can pass them as parameters to `OAuth2Client.authorization_request()`. For
 PKCE, you need to pass your generated `code_verifier`, and the `code_challenge` will automatically be derived from it.
-If you don't want to use PKCE, you can pass `code_challenge_method=None` when initializing your `OAuth2Client`.
+If you want to disable PKCE, you can pass `code_challenge_method=None` when initializing your `OAuth2Client`.
 
 #### Validating the Authorization Response
 
@@ -297,7 +312,7 @@ Once you have redirected the user browser to the Authorization Request URI, and 
 authenticated and authorized, plus any other extra interactive step is complete, the AS will respond with a redirection
 to your redirect_uri. That is the *Authorization Response*. It contains several parameters that must be retrieved by
 your client. The *Authorization Code* is one of those parameters, but you must also validate that the *state* matches
-your request. You can do this with:
+your request; if using [AS Issuer Identification](RFC9207), you must also validate that the issuer matches what is expected. You can do this with:
 
 ```python
 # using the `az_request` as defined above
@@ -305,10 +320,11 @@ your request. You can do this with:
 response_uri = input(
     "Please enter the full url and/or params obtained on the redirect_uri: "
 )
+# say the callback url is https://url.to.my.application/redirect_uri?code=an_az_code&state=FBx9mWeLwoKGgG76vhi6v61-4mgxmgZhtWIa7aTffdY&issuer=https://url.to.the.as
 az_response = az_request.validate_callback(response_uri)
 ```
 
-This auth_response is an `AuthorizationResponse` instance and contains everything that is needed for your application to
+This `auth_response` is an `AuthorizationResponse` instance and contains everything that is needed for your application to
 complete the authentication and get its tokens from the AS.
 
 #### Exchanging code for tokens
@@ -781,7 +797,7 @@ resp = oauth2client.userinfo("mytoken")
 
 It returns whatever data is returned by the userinfo endpoint (if it is a JSON, its content is returned decoded).
 
-## Initializing an OAuth2Client from a discovery document
+## Initializing an `OAuth2Client` from a discovery document
 
 You can initialize an [OAuth2Client] with the endpoint URIs mentioned in a standardised discovery document with the
 [OAuth2Client.from_discovery_endpoint()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.from_discovery_document)
@@ -791,13 +807,22 @@ class method:
 from requests_oauth2client import OAuth2Client, ClientSecretJwt
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
-    "https://url.to.the/.well-known/openid-configuration",
+    "https://url.to.the.as/.well-known/openid-configuration",
+    auth=ClientSecretJwt("client_id", "client_secret"),
+)
+
+# OR, if you know the issuer value
+oauth2client = OAuth2Client.from_discovery_endpoint(
+    issuer="https://url.to.the.as",
     auth=ClientSecretJwt("client_id", "client_secret"),
 )
 ```
 
 This will fetch the document from the specified URI, then will decode it and initialize an [OAuth2Client] pointing to
 the appropriate endpoint URIs.
+
+If using the `issuer` keyword arg, the URI to the discovery endpoint will be deduced from that identifier, and a check will
+be made that the `issuer` from the retrieved metadata document matches that value.
 
 ## Specialized API Client
 
