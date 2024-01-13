@@ -238,6 +238,7 @@ class OAuth2Client:
         on_failure: Callable[[requests.Response], T],
         accept: str = "application/json",
         method: str = "POST",
+        verify = True,
         **requests_kwargs: Any,
     ) -> T:
         """Send a request to one of the endpoints.
@@ -260,6 +261,7 @@ class OAuth2Client:
             **requests_kwargs: keyword arguments for the request
         """
         endpoint_uri = self._require_endpoint(endpoint)
+        
         requests_kwargs.setdefault("headers", {})
         requests_kwargs["headers"]["Accept"] = accept
 
@@ -267,6 +269,7 @@ class OAuth2Client:
             method,
             endpoint_uri,
             **requests_kwargs,
+            verify
         )
         if response.ok:
             return on_success(response)
