@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import requests
 from binapy import BinaPy
-from jwskate import Jwk, Jwt, SymmetricJwk
+from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk
 
 
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
@@ -277,7 +277,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         self,
         client_id: str,
         private_jwk: Jwk | dict[str, Any],
-        alg: str = "RS256",
+        alg: str = SignatureAlgs.RS256,
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
         aud: str | None = None,
