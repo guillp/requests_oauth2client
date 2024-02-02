@@ -1280,22 +1280,19 @@ def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoin
 
 
 def test_custom_token_type(requests_mock: RequestsMocker) -> None:
-    class WeirdBearerToken(BearerToken):
-        TOKEN_TYPE = "BearerToken"
-
-    class WeirdOAuth2Client(OAuth2Client):
-        token_class = WeirdBearerToken
+    class CustomBearerToken(BearerToken):
+        TOKEN_TYPE = "CustomBearerToken"
 
     TOKEN_ENDPOINT = "https://as.local/token"
-    client = WeirdOAuth2Client(TOKEN_ENDPOINT, ("client_id", "client_secret"))
+    client = OAuth2Client(TOKEN_ENDPOINT, ("client_id", "client_secret"), bearer_token_class=CustomBearerToken)
 
     requests_mock.post(
         TOKEN_ENDPOINT,
-        json={"access_token": "access_token", "token_type": "BearerToken"},
+        json={"access_token": "access_token", "token_type": "CustomBearerToken"},
     )
 
     token = client.client_credentials()
-    assert isinstance(token, WeirdBearerToken)
+    assert isinstance(token, CustomBearerToken)
 
 
 def test_client_jwks() -> None:
