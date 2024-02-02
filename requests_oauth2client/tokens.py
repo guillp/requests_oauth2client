@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import jwskate
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from .client import OAuth2Client
 
 
-class TokenType(str, Enum):
+class TokenType(StrEnum):
     """An enum of standardised `token_type` values."""
 
     ACCESS_TOKEN = "access_token"
@@ -36,7 +36,7 @@ class TokenType(str, Enum):
     ID_TOKEN = "id_token"
 
 
-class AccessTokenType(str, Enum):
+class AccessTokenType(StrEnum):
     """An enum of standardised `access_token` types."""
 
     BEARER = "Bearer"
@@ -83,7 +83,7 @@ class BearerToken:
 
     """
 
-    TOKEN_TYPE: ClassVar[str] = AccessTokenType.BEARER
+    TOKEN_TYPE: ClassVar[str] = AccessTokenType.BEARER.value
 
     access_token: str
     expires_at: datetime | None = None
