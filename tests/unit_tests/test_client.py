@@ -595,7 +595,7 @@ def test_from_discovery_endpoint(
     discovery_url = oidc_discovery_document_url(issuer)
 
     requests_mock.get(discovery_url, json=discovery_document)
-    requests_mock.get(jwks_uri, json=as_public_jwks)
+    requests_mock.get(jwks_uri, json=as_public_jwks.to_dict())
 
     client = OAuth2Client.from_discovery_endpoint(discovery_url, issuer, auth=client_auth_method)
 
@@ -962,7 +962,8 @@ def test_server_jwks(
 ) -> None:
     """Use OAuth2Client as a context manager to automatically get the public JWKS from its JWKS
     URI."""
-    requests_mock.get(jwks_uri, json=dict(server_public_jwks))
+    assert not oauth2client.authorization_server_jwks
+    requests_mock.get(jwks_uri, json=server_public_jwks.to_dict())
     with oauth2client as client:
         assert client.authorization_server_jwks == server_public_jwks
     assert requests_mock.called_once

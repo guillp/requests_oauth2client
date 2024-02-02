@@ -321,24 +321,26 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         )
 
     with pytest.raises(InvalidIdToken, match="does not contain a Key ID"):
-        sig_jwk_no_kid = Jwk.generate(alg=SignatureAlgs.RS256)
         BearerToken(
             access_token="an_access_token",
-            id_token=Jwt.sign(
-                {
+            id_token=Jwt.sign_arbitrary(
+                claims={
                     "iss": issuer,
                     "aud": client_id,
                     "iat": Jwt.timestamp(),
                     "exp": Jwt.timestamp(60),
                     "azp": client_id,
                 },
-                sig_jwk_no_kid,
+                headers={
+                    "alg": "RS256"
+                },
+                key=sig_jwk,
             ).value,
         ).validate_id_token(
             client=OAuth2Client(
                 token_endpoint,
                 client_id=client_id,
-                authorization_server_jwks=sig_jwk_no_kid.public_jwk().as_jwks(),
+                authorization_server_jwks=sig_jwk.public_jwk().as_jwks(),
             ),
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
@@ -363,7 +365,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             client=OAuth2Client(
                 token_endpoint,
                 client_id=client_id,
-                authorization_server_jwks=Jwk.generate(alg=SignatureAlgs.RS256)
+                authorization_server_jwks=Jwk.generate(alg=SignatureAlgs.ES256)
                 .with_kid_thumbprint()
                 .public_jwk()
                 .as_jwks(),
