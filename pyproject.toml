@@ -72,27 +72,14 @@ wrap-summaries = 100
 wrap-descriptions = 100
 blank = true
 
-[tool.black]
-line-length = 120
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-)/
-'''
-
 [tool.ruff]
 target-version = "py38"
 line-length = 120
+exclude = [
+    "tests"
+]
+
+[tool.ruff.lint]
 select = [
     "A",
     "B",
@@ -135,16 +122,13 @@ ignore = [
     "S105", # Possible hardcoded password
     "ISC001", # single-line-implicit-string-concatenation
 ]
-exclude = [
-    "tests"
-]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 ignore-decorators = ['override']
-
-[tool.ruff.pylint]
-max-args = 10
 
 [tool.mypy]
 strict = true
