@@ -98,7 +98,7 @@ class Auth0:
 
         Args:
             tenant: the tenant name.
-                Same definition as for [Auth0Client][requests_oauth2client.vendor_specific.auth0.Auth0Client]
+                Same definition as for [Auth0.client][requests_oauth2client.vendor_specific.auth0.Auth0.client]
             auth: client credentials.
                 Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
             client_id: the Client ID.
