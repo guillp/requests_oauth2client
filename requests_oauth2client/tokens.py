@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from enum import StrEnum
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import jwskate
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from .client import OAuth2Client
 
 
-class TokenType(StrEnum):
+class TokenType(str, Enum):
     """An enum of standardised `token_type` values."""
 
     ACCESS_TOKEN = "access_token"
@@ -36,7 +36,7 @@ class TokenType(StrEnum):
     ID_TOKEN = "id_token"
 
 
-class AccessTokenType(StrEnum):
+class AccessTokenType(str, Enum):
     """An enum of standardised `access_token` types."""
 
     BEARER = "Bearer"
@@ -60,8 +60,14 @@ class IdToken(jwskate.SignedJwt):
         raise AttributeError(msg)
 
 
+class AccessToken:
+    """Base class for Access Tokens."""
+
+    TOKEN_TYPE: ClassVar[str]
+
+
 @frozen(init=False)
-class BearerToken:
+class BearerToken(AccessToken):
     """Represents a Bearer Token as returned by a Token Endpoint.
 
     This is a wrapper around a Bearer Token and associated parameters, such as expiration date and
@@ -439,3 +445,7 @@ class BearerTokenSerializer:
 
         """
         return self.loader(serialized)
+
+
+class DPoPToken(AccessToken):
+    """Represents a DPoP Token."""
