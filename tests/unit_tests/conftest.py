@@ -10,6 +10,7 @@ from furl import furl  # type: ignore[import-untyped]
 from jwskate import Jwk
 
 from requests_oauth2client import (
+    GENERATE,
     ApiClient,
     AuthorizationRequest,
     AuthorizationResponse,
@@ -20,7 +21,6 @@ from requests_oauth2client import (
     OAuth2Client,
     PrivateKeyJwt,
     PublicApp,
-    GENERATE,
 )
 from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
 from tests.conftest import FixtureRequest
