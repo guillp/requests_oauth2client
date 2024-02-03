@@ -1,10 +1,10 @@
 import pytest
 
-from requests_oauth2client.vendor_specific import PingClient
+from requests_oauth2client.vendor_specific import Ping
 
 
 def test_ping_client() -> None:
-    ping_client = PingClient("mydomain.tld", auth=("client_id", "client_secret"))
+    ping_client = Ping.client("mydomain.tld", auth=("client_id", "client_secret"))
     assert ping_client.token_endpoint == "https://mydomain.tld/as/token.oauth2"
     assert ping_client.authorization_endpoint == "https://mydomain.tld/as/authorization.oauth2"
     assert ping_client.token_endpoint == "https://mydomain.tld/as/token.oauth2"
@@ -31,6 +31,6 @@ def test_ping_client() -> None:
 
 def test_ping_invalid_domain() -> None:
     with pytest.raises(ValueError):
-        PingClient("foo")
+        Ping.client("foo")
     with pytest.raises(ValueError):
-        PingClient("ftp://foo.bar")
+        Ping.client("ftp://foo.bar")

@@ -1,11 +1,11 @@
 import pytest
 
 from requests_oauth2client import OAuth2ClientCredentialsAuth
-from requests_oauth2client.vendor_specific import Auth0Client, Auth0ManagementApiClient
+from requests_oauth2client.vendor_specific import Auth0
 
 
 def test_auth0_management() -> None:
-    auth0api = Auth0ManagementApiClient("test.eu.auth0.com", ("client_id", "client_secret"))
+    auth0api = Auth0.management_api_client("test.eu.auth0.com", ("client_id", "client_secret"))
     assert auth0api.auth is not None
     assert isinstance(auth0api.auth, OAuth2ClientCredentialsAuth)
     assert auth0api.auth.client is not None
@@ -14,7 +14,7 @@ def test_auth0_management() -> None:
 
 
 def test_auth0_client() -> None:
-    auth0client = Auth0Client("test.eu.auth0.com", ("client_id", "client_secret"))
+    auth0client = Auth0.client("test.eu.auth0.com", ("client_id", "client_secret"))
     assert auth0client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
     assert auth0client.revocation_endpoint == "https://test.eu.auth0.com/oauth/revoke"
     assert auth0client.userinfo_endpoint == "https://test.eu.auth0.com/userinfo"
@@ -22,7 +22,7 @@ def test_auth0_client() -> None:
 
 
 def test_auth0_client_short_tenant_name() -> None:
-    auth0client = Auth0Client("test.eu", ("client_id", "client_secret"))
+    auth0client = Auth0.client("test.eu", ("client_id", "client_secret"))
     assert auth0client.token_endpoint == "https://test.eu.auth0.com/oauth/token"
     assert auth0client.revocation_endpoint == "https://test.eu.auth0.com/oauth/revoke"
     assert auth0client.userinfo_endpoint == "https://test.eu.auth0.com/userinfo"
@@ -31,4 +31,4 @@ def test_auth0_client_short_tenant_name() -> None:
 
 def test_auth0_invalid_domain() -> None:
     with pytest.raises(ValueError):
-        Auth0Client("ftp://mytenant.eu")
+        Auth0.client("ftp://mytenant.eu")
