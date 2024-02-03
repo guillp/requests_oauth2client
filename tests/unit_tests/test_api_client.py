@@ -128,10 +128,8 @@ def test_fail(
 def test_url_as_bytes(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api)
 
-    requests_mock.get(target_api)
-    resp = api.get()
-    assert resp.ok
-    resp = api.get(target_api.encode())
+    requests_mock.get(urljoin(target_api, 'foo/bar'))
+    resp = api.get((b'foo', b'bar'))
     assert resp.ok
 
 
@@ -176,20 +174,13 @@ def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> Non
 
 
 def test_other_api(
-    requests_mock: RequestsMocker,
     access_token: str,
     bearer_auth: BearerAuth,
     bearer_auth_validator: RequestValidatorType,
 ) -> None:
     api = ApiClient("https://some.api/foo", auth=bearer_auth)
-    other_api = "https://other.api/somethingelse"
-    requests_mock.get(other_api, json={"status": "success"})
-    response = api.get(other_api)
-    assert response.ok
-    assert requests_mock.last_request is not None
-    assert requests_mock.last_request.method == "GET"
-    assert requests_mock.last_request.url == other_api
-    bearer_auth_validator(requests_mock.last_request, access_token=access_token)
+    with pytest.raises(ValueError):
+        api.get("https://other.api/somethingelse")
 
 
 def test_url_type(target_api: str) -> None:
