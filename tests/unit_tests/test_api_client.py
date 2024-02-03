@@ -10,7 +10,7 @@ from tests.conftest import RequestsMocker, RequestValidatorType, join_url
 
 def test_session_at_init() -> None:
     session = requests.Session()
-    api = ApiClient(session=session)
+    api = ApiClient("https://test.local", session=session)
     assert api.session == session
 
 
@@ -123,19 +123,6 @@ def test_fail(
     assert requests_mock.last_request.method == "GET"
     assert requests_mock.last_request.url == target_api
     bearer_auth_validator(requests_mock.last_request, access_token=access_token)
-
-
-def test_no_url_at_init(requests_mock: RequestsMocker, target_api: str) -> None:
-    api_client = ApiClient()
-    requests_mock.get(target_api)
-    resp = api_client.get(target_api)
-    assert resp.ok
-
-
-def test_no_url_fail() -> None:
-    api_client = ApiClient()
-    with pytest.raises(ValueError):
-        api_client.get()
 
 
 def test_url_as_bytes(requests_mock: RequestsMocker, target_api: str) -> None:
