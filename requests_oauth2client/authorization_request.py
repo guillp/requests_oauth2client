@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import secrets
 from datetime import datetime
-from typing import Any, Callable, ClassVar, Final, Iterable, Sequence
+from typing import Any, Callable, ClassVar, Iterable, Sequence
 
 from attrs import Factory, asdict, field, fields, frozen
 from binapy import BinaPy
@@ -190,9 +190,6 @@ class AuthorizationResponse:
         return self.kwargs.get(item)
 
 
-GENERATE: Final = object()
-
-
 @frozen(init=False)
 class AuthorizationRequest:
     """Represent an Authorization Request.
@@ -204,11 +201,11 @@ class AuthorizationRequest:
     All parameters passed at init time will be included in the request query parameters as-is,
     excepted for a few parameters which have a special behaviour:
 
-    - `state`: if `GENERATE` (default), a random `state` parameter will be generated for you.
+    - `state`: if `...` (default), a random `state` parameter will be generated for you.
       You may pass your own `state` as `str`, or set it to `None` so that the `state` parameter
       will not be included in the request. You may access that state in the `state` attribute
       from this request.
-    - `nonce`: if `GENERATE` (default) and `scope` includes 'openid', a random `nonce` will be
+    - `nonce`: if `...` (default) and `scope` includes 'openid', a random `nonce` will be
       generated and included in the request. You may access that `nonce` in the `nonce` attribute
       from this request.
     - `code_verifier`: if `None`, and `code_challenge_method` is `'S256'` or `'plain'`,
@@ -234,8 +231,8 @@ class AuthorizationRequest:
             Request.
         scope: the scope to include in the request, as an iterable of `str`, or a single space-separated `str`.
         response_type: the response type to include in the request.
-        state: the state to include in the request, or `GENERATE` to autogenerate one (default).
-        nonce: the nonce to include in the request, or `GENERATE` to autogenerate one (default).
+        state: the state to include in the request, or `...` to autogenerate one (default).
+        nonce: the nonce to include in the request, or `...` to autogenerate one (default).
         code_verifier: the code verifier to include in the request.
             If left as `None` and `code_challenge_method` is set, a valid code_verifier
             will be generated.
@@ -289,8 +286,8 @@ class AuthorizationRequest:
         redirect_uri: str | None = None,
         scope: None | str | Iterable[str] = "openid",
         response_type: str = "code",
-        state: str | GENERATE | None = GENERATE,  # type: ignore[valid-type]
-        nonce: str | GENERATE | None = GENERATE,  # type: ignore[valid-type]
+        state: str | ellipsis | None = ...,  # noqa: F821
+        nonce: str | ellipsis | None = ...,  # noqa: F821
         code_verifier: str | None = None,
         code_challenge_method: str | None = "S256",
         acr_values: str | Iterable[str] | None = None,
@@ -306,10 +303,10 @@ class AuthorizationRequest:
             )
             raise ValueError(msg)
 
-        if state is GENERATE:
+        if state is Ellipsis:
             state = self.generate_state()
 
-        if nonce is GENERATE:
+        if nonce is Ellipsis:
             nonce = self.generate_nonce() if scope is not None and "openid" in scope else None
 
         if not scope:

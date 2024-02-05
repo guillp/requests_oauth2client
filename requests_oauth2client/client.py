@@ -8,7 +8,6 @@ from typing import Any, Callable, ClassVar, Iterable, TypeVar
 import requests
 from attrs import field, frozen
 from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs
-from typing_extensions import Literal
 
 from .auth import BearerAuth
 from .authorization_request import (
@@ -691,8 +690,8 @@ class OAuth2Client:
         scope: None | str | Iterable[str] = "openid",
         response_type: str = "code",
         redirect_uri: str | None = None,
-        state: str | Literal[True] | None = True,
-        nonce: str | Literal[True] | None = True,
+        state: str | ellipsis | None = ...,  # noqa: F821
+        nonce: str | ellipsis | None = ...,  # noqa: F821
         code_verifier: str | None = None,
         **kwargs: Any,
     ) -> AuthorizationRequest:
