@@ -626,6 +626,7 @@ class AuthorizationRequest:
         return self.uri
 
 
+@frozen(init=False)
 class RequestParameterAuthorizationRequest:
     """Represent an Authorization Request that includes a `request` JWT.
 
@@ -637,6 +638,11 @@ class RequestParameterAuthorizationRequest:
 
     """
 
+    authorization_endpoint: str
+    client_id: str
+    request: str
+    expires_at: datetime | None = None
+
     @accepts_expires_in
     def __init__(
         self,
@@ -645,10 +651,12 @@ class RequestParameterAuthorizationRequest:
         request: str,
         expires_at: datetime | None = None,
     ):
-        self.authorization_endpoint = authorization_endpoint
-        self.client_id = client_id
-        self.request = request
-        self.expires_at = expires_at
+        self.__attrs_init__(
+            authorization_endpoint=authorization_endpoint,
+            client_id=client_id,
+            request=request,
+            expires_at=expires_at,
+        )
 
     @property
     def furl(self) -> furl:
@@ -673,6 +681,7 @@ class RequestParameterAuthorizationRequest:
         return self.uri
 
 
+@frozen(init=False)
 class RequestUriParameterAuthorizationRequest:
     """Represent an Authorization Request that includes a `request_uri` parameter.
 
@@ -684,6 +693,11 @@ class RequestUriParameterAuthorizationRequest:
 
     """
 
+    authorization_endpoint: str
+    client_id: str
+    request_uri: str
+    expires_at: datetime | None = None
+
     @accepts_expires_in
     def __init__(
         self,
@@ -692,10 +706,12 @@ class RequestUriParameterAuthorizationRequest:
         request_uri: str,
         expires_at: datetime | None = None,
     ):
-        self.authorization_endpoint = authorization_endpoint
-        self.client_id = client_id
-        self.request_uri = request_uri
-        self.expires_at = expires_at
+        self.__attrs_init__(
+            authorization_endpoint=authorization_endpoint,
+            client_id=client_id,
+            request_uri=request_uri,
+            expires_at=expires_at,
+        )
 
     @property
     def furl(self) -> furl:
@@ -750,8 +766,9 @@ class AuthorizationRequestSerializer:
         d.pop("code_challenge")
         return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
 
+    @staticmethod
     def default_loader(
-        self, serialized: str, azr_class: type[AuthorizationRequest] = AuthorizationRequest
+        serialized: str, azr_class: type[AuthorizationRequest] = AuthorizationRequest
     ) -> AuthorizationRequest:
         """Provide a default deserializer implementation.
 
