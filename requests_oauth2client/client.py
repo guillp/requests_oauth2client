@@ -210,6 +210,17 @@ class OAuth2Client:
         if id_token_decryption_key is not None and not isinstance(id_token_decryption_key, Jwk):
             id_token_decryption_key = Jwk(id_token_decryption_key)
 
+        if id_token_decryption_key is not None and id_token_encrypted_response_alg is None:
+            if id_token_decryption_key.alg:
+                id_token_encrypted_response_alg = id_token_decryption_key.alg
+            else:
+                msg = (
+                    "An ID Token decryption key has been provided but no decryption algorithm is defined."
+                    " You can either pass an `id_token_encrypted_response_alg` parameter with the alg identifier,"
+                    " or include an `alg` attribute in the decryption key, if it is in Jwk format."
+                )
+                raise ValueError(msg)
+
         if session is None:
             session = requests.Session()
 
@@ -457,7 +468,7 @@ class OAuth2Client:
         data = dict(grant_type=GrantType.AUTHORIZATION_CODE, code=code, **token_kwargs)
         token = self.token_request(data, **requests_kwargs)
         if validate and token.id_token and isinstance(azr, AuthorizationResponse):
-            token.validate_id_token(self, azr)
+            return token.validate_id_token(self, azr)
         return token
 
     def refresh_token(

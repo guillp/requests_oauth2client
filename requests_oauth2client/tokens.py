@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar
 import jwskate
 from attrs import Factory, asdict, frozen
 from binapy import BinaPy
+from typing_extensions import Self
 
 from .exceptions import (
     ExpiredIdToken,
@@ -108,14 +109,14 @@ class BearerToken(AccessToken):
         scope: str | None = None,
         refresh_token: str | None = None,
         token_type: str = TOKEN_TYPE,
-        id_token: str | None = None,
+        id_token: str | bytes | IdToken | jwskate.JweCompact | None = None,
         **kwargs: Any,
     ):
         if token_type.title() != self.TOKEN_TYPE.title():
             msg = f"Token Type is not '{self.TOKEN_TYPE}'!"
             raise ValueError(msg, token_type)
         id_token_jwt: IdToken | jwskate.JweCompact | None = None
-        if id_token:
+        if isinstance(id_token, (str, bytes)):
             try:
                 id_token_jwt = IdToken(id_token)
             except jwskate.InvalidJwt:
@@ -124,6 +125,8 @@ class BearerToken(AccessToken):
                 except jwskate.InvalidJwe:
                     msg = "ID Token is invalid because it is  neither a JWT or a JWE."
                     raise InvalidIdToken(msg) from None
+        else:
+            id_token_jwt = id_token
         self.__attrs_init__(
             access_token=access_token,
             expires_at=expires_at,
@@ -164,7 +167,7 @@ class BearerToken(AccessToken):
         """
         return f"Bearer {self.access_token}"
 
-    def validate_id_token(self, client: OAuth2Client, azr: AuthorizationResponse) -> IdToken:  # noqa: C901, PLR0915
+    def validate_id_token(self, client: OAuth2Client, azr: AuthorizationResponse) -> Self:  # noqa: C901, PLR0915
         """Validate that a token response is valid, and return the ID Token.
 
         This will validate the id_token as described in [OIDC 1.0
@@ -321,7 +324,15 @@ class BearerToken(AccessToken):
                 )
                 raise InvalidIdToken(msg)
 
-        return id_token
+        return self.__class__(
+            access_token=self.access_token,
+            expires_at=self.expires_at,
+            scope=self.scope,
+            refresh_token=self.refresh_token,
+            token_type=self.token_type,
+            id_token=id_token,
+            **self.kwargs,
+        )
 
     def __str__(self) -> str:
         """Return the access token value, as a string.
