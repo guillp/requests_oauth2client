@@ -29,7 +29,7 @@ class Auth0:
             tenant = f"{tenant}.auth0.com"
         if "://" in tenant:
             if tenant.startswith("https://"):
-                return tenant.removeprefix("https://")
+                return tenant[8:]
             msg = (
                 "Invalid tenant name. "
                 "It must be a tenant name like 'mytenant.myregion' "
