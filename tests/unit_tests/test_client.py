@@ -1334,6 +1334,9 @@ def test_client_id_token_decryption_key() -> None:
     assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key).id_token_decryption_key is decryption_key
     assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.to_dict()).id_token_decryption_key == decryption_key
 
+    with pytest.raises(ValueError, match="no decryption algorithm is defined"):
+        assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.minimize())
+
 
 def test_client_custom_auth_method() -> None:
     class CustomAuthHandler(requests.auth.AuthBase):
