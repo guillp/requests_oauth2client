@@ -292,7 +292,7 @@ class ApiClient:
                         url = "/".join(
                             [urlencode(part.decode() if isinstance(part, bytes) else str(part)) for part in url if part]
                         )
-                    except TypeError:
+                    except Exception as exc:
                         msg = (
                             "Unexpected url type, please pass a relative path as string or"
                             " bytes, or an iterable of string-able objects"
@@ -300,7 +300,7 @@ class ApiClient:
                         raise TypeError(
                             msg,
                             type(url),
-                        ) from None
+                        ) from exc
 
                 if isinstance(url, bytes):
                     url = url.decode()

@@ -158,8 +158,12 @@ def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None
     assert requests_mock.last_request.method == "GET"
     assert requests_mock.last_request.url == target_uri
 
+    class NonStringableObject:
+        def __str__(self) -> str:
+            raise ValueError()
+
     with pytest.raises(TypeError, match="iterable of string-able objects"):
-        api.get(("resource", object()))  # type: ignore[arg-type]
+        api.get(("resource", NonStringableObject()))  # type: ignore[arg-type]
 
 
 def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> None:
