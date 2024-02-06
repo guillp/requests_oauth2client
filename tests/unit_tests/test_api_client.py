@@ -132,6 +132,8 @@ def test_url_as_bytes(requests_mock: RequestsMocker, target_api: str) -> None:
     resp = api.get((b'foo', b'bar'))
     assert resp.ok
 
+    assert api.get(b'foo/bar').ok
+
 
 def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api)
@@ -155,6 +157,9 @@ def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.method == "GET"
     assert requests_mock.last_request.url == target_uri
+
+    with pytest.raises(TypeError, match="iterable of string-able objects"):
+        api.get(("resource", object()))  # type: ignore[arg-type]
 
 
 def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> None:
@@ -276,6 +281,9 @@ def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
     assert requests_mock.last_request.text == "foo=bar&true=1&false=0"
+
+    with pytest.raises(ValueError, match="2 value tuple"):
+        ApiClient(target_api).get(bool_fields=(1,2,3))
 
 
 def test_getattr(requests_mock: RequestsMocker, target_api: str) -> None:

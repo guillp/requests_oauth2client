@@ -180,7 +180,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         request = super().__call__(request)
         audience = self.aud or request.url
         if audience is None:
-            msg = "No url defined for this request. This should never happen..."
+            msg = "No url defined for this request. This should never happen..."  # pragma: no cover
             raise ValueError(msg)  # pragma: no cover
         params = (
             parse_qs(request.body, strict_parsing=True, keep_blank_values=True)  # type: ignore[type-var]

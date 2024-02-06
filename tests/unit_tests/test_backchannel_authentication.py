@@ -81,22 +81,24 @@ def test_backchannel_authentication(
     assert 355 <= bca_resp.expires_in <= 360
 
 
-def test_backchannel_authentication_scope_list(
+def test_backchannel_authentication_scope_acr_values_as_list(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
     auth_req_id: str,
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-    scope = ["openid", "email", "profile"]
+    scope = ("openid", "email", "profile")
+    acr_values = ("reinforced", "strong")
+
     requests_mock.post(
         backchannel_authentication_endpoint,
         json={"auth_req_id": auth_req_id, "expires_in": 360, "interval": 3},
     )
-    bca_resp = bca_client.backchannel_authentication_request(scope=scope, login_hint="user@example.com")
+    bca_resp = bca_client.backchannel_authentication_request(scope=scope, acr_values=acr_values, login_hint="user@example.com")
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
+    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, acr_values=acr_values, login_hint="user@example.com")
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
     assert 355 <= bca_resp.expires_in <= 360

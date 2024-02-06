@@ -330,17 +330,27 @@ def ciba_request_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def backchannel_auth_request_validator() -> RequestValidatorType:
-    def validator(req: _RequestObjectProxy, *, scope: None | str | list[str], **kwargs: Any) -> None:
+    def validator(req: _RequestObjectProxy, *, scope: None | str | Iterable[str], acr_values: None|str|Iterable[str] = None, **kwargs: Any) -> None:
         params = Query(req.text).params
+
         if scope is None:
             assert "scope" not in params
         elif isinstance(scope, str):
             assert params.get("scope") == scope
         else:
             assert params.get("scope") == " ".join(scope)
+
+        if acr_values is None:
+            assert acr_values not in params
+        elif isinstance(acr_values, str):
+            assert params.get("acr_values") == acr_values
+        else:
+            assert params.get("acr_values") == " ".join(acr_values)
+
         login_hint = params.get("login_hint")
         login_hint_token = params.get("login_hint_token")
         id_token_hint = params.get("id_token_hint")
+
         assert login_hint or login_hint_token or id_token_hint
         assert (
             not (login_hint and login_hint_token)
