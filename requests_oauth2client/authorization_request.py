@@ -140,7 +140,7 @@ class AuthorizationResponse:
     code_verifier: str | None = None
     state: str | None = None
     nonce: str | None = None
-    acr_values: list[str] | None = None
+    acr_values: tuple[str, ...] | None = None
     max_age: int | None = None
     issuer: str | None = None
     kwargs: dict[str, Any] = Factory(dict)
@@ -161,9 +161,9 @@ class AuthorizationResponse:
         if not acr_values:
             acr_values = None
         elif isinstance(acr_values, str):
-            acr_values = acr_values.split(" ")
+            acr_values = tuple(acr_values.split(" "))
         else:
-            acr_values = list(acr_values)
+            acr_values = tuple(acr_values)
 
         self.__attrs_init__(
             code=code,
@@ -252,7 +252,7 @@ class AuthorizationRequest:
     state: str | None = field(metadata={"query": True}, default=None)
     nonce: str | None = field(metadata={"query": True}, default=None)
     code_challenge_method: str | None = field(metadata={"query": True}, default="S256")
-    acr_values: Sequence[str] | None = field(metadata={"query": True}, default=None)
+    acr_values: tuple[str, ...] | None = field(metadata={"query": True}, default=None)
     max_age: int | None = field(metadata={"query": True}, default=None)
     kwargs: dict[str, Any] = Factory(dict)
 
