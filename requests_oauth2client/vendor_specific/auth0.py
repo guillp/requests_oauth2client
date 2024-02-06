@@ -16,7 +16,7 @@ class Auth0:
     @classmethod
     def tenant(cls, tenant: str) -> str:
         """Given a short tenant name, returns the full tenant FQDN."""
-        if tenant is None:
+        if not tenant:
             msg = "You must specify a tenant name."
             raise ValueError(msg)
         if (
@@ -26,7 +26,7 @@ class Auth0:
             or tenant.endswith(".au")
             or tenant.endswith(".jp")
         ):
-            return f"{tenant}.auth0.com"
+            tenant = f"{tenant}.auth0.com"
         if "://" in tenant:
             if tenant.startswith("https://"):
                 return tenant.removeprefix("https://")

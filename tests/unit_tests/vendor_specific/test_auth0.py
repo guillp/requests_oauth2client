@@ -29,6 +29,11 @@ def test_auth0_client_short_tenant_name() -> None:
     assert auth0client.jwks_uri == "https://test.eu.auth0.com/.well-known/jwks.json"
 
 
-def test_auth0_invalid_domain() -> None:
+def test_tenant() -> None:
+    assert Auth0.tenant("https://mytenant.eu.auth0.com") == "mytenant.eu.auth0.com"
+    assert Auth0.tenant("mytenant.eu") == "mytenant.eu.auth0.com"
     with pytest.raises(ValueError):
-        Auth0.client("ftp://mytenant.eu")
+        Auth0.tenant("ftp://mytenant.eu")
+    with pytest.raises(ValueError):
+        Auth0.tenant("")
+
