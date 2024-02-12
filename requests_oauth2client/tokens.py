@@ -60,6 +60,39 @@ class IdToken(jwskate.SignedJwt):
         msg = "This ID Token doesn't have an `auth_time` attribute."
         raise AttributeError(msg)
 
+    @classmethod
+    def hash_method(cls, key: jwskate.Jwk, alg: str | None = None) -> Callable[[str], str]:
+        """Returns a callable that generates valid OIDC hashes, such as at_hash, c_hash, s_hash.
+
+        Args:
+            key: the ID token signature verification public key
+            alg: the ID token signature algorithm
+
+        Returns:
+            a callable that takes a string as input and produces a valid hash as a str output
+
+        """
+        alg_class = jwskate.select_alg_class(key.SIGNATURE_ALGORITHMS, jwk_alg=key.alg, alg=alg)
+        if alg_class == jwskate.EdDsa:
+            if key.crv == "Ed25519":
+
+                def hash_method(token: str) -> str:
+                    return BinaPy(token).to("sha512")[:32].to("b64u").decode()
+
+            elif key.crv == "Ed448":
+
+                def hash_method(token: str) -> str:
+                    return BinaPy(token).to("shake256", 456).to("b64u").decode()
+
+        else:
+            hash_alg = alg_class.hashing_alg.name
+            hash_size = alg_class.hashing_alg.digest_size
+
+            def hash_method(token: str) -> str:
+                return BinaPy(token).to(hash_alg)[: hash_size // 2].to("b64u").decode()
+
+        return hash_method
+
 
 class AccessToken:
     """Base class for Access Tokens."""
@@ -261,24 +294,7 @@ class BearerToken(AccessToken):
 
             id_token.verify_signature(verification_jwk, alg=id_token_alg)
 
-            alg_class = jwskate.select_alg_class(verification_jwk.SIGNATURE_ALGORITHMS, jwk_alg=id_token_alg)
-            if alg_class == jwskate.EdDsa:
-                if verification_jwk.crv == "Ed25519":
-
-                    def hash_function(token: str) -> str:
-                        return BinaPy(token).to("sha512")[:32].to("b64u").decode()
-
-                elif verification_jwk.crv == "Ed448":
-
-                    def hash_function(token: str) -> str:
-                        return BinaPy(token).to("shake256", 456).to("b64u").decode()
-
-            else:
-                hash_alg = alg_class.hashing_alg.name
-                hash_size = alg_class.hashing_alg.digest_size
-
-                def hash_function(token: str) -> str:
-                    return BinaPy(token).to(hash_alg)[: hash_size // 2].to("b64u").decode()
+            hash_function = IdToken.hash_method(verification_jwk, id_token_alg)
 
         at_hash = id_token.get_claim("at_hash")
         if at_hash is not None:
