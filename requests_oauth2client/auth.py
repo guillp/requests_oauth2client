@@ -162,9 +162,7 @@ class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
 
     Usage:
         ```python
-        client = OAuth2Client(
-            token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret")
-        )
+        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
         oauth2cc = OAuth2ClientCredentialsAuth(client, scope="my_scope")
         resp = requests.post("https://my.api.local/resource", auth=oauth2cc)
         ```
@@ -197,9 +195,8 @@ class OAuth2AccessTokenAuth(BaseOAuth2RenewableTokenAuth):
         ```python
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
         token = BearerToken(
-            access_token="access_token",
-            expires_in=600,
-            refresh_token="refresh_token")  # obtain a BearerToken any way you see fit, including a refresh token
+            access_token="access_token", expires_in=600, refresh_token="refresh_token"
+        )  # obtain a BearerToken any way you see fit, including a refresh token
         oauth2at_auth = OAuth2ClientCredentialsAuth(client, token, scope="my_scope")
         resp = requests.post("https://my.api.local/resource", auth=oauth2at_auth)
         ````
@@ -227,7 +224,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
     Usage:
         ```python
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
-        code = "my_code" # you must obtain this code yourself
+        code = "my_code"  # you must obtain this code yourself
         resp = requests.post("https://my.api.local/resource", auth=OAuth2AuthorizationCodeAuth(client, code))
         ````
 

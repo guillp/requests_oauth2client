@@ -104,10 +104,14 @@ def test_backchannel_authentication_scope_acr_values_as_list(
         backchannel_authentication_endpoint,
         json={"auth_req_id": auth_req_id, "expires_in": 360, "interval": 3},
     )
-    bca_resp = bca_client.backchannel_authentication_request(scope=scope, acr_values=acr_values, login_hint="user@example.com")
+    bca_resp = bca_client.backchannel_authentication_request(
+        scope=scope, acr_values=acr_values, login_hint="user@example.com"
+    )
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, acr_values=acr_values, login_hint="user@example.com")
+    backchannel_auth_request_validator(
+        requests_mock.last_request, scope=scope, acr_values=acr_values, login_hint="user@example.com"
+    )
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
     assert 355 <= bca_resp.expires_in <= 360
@@ -234,7 +238,8 @@ def test_backchannel_authentication_missing_hint(
 def test_backchannel_authentication_invalid_scope(bca_client: OAuth2Client) -> None:
     with pytest.raises(ValueError):
         bca_client.backchannel_authentication_request(
-            scope=1.44, login_hint="user@example.net"  # type: ignore[arg-type]
+            scope=1.44,  # type: ignore[arg-type]
+            login_hint="user@example.net",
         )
 
 

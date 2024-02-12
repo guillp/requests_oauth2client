@@ -115,9 +115,7 @@ class Auth0:
             ```python
             from requests_oauth2client.vendor_specific import Auth0
 
-            a0mgmt = Auth0.management_api_client(
-                "mytenant.eu", client_id=client_id, client_secret=client_secret
-            )
+            a0mgmt = Auth0.management_api_client("mytenant.eu", client_id=client_id, client_secret=client_secret)
             users = a0mgmt.get("users", params={"page": 0, "per_page": 100})
             ```
 

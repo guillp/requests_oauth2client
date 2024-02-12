@@ -36,4 +36,3 @@ def test_tenant() -> None:
         Auth0.tenant("ftp://mytenant.eu")
     with pytest.raises(ValueError):
         Auth0.tenant("")
-

@@ -1392,17 +1392,39 @@ def test_issuer_identification_missing_issuer() -> None:
 
 def test_client_authorization_server_jwks() -> None:
     jwks = Jwk.generate(alg="ES256").public_jwk().as_jwks()
-    assert OAuth2Client("https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks).authorization_server_jwks is jwks
-    assert OAuth2Client("https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks.to_dict()).authorization_server_jwks == jwks
+    assert (
+        OAuth2Client(
+            "https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks
+        ).authorization_server_jwks
+        is jwks
+    )
+    assert (
+        OAuth2Client(
+            "https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks.to_dict()
+        ).authorization_server_jwks
+        == jwks
+    )
 
 
 def test_client_id_token_decryption_key() -> None:
     decryption_key = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW)
-    assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key).id_token_decryption_key is decryption_key
-    assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.to_dict()).id_token_decryption_key == decryption_key
+    assert (
+        OAuth2Client(
+            "https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key
+        ).id_token_decryption_key
+        is decryption_key
+    )
+    assert (
+        OAuth2Client(
+            "https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.to_dict()
+        ).id_token_decryption_key
+        == decryption_key
+    )
 
     with pytest.raises(ValueError, match="no decryption algorithm is defined"):
-        assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.minimize())
+        assert OAuth2Client(
+            "https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.minimize()
+        )
 
 
 def test_client_custom_auth_method() -> None:

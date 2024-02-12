@@ -13,12 +13,13 @@ from requests_oauth2client import (
     AuthorizationRequest,
     BearerToken,
     ClientSecretPost,
+    IdToken,
     OAuth2Client,
-    oidc_discovery_document_url, IdToken,
+    oidc_discovery_document_url,
 )
 
 
-@freeze_time('2023-12-31T23:59:59')
+@freeze_time("2023-12-31T23:59:59")
 def test_authorization_code(
     session: requests.Session,
     requests_mock: Mocker,
@@ -43,7 +44,7 @@ def test_authorization_code(
         client_id=client_id,
         client_secret=client_secret,
         redirect_uri=redirect_uri,
-        id_token_signed_response_alg=id_token_sig_alg
+        id_token_signed_response_alg=id_token_sig_alg,
     )
     authorization_request = client.authorization_request(scope=scope, audience=audience)
     assert authorization_request.authorization_endpoint == authorization_endpoint

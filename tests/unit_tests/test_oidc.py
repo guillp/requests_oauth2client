@@ -78,19 +78,24 @@ def test_validate_id_token(kwargs: dict[str, str], at_hash: str, c_hash: str, s_
         },
         signing_key,
     )
-    assert BearerToken(
-        access_token=access_token,
-        expires_in=60,
-        id_token=str(id_token),
-    ).validate_id_token(
-        client=OAuth2Client(
-            "https://myas.local/token",
-            client_id=client_id,
-            authorization_server_jwks=jwks,
-            id_token_signed_response_alg=kwargs["alg"],
-        ),
-        azr=AuthorizationResponse(code=code, nonce=nonce, max_age=0, state=state),
-    ).id_token == id_token
+    assert (
+        BearerToken(
+            access_token=access_token,
+            expires_in=60,
+            id_token=str(id_token),
+        )
+        .validate_id_token(
+            client=OAuth2Client(
+                "https://myas.local/token",
+                client_id=client_id,
+                authorization_server_jwks=jwks,
+                id_token_signed_response_alg=kwargs["alg"],
+            ),
+            azr=AuthorizationResponse(code=code, nonce=nonce, max_age=0, state=state),
+        )
+        .id_token
+        == id_token
+    )
 
 
 def test_invalid_id_token(token_endpoint: str) -> None:
@@ -331,9 +336,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
                     "exp": Jwt.timestamp(60),
                     "azp": client_id,
                 },
-                headers={
-                    "alg": "RS256"
-                },
+                headers={"alg": "RS256"},
                 key=sig_jwk,
             ).value,
         ).validate_id_token(

@@ -75,9 +75,13 @@ blank = true
 [tool.ruff]
 target-version = "py38"
 line-length = 120
-exclude = [
+extend-exclude = [
     "tests"
 ]
+
+[tool.ruff.format]
+docstring-code-format = true
+line-ending = "lf"
 
 [tool.ruff.lint]
 select = [

@@ -9,12 +9,13 @@ from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 from requests_oauth2client import (
     AuthorizationRequest,
     AuthorizationRequestSerializer,
+    AuthorizationResponse,
     AuthorizationResponseError,
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
     MissingIssuer,
-    RequestUriParameterAuthorizationRequest, AuthorizationResponse,
+    RequestUriParameterAuthorizationRequest,
 )
 
 
@@ -218,23 +219,22 @@ def test_invalid_max_age() -> None:
 
 def test_acr_values() -> None:
     acr_values = ("reinforced", "strong")
-    assert AuthorizationResponse(
-        code="code",
-        client_id="foo",
-        redirect_uri="http://localhost/local",
-        scope="openid",
-        acr_values=list(acr_values)
-    ).acr_values == acr_values
+    assert (
+        AuthorizationResponse(
+            code="code",
+            client_id="foo",
+            redirect_uri="http://localhost/local",
+            scope="openid",
+            acr_values=list(acr_values),
+        ).acr_values
+        == acr_values
+    )
 
 
 def test_custom_attrs() -> None:
     custom = "foobar"
     azresp = AuthorizationResponse(
-        code="code",
-        client_id="foo",
-        redirect_uri="http://localhost/local",
-        scope="openid",
-        custom=custom
+        code="code", client_id="foo", redirect_uri="http://localhost/local", scope="openid", custom=custom
     )
     assert azresp.custom == custom
 
@@ -252,16 +252,16 @@ def test_request_as_dict() -> None:
         state="mystate",
         issuer="https://my.issuer",
         authorization_response_iss_parameter_supported=True,
-        max_age=0
+        max_age=0,
     ).as_dict() == {
         "authorization_endpoint": "https://authorization.endpoint",
         "client_id": "foo",
         "redirect_uri": "http://localhost/local",
         "response_type": "code",
         "scope": ("openid",),
-        "acr_values": ('1', '2', '3'),
+        "acr_values": ("1", "2", "3"),
         "code_verifier": "Jdvs0V61iQz3TGoPP_wjwPUIUHPZ7KYDXnQVKJ3f63MvDFhKFMLusp2JOZKoHEUizGvC5xUWlr4m8FemSvo7gERO8b3G87hB-oOGogPiqmTh_c_ISiDpFENXiFNDaAH3",
-        'code_challenge_method': 'S256',
+        "code_challenge_method": "S256",
         "nonce": "mynonce",
         "state": "mystate",
         "issuer": "https://my.issuer",
