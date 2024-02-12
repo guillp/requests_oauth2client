@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
+from freezegun import freeze_time
 from jwskate import Jwk
 
 from requests_oauth2client import (
@@ -60,6 +61,7 @@ def bca_client(
     return bca_client
 
 
+@freeze_time()
 def test_backchannel_authentication(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
@@ -67,6 +69,8 @@ def test_backchannel_authentication(
     auth_req_id: str,
     scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
+    token_endpoint: str,
+    access_token: str,
 ) -> None:
     requests_mock.post(
         backchannel_authentication_endpoint,
@@ -78,7 +82,12 @@ def test_backchannel_authentication(
     backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
-    assert 355 <= bca_resp.expires_in <= 360
+    assert bca_resp.expires_in == 360
+
+    requests_mock.post(token_endpoint, json={"access_token": access_token, "token_type": "Bearer"})
+
+    token_resp = bca_client.ciba(bca_resp)
+    assert isinstance(token_resp, BearerToken)
 
 
 def test_backchannel_authentication_scope_acr_values_as_list(

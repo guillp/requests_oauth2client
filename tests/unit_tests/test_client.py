@@ -285,6 +285,73 @@ def test_refresh_token_grant(
         )
 
 
+def test_refresh_token_with_bearer_instance_as_param(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    token_endpoint: str,
+    access_token: str,
+    refresh_token: str,
+    client_id: str,
+    client_credential: None | str | Jwk,
+    public_jwk: Jwk,
+    client_auth_method_handler: type[BaseClientAuthenticationMethod],
+    refresh_token_grant_validator: RequestValidatorType,
+    public_app_auth_validator: RequestValidatorType,
+    client_secret_basic_auth_validator: RequestValidatorType,
+    client_secret_post_auth_validator: RequestValidatorType,
+    client_secret_jwt_auth_validator: RequestValidatorType,
+    private_key_jwt_auth_validator: RequestValidatorType,
+) -> None:
+    new_access_token = secrets.token_urlsafe()
+    new_refresh_token = secrets.token_urlsafe()
+    requests_mock.post(
+        token_endpoint,
+        json={
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "Bearer",
+            "expires_in": 3600,
+        },
+    )
+    token_resp = oauth2client.refresh_token(BearerToken(access_token=access_token, refresh_token=refresh_token))
+    assert requests_mock.called_once
+
+    assert not token_resp.is_expired()
+    assert token_resp.access_token == new_access_token
+    assert token_resp.refresh_token == new_refresh_token
+
+    refresh_token_grant_validator(requests_mock.last_request, refresh_token=refresh_token)
+
+    if client_auth_method_handler == PublicApp:
+        public_app_auth_validator(requests_mock.last_request, client_id=client_id)
+    elif client_auth_method_handler == ClientSecretPost:
+        client_secret_post_auth_validator(
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
+        )
+    elif client_auth_method_handler == ClientSecretBasic:
+        client_secret_basic_auth_validator(
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
+        )
+    elif client_auth_method_handler == ClientSecretJwt:
+        client_secret_jwt_auth_validator(
+            requests_mock.last_request,
+            client_id=client_id,
+            client_secret=client_credential,
+            endpoint=token_endpoint,
+        )
+    elif client_auth_method_handler == PrivateKeyJwt:
+        private_key_jwt_auth_validator(
+            requests_mock.last_request,
+            client_id=client_id,
+            endpoint=token_endpoint,
+            public_jwk=public_jwk,
+        )
+
+
 def test_ressource_owner_password_grant(
     requests_mock: RequestsMocker,
     oauth2client: OAuth2Client,
