@@ -14,7 +14,7 @@ from requests_oauth2client import (
     MismatchingState,
     MissingAuthCode,
     MissingIssuer,
-    RequestUriParameterAuthorizationRequest,
+    RequestUriParameterAuthorizationRequest, AuthorizationResponse,
 )
 
 
@@ -164,7 +164,7 @@ def test_authorization_request_serializer(authorization_request: AuthorizationRe
     assert serializer.loads(serialized) == authorization_request
 
 
-def test_acr_values() -> None:
+def test_request_acr_values() -> None:
     # you may provide acr_values as a space separated list or as a real list
     assert AuthorizationRequest(
         "https://as.local/authorize",
@@ -214,3 +214,58 @@ def test_invalid_max_age() -> None:
             scope="openid",
             max_age=-1,
         )
+
+
+def test_acr_values() -> None:
+    acr_values = ("reinforced", "strong")
+    assert AuthorizationResponse(
+        code="code",
+        client_id="foo",
+        redirect_uri="http://localhost/local",
+        scope="openid",
+        acr_values=list(acr_values)
+    ).acr_values == acr_values
+
+
+def test_custom_attrs() -> None:
+    custom = "foobar"
+    azresp = AuthorizationResponse(
+        code="code",
+        client_id="foo",
+        redirect_uri="http://localhost/local",
+        scope="openid",
+        custom=custom
+    )
+    assert azresp.custom == custom
+
+
+def test_request_as_dict() -> None:
+    assert AuthorizationRequest(
+        "https://authorization.endpoint",
+        client_id="foo",
+        redirect_uri="http://localhost/local",
+        scope="openid",
+        acr_values="1 2 3",
+        customattr="customvalue",
+        code_verifier="Jdvs0V61iQz3TGoPP_wjwPUIUHPZ7KYDXnQVKJ3f63MvDFhKFMLusp2JOZKoHEUizGvC5xUWlr4m8FemSvo7gERO8b3G87hB-oOGogPiqmTh_c_ISiDpFENXiFNDaAH3",
+        nonce="mynonce",
+        state="mystate",
+        issuer="https://my.issuer",
+        authorization_response_iss_parameter_supported=True,
+        max_age=0
+    ).as_dict() == {
+        "authorization_endpoint": "https://authorization.endpoint",
+        "client_id": "foo",
+        "redirect_uri": "http://localhost/local",
+        "response_type": "code",
+        "scope": ("openid",),
+        "acr_values": ('1', '2', '3'),
+        "code_verifier": "Jdvs0V61iQz3TGoPP_wjwPUIUHPZ7KYDXnQVKJ3f63MvDFhKFMLusp2JOZKoHEUizGvC5xUWlr4m8FemSvo7gERO8b3G87hB-oOGogPiqmTh_c_ISiDpFENXiFNDaAH3",
+        'code_challenge_method': 'S256',
+        "nonce": "mynonce",
+        "state": "mystate",
+        "issuer": "https://my.issuer",
+        "authorization_response_iss_parameter_supported": True,
+        "max_age": 0,
+        "customattr": "customvalue",
+    }

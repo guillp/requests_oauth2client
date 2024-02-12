@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Callable, Iterable, TypeVar
+from typing import Any, Callable, ClassVar, Iterable, TypeVar
 
 import requests
-from jwskate import Jwk, JwkSet, Jwt
-from typing_extensions import Literal
+from attrs import field, frozen
+from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs
 
 from .auth import BearerAuth
 from .authorization_request import (
@@ -49,22 +49,24 @@ from .utils import validate_endpoint_uri
 T = TypeVar("T")
 
 
+@frozen(init=False)
 class OAuth2Client:
-    """An OAuth 2.x client, that can send requests to an OAuth 2.x Authorization Server.
+    """An OAuth 2.x Client, that can send requests to an OAuth 2.x Authorization Server.
 
     `OAuth2Client` is able to obtain tokens from the Token Endpoint using any of the standardised
     Grant Types, and to communicate with the various backend endpoints like the Revocation,
     Introspection, and UserInfo Endpoint.
 
-    To init an OAuth2Client, you only need the url to the Token Endpoint and the Credentials that
-    will be used to authenticate to that endpoint. Other endpoint urls, such as the can be passed as
+    To init an OAuth2Client, you only need the url to the Token Endpoint and the Credentials
+    (a client_id and one of a secret or private_key) that will be used to authenticate to that endpoint.
+    Other endpoint urls, such as the Authorization Endpoint, Revocation Endpoint, etc. can be passed as
     parameter as well if you intend to use them.
 
 
     This class is not intended to help with the end-user authentication or any request that goes in
     a browser. For authentication requests, see
     [AuthorizationRequest][requests_oauth2client.authorization_request.AuthorizationRequest]. You
-    may use the helper method `authorization_request()` to generate `AuthorizationRequest`s with the
+    may use the method `authorization_request()` to generate `AuthorizationRequest`s with the
     preconfigured `authorization_endpoint`, `client_id` and `redirect_uri' from this client.
 
     Args:
@@ -115,7 +117,30 @@ class OAuth2Client:
 
     """
 
-    exception_classes: dict[str, type[Exception]] = {
+    auth: requests.auth.AuthBase = field(converter=client_auth_factory)
+    token_endpoint: str
+    revocation_endpoint: str | None
+    introspection_endpoint: str | None
+    userinfo_endpoint: str | None
+    authorization_endpoint: str | None
+    redirect_uri: str | None
+    backchannel_authentication_endpoint: str | None
+    device_authorization_endpoint: str | None
+    pushed_authorization_request_endpoint: str | None
+    jwks_uri: str | None
+    authorization_server_jwks: JwkSet
+    issuer: str | None
+    id_token_signed_response_alg: str | None = SignatureAlgs.RS256
+    id_token_encrypted_response_alg: str | None = None
+    id_token_decryption_key: Jwk | None = None
+    code_challenge_method: str | None = "S256"
+    authorization_response_iss_parameter_supported: bool = False
+    session: requests.Session = field(factory=requests.Session)
+    extra_metadata: dict[str, Any] = field(factory=dict)
+
+    bearer_token_class: type[BearerToken] = BearerToken
+
+    exception_classes: ClassVar[dict[str, type[Exception]]] = {
         "server_error": ServerError,
         "invalid_request": InvalidRequest,
         "invalid_client": InvalidClient,
@@ -129,8 +154,6 @@ class OAuth2Client:
         "expired_token": ExpiredToken,
         "unsupported_token_type": UnsupportedTokenType,
     }
-
-    token_class: type[BearerToken] = BearerToken
 
     def __init__(  # noqa: PLR0913
         self,
@@ -153,11 +176,12 @@ class OAuth2Client:
         jwks_uri: str | None = None,
         authorization_server_jwks: JwkSet | dict[str, Any] | None = None,
         issuer: str | None = None,
-        id_token_signed_response_alg: str | None = "RS256",  # noqa: S107
+        id_token_signed_response_alg: str | None = SignatureAlgs.RS256,
         id_token_encrypted_response_alg: str | None = None,
         id_token_decryption_key: Jwk | dict[str, Any] | None = None,
         code_challenge_method: str = "S256",
         authorization_response_iss_parameter_supported: bool = False,
+        bearer_token_class: type[BearerToken] = BearerToken,
         session: requests.Session | None = None,
         **extra_metadata: Any,
     ):
@@ -168,38 +192,60 @@ class OAuth2Client:
                 " the expected `issuer` value with parameter `issuer`."
             )
             raise ValueError(msg)
-        self.token_endpoint = str(token_endpoint)
-        self.revocation_endpoint = str(revocation_endpoint) if revocation_endpoint else None
-        self.introspection_endpoint = str(introspection_endpoint) if introspection_endpoint else None
-        self.userinfo_endpoint = str(userinfo_endpoint) if userinfo_endpoint else None
-        self.authorization_endpoint = str(authorization_endpoint) if authorization_endpoint else None
-        self.redirect_uri = str(redirect_uri) if redirect_uri else None
-        self.backchannel_authentication_endpoint = (
-            str(backchannel_authentication_endpoint) if backchannel_authentication_endpoint else None
-        )
-        self.device_authorization_endpoint = (
-            str(device_authorization_endpoint) if device_authorization_endpoint else None
-        )
-        self.pushed_authorization_request_endpoint = (
-            str(pushed_authorization_request_endpoint) if pushed_authorization_request_endpoint else None
-        )
-        self.jwks_uri = str(jwks_uri) if jwks_uri else None
-        self.authorization_server_jwks = JwkSet(authorization_server_jwks) if authorization_server_jwks else None
-        self.issuer = str(issuer) if issuer else None
-        self.session = session or requests.Session()
-        self.auth = client_auth_factory(
+
+        auth = client_auth_factory(
             auth,
             client_id=client_id,
             client_secret=client_secret,
             private_key=private_key,
             default_auth_handler=ClientSecretPost,
         )
-        self.id_token_signed_response_alg = id_token_signed_response_alg
-        self.id_token_encrypted_response_alg = id_token_encrypted_response_alg
-        self.id_token_decryption_key = Jwk(id_token_decryption_key) if id_token_decryption_key else None
-        self.code_challenge_method = code_challenge_method
-        self.authorization_response_iss_parameter_supported = authorization_response_iss_parameter_supported
-        self.extra_metadata = extra_metadata
+
+        if authorization_server_jwks is None:
+            authorization_server_jwks = JwkSet()
+        elif not isinstance(authorization_server_jwks, JwkSet):
+            authorization_server_jwks = JwkSet(authorization_server_jwks)
+
+        if id_token_decryption_key is not None and not isinstance(id_token_decryption_key, Jwk):
+            id_token_decryption_key = Jwk(id_token_decryption_key)
+
+        if id_token_decryption_key is not None and id_token_encrypted_response_alg is None:
+            if id_token_decryption_key.alg:
+                id_token_encrypted_response_alg = id_token_decryption_key.alg
+            else:
+                msg = (
+                    "An ID Token decryption key has been provided but no decryption algorithm is defined."
+                    " You can either pass an `id_token_encrypted_response_alg` parameter with the alg identifier,"
+                    " or include an `alg` attribute in the decryption key, if it is in Jwk format."
+                )
+                raise ValueError(msg)
+
+        if session is None:
+            session = requests.Session()
+
+        self.__attrs_init__(
+            token_endpoint=token_endpoint,
+            revocation_endpoint=revocation_endpoint,
+            introspection_endpoint=introspection_endpoint,
+            userinfo_endpoint=userinfo_endpoint,
+            authorization_endpoint=authorization_endpoint,
+            redirect_uri=redirect_uri,
+            backchannel_authentication_endpoint=backchannel_authentication_endpoint,
+            device_authorization_endpoint=device_authorization_endpoint,
+            pushed_authorization_request_endpoint=pushed_authorization_request_endpoint,
+            jwks_uri=jwks_uri,
+            authorization_server_jwks=authorization_server_jwks,
+            issuer=issuer,
+            session=session,
+            auth=auth,
+            id_token_signed_response_alg=id_token_signed_response_alg,
+            id_token_encrypted_response_alg=id_token_encrypted_response_alg,
+            id_token_decryption_key=id_token_decryption_key,
+            code_challenge_method=code_challenge_method,
+            authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
+            bearer_token_class=bearer_token_class,
+            extra_metadata=extra_metadata,
+        )
 
     @property
     def client_id(self) -> str:
@@ -276,7 +322,12 @@ class OAuth2Client:
 
         return on_failure(response)
 
-    def token_request(self, data: dict[str, Any], timeout: int = 10, **requests_kwargs: Any) -> BearerToken:
+    def token_request(
+        self,
+        data: dict[str, Any],
+        timeout: int = 10,
+        **requests_kwargs: Any,
+    ) -> BearerToken:
         """Send a request to the token endpoint.
 
         Authentication will be added automatically based on the defined `auth` for this client.
@@ -318,7 +369,7 @@ class OAuth2Client:
 
         """
         try:
-            token_response = self.token_class(**response.json())
+            token_response = self.bearer_token_class(**response.json())
         except Exception as response_class_exc:
             try:
                 return self.on_token_error(response)
@@ -356,6 +407,7 @@ class OAuth2Client:
     def client_credentials(
         self,
         scope: str | Iterable[str] | None = None,
+        *,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -415,7 +467,7 @@ class OAuth2Client:
         data = dict(grant_type=GrantType.AUTHORIZATION_CODE, code=code, **token_kwargs)
         token = self.token_request(data, **requests_kwargs)
         if validate and token.id_token and isinstance(azr, AuthorizationResponse):
-            token.validate_id_token(self, azr)
+            return token.validate_id_token(self, azr)
         return token
 
     def refresh_token(
@@ -638,8 +690,8 @@ class OAuth2Client:
         scope: None | str | Iterable[str] = "openid",
         response_type: str = "code",
         redirect_uri: str | None = None,
-        state: str | Literal[True] | None = True,
-        nonce: str | Literal[True] | None = True,
+        state: str | ellipsis | None = ...,  # noqa: F821
+        nonce: str | ellipsis | None = ...,  # noqa: F821
         code_verifier: str | None = None,
         **kwargs: Any,
     ) -> AuthorizationRequest:
@@ -1329,7 +1381,7 @@ class OAuth2Client:
             on_failure=lambda resp: resp.raise_for_status(),
             **requests_kwargs,
         )
-        self.authorization_server_jwks = JwkSet(jwks)
+        self.authorization_server_jwks.update(jwks)
         return self.authorization_server_jwks
 
     @classmethod

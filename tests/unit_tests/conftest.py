@@ -20,7 +20,6 @@ from requests_oauth2client import (
     OAuth2Client,
     PrivateKeyJwt,
     PublicApp,
-    GENERATE,
 )
 from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
 from tests.conftest import FixtureRequest
@@ -318,9 +317,9 @@ def sub() -> str:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "state", GENERATE],
+    params=[None, "state", ...],
 )
-def state(request: FixtureRequest) -> None | GENERATE | str:  # type: ignore[valid-type]
+def state(request: FixtureRequest) -> None | ellipsis | str:
     return request.param
 
 
@@ -336,9 +335,9 @@ def auth_request_kwargs(request: FixtureRequest) -> dict[str, Any]:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "nonce", GENERATE],
+    params=[None, "nonce", ...],
 )
-def nonce(request: FixtureRequest) -> None | GENERATE | str:  # type: ignore[valid-type]
+def nonce(request: FixtureRequest) -> None | ellipsis | str:
     return request.param
 
 
@@ -372,8 +371,8 @@ def authorization_request(
     client_id: str,
     redirect_uri: str,
     scope: None | str | list[str],
-    state: None | GENERATE | str,  # type: ignore[valid-type]
-    nonce: None | GENERATE | str,  # type: ignore[valid-type]
+    state: None | ellipsis | str,
+    nonce: None | ellipsis | str,
     code_verifier: str,
     code_challenge_method: str,
     expected_issuer: str | None,
@@ -413,7 +412,7 @@ def authorization_request(
         **auth_request_kwargs,
     )
 
-    if nonce is GENERATE:
+    if nonce is ...:
         if scope is not None and "openid" in scope:
             generated_nonce = args.pop("nonce")
             assert isinstance(generated_nonce, str)
@@ -430,7 +429,7 @@ def authorization_request(
     else:
         assert False
 
-    if state is GENERATE:
+    if state is ...:
         generated_state = args.pop("state")
         assert isinstance(generated_state, str)
         assert len(generated_state) > 20

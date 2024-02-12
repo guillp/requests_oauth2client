@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import requests
 from binapy import BinaPy
-from jwskate import Jwk, Jwt, SymmetricJwk
+from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk
 
 
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
@@ -180,7 +180,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         request = super().__call__(request)
         audience = self.aud or request.url
         if audience is None:
-            msg = "No url defined for this request. This should never happen..."
+            msg = "No url defined for this request. This should never happen..."  # pragma: no cover
             raise ValueError(msg)  # pragma: no cover
         params = (
             parse_qs(request.body, strict_parsing=True, keep_blank_values=True)  # type: ignore[type-var]
@@ -277,7 +277,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         self,
         client_id: str,
         private_jwk: Jwk | dict[str, Any],
-        alg: str = "RS256",
+        alg: str = SignatureAlgs.RS256,
         lifetime: int = 60,
         jti_gen: Callable[[], Any] = lambda: uuid4(),
         aud: str | None = None,

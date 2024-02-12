@@ -8,6 +8,7 @@ from jwskate import (
     InvalidJwt,
     InvalidSignature,
     Jwk,
+    SignatureAlgs,
     SignedJwt,
 )
 
@@ -55,7 +56,7 @@ def test_bearer_token_complete() -> None:
             "exp": IdToken.timestamp(60),
             "sub": "myuserid",
         },
-        Jwk.generate_for_alg("RS256"),
+        Jwk.generate_for_alg(SignatureAlgs.RS256),
     )
     token = BearerToken(
         access_token="foo",

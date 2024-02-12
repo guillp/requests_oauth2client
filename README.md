@@ -273,9 +273,9 @@ Then you can generate valid Authorization Requests by calling the method `.autho
 ```python
 from requests_oauth2client import OAuth2Client
 
-# let's use the discovery endpoint to init our OAuth2Client
-client = OAuth2Client.from_discovery_endpoint(
-    issuer="https://url.to.the.as",
+client = OAuth2Client(
+    token_endpoint="https://url.to.the/token_endoint",
+    authorization_endpoint="https://url.to.the/authorization_endpoint",
     redirect_uri="https://url.to.my.application/redirect_uri",
     client_id="client_id",
     client_secret="client_secret",
@@ -923,23 +923,28 @@ assert api.session == session
 
 ## Vendor-Specific clients
 
-`requests_oauth2client` being flexible enough to handle most use cases, you should be able to use any AS by any vendor
+`requests_oauth2client` is flexible enough to handle most use cases, so you should be able to use any AS by any vendor
 as long as it supports OAuth 2.0.
 
 You can however create a subclass of [OAuth2Client] or [ApiClient] to make it easier to use with specific Authorization
-Servers or APIs. The sub-module `requests_oauth2client.vendor_specific` includes such classes for
-[Auth0](https://auth0.com):
+Servers or APIs. [OAuth2Client] has several extensibility points in the form of methods like `OAuth2Client.parse_token_response()`,
+`OAuth2Client.on_token_error()` that implement response parsing, error handling, etc.
+
 
 ```python
-from requests_oauth2client.vendor_specific import Auth0Client, Auth0ManagementApiClient
+from requests_oauth2client.vendor_specific import Auth0
 
-a0client = Auth0Client("mytenant.eu", ("client_id", "client_secret"))
+a0client = Auth0.client(
+    "mytenant.eu", client_id="client_id", client_secret="client_secret"
+)
 # this will automatically initialize the token endpoint to https://mytenant.eu.auth0.com/oauth/token
 # and other endpoints accordingly
 token = a0client.client_credentials(audience="audience")
 
 # this is a wrapper around Auth0 Management API
-a0mgmt = Auth0ManagementApiClient("mytenant.eu", ("client_id", "client_secret"))
+a0mgmt = Auth0.management_api_client(
+    "mytenant.eu", client_id="client_id", client_secret="client_secret"
+)
 myusers = a0mgmt.get("users")
 ```
 

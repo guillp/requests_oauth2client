@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 import pytest
+import requests.auth
 from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs
 from requests import HTTPError
 
@@ -595,7 +596,7 @@ def test_from_discovery_endpoint(
     discovery_url = oidc_discovery_document_url(issuer)
 
     requests_mock.get(discovery_url, json=discovery_document)
-    requests_mock.get(jwks_uri, json=as_public_jwks)
+    requests_mock.get(jwks_uri, json=as_public_jwks.to_dict())
 
     client = OAuth2Client.from_discovery_endpoint(discovery_url, issuer, auth=client_auth_method)
 
@@ -962,7 +963,8 @@ def test_server_jwks(
 ) -> None:
     """Use OAuth2Client as a context manager to automatically get the public JWKS from its JWKS
     URI."""
-    requests_mock.get(jwks_uri, json=dict(server_public_jwks))
+    assert not oauth2client.authorization_server_jwks
+    requests_mock.get(jwks_uri, json=server_public_jwks.to_dict())
     with oauth2client as client:
         assert client.authorization_server_jwks == server_public_jwks
     assert requests_mock.called_once
@@ -1279,22 +1281,19 @@ def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoin
 
 
 def test_custom_token_type(requests_mock: RequestsMocker) -> None:
-    class WeirdBearerToken(BearerToken):
-        TOKEN_TYPE = "BearerToken"
-
-    class WeirdOAuth2Client(OAuth2Client):
-        token_class = WeirdBearerToken
+    class CustomBearerToken(BearerToken):
+        TOKEN_TYPE = "CustomBearerToken"
 
     TOKEN_ENDPOINT = "https://as.local/token"
-    client = WeirdOAuth2Client(TOKEN_ENDPOINT, ("client_id", "client_secret"))
+    client = OAuth2Client(TOKEN_ENDPOINT, ("client_id", "client_secret"), bearer_token_class=CustomBearerToken)
 
     requests_mock.post(
         TOKEN_ENDPOINT,
-        json={"access_token": "access_token", "token_type": "BearerToken"},
+        json={"access_token": "access_token", "token_type": "CustomBearerToken"},
     )
 
     token = client.client_credentials()
-    assert isinstance(token, WeirdBearerToken)
+    assert isinstance(token, CustomBearerToken)
 
 
 def test_client_jwks() -> None:
@@ -1322,3 +1321,28 @@ def test_issuer_identification_missing_issuer() -> None:
             client_id="my_client_id",
             authorization_response_iss_parameter_supported=True,
         )
+
+
+def test_client_authorization_server_jwks() -> None:
+    jwks = Jwk.generate(alg="ES256").public_jwk().as_jwks()
+    assert OAuth2Client("https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks).authorization_server_jwks is jwks
+    assert OAuth2Client("https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks.to_dict()).authorization_server_jwks == jwks
+
+
+def test_client_id_token_decryption_key() -> None:
+    decryption_key = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW)
+    assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key).id_token_decryption_key is decryption_key
+    assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.to_dict()).id_token_decryption_key == decryption_key
+
+    with pytest.raises(ValueError, match="no decryption algorithm is defined"):
+        assert OAuth2Client("https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.minimize())
+
+
+def test_client_custom_auth_method() -> None:
+    class CustomAuthHandler(requests.auth.AuthBase):
+        def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+            request.headers["Super-Secure"] = "true"
+            return request
+
+    with pytest.raises(AttributeError, match="custom authentication method without client_id"):
+        OAuth2Client("https://token.endpoint", auth=CustomAuthHandler()).client_id

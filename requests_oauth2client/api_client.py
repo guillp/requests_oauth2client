@@ -7,16 +7,18 @@ from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
+from attrs import field, frozen
 from requests.cookies import RequestsCookieJar
 from typing_extensions import Literal
 
 
+@frozen(init=False)
 class ApiClient:
     """A Wrapper around [requests.Session][] with extra features for REST API calls.
 
     Additional features compared to using a [requests.Session][] directly:
 
-    - Allows setting a root url at creation time, then passing relative urls at request time.
+    - You must set a root url at creation time, which then allows passing relative urls at request time.
     - It may also raise exceptions instead of returning error responses.
     - You can also pass additional kwargs at init time, which will be used to configure the
     [Session][requests.Session], instead of setting them later.
@@ -56,7 +58,7 @@ class ApiClient:
         ```
 
     Args:
-        base_url: the base api url, that should be root for all the target API endpoints.
+        base_url: the base api url, that is the root for all the target API endpoints.
         auth: the [requests.auth.AuthBase][] to use as authentication handler.
         timeout: the default timeout, in seconds, to use for each request from this `ApiClient`.
             Can be set to `None` to disable timeout.
@@ -78,9 +80,17 @@ class ApiClient:
 
     """
 
+    base_url: str
+    auth: requests.auth.AuthBase | None = None
+    timeout: int | None = 60
+    raise_for_status: bool = True
+    none_fields: Literal["include", "exclude", "empty"] = "exclude"
+    bool_fields: tuple[Any, Any] | None = "true", "false"
+    session: requests.Session = field(factory=requests.Session)
+
     def __init__(
         self,
-        base_url: str | None = None,
+        base_url: str,
         *,
         auth: requests.auth.AuthBase | None = None,
         timeout: int | None = 60,
@@ -90,19 +100,22 @@ class ApiClient:
         session: requests.Session | None = None,
         **session_kwargs: Any,
     ):
-        super().__init__()
-
-        self.base_url = base_url
-        self.raise_for_status = raise_for_status
-        self.none_fields = none_fields
-        self.bool_fields = bool_fields if bool_fields is not None else (True, False)
-        self.timeout = timeout
-
-        self.session = session or requests.Session()
-        self.auth = auth
-
+        session = session or requests.Session()
         for key, val in session_kwargs.items():
-            setattr(self.session, key, val)
+            setattr(session, key, val)
+
+        if bool_fields is None:
+            bool_fields = (True, False)
+
+        self.__attrs_init__(
+            base_url=base_url,
+            auth=auth,
+            raise_for_status=raise_for_status,
+            none_fields=none_fields,
+            bool_fields=bool_fields,
+            timeout=timeout,
+            session=session,
+        )
 
     def request(  # noqa: C901, PLR0913, D417
         self,
@@ -150,10 +163,10 @@ class ApiClient:
 
         Features added compared to plain request():
 
-        - it can handle a relative path instead of a full url, which will be appended to the
+        - takes a relative path instead of a full url, which will be appended to the
           base_url
         - it can raise an exception when the API returns a non-success status code
-        - allow_redirects is False by default (API usually don't use redirects)
+        - allow_redirects is False by default (since API usually don't use redirects)
         - `data` or `json` fields with value `None` can either be included or excluded from the
           request
         - boolean fields can be serialized to `'true'` or `'false'` instead of `'True'` and
@@ -161,7 +174,7 @@ class ApiClient:
 
         Args:
           method: the HTTP method to use
-          url: the url where the request will be sent to. Can be a path instead of a full url;
+          url: the url where the request will be sent to. Can be a path, as str ;
             that path will be joined to the configured API url. Can also be an iterable of path
             segments, that will be joined to the root url.
           raise_for_status: like the parameter of the same name from `ApiClient.__init__`,
@@ -251,17 +264,17 @@ class ApiClient:
         iterable of path parts as relative url, which will be properly joined with "/". Those parts
         may be `str` (which will be urlencoded) or `bytes` (which will be decoded as UTF-8 first) or
         any other type (which will be converted to `str` first, using the `str() function`). See the
-        table below for examples results which would exhibit most cases:
+        table below for example results which would exhibit most cases:
 
         | base_url | relative_url | result_url |
         |---------------------------|-----------------------------|-------------------------------------------|
-        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" | |
-        "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" | |
-        "https://myhost.com/root" | b"/path" | "https://myhost.com/root/path" | |
-        "https://myhost.com/root" | "path" | "https://myhost.com/root/path" | |
-        "https://myhost.com/root" | None | "https://myhost.com/root" | | "https://myhost.com/root" |
-        ("user", 1, "resource") | "https://myhost.com/root/user/1/resource" | |
-        "https://myhost.com/root" | "https://otherhost.org/foo" | "https://otherhost.org/foo" |
+        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" |
+        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" |
+        | "https://myhost.com/root" | b"/path" | "https://myhost.com/root/path" |
+        | "https://myhost.com/root" | "path" | "https://myhost.com/root/path" |
+        | "https://myhost.com/root" | None | "https://myhost.com/root" |
+        | "https://myhost.com/root" |  ("user", 1, "resource") | "https://myhost.com/root/user/1/resource" |
+        | "https://myhost.com/root" | "https://otherhost.org/foo" | ValueError |
 
         Args:
           relative_url: a relative url
@@ -279,7 +292,7 @@ class ApiClient:
                         url = "/".join(
                             [urlencode(part.decode() if isinstance(part, bytes) else str(part)) for part in url if part]
                         )
-                    except TypeError:
+                    except Exception as exc:
                         msg = (
                             "Unexpected url type, please pass a relative path as string or"
                             " bytes, or an iterable of string-able objects"
@@ -287,10 +300,14 @@ class ApiClient:
                         raise TypeError(
                             msg,
                             type(url),
-                        ) from None
+                        ) from exc
 
                 if isinstance(url, bytes):
                     url = url.decode()
+
+                if "://" in url:
+                    msg = "url must be relative to root_url"
+                    raise ValueError(msg)
 
                 url = urljoin(self.base_url + "/", url.lstrip("/"))
             else:

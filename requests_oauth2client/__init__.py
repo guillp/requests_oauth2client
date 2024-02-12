@@ -5,6 +5,7 @@ You can import any class from any submodule directly from this main module.
 """
 
 import requests
+from jwskate import EncryptionAlgs, KeyManagementAlgs, SignatureAlgs
 
 from .api_client import ApiClient
 from .auth import (
@@ -17,7 +18,6 @@ from .auth import (
     OAuth2ResourceOwnerPasswordAuth,
 )
 from .authorization_request import (
-    GENERATE,
     AuthorizationRequest,
     AuthorizationRequestSerializer,
     AuthorizationResponse,
@@ -132,11 +132,11 @@ __all__ = [
     "DeviceAuthorizationError",
     "DeviceAuthorizationPoolingJob",
     "DeviceAuthorizationResponse",
+    "EncryptionAlgs",
     "EndpointError",
     "ExpiredAccessToken",
     "ExpiredIdToken",
     "ExpiredToken",
-    "GENERATE",
     "GrantType",
     "IdToken",
     "InteractionRequired",
@@ -152,6 +152,7 @@ __all__ = [
     "InvalidScope",
     "InvalidTarget",
     "InvalidTokenResponse",
+    "KeyManagementAlgs",
     "LoginRequired",
     "MismatchingAcr",
     "MismatchingAudience",
@@ -178,6 +179,7 @@ __all__ = [
     "RevocationError",
     "ServerError",
     "SessionSelectionRequired",
+    "SignatureAlgs",
     "SlowDown",
     "TokenEndpointError",
     "TokenEndpointPoolingJob",
