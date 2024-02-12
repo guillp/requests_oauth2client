@@ -117,6 +117,10 @@ def test_backchannel_authentication_scope_acr_values_as_list(
     assert 355 <= bca_resp.expires_in <= 360
 
 
+    with pytest.raises(ValueError, match="Unsupported `acr_values`"):
+        bca_client.backchannel_authentication_request(login_hint="user@example.net", acr_values=1.44)  # type: ignore[arg-type]
+
+
 def test_backchannel_authentication_invalid_response(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
