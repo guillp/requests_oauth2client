@@ -618,6 +618,10 @@ class AuthorizationRequest:
         """Return the Authorization Request URI, as a `str`."""
         return str(self.furl.url)
 
+    def __getattr__(self, item: str) -> Any:
+        """Allow attribute access to extra parameters."""
+        return self.kwargs[item]
+
     def __repr__(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
         return self.uri
@@ -722,6 +726,10 @@ class RequestUriParameterAuthorizationRequest:
     def uri(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
         return str(self.furl.url)
+
+    def __getattr__(self, item: str) -> Any:
+        """Allow attribute access to extra parameters."""
+        return self.kwargs[item]
 
     def __repr__(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
