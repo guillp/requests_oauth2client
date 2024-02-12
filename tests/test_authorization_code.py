@@ -17,6 +17,7 @@ from requests_oauth2client import (
     oidc_discovery_document_url, IdToken,
 )
 
+
 @freeze_time('2023-12-31T23:59:59')
 def test_authorization_code(
     session: requests.Session,
@@ -35,9 +36,15 @@ def test_authorization_code(
     id_token_sig_alg = "ES256"
     id_token_signing_key = Jwk.generate(alg=id_token_sig_alg).with_kid_thumbprint()
 
-    requests_mock.get(issuer+"/.well-known/openid-configuration", json=discovery_document)
-    requests_mock.get(jwks_uri, json={"keys":[id_token_signing_key.public_jwk()]})
-    client = OAuth2Client.from_discovery_endpoint(issuer=issuer, client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri, id_token_signed_response_alg=id_token_sig_alg)
+    requests_mock.get(issuer + "/.well-known/openid-configuration", json=discovery_document)
+    requests_mock.get(jwks_uri, json={"keys": [id_token_signing_key.public_jwk().to_dict()]})
+    client = OAuth2Client.from_discovery_endpoint(
+        issuer=issuer,
+        client_id=client_id,
+        client_secret=client_secret,
+        redirect_uri=redirect_uri,
+        id_token_signed_response_alg=id_token_sig_alg
+    )
     authorization_request = client.authorization_request(scope=scope, audience=audience)
     assert authorization_request.authorization_endpoint == authorization_endpoint
     assert authorization_request.client_id == client_id
@@ -55,7 +62,6 @@ def test_authorization_code(
     state = authorization_request.state
 
     authorization_response = furl(redirect_uri, query={"code": authorization_code, "state": state}).url
-
 
     access_token = secrets.token_urlsafe()
 
@@ -86,7 +92,6 @@ def test_authorization_code(
     )
 
     auth_response = authorization_request.validate_callback(authorization_response)
-
 
     requests_mock.post(
         token_endpoint,
