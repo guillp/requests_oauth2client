@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Callable, Iterable
 from urllib.parse import parse_qs
 
 import pytest
 import requests
 import requests_mock
-from furl import Query, furl  # type: ignore[import-not-found]
+from furl import Query, furl  # type: ignore[import-untyped]
 from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
 from requests_mock.request import _RequestObjectProxy
@@ -154,9 +154,7 @@ def client_auth_method_handler(
 
 @pytest.fixture(scope="session")
 def client_auth_method(
-    client_auth_method_handler: (
-        type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt]
-    ),
+    client_auth_method_handler: type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt],
     client_id: str,
     client_secret: str,
 ) -> ClientSecretPost | ClientSecretBasic | ClientSecretJwt:
@@ -187,9 +185,7 @@ def public_app_auth_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def client_secret_basic_auth_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
-        encoded_username_password = base64.b64encode(
-            f"{client_id}:{client_secret}".encode("ascii")
-        ).decode()
+        encoded_username_password = base64.b64encode(f"{client_id}:{client_secret}".encode("ascii")).decode()
         assert req.headers.get("Authorization") == f"Basic {encoded_username_password}"
         assert "client_secret" not in req.text
 
@@ -198,9 +194,7 @@ def client_secret_basic_auth_validator() -> RequestValidatorType:
 
 @pytest.fixture(scope="session")
 def client_secret_jwt_auth_validator() -> RequestValidatorType:
-    def validator(
-        req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
-    ) -> None:
+    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str) -> None:
         params = Query(req.text).params
         assert params.get("client_id") == client_id
         assert "client_assertion" in params
@@ -209,7 +203,7 @@ def client_secret_jwt_auth_validator() -> RequestValidatorType:
         jwt = SignedJwt(client_assertion)
         jwt.verify_signature(jwk, alg="HS256")
         claims = jwt.claims
-        now = int(datetime.now().timestamp())
+        now = int(datetime.now(tz=timezone.utc).timestamp())
         assert now - 10 <= claims["iat"] <= now, "unexpected iat"
         assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
         assert claims["iss"] == client_id
@@ -236,7 +230,7 @@ def private_key_jwt_auth_validator() -> RequestValidatorType:
         jwt = SignedJwt(client_assertion)
         jwt.verify_signature(public_jwk)
         claims = jwt.claims
-        now = int(datetime.now().timestamp())
+        now = int(datetime.now(timezone.utc).timestamp())
         assert now - 10 <= claims["iat"] <= now, "Unexpected iat"
         assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
         assert claims["iss"] == client_id
@@ -255,7 +249,9 @@ def client_credentials_grant_validator() -> RequestValidatorType:
         if scope is not None and not isinstance(scope, str):
             scope = " ".join(scope)
 
-        assert params.get("scope") == scope
+        assert (
+            not scope and params.get("scope") is None or scope and params.get("scope") == scope
+        ), f"expected {scope=}, got {params.get('scope')=}"
         for key, val in kwargs.items():
             assert params.get(key) == val
 
@@ -336,18 +332,32 @@ def ciba_request_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def backchannel_auth_request_validator() -> RequestValidatorType:
     def validator(
-        req: _RequestObjectProxy, *, scope: None | str | list[str], **kwargs: Any
+        req: _RequestObjectProxy,
+        *,
+        scope: None | str | Iterable[str],
+        acr_values: None | str | Iterable[str] = None,
+        **kwargs: Any,
     ) -> None:
         params = Query(req.text).params
+
         if scope is None:
             assert "scope" not in params
         elif isinstance(scope, str):
             assert params.get("scope") == scope
         else:
             assert params.get("scope") == " ".join(scope)
+
+        if acr_values is None:
+            assert acr_values not in params
+        elif isinstance(acr_values, str):
+            assert params.get("acr_values") == acr_values
+        else:
+            assert params.get("acr_values") == " ".join(acr_values)
+
         login_hint = params.get("login_hint")
         login_hint_token = params.get("login_hint_token")
         id_token_hint = params.get("id_token_hint")
+
         assert login_hint or login_hint_token or id_token_hint
         assert (
             not (login_hint and login_hint_token)

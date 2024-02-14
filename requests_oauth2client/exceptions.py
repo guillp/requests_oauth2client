@@ -1,4 +1,5 @@
 """This module contains all exception classes from `requests_oauth2client`."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,6 +15,7 @@ class OAuth2Error(Exception):
 
     Args:
         response: the HTTP response containing the error
+
     """
 
     def __init__(self, response: requests.Response):
@@ -28,13 +30,15 @@ class OAuth2Error(Exception):
 class EndpointError(OAuth2Error):
     """Base class for exceptions raised from backend endpoint errors.
 
-    This contains the error message, description and uri that are returned by the AS in the OAuth 2.0 standardised way.
+    This contains the error message, description and uri that are returned by the AS in the OAuth
+    2.0 standardised way.
 
     Args:
         response: the raw requests.PreparedResponse containing the error.
         error: the `error` identifier as returned by the AS.
         description: the `error_description` as returned by the AS.
         uri: the `error_uri` as returned by the AS.
+
     """
 
     def __init__(
@@ -135,18 +139,20 @@ class InvalidDeviceAuthorizationResponse(OAuth2Error):
 
 
 class InvalidIdToken(InvalidJwt):
-    """Raised when trying to validate an invalid Id Token value."""
+    """Raised when trying to validate an invalid ID Token value."""
 
 
 class AuthorizationResponseError(Exception):
     """Base class for error responses returned by the Authorization endpoint.
 
-    An `AuthorizationResponseError` contains the error message, description and uri that are returned by the AS.
+    An `AuthorizationResponseError` contains the error message, description and uri that are
+    returned by the AS.
 
     Args:
         error: the `error` identifier as returned by the AS
         description: the `error_description` as returned by the AS
         uri: the `error_uri` as returned by the AS
+
     """
 
     def __init__(self, error: str, description: str | None = None, uri: str | None = None):
@@ -184,6 +190,7 @@ class MissingAuthCode(InvalidAuthResponse):
 
     This happens when the Authorization Endpoint does not return an error, but does not return an
     authorization `code` either.
+
     """
 
 
@@ -194,6 +201,7 @@ class MissingIssuer(InvalidAuthResponse):
     `authorization_response_iss_parameter_supported` in its discovery document. If it is set to
     `true`, it must include an `iss` parameter in its authorization responses, containing its issuer
     identifier.
+
     """
 
 
@@ -202,6 +210,7 @@ class MissingIdToken(InvalidAuthResponse):
 
     This happens when the Authorization Endpoint does not return an error, but does not return an ID
     Token either.
+
     """
 
 
@@ -210,6 +219,7 @@ class MismatchingState(InvalidAuthResponse):
 
     This happens when the Authorization Endpoints returns a 'state' parameter that doesn't match the
     value passed in the Authorization Request.
+
     """
 
 
@@ -218,6 +228,7 @@ class MismatchingIssuer(InvalidAuthResponse):
 
     This happens when the Authorization Endpoints returns an 'iss' that doesn't match the expected
     value.
+
     """
 
 
@@ -226,6 +237,7 @@ class MismatchingNonce(InvalidIdToken):
 
     This happens when the authorization request includes a `nonce` but the returned ID Token include
     a different value.
+
     """
 
 
@@ -234,6 +246,7 @@ class MismatchingAcr(InvalidIdToken):
 
     This happens when the authorization request includes an `acr_values` parameter but the returned
     ID Token includes a different value.
+
     """
 
 

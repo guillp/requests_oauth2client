@@ -2,7 +2,10 @@ site_name: requests_oauth2client
 # site_url: http://www.jieyu.ai
 repo_url: https://github.com/guillp/requests_oauth2client
 repo_name: requests_oauth2client
-strict: false
+strict: true
+watch:
+  - requests_oauth2client
+  - README.md
 nav:
   - Home: index.md
   - Installation: installation.md
@@ -21,9 +24,12 @@ theme:
     - navigation.tabs
     - navigation.instant
     - navigation.tabs.sticky
+    - navigation.footer
+    - content.code.copy
+    - content.action.view
 markdown_extensions:
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
   - pymdownx.critic
   - pymdownx.caret
@@ -42,16 +48,14 @@ markdown_extensions:
   - toc:
       baselevel: 2
       permalink: true
-      slugify: !!python/name:pymdownx.slugs.uslugify
+      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
   - meta
 plugins:
+  - include-markdown
   - search:
       lang: en
   - mkdocstrings:
       default_handler: python
-      watch:
-        - requests_oauth2client
-        - README.md
       handlers:
         python:
           options:

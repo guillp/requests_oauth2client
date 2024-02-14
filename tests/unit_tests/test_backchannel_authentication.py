@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
+from freezegun import freeze_time
 from jwskate import Jwk
 
 from requests_oauth2client import (
@@ -18,9 +19,7 @@ from tests.conftest import RequestsMocker, RequestValidatorType
 
 
 def test_backchannel_authentication_response(auth_req_id: str) -> None:
-    bca_resp = BackChannelAuthenticationResponse(
-        auth_req_id=auth_req_id, expires_in=10, interval=10, foo="bar"
-    )
+    bca_resp = BackChannelAuthenticationResponse(auth_req_id=auth_req_id, expires_in=10, interval=10, foo="bar")
 
     assert bca_resp.auth_req_id == auth_req_id
     assert bca_resp.interval == 10
@@ -62,6 +61,7 @@ def bca_client(
     return bca_client
 
 
+@freeze_time()
 def test_backchannel_authentication(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
@@ -69,47 +69,56 @@ def test_backchannel_authentication(
     auth_req_id: str,
     scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
+    token_endpoint: str,
+    access_token: str,
 ) -> None:
     requests_mock.post(
         backchannel_authentication_endpoint,
         json={"auth_req_id": auth_req_id, "expires_in": 360, "interval": 3},
     )
-    bca_resp = bca_client.backchannel_authentication_request(
-        scope=scope, login_hint="user@example.com"
-    )
+    bca_resp = bca_client.backchannel_authentication_request(scope=scope, login_hint="user@example.com")
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(
-        requests_mock.last_request, scope=scope, login_hint="user@example.com"
-    )
+    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
-    assert 355 <= bca_resp.expires_in <= 360
+    assert bca_resp.expires_in == 360
+
+    requests_mock.post(token_endpoint, json={"access_token": access_token, "token_type": "Bearer"})
+
+    token_resp = bca_client.ciba(bca_resp)
+    assert isinstance(token_resp, BearerToken)
 
 
-def test_backchannel_authentication_scope_list(
+def test_backchannel_authentication_scope_acr_values_as_list(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
     bca_client: OAuth2Client,
     auth_req_id: str,
     backchannel_auth_request_validator: RequestValidatorType,
 ) -> None:
-    scope = ["openid", "email", "profile"]
+    scope = ("openid", "email", "profile")
+    acr_values = ("reinforced", "strong")
+
     requests_mock.post(
         backchannel_authentication_endpoint,
         json={"auth_req_id": auth_req_id, "expires_in": 360, "interval": 3},
     )
     bca_resp = bca_client.backchannel_authentication_request(
-        scope=scope, login_hint="user@example.com"
+        scope=scope, acr_values=acr_values, login_hint="user@example.com"
     )
 
     assert requests_mock.called_once
     backchannel_auth_request_validator(
-        requests_mock.last_request, scope=scope, login_hint="user@example.com"
+        requests_mock.last_request, scope=scope, acr_values=acr_values, login_hint="user@example.com"
     )
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
     assert 355 <= bca_resp.expires_in <= 360
+
+
+    with pytest.raises(ValueError, match="Unsupported `acr_values`"):
+        bca_client.backchannel_authentication_request(login_hint="user@example.net", acr_values=1.44)  # type: ignore[arg-type]
 
 
 def test_backchannel_authentication_invalid_response(
@@ -124,14 +133,10 @@ def test_backchannel_authentication_invalid_response(
         json={"foo": "bar"},
     )
     with pytest.raises(InvalidBackChannelAuthenticationResponse):
-        bca_client.backchannel_authentication_request(
-            scope=scope, login_hint="user@example.com"
-        )
+        bca_client.backchannel_authentication_request(scope=scope, login_hint="user@example.com")
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(
-        requests_mock.last_request, scope=scope, login_hint="user@example.com"
-    )
+    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
 
 
 def test_backchannel_authentication_jwt(
@@ -177,14 +182,10 @@ def test_backchannel_authentication_error(
         json={"error": "unauthorized_client"},
     )
     with pytest.raises(UnauthorizedClient):
-        bca_client.backchannel_authentication_request(
-            scope=scope, login_hint="user@example.com"
-        )
+        bca_client.backchannel_authentication_request(scope=scope, login_hint="user@example.com")
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(
-        requests_mock.last_request, scope=scope, login_hint="user@example.com"
-    )
+    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
 
 
 def test_backchannel_authentication_invalid_error(
@@ -200,14 +201,10 @@ def test_backchannel_authentication_invalid_error(
         json={"foo": "bar"},
     )
     with pytest.raises(InvalidBackChannelAuthenticationResponse):
-        bca_client.backchannel_authentication_request(
-            scope=scope, login_hint="user@example.com"
-        )
+        bca_client.backchannel_authentication_request(scope=scope, login_hint="user@example.com")
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(
-        requests_mock.last_request, scope=scope, login_hint="user@example.com"
-    )
+    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
 
 
 def test_backchannel_authentication_not_json_error(
@@ -223,14 +220,10 @@ def test_backchannel_authentication_not_json_error(
         text="Error!",
     )
     with pytest.raises(InvalidBackChannelAuthenticationResponse):
-        bca_client.backchannel_authentication_request(
-            scope=scope, login_hint="user@example.com"
-        )
+        bca_client.backchannel_authentication_request(scope=scope, login_hint="user@example.com")
 
     assert requests_mock.called_once
-    backchannel_auth_request_validator(
-        requests_mock.last_request, scope=scope, login_hint="user@example.com"
-    )
+    backchannel_auth_request_validator(requests_mock.last_request, scope=scope, login_hint="user@example.com")
 
 
 def test_backchannel_authentication_missing_hint(
@@ -249,7 +242,8 @@ def test_backchannel_authentication_missing_hint(
 def test_backchannel_authentication_invalid_scope(bca_client: OAuth2Client) -> None:
     with pytest.raises(ValueError):
         bca_client.backchannel_authentication_request(
-            scope=1.44, login_hint="user@example.net"  # type: ignore[arg-type]
+            scope=1.44,  # type: ignore[arg-type]
+            login_hint="user@example.net",
         )
 
 
@@ -290,9 +284,7 @@ def test_pooling_job(
     assert token.access_token == access_token
 
 
-def test_missing_backchannel_authentication_endpoint(
-    token_endpoint: str, client_id: str, client_secret: str
-) -> None:
+def test_missing_backchannel_authentication_endpoint(token_endpoint: str, client_id: str, client_secret: str) -> None:
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     with pytest.raises(AttributeError):
         client.backchannel_authentication_request(login_hint="username@foo.bar")

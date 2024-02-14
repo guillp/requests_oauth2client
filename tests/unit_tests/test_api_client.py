@@ -10,7 +10,7 @@ from tests.conftest import RequestsMocker, RequestValidatorType, join_url
 
 def test_session_at_init() -> None:
     session = requests.Session()
-    api = ApiClient(session=session)
+    api = ApiClient("https://test.local", session=session)
     assert api.session == session
 
 
@@ -125,27 +125,14 @@ def test_fail(
     bearer_auth_validator(requests_mock.last_request, access_token=access_token)
 
 
-def test_no_url_at_init(requests_mock: RequestsMocker, target_api: str) -> None:
-    api_client = ApiClient()
-    requests_mock.get(target_api)
-    resp = api_client.get(target_api)
-    assert resp.ok
-
-
-def test_no_url_fail() -> None:
-    api_client = ApiClient()
-    with pytest.raises(ValueError):
-        api_client.get()
-
-
 def test_url_as_bytes(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api)
 
-    requests_mock.get(target_api)
-    resp = api.get()
+    requests_mock.get(urljoin(target_api, "foo/bar"))
+    resp = api.get((b"foo", b"bar"))
     assert resp.ok
-    resp = api.get(target_api.encode())
-    assert resp.ok
+
+    assert api.get(b"foo/bar").ok
 
 
 def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None:
@@ -171,6 +158,13 @@ def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None
     assert requests_mock.last_request.method == "GET"
     assert requests_mock.last_request.url == target_uri
 
+    class NonStringableObject:
+        def __str__(self) -> str:
+            raise ValueError()
+
+    with pytest.raises(TypeError, match="iterable of string-able objects"):
+        api.get(("resource", NonStringableObject()))  # type: ignore[arg-type]
+
 
 def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api, raise_for_status=False)
@@ -189,20 +183,13 @@ def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> Non
 
 
 def test_other_api(
-    requests_mock: RequestsMocker,
     access_token: str,
     bearer_auth: BearerAuth,
     bearer_auth_validator: RequestValidatorType,
 ) -> None:
     api = ApiClient("https://some.api/foo", auth=bearer_auth)
-    other_api = "https://other.api/somethingelse"
-    requests_mock.get(other_api, json={"status": "success"})
-    response = api.get(other_api)
-    assert response.ok
-    assert requests_mock.last_request is not None
-    assert requests_mock.last_request.method == "GET"
-    assert requests_mock.last_request.url == other_api
-    bearer_auth_validator(requests_mock.last_request, access_token=access_token)
+    with pytest.raises(ValueError):
+        api.get("https://other.api/somethingelse")
 
 
 def test_url_type(target_api: str) -> None:
@@ -299,6 +286,9 @@ def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
     assert requests_mock.last_request.text == "foo=bar&true=1&false=0"
 
+    with pytest.raises(ValueError, match="2 value tuple"):
+        ApiClient(target_api).get(bool_fields=(1, 2, 3))
+
 
 def test_getattr(requests_mock: RequestsMocker, target_api: str) -> None:
     api = ApiClient(target_api)
@@ -343,3 +333,9 @@ def test_contextmanager(requests_mock: RequestsMocker, target_api: str) -> None:
         api.post()
 
     assert requests_mock.last_request is not None
+
+
+def test_invalid_url() -> None:
+    api = ApiClient(None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="Unable to determine an absolute url."):
+        api.get()

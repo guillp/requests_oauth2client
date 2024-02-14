@@ -17,12 +17,7 @@ def test_generate_code_verifier_and_challenge() -> None:
     assert len(challenge) == 43
     assert set(verifier).issubset(set(string.ascii_letters + string.digits + "_-"))
 
-    assert (
-        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
-        .decode()
-        .rstrip("=")
-        == challenge
-    )
+    assert base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=") == challenge
 
     assert PkceUtils.validate_code_verifier(verifier, challenge)
 
@@ -45,7 +40,5 @@ def test_invalid_verifier() -> None:
 
 
 def test_verifier_bytes() -> None:
-    challenge = PkceUtils.derive_challenge(
-        b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ1234567890"
-    )
+    challenge = PkceUtils.derive_challenge(b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMOPQRSTUVWXYZ1234567890")
     assert challenge == "FYKCx6MubiaOxWp8-ciyDkkkOapyAjR9sxikqOSXLdw"
