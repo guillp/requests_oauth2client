@@ -55,11 +55,12 @@ class Auth0:
     ) -> OAuth2Client:
         """Initialise an OAuth2Client for an Auth0 tenant."""
         tenant = cls.tenant(tenant)
-        token_endpoint = f"https://{tenant}/oauth/token"
-        authorization_endpoint = f"https://{tenant}/authorize"
-        revocation_endpoint = f"https://{tenant}/oauth/revoke"
-        userinfo_endpoint = f"https://{tenant}/userinfo"
-        jwks_uri = f"https://{tenant}/.well-known/jwks.json"
+        issuer = f"https://{tenant}"
+        token_endpoint = f"{issuer}/oauth/token"
+        authorization_endpoint = f"{issuer}/authorize"
+        revocation_endpoint = f"{issuer}/oauth/revoke"
+        userinfo_endpoint = f"{issuer}/userinfo"
+        jwks_uri = f"{issuer}/.well-known/jwks.json"
 
         return OAuth2Client(
             auth=auth,
@@ -71,7 +72,7 @@ class Auth0:
             authorization_endpoint=authorization_endpoint,
             revocation_endpoint=revocation_endpoint,
             userinfo_endpoint=userinfo_endpoint,
-            issuer=tenant,
+            issuer=issuer,
             jwks_uri=jwks_uri,
             **kwargs,
         )

@@ -56,15 +56,15 @@ def validate_endpoint_uri(
     url = furl(uri)
     msg: list[str] = []
     if https and url.scheme != "https":
-        msg += "url must use https"
-    if no_port and url.port != 443:
-        msg += "no custom port number allowed"
+        msg.append("url must use https")
+    if no_port and url.port != 443:  # noqa: PLR2004
+        msg.append("no custom port number allowed")
     if no_credentials and url.username or url.password:
-        msg += "no username or password are allowed"
+        msg.append("no username or password are allowed")
     if no_fragment and url.fragment:
-        msg += "url must not contain a fragment"
+        msg.append("url must not contain a fragment")
     if path and (not url.path or url.path == "/"):
-        msg += "url has no path"
+        msg.append("url has no path")
 
     if msg:
         raise ValueError(", ".join(msg))
@@ -76,6 +76,7 @@ def validate_issuer_uri(uri: str) -> str:
     """Validate that an Issuer Identifier URI is valid.
 
     This is almost the same as a valid endpoint URI, but a path is not mandatory.
+
     """
     return validate_endpoint_uri(uri, path=False)
 

@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import warnings
 from enum import Enum
 from typing import Any, Callable, ClassVar, Iterable, TypeVar
 
 import requests
 from attrs import field, frozen
 from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs
+from typing_extensions import override
 
 from .auth import BearerAuth
 from .authorization_request import (
     AuthorizationRequest,
     AuthorizationResponse,
+    CodeChallengeMethods,
     RequestUriParameterAuthorizationRequest,
 )
 from .backchannel_authentication import BackChannelAuthenticationResponse
@@ -118,7 +121,7 @@ class OAuth2Client:
     """
 
     auth: requests.auth.AuthBase = field(converter=client_auth_factory)
-    token_endpoint: str
+    token_endpoint: str = field()
     revocation_endpoint: str | None
     introspection_endpoint: str | None
     userinfo_endpoint: str | None
@@ -224,18 +227,28 @@ class OAuth2Client:
             session = requests.Session()
 
         self.__attrs_init__(
-            token_endpoint=token_endpoint,
-            revocation_endpoint=revocation_endpoint,
-            introspection_endpoint=introspection_endpoint,
-            userinfo_endpoint=userinfo_endpoint,
-            authorization_endpoint=authorization_endpoint,
+            token_endpoint=self.validate_endpoint_uri(token_endpoint),
+            revocation_endpoint=self.validate_endpoint_uri(revocation_endpoint) if revocation_endpoint else None,
+            introspection_endpoint=self.validate_endpoint_uri(introspection_endpoint)
+            if introspection_endpoint
+            else None,
+            userinfo_endpoint=self.validate_endpoint_uri(userinfo_endpoint) if userinfo_endpoint else None,
+            authorization_endpoint=self.validate_endpoint_uri(authorization_endpoint)
+            if authorization_endpoint
+            else None,
             redirect_uri=redirect_uri,
-            backchannel_authentication_endpoint=backchannel_authentication_endpoint,
-            device_authorization_endpoint=device_authorization_endpoint,
-            pushed_authorization_request_endpoint=pushed_authorization_request_endpoint,
-            jwks_uri=jwks_uri,
+            backchannel_authentication_endpoint=self.validate_endpoint_uri(backchannel_authentication_endpoint)
+            if backchannel_authentication_endpoint
+            else None,
+            device_authorization_endpoint=self.validate_endpoint_uri(device_authorization_endpoint)
+            if device_authorization_endpoint
+            else None,
+            pushed_authorization_request_endpoint=self.validate_endpoint_uri(pushed_authorization_request_endpoint)
+            if pushed_authorization_request_endpoint
+            else None,
+            jwks_uri=self.validate_endpoint_uri(jwks_uri) if jwks_uri else None,
             authorization_server_jwks=authorization_server_jwks,
-            issuer=issuer,
+            issuer=self.validate_issuer_uri(issuer) if issuer else None,
             session=session,
             auth=auth,
             id_token_signed_response_alg=id_token_signed_response_alg,
@@ -247,20 +260,20 @@ class OAuth2Client:
             extra_metadata=extra_metadata,
         )
 
-    @classmethod
-    def validate_endpoint_uri(cls, uri: str) -> str:
+    def validate_endpoint_uri(self, uri: str) -> str:
         """Validate that an endpoint URI is suitable for use.
 
         If you need to disable some checks (for AS testing purposes only!), provide a different
         method here.
+
         """
         return validate_endpoint_uri(uri)
 
-    @classmethod
-    def validate_issuer_uri(cls, uri: str) -> str:
+    def validate_issuer_uri(self, uri: str) -> str:
         """Validate that an Issuer identifier is suitable for use.
 
-        This is the same check than an endpoint URI, but the path may be (and usually is) empty.
+        This is the same check as an endpoint URI, but the path may be (and usually is) empty.
+
         """
         return validate_issuer_uri(uri)
 
@@ -1499,7 +1512,7 @@ class OAuth2Client:
         """
         if not https:
             warnings.warn(
-                "The https parameter is deprecrated. Use the TestingOAuth2Client subclass instead."
+                "The https parameter is deprecrated. Use the TestingOAuth2Client subclass instead.", stacklevel=1
             )
             cls = TestingOAuth2Client
         if issuer and discovery.get("issuer") != issuer:
@@ -1592,18 +1605,14 @@ class TestingOAuth2Client(OAuth2Client):
         - custom ports
         - things not allowed by the standards: fragments, username and passwords in URI, etc.
     - disable server certificate verification
+
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         token_endpoint: str,
         auth: (
-            requests.auth.AuthBase
-            | tuple[str, str]
-            | tuple[str, Jwk]
-            | tuple[str, dict[str, Any]]
-            | str
-            | None
+            requests.auth.AuthBase | tuple[str, str] | tuple[str, Jwk] | tuple[str, dict[str, Any]] | str | None
         ) = None,
         *,
         client_id: str | None = None,
@@ -1620,10 +1629,10 @@ class TestingOAuth2Client(OAuth2Client):
         jwks_uri: str | None = None,
         authorization_server_jwks: JwkSet | dict[str, Any] | None = None,
         issuer: str | None = None,
-        id_token_signed_response_alg: str | None = "RS256",
+        id_token_signed_response_alg: str | None = SignatureAlgs.RS256,
         id_token_encrypted_response_alg: str | None = None,
         id_token_decryption_key: Jwk | dict[str, Any] | None = None,
-        code_challenge_method: str = "S256",
+        code_challenge_method: str = CodeChallengeMethods.S256,
         authorization_response_iss_parameter_supported: bool = False,
         session: requests.Session | None = None,
         **extra_metadata: Any,
@@ -1658,13 +1667,11 @@ class TestingOAuth2Client(OAuth2Client):
         )
 
     @override
-    @classmethod
-    def validate_endpoint_uri(cls, uri: str) -> str:
+    def validate_endpoint_uri(self, uri: str) -> str:
         """Disable endpoint URIs validation, for testing purposes."""
         return uri
 
     @override
-    @classmethod
-    def validate_issuer_uri(cls, uri: str) -> str:
+    def validate_issuer_uri(self, uri: str) -> str:
         """Disable issuer URI validation, for testing purposes."""
         return uri

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import secrets
 from datetime import datetime
+from enum import Enum
 from typing import Any, Callable, ClassVar, Iterable, Sequence
 
 from attrs import Factory, asdict, field, fields, frozen
@@ -105,6 +106,13 @@ class PkceUtils:
 
         """
         return cls.code_verifier_re.match(verifier) is not None and cls.derive_challenge(verifier, method) == challenge
+
+
+class CodeChallengeMethods(str, Enum):
+    """PKCE Code Challenge Methods."""
+
+    plain = "plain"
+    S256 = "S256"
 
 
 @frozen(init=False)

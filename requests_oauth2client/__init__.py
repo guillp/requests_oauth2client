@@ -21,6 +21,7 @@ from .authorization_request import (
     AuthorizationRequest,
     AuthorizationRequestSerializer,
     AuthorizationResponse,
+    CodeChallengeMethods,
     PkceUtils,
     RequestParameterAuthorizationRequest,
     RequestUriParameterAuthorizationRequest,
@@ -32,6 +33,7 @@ from .backchannel_authentication import (
 from .client import (
     GrantType,
     OAuth2Client,
+    TestingOAuth2Client,
 )
 from .client_authentication import (
     BaseClientAuthenticationMethod,
@@ -128,6 +130,7 @@ __all__ = [
     "ClientSecretBasic",
     "ClientSecretJwt",
     "ClientSecretPost",
+    "CodeChallengeMethods",
     "ConsentRequired",
     "DeviceAuthorizationError",
     "DeviceAuthorizationPoolingJob",
@@ -181,6 +184,7 @@ __all__ = [
     "SessionSelectionRequired",
     "SignatureAlgs",
     "SlowDown",
+    "TestingOAuth2Client",
     "TokenEndpointError",
     "TokenEndpointPoolingJob",
     "UnauthorizedClient",
