@@ -6,9 +6,8 @@ from typing import Any
 
 import pytest
 import requests
-from furl import furl  # type: ignore[import-not-found]
+from furl import furl  # type: ignore[import-untyped]
 from jwskate import Jwk
-from typing_extensions import Literal
 
 from requests_oauth2client import (
     ApiClient,
@@ -162,11 +161,7 @@ def client_secret() -> str:
 @pytest.fixture(scope="session")
 def client_credential(
     client_auth_method_handler: (
-        type[PublicApp]
-        | type[ClientSecretPost]
-        | type[ClientSecretBasic]
-        | type[ClientSecretJwt]
-        | type[PrivateKeyJwt]
+        type[PublicApp] | type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] | type[PrivateKeyJwt]
     ),
     client_secret: str,
     private_jwk: Jwk,
@@ -187,11 +182,7 @@ def client_credential(
 @pytest.fixture(scope="session")
 def client_auth_method(
     client_auth_method_handler: (
-        type[PublicApp]
-        | type[ClientSecretPost]
-        | type[ClientSecretBasic]
-        | type[ClientSecretJwt]
-        | type[PrivateKeyJwt]
+        type[PublicApp] | type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] | type[PrivateKeyJwt]
     ),
     client_id: str,
     client_credential: None | str | Jwk,
@@ -328,9 +319,9 @@ def sub() -> str:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "state", True],
+    params=[None, "state", ...],
 )
-def state(request: FixtureRequest) -> None | Literal[True] | str:
+def state(request: FixtureRequest) -> None | ellipsis | str:
     return request.param
 
 
@@ -346,9 +337,9 @@ def auth_request_kwargs(request: FixtureRequest) -> dict[str, Any]:
 
 @pytest.fixture(
     scope="session",
-    params=[None, "nonce", True],
+    params=[None, "nonce", ...],
 )
-def nonce(request: FixtureRequest) -> None | bool | str:
+def nonce(request: FixtureRequest) -> None | ellipsis | str:
     return request.param
 
 
@@ -382,8 +373,8 @@ def authorization_request(
     client_id: str,
     redirect_uri: str,
     scope: None | str | list[str],
-    state: None | Literal[True] | str,
-    nonce: None | Literal[True] | str,
+    state: None | ellipsis | str,
+    nonce: None | ellipsis | str,
     code_verifier: str,
     code_challenge_method: str,
     expected_issuer: str | None,
@@ -423,7 +414,7 @@ def authorization_request(
         **auth_request_kwargs,
     )
 
-    if nonce is True:
+    if nonce is ...:
         if scope is not None and "openid" in scope:
             generated_nonce = args.pop("nonce")
             assert isinstance(generated_nonce, str)
@@ -440,7 +431,7 @@ def authorization_request(
     else:
         assert False
 
-    if state is True:
+    if state is ...:
         generated_state = args.pop("state")
         assert isinstance(generated_state, str)
         assert len(generated_state) > 20
@@ -452,15 +443,15 @@ def authorization_request(
         assert args.pop("state") == state
         assert azr.state == state
 
-    if scope is None:
-        assert azr.scope is None
+    if not scope:
+        assert not azr.scope
         assert "scope" not in args
         del expected_args["scope"]
     elif isinstance(scope, tuple):
         expected_args["scope"] = " ".join(scope)
         assert azr.scope == scope
     elif isinstance(scope, str):
-        assert azr.scope == scope.split()
+        assert azr.scope == tuple(scope.split())
 
     if code_challenge_method is None:
         assert "code_challenge_method" not in args

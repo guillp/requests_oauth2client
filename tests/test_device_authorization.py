@@ -1,7 +1,7 @@
 import secrets
 
 import pytest
-from furl import Query  # type: ignore[import-not-found]
+from furl import Query  # type: ignore[import-untyped]
 from requests_mock import Mocker
 
 from requests_oauth2client import (

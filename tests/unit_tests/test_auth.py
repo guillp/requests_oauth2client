@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs
 
 import pytest
@@ -19,7 +19,7 @@ from tests.conftest import RequestsMocker
 
 @pytest.fixture()
 def minutes_ago() -> datetime:
-    return datetime.now() - timedelta(minutes=3)
+    return datetime.now(tz=timezone.utc) - timedelta(minutes=3)
 
 
 def test_bearer_auth(
@@ -64,9 +64,7 @@ def test_access_token_auth(
     new_access_token = "new_access_token"
     new_refresh_token = "new_refresh_token"
 
-    token = BearerToken(
-        access_token=access_token, refresh_token=refresh_token, expires_at=minutes_ago
-    )
+    token = BearerToken(access_token=access_token, refresh_token=refresh_token, expires_at=minutes_ago)
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     auth = OAuth2AccessTokenAuth(client, token)
 
@@ -166,9 +164,7 @@ def test_ropc_auth(
     username = "my_user1"
     password = "T0t@lly_5eCur3!"
 
-    auth = OAuth2ResourceOwnerPasswordAuth(
-        client=oauth2client, username=username, password=password
-    )
+    auth = OAuth2ResourceOwnerPasswordAuth(client=oauth2client, username=username, password=password)
 
     requests_mock.post(
         token_endpoint,
@@ -249,9 +245,7 @@ def test_device_code_auth(
     )
     requests_mock.post(target_api)
 
-    auth = OAuth2DeviceCodeAuth(
-        client=oauth2client, device_code=da_resp.device_code, interval=1, expires_in=60
-    )
+    auth = OAuth2DeviceCodeAuth(client=oauth2client, device_code=da_resp.device_code, interval=1, expires_in=60)
     assert requests.post(target_api, auth=auth)
     assert len(requests_mock.request_history) == 2
     device_code_request = requests_mock.request_history[0]
