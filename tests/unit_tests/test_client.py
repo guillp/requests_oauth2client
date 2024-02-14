@@ -28,6 +28,7 @@ from requests_oauth2client import (
     UnauthorizedClient,
     UnknownIntrospectionError,
     oidc_discovery_document_url,
+    TestingOAuth2Client,
 )
 from tests.conftest import RequestsMocker, RequestValidatorType
 
@@ -615,6 +616,17 @@ def test_from_discovery_document(
             issuer=issuer,
             auth=client_id,
         )
+
+    with pytest.warns(match="https parameter is deprecated"):
+        OAuth2Client.from_discovery_document({
+            "issuer": issuer,
+            "token_endpoint": token_endpoint,
+            "revocation_endpoint": revocation_endpoint,
+            "introspection_endpoint": introspection_endpoint,
+            "userinfo_endpoint": userinfo_endpoint,
+            "jwks_uri": jwks_uri,
+        }, issuer=issuer,
+        auth=client_id,https=False)
 
 
 def test_from_discovery_document_missing_token_endpoint(revocation_endpoint: str, client_id: str) -> None:
@@ -1401,13 +1413,13 @@ def test_client_authorization_server_jwks() -> None:
     jwks = Jwk.generate(alg="ES256").public_jwk().as_jwks()
     assert (
         OAuth2Client(
-            "https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks
+            "https://as.local/token", client_id="client_id", authorization_server_jwks=jwks
         ).authorization_server_jwks
         is jwks
     )
     assert (
         OAuth2Client(
-            "https://token.endpoint", client_id="client_id", authorization_server_jwks=jwks.to_dict()
+            "https://as.local/token", client_id="client_id", authorization_server_jwks=jwks.to_dict()
         ).authorization_server_jwks
         == jwks
     )
@@ -1417,20 +1429,20 @@ def test_client_id_token_decryption_key() -> None:
     decryption_key = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW)
     assert (
         OAuth2Client(
-            "https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key
+            "https://as.local/token", client_id="client_id", id_token_decryption_key=decryption_key
         ).id_token_decryption_key
         is decryption_key
     )
     assert (
         OAuth2Client(
-            "https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.to_dict()
+            "https://as.local/token", client_id="client_id", id_token_decryption_key=decryption_key.to_dict()
         ).id_token_decryption_key
         == decryption_key
     )
 
     with pytest.raises(ValueError, match="no decryption algorithm is defined"):
         assert OAuth2Client(
-            "https://token.endpoint", client_id="client_id", id_token_decryption_key=decryption_key.minimize()
+            "https://as.local/token", client_id="client_id", id_token_decryption_key=decryption_key.minimize()
         )
 
 
@@ -1441,4 +1453,22 @@ def test_client_custom_auth_method() -> None:
             return request
 
     with pytest.raises(AttributeError, match="custom authentication method without client_id"):
-        OAuth2Client("https://token.endpoint", auth=CustomAuthHandler()).client_id
+        OAuth2Client("https://as.local/token", auth=CustomAuthHandler()).client_id
+
+
+def test_testing_oauth2client() -> None:
+    token_endpoint = "http://localhost:1234/token"
+
+    with pytest.raises(ValueError, match="must use https"):
+        OAuth2Client(token_endpoint=token_endpoint, client_id="client_id")
+
+    test_client = TestingOAuth2Client(
+        token_endpoint=token_endpoint,
+        client_id="foo",
+        client_secret="bar",
+        issuer="http://localhost:1234",
+    )
+
+    assert test_client.token_endpoint == token_endpoint
+
+
