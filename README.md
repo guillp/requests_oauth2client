@@ -848,9 +848,9 @@ api = ApiClient(
 resp = api.get("/resource/foo")
 ```
 
-Note that [ApiClient] will never send requests "outside" its configured root url, unless you specifically give it a full
-url at request time. The leading `/` in `/resource` above is optional. A leading `/` will not "reset" the url path to
-root, which means that you can also write the relative path without the `/` and it will automatically be included:
+Note that [ApiClient] will never send requests "outside" its configured root url. The leading `/` in `/resource` above
+is optional. A leading `/` will not "reset" the url path to root, which means that you can also write the relative path
+without the `/` and it will automatically be included:
 
 ```python
 api.get("resource/foo")  # will also send a GET to https://myapi.local/root/resource/foo
