@@ -333,3 +333,9 @@ def test_contextmanager(requests_mock: RequestsMocker, target_api: str) -> None:
         api.post()
 
     assert requests_mock.last_request is not None
+
+
+def test_invalid_url() -> None:
+    api = ApiClient(None)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="Unable to determine an absolute url."):
+        api.get()

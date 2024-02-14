@@ -52,6 +52,12 @@ from requests_oauth2client.exceptions import (
             "07UgYISe6yaAzmTIBr_f2vchFCIs6bAGk1-36iEH00fq4B3eBih5g0r_kEPHpuYLqbXOq7gDBVpr",
             "ZPaPdOYbQ2dUGsQZHaSIcIveQMwWh4yG8lMT9Cfa_cSKSO8KGjx4rqI4zwmAfYJ6bPIxZWeUwvUn",
         ),
+        (
+            {"alg": "EdDSA", "crv": "Ed25519"},
+            "p2LHG4H-8pYDc0hyVOo3iIHvZJUqe9tbj3jESOuXbkY",
+            "E9z1C-c0Az4eTEzE0Nm3OQ3BS2BhMgxuP7x5JAQj1_4",
+            "aVrO6_zIGuPg0pvBhlmB9jnpmFoY6MXEt1nJeHp1pmI",
+        )
     ),
 )
 def test_validate_id_token(kwargs: dict[str, str], at_hash: str, c_hash: str, s_hash: str) -> None:

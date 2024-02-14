@@ -279,7 +279,10 @@ def test_id_token_eq() -> None:
     assert id_token != 13.37
 
 
+@freeze_time()
 def test_token_serializer() -> None:
     serializer = BearerTokenSerializer()
     assert serializer.dumps(BearerToken("access_token")) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
     assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA") == BearerToken("access_token")
+    assert serializer.dumps(BearerToken("access_token", expires_in=60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA"
+    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA") == BearerToken("access_token", expires_in=60)

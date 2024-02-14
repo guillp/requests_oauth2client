@@ -1241,13 +1241,20 @@ def test_introspection_with_bearer_token_as_param(
     requests_mock.post(introspection_endpoint, status_code=200, json={"active": False})
     bearer = BearerToken(access_token, refresh_token=refresh_token)
     assert oauth2client.introspect_token(bearer, "refresh_token")
-
     assert requests_mock.called_once
     introspection_request_validator(requests_mock.last_request, token=refresh_token, type_hint="refresh_token")
+
+    requests_mock.reset()
+    assert oauth2client.introspect_token(bearer, token_type_hint="access_token")
+    assert requests_mock.called_once
+    introspection_request_validator(requests_mock.last_request, token=access_token, type_hint="access_token")
 
     bearer_no_refresh = BearerToken(access_token, refresh_token=None)
     with pytest.raises(ValueError):
         oauth2client.introspect_token(bearer_no_refresh, "refresh_token")
+
+    with pytest.raises(ValueError, match="Invalid `token_type_hint`"):
+        oauth2client.introspect_token(bearer, token_type_hint="unknown_token")
 
 
 def test_ciba(
