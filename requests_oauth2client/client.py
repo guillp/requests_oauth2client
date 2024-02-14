@@ -1512,7 +1512,7 @@ class OAuth2Client:
         """
         if not https:
             warnings.warn(
-                "The https parameter is deprecrated. Use the TestingOAuth2Client subclass instead.", stacklevel=1
+                "The https parameter is deprecated. Use the TestingOAuth2Client subclass instead.", stacklevel=1
             )
             cls = TestingOAuth2Client
         if issuer and discovery.get("issuer") != issuer:
