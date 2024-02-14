@@ -13,12 +13,22 @@ from typing import Any, Callable
 from furl import furl  # type: ignore[import-untyped]
 
 
-def validate_endpoint_uri(uri: str, *, https: bool = True, no_fragment: bool = True, path: bool = True) -> None:
+def validate_endpoint_uri(
+    uri: str,
+    *,
+    https: bool = True,
+    no_credentials: bool = True,
+    no_port: bool = True,
+    no_fragment: bool = True,
+    path: bool = True,
+) -> str:
     """Validate that a URI is suitable as an endpoint URI.
 
     It checks:
 
     - that the scheme is `https`
+    - that no custom port number is being used
+    - that no username or password are included
     - that no fragment is included
     - that a path is present
 
@@ -31,24 +41,44 @@ def validate_endpoint_uri(uri: str, *, https: bool = True, no_fragment: bool = T
     Args:
         uri: the uri
         https: if `True`, check that the uri is https
+        no_port: if `True`, check that no custom port number is included
+        no_credentials: if ` True`, check that no username/password are included
         no_fragment: if `True`, check that the uri contains no fragment
         path: if `True`, check that the uri contains a path component
 
     Raises:
         ValueError: if the supplied url is not suitable
 
+    Returns:
+        the endpoint URI, if all checks passed
+
     """
     url = furl(uri)
     msg: list[str] = []
     if https and url.scheme != "https":
-        msg += "url must use https"
+        msg.append("url must use https")
+    if no_port and url.port != 443:  # noqa: PLR2004
+        msg.append("no custom port number allowed")
+    if no_credentials and url.username or url.password:
+        msg.append("no username or password are allowed")
     if no_fragment and url.fragment:
-        msg += "url must not contain a fragment"
+        msg.append("url must not contain a fragment")
     if path and (not url.path or url.path == "/"):
-        msg += "url has no path"
+        msg.append("url has no path")
 
     if msg:
         raise ValueError(", ".join(msg))
+
+    return uri
+
+
+def validate_issuer_uri(uri: str) -> str:
+    """Validate that an Issuer Identifier URI is valid.
+
+    This is almost the same as a valid endpoint URI, but a path is not mandatory.
+
+    """
+    return validate_endpoint_uri(uri, path=False)
 
 
 def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:

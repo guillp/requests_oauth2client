@@ -49,8 +49,8 @@ def test_encrypted_id_token(requests_mock: RequestsMocker) -> None:
             "kid": "Vs6sw5LGsEYfeiAs3rwiOwXKJpw4S926IaOpefvm-Ec",
         }
     )
-    token_endpoint = "https://token.endpoint"
-    authorization_endpoint = "https://authorization.endpoint"
+    token_endpoint = "https://as.local/token"
+    authorization_endpoint = "https://as.local/authorize"
     issuer = "https://issuer"
 
     claims = {"iss": issuer, "iat": Jwt.timestamp(), "exp": Jwt.timestamp(60), "sub": subject, "nonce": nonce}
