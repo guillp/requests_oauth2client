@@ -617,6 +617,17 @@ def test_from_discovery_document(
             auth=client_id,
         )
 
+    with pytest.warns(match="https parameter is deprecated"):
+        OAuth2Client.from_discovery_document({
+            "issuer": issuer,
+            "token_endpoint": token_endpoint,
+            "revocation_endpoint": revocation_endpoint,
+            "introspection_endpoint": introspection_endpoint,
+            "userinfo_endpoint": userinfo_endpoint,
+            "jwks_uri": jwks_uri,
+        }, issuer=issuer,
+        auth=client_id,https=False)
+
 
 def test_from_discovery_document_missing_token_endpoint(revocation_endpoint: str, client_id: str) -> None:
     """Invalid discovery documents raises an exception."""
@@ -1454,7 +1465,10 @@ def test_testing_oauth2client() -> None:
     test_client = TestingOAuth2Client(
         token_endpoint=token_endpoint,
         client_id="foo",
-        client_secret="bar"
+        client_secret="bar",
+        issuer="http://localhost:1234",
     )
 
     assert test_client.token_endpoint == token_endpoint
+
+
