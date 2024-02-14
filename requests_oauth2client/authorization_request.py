@@ -481,6 +481,7 @@ class AuthorizationRequest:
         jwk: Jwk | dict[str, Any],
         alg: str | None = None,
         lifetime: int | None = None,
+        **kwargs: Any,
     ) -> RequestParameterAuthorizationRequest:
         """Sign this Authorization Request and return a new one.
 
@@ -491,6 +492,7 @@ class AuthorizationRequest:
             alg: the alg to use to sign the request, if the provided `jwk` has no `alg` parameter.
             lifetime: lifetime of the resulting Jwt (used to calculate the 'exp' claim).
                 By default, don't use an 'exp' claim.
+            kwargs: additional query parameters to include in the signed authorization request
 
         Returns:
             the signed Authorization Request
@@ -502,6 +504,7 @@ class AuthorizationRequest:
             client_id=self.client_id,
             request=str(request_jwt),
             expires_at=request_jwt.expires_at,
+            **kwargs,
         )
 
     def sign_and_encrypt_request_jwt(
@@ -636,6 +639,7 @@ class RequestParameterAuthorizationRequest:
         client_id: the client_id
         request: the request JWT
         expires_at: the expiration date for this request
+        kwargs: extra parameters to include in the request
 
     """
 
@@ -643,6 +647,7 @@ class RequestParameterAuthorizationRequest:
     client_id: str
     request: str
     expires_at: datetime | None = None
+    kwargs: dict[str, Any] = Factory(dict)
 
     @accepts_expires_in
     def __init__(
@@ -651,12 +656,14 @@ class RequestParameterAuthorizationRequest:
         client_id: str,
         request: str,
         expires_at: datetime | None = None,
+        **kwargs: Any,
     ):
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
             request=request,
             expires_at=expires_at,
+            kwargs=kwargs,
         )
 
     @property
@@ -664,13 +671,17 @@ class RequestParameterAuthorizationRequest:
         """Return the Authorization Request URI, as a `furl` instance."""
         return furl(
             self.authorization_endpoint,
-            args={"client_id": self.client_id, "request": self.request},
+            args={"client_id": self.client_id, "request": self.request, **self.kwargs},
         )
 
     @property
     def uri(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
         return str(self.furl.url)
+
+    def __getattr__(self, item: str) -> Any:
+        """Allow attribute access to extra parameters."""
+        return self.kwargs[item]
 
     def __repr__(self) -> str:
         """Return the Authorization Request URI, as a `str`.
@@ -691,6 +702,7 @@ class RequestUriParameterAuthorizationRequest:
         client_id: the client_id
         request_uri: the request_uri
         expires_at: the expiration date for this request
+        kwargs: extra parameters to include in the request
 
     """
 
@@ -698,6 +710,7 @@ class RequestUriParameterAuthorizationRequest:
     client_id: str
     request_uri: str
     expires_at: datetime | None = None
+    kwargs: dict[str, Any] = Factory(dict)
 
     @accepts_expires_in
     def __init__(
@@ -706,12 +719,14 @@ class RequestUriParameterAuthorizationRequest:
         client_id: str,
         request_uri: str,
         expires_at: datetime | None = None,
+        **kwargs: Any,
     ):
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
             request_uri=request_uri,
             expires_at=expires_at,
+            kwargs=kwargs,
         )
 
     @property
@@ -719,7 +734,7 @@ class RequestUriParameterAuthorizationRequest:
         """Return the Authorization Request URI, as a `furl` instance."""
         return furl(
             self.authorization_endpoint,
-            args={"client_id": self.client_id, "request_uri": self.request_uri},
+            args={"client_id": self.client_id, "request_uri": self.request_uri, **self.kwargs},
         )
 
     @property
