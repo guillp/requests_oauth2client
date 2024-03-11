@@ -64,7 +64,7 @@ def validate_endpoint_uri(
     if no_fragment and url.fragment:
         msg.append("url must not contain a fragment")
     if path and (not url.path or url.path == "/"):
-        msg.append("url has no path")
+        msg.append("url must include a path")
 
     if msg:
         raise ValueError(", ".join(msg))

@@ -28,7 +28,6 @@ from requests_oauth2client import (
     UnauthorizedClient,
     UnknownIntrospectionError,
     oidc_discovery_document_url,
-    TestingOAuth2Client,
 )
 from tests.conftest import RequestsMocker, RequestValidatorType
 
@@ -1457,18 +1456,30 @@ def test_client_custom_auth_method() -> None:
 
 
 def test_testing_oauth2client() -> None:
+    issuer="http://localhost:1234"
     token_endpoint = "http://localhost:1234/token"
 
     with pytest.raises(ValueError, match="must use https"):
         OAuth2Client(token_endpoint=token_endpoint, client_id="client_id")
 
-    test_client = TestingOAuth2Client(
+    with pytest.raises(ValueError, match="must use https"):
+        OAuth2Client(token_endpoint="https://valid.token/endpoint", client_id="client_id", issuer=issuer)
+
+    with pytest.raises(ValueError, match="no custom port number allowed"):
+        OAuth2Client(token_endpoint="https://valid.token/endpoint", client_id="client_id", issuer=issuer)
+
+    with pytest.raises(ValueError, match="must include a path"):
+        OAuth2Client(token_endpoint="https://foo.bar/", client_id="client_id")
+
+    test_client = OAuth2Client(
         token_endpoint=token_endpoint,
         client_id="foo",
         client_secret="bar",
-        issuer="http://localhost:1234",
+        issuer=issuer,
+        testing=True,
     )
 
     assert test_client.token_endpoint == token_endpoint
+    assert test_client.issuer == issuer
 
 
