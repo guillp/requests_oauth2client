@@ -1463,10 +1463,10 @@ def test_testing_oauth2client() -> None:
         OAuth2Client(token_endpoint=token_endpoint, client_id="client_id")
 
     with pytest.raises(ValueError, match="must use https"):
-        OAuth2Client(token_endpoint=token_endpoint, client_id="client_id", issuer=issuer)
+        OAuth2Client(token_endpoint="https://valid.token/endpoint", client_id="client_id", issuer=issuer)
 
     with pytest.raises(ValueError, match="no custom port number allowed"):
-        OAuth2Client(token_endpoint=token_endpoint, client_id="client_id", issuer=issuer)
+        OAuth2Client(token_endpoint="https://valid.token/endpoint", client_id="client_id", issuer=issuer)
 
     with pytest.raises(ValueError, match="must include a path"):
         OAuth2Client(token_endpoint="https://foo.bar/", client_id="client_id")
