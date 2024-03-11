@@ -6,6 +6,7 @@ import re
 import secrets
 from datetime import datetime
 from enum import Enum
+from types import EllipsisType
 from typing import Any, Callable, ClassVar, Iterable, Sequence
 
 from attrs import Factory, asdict, field, fields, frozen
@@ -311,10 +312,10 @@ class AuthorizationRequest:
             )
             raise ValueError(msg)
 
-        if state is Ellipsis:
+        if isinstance(state, EllipsisType):
             state = self.generate_state()
 
-        if nonce is Ellipsis:
+        if isinstance(nonce, EllipsisType):
             nonce = self.generate_nonce() if scope is not None and "openid" in scope else None
 
         if not scope:

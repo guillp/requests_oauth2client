@@ -28,7 +28,6 @@ from requests_oauth2client import (
     UnauthorizedClient,
     UnknownIntrospectionError,
     oidc_discovery_document_url,
-    TestingOAuth2Client,
 )
 from tests.conftest import RequestsMocker, RequestValidatorType
 
@@ -1462,11 +1461,12 @@ def test_testing_oauth2client() -> None:
     with pytest.raises(ValueError, match="must use https"):
         OAuth2Client(token_endpoint=token_endpoint, client_id="client_id")
 
-    test_client = TestingOAuth2Client(
+    test_client = OAuth2Client(
         token_endpoint=token_endpoint,
         client_id="foo",
         client_secret="bar",
         issuer="http://localhost:1234",
+        testing=True,
     )
 
     assert test_client.token_endpoint == token_endpoint
