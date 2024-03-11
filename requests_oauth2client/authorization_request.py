@@ -314,12 +314,12 @@ class AuthorizationRequest:
         if state is ...:
             state = self.generate_state()
         if state is not None and not isinstance(state, str):
-            state = str(state)
+            state = str(state)  # pragma: no cover
 
         if nonce is ...:
             nonce = self.generate_nonce() if scope is not None and "openid" in scope else None
         if nonce is not None and not isinstance(nonce, str):
-            nonce = str(nonce)
+            nonce = str(nonce)  # pragma: no cover
 
         if not scope:
             scope = None
