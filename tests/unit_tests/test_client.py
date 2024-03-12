@@ -1481,5 +1481,3 @@ def test_testing_oauth2client() -> None:
 
     assert test_client.token_endpoint == token_endpoint
     assert test_client.issuer == issuer
-
-
