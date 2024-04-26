@@ -200,7 +200,6 @@ def test_id_token() -> None:
 
     assert id_token.alg == "RS256"
     assert id_token.kid == "my_key"
-    assert id_token == id_token
     assert id_token.aud == audience
     assert id_token.is_expired()
     assert id_token.is_expired(1000)
@@ -284,5 +283,15 @@ def test_token_serializer() -> None:
     serializer = BearerTokenSerializer()
     assert serializer.dumps(BearerToken("access_token")) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
     assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA") == BearerToken("access_token")
+
     assert serializer.dumps(BearerToken("access_token", expires_in=60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA"
     assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA") == BearerToken("access_token", expires_in=60)
+
+    assert serializer.dumps(BearerToken("access_token", expires_in=-60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA"
+    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA") == BearerToken("access_token", expires_in=-60)
+
+
+def test_expires_in_as_str() -> None:
+    assert BearerToken("access_token", expires_in=60) == BearerToken("access_token", expires_in="60")
+    assert BearerToken("access_token", expires_in=-60) == BearerToken("access_token", expires_in="-60")
+    assert BearerToken("access_token", expires_in="foo") == BearerToken("access_token")
