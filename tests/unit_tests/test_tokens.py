@@ -291,6 +291,7 @@ def test_token_serializer() -> None:
     assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA") == BearerToken("access_token", expires_in=-60)
 
 
+@freeze_time()
 def test_expires_in_as_str() -> None:
     assert BearerToken("access_token", expires_in=60) == BearerToken("access_token", expires_in="60")
     assert BearerToken("access_token", expires_in=-60) == BearerToken("access_token", expires_in="-60")
