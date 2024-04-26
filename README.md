@@ -78,8 +78,8 @@ token = "an_access_token"
 resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
 ```
 
-This authentication handler will add a `Authorization: Bearer <access_token>` header in the request,
-with your access token, properly formatted according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
+This authentication handler will add a `Authorization: Bearer <access_token>` header in the request, with your access
+token, properly formatted according to [RFC6750](https://datatracker.ietf.org/doc/html/rfc6750#section-2.1).
 
 ## Using an OAuth2Client
 
@@ -90,8 +90,8 @@ BackChannel Authentication and Device Authorization Endpoints.
 You have to provide the URLs for those endpoints if you intend to use them. Otherwise, only the Token Endpoint is
 mandatory to initialize an `OAuth2Client`.
 
-To initialize an instance of `OAuth2Client`, you only need a Token Endpoint URI from your AS, and the credentials for your
-application, which are typically a `client_id` and a `client_secret`, usually also provided by the AS:
+To initialize an instance of `OAuth2Client`, you only need a Token Endpoint URI from your AS, and the credentials for
+your application, which are typically a `client_id` and a `client_secret`, usually also provided by the AS:
 
 ```python
 from requests_oauth2client import OAuth2Client
@@ -110,7 +110,9 @@ default authentication method used by `OAuth2Client` is *Client Secret Post*, bu
 *Client Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See
 [more about client authentication methods below](#supported-client-authentication-methods).
 
-Instead of providing each endpoint URL yourself, you may also [use the AS metadata endpoint URI](#initializing-an-oauth2client-from-a-discovery-document), or the document data itself, to initialize your OAuth 2.0 client with the appropriate endpoints.
+Instead of providing each endpoint URL yourself, you may also
+[use the AS metadata endpoint URI](#initializing-an-oauth2client-from-a-discovery-document), or the document data
+itself, to initialize your OAuth 2.0 client with the appropriate endpoints.
 
 ## Obtaining tokens
 
@@ -232,9 +234,12 @@ request. Next requests will use the same token, as long as it is valid. A new to
 the previous one is expired.
 
 You can configure a leeway, which is a period of time before the actual expiration, in seconds, when a new token will be
-obtained. This may help getting continuous access to the API when the client and API clocks are slightly out of sync. Use the parameter `leeway` to `OAuth2ClientCredentialsAuth`:
+obtained. This may help getting continuous access to the API when the client and API clocks are slightly out of sync.
+Use the parameter `leeway` to `OAuth2ClientCredentialsAuth`:
 
 ```python
+from requests_oauth2client import OAuth2ClientCredentialsAuth
+
 auth = OAuth2ClientCredentialsAuth(
     oauth2client,
     scope="myscope",
@@ -265,10 +270,13 @@ To be able to use the Authorization Code grant, you need 2 (optionally 3) URIs:
 - the URL for Authorization Endpoint, which is the url where you must send your Authorization Requests
 - the Redirect URI, which is the url pointing to your application, where the Authorization Server will reply with
   Authorization Response
-- optionally, the issuer identifier, if your AS uses [Issuer Identification](RFC9207).
+- optionally, the issuer identifier, if your AS uses
+  [Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html).
 
-You can declare those URIs when initializing your `OAuth2Client` instance, or you can [use the AS discovery endpoint](#initializing-an-oauth2client-from-a-discovery-document) to initialize those URLs automatically.
-Then you can generate valid Authorization Requests by calling the method `.authorization_request()`, with the request specific parameters, such as `scope`, `state`, `nonce` as parameter:
+You can declare those URIs when initializing your `OAuth2Client` instance, or you can
+[use the AS discovery endpoint](#initializing-an-oauth2client-from-a-discovery-document) to initialize those URLs
+automatically. Then you can generate valid Authorization Requests by calling the method `.authorization_request()`, with
+the request specific parameters, such as `scope`, `state`, `nonce` as parameter:
 
 ```python
 from requests_oauth2client import OAuth2Client
@@ -312,7 +320,8 @@ Once you have redirected the user browser to the Authorization Request URI, and 
 authenticated and authorized, plus any other extra interactive step is complete, the AS will respond with a redirection
 to your redirect_uri. That is the *Authorization Response*. It contains several parameters that must be retrieved by
 your client. The *Authorization Code* is one of those parameters, but you must also validate that the *state* matches
-your request; if using [AS Issuer Identification](RFC9207), you must also validate that the issuer matches what is expected. You can do this with:
+your request; if using [AS Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html), you must also validate
+that the issuer matches what is expected. You can do this with:
 
 ```python
 # using the `az_request` as defined above
@@ -324,8 +333,8 @@ response_uri = input(
 az_response = az_request.validate_callback(response_uri)
 ```
 
-This `auth_response` is an `AuthorizationResponse` instance and contains everything that is needed for your application to
-complete the authentication and get its tokens from the AS.
+This `auth_response` is an `AuthorizationResponse` instance and contains everything that is needed for your application
+to complete the authentication and get its tokens from the AS.
 
 #### Exchanging code for tokens
 
@@ -821,8 +830,8 @@ oauth2client = OAuth2Client.from_discovery_endpoint(
 This will fetch the document from the specified URI, then will decode it and initialize an [OAuth2Client] pointing to
 the appropriate endpoint URIs.
 
-If using the `issuer` keyword arg, the URI to the discovery endpoint will be deduced from that identifier, and a check will
-be made that the `issuer` from the retrieved metadata document matches that value.
+If using the `issuer` keyword arg, the URI to the discovery endpoint will be deduced from that identifier, and a check
+will be made that the `issuer` from the retrieved metadata document matches that value.
 
 ## Specialized API Client
 
@@ -927,9 +936,9 @@ assert api.session == session
 as long as it supports OAuth 2.0.
 
 You can however create a subclass of [OAuth2Client] or [ApiClient] to make it easier to use with specific Authorization
-Servers or APIs. [OAuth2Client] has several extensibility points in the form of methods like `OAuth2Client.parse_token_response()`,
-`OAuth2Client.on_token_error()` that implement response parsing, error handling, etc.
-
+Servers or APIs. [OAuth2Client] has several extensibility points in the form of methods like
+`OAuth2Client.parse_token_response()`, `OAuth2Client.on_token_error()` that implement response parsing, error handling,
+etc.
 
 ```python
 from requests_oauth2client.vendor_specific import Auth0

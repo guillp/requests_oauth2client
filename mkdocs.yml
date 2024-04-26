@@ -11,8 +11,8 @@ nav:
   - Installation: installation.md
   - API: api.md
   - Contributing: contributing.md
-  - Authors: authors.md
-  - Changelog: history.md
+  #- Authors: authors.md
+  #- Changelog: history.md
 theme:
   name: material
   language: en
