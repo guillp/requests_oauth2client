@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import IO, TYPE_CHECKING, Any, Callable, Iterable, Mapping, MutableMapping, Self
+from typing import IO, TYPE_CHECKING, Any, Callable, Iterable, Mapping, MutableMapping
 from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
 from attrs import field, frozen
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
 
 if TYPE_CHECKING:
     from types import TracebackType
