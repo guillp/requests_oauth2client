@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import warnings
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Self, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, TypeVar
 
 import requests
 from attrs import Attribute, field, frozen
 from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs
+from typing_extensions import Self
 
 from .auth import BearerAuth
 from .authorization_request import (
