@@ -26,7 +26,7 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
 
     """
 
-    def __init__(self, client_id: str):
+    def __init__(self, client_id: str) -> None:
         self.client_id = str(client_id)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
@@ -68,7 +68,7 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
 
     """
 
-    def __init__(self, client_id: str, client_secret: str):
+    def __init__(self, client_id: str, client_secret: str) -> None:
         super().__init__(client_id)
         self.client_secret = str(client_secret)
 
@@ -165,7 +165,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
             a Client Assertion, as `str`.
 
         """
-        raise NotImplementedError()  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add a `client_assertion` field in the request body.
@@ -371,7 +371,7 @@ def client_auth_factory(
     client_id: str | None = None,
     client_secret: str | None = None,
     private_key: Jwk | dict[str, Any] | None = None,
-    default_auth_handler: type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] = ClientSecretPost,
+    default_auth_handler: type[ClientSecretPost | ClientSecretBasic | ClientSecretJwt] = ClientSecretPost,
 ) -> requests.auth.AuthBase:
     """Initialize the appropriate Auth Handler based on the provided parameters.
 
@@ -428,7 +428,7 @@ def client_auth_factory(
 
     if private_key is not None:
         return PrivateKeyJwt(str(client_id), private_key)
-    elif client_secret is None:
+    if client_secret is None:
         return PublicApp(str(client_id))
-    else:
-        return default_auth_handler(str(client_id), str(client_secret))
+
+    return default_auth_handler(str(client_id), str(client_secret))

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import warnings
 from enum import Enum
-from typing import Any, Callable, ClassVar, Iterable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Self, TypeVar
 
 import requests
 from attrs import Attribute, field, frozen
@@ -42,10 +42,14 @@ from .exceptions import (
     UnauthorizedClient,
     UnknownIntrospectionError,
     UnknownTokenEndpointError,
+    UnsupportedTokenParameterType,
     UnsupportedTokenType,
 )
 from .tokens import BearerToken, IdToken, TokenType
 from .utils import validate_endpoint_uri, validate_issuer_uri
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 T = TypeVar("T")
 
@@ -188,7 +192,7 @@ class OAuth2Client:
         session: requests.Session | None = None,
         testing: bool = False,
         **extra_metadata: Any,
-    ):
+    ) -> None:
         if authorization_response_iss_parameter_supported and not issuer:
             msg = (
                 "If the Authorization Server supports Issuer Identification, as specified by"
@@ -414,11 +418,8 @@ class OAuth2Client:
         """
         try:
             token_response = self.bearer_token_class(**response.json())
-        except Exception as response_class_exc:
-            try:
-                return self.on_token_error(response)
-            except Exception as token_error_exc:
-                raise token_error_exc from response_class_exc
+        except Exception:  # noqa: BLE001
+            return self.on_token_error(response)
         else:
             return token_response
 
@@ -813,7 +814,8 @@ class OAuth2Client:
         )
 
     def parse_pushed_authorization_response(
-        self, response: requests.Response
+        self,
+        response: requests.Response,
     ) -> RequestUriParameterAuthorizationRequest:
         """Parse the response obtained by `pushed_authorization_request()`.
 
@@ -836,7 +838,8 @@ class OAuth2Client:
         )
 
     def on_pushed_authorization_request_error(
-        self, response: requests.Response
+        self,
+        response: requests.Response,
     ) -> RequestUriParameterAuthorizationRequest:
         """Error Handler for Pushed Authorization Endpoint errors.
 
@@ -938,30 +941,21 @@ class OAuth2Client:
             if isinstance(token, str):
                 msg = "Cannot determine the type of provided token when it is a bare str. Please specify a token_type."
                 raise ValueError(msg)
-            elif isinstance(token, BearerToken):
+            if isinstance(token, BearerToken):
                 return "urn:ietf:params:oauth:token-type:access_token"
-            elif isinstance(token, IdToken):
+            if isinstance(token, IdToken):
                 return "urn:ietf:params:oauth:token-type:id_token"
-            else:
-                msg = "Unexpected type of token, please provide a string or a BearerToken or an IdToken."
-                raise TypeError(
-                    msg,
-                    type(token),
-                )
-        elif token_type == TokenType.ACCESS_TOKEN:
+            raise UnsupportedTokenParameterType(type(token))
+        if token_type == TokenType.ACCESS_TOKEN:
             if token is not None and not isinstance(token, (str, BearerToken)):
-                msg = "The supplied token is not a BearerToken or a string representation of it."
-                raise TypeError(
-                    msg,
-                    type(token),
-                )
+                raise UnsupportedTokenParameterType(type(token))
             return "urn:ietf:params:oauth:token-type:access_token"
-        elif token_type == TokenType.REFRESH_TOKEN:
+        if token_type == TokenType.REFRESH_TOKEN:
             if token is not None and isinstance(token, BearerToken) and not token.refresh_token:
                 msg = "The supplied BearerToken doesn't have a refresh_token."
                 raise ValueError(msg)
             return "urn:ietf:params:oauth:token-type:refresh_token"
-        elif token_type == "id_token":
+        if token_type == TokenType.ID_TOKEN:
             if token is not None and not isinstance(token, (str, IdToken)):
                 msg = "The supplied token is not an IdToken or a string representation of it."
                 raise TypeError(
@@ -969,12 +963,12 @@ class OAuth2Client:
                     type(token),
                 )
             return "urn:ietf:params:oauth:token-type:id_token"
-        else:
-            return {
-                "saml1": "urn:ietf:params:oauth:token-type:saml1",
-                "saml2": "urn:ietf:params:oauth:token-type:saml2",
-                "jwt": "urn:ietf:params:oauth:token-type:jwt",
-            }.get(token_type, token_type)
+
+        return {
+            "saml1": "urn:ietf:params:oauth:token-type:saml1",
+            "saml2": "urn:ietf:params:oauth:token-type:saml2",
+            "jwt": "urn:ietf:params:oauth:token-type:jwt",
+        }.get(token_type, token_type)
 
     def revoke_access_token(
         self,
@@ -1066,7 +1060,7 @@ class OAuth2Client:
             "revocation_endpoint",
             data=data,
             auth=self.auth,
-            on_success=lambda resp: True,
+            on_success=lambda _: True,
             on_failure=self.on_revocation_error,
             **requests_kwargs,
         )
@@ -1092,7 +1086,7 @@ class OAuth2Client:
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, RevocationError)
             exception = exception_class(error, error_description, error_uri)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
         raise exception
 
@@ -1138,8 +1132,8 @@ class OAuth2Client:
                 if token.refresh_token is None:
                     msg = "The supplied BearerToken doesn't have a refresh token."
                     raise ValueError(msg)
-                else:
-                    token = token.refresh_token
+
+                token = token.refresh_token
             else:
                 msg = (
                     "Invalid `token_type_hint`. To test arbitrary `token_type_hint` values,"
@@ -1291,7 +1285,8 @@ class OAuth2Client:
         )
 
     def parse_backchannel_authentication_response(
-        self, response: requests.Response
+        self,
+        response: requests.Response,
     ) -> BackChannelAuthenticationResponse:
         """Parse a response received by `backchannel_authentication_request()`.
 
@@ -1338,7 +1333,9 @@ class OAuth2Client:
         raise exception
 
     def authorize_device(
-        self, requests_kwargs: dict[str, Any] | None = None, **data: Any
+        self,
+        requests_kwargs: dict[str, Any] | None = None,
+        **data: Any,
     ) -> DeviceAuthorizationResponse:
         """Send a Device Authorization Request.
 
@@ -1374,8 +1371,7 @@ class OAuth2Client:
             a `DeviceAuthorizationResponse` as returned by AS
 
         """
-        device_authorization_response = DeviceAuthorizationResponse(**response.json())
-        return device_authorization_response
+        return DeviceAuthorizationResponse(**response.json())
 
     def on_device_authorization_error(self, response: requests.Response) -> DeviceAuthorizationResponse:
         """Error handler for `authorize_device()`.
@@ -1544,7 +1540,7 @@ class OAuth2Client:
                 issuer,
                 discovery.get("issuer"),
             )
-        elif issuer is None:
+        if issuer is None:
             issuer = discovery.get("issuer")
 
         token_endpoint = discovery.get("token_endpoint")
@@ -1559,7 +1555,8 @@ class OAuth2Client:
         if jwks_uri is not None:
             validate_endpoint_uri(jwks_uri, https=https)
         authorization_response_iss_parameter_supported = discovery.get(
-            "authorization_response_iss_parameter_supported", False
+            "authorization_response_iss_parameter_supported",
+            False,
         )
 
         return cls(
@@ -1581,7 +1578,7 @@ class OAuth2Client:
             **kwargs,
         )
 
-    def __enter__(self) -> OAuth2Client:
+    def __enter__(self) -> Self:
         """Allow using `OAuth2Client` as a context-manager.
 
         The Authorization Server public keys are retrieved on `__enter__`.
@@ -1590,7 +1587,12 @@ class OAuth2Client:
         self.update_authorization_server_public_keys()
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:  # noqa: D105
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
         return True
 
     def _require_endpoint(self, endpoint: str) -> str:
