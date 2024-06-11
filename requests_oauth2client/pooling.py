@@ -7,10 +7,10 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 
 from .exceptions import AuthorizationPending, SlowDown
-from .tokens import BearerToken
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import OAuth2Client
+    from .tokens import BearerToken
 
 
 class TokenEndpointPoolingJob(ABC):
@@ -40,7 +40,7 @@ class TokenEndpointPoolingJob(ABC):
         slow_down_interval: int = 5,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
-    ):
+    ) -> None:
         self.client = client
         self.interval = interval or 5
         self.slow_down_interval = slow_down_interval

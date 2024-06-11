@@ -13,11 +13,11 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from .pooling import TokenEndpointPoolingJob
-from .tokens import BearerToken
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:  # pragma: no cover
     from .client import OAuth2Client
+    from .tokens import BearerToken
 
 
 class BackChannelAuthenticationResponse:
@@ -43,7 +43,7 @@ class BackChannelAuthenticationResponse:
         expires_at: datetime | None = None,
         interval: int | None = 20,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.auth_req_id = auth_req_id
         self.expires_at = expires_at
         self.interval = interval
@@ -120,7 +120,7 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
         slow_down_interval: int = 5,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
-    ):
+    ) -> None:
         if isinstance(auth_req_id, BackChannelAuthenticationResponse) and interval is None:
             interval = auth_req_id.interval
 

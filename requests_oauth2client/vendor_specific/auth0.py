@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-import requests
-from jwskate import Jwk
+from typing import TYPE_CHECKING, Any
 
 from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
+
+if TYPE_CHECKING:
+    import requests
+    from jwskate import Jwk
 
 
 class Auth0:
@@ -19,13 +20,7 @@ class Auth0:
         if not tenant:
             msg = "You must specify a tenant name."
             raise ValueError(msg)
-        if (
-            "." not in tenant
-            or tenant.endswith(".eu")
-            or tenant.endswith(".us")
-            or tenant.endswith(".au")
-            or tenant.endswith(".jp")
-        ):
+        if "." not in tenant or tenant.endswith((".eu", ".us", ".au", ".jp")):
             tenant = f"{tenant}.auth0.com"
         if "://" in tenant:
             if tenant.startswith("https://"):

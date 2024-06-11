@@ -10,11 +10,11 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
 from .pooling import TokenEndpointPoolingJob
-from .tokens import BearerToken
 from .utils import accepts_expires_in
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import OAuth2Client
+    from .tokens import BearerToken
 
 
 class DeviceAuthorizationResponse:
@@ -44,7 +44,7 @@ class DeviceAuthorizationResponse:
         expires_at: datetime | None = None,
         interval: int | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.device_code = device_code
         self.user_code = user_code
         self.verification_uri = verification_uri
@@ -98,7 +98,7 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         slow_down_interval: int = 5,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(
             client=client,
             interval=interval,

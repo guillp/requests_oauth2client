@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING, Any
 import requests
 from typing_extensions import override
 
-from .authorization_request import AuthorizationResponse
-from .device_authorization import DeviceAuthorizationResponse
 from .exceptions import ExpiredAccessToken
 from .tokens import BearerToken
 
 if TYPE_CHECKING:
+    from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
+    from .device_authorization import DeviceAuthorizationResponse
 
 
 class BearerAuth(requests.auth.AuthBase):
@@ -298,7 +298,7 @@ class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
         password: str,
         leeway: int = 20,
         **token_kwargs: Any,
-    ):
+    ) -> None:
         super().__init__(client=client, leeway=leeway, **token_kwargs)
         self.username = username
         self.password = password

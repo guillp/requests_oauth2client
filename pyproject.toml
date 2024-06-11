@@ -85,47 +85,16 @@ docstring-code-format = true
 line-ending = "lf"
 
 [tool.ruff.lint]
-select = [
-    "A",
-    "B",
-    "C",
-    "C4",
-    "D",
-    "DTZ",
-    "E",
-    "EM",
-    "ERA",
-    "F",
-    "FA",
-    "FBT",
-    "I",
-    "ICN",
-    "ISC",
-    "N",
-    "PGH",
-    "PLC",
-    "PLE",
-    "PLR",
-    "PLW",
-    "PTH",
-    "Q",
-    "RUF",
-    "S",
-    "SIM",
-    "T",
-    "TID",
-    "TRY",
-    "UP",
-    "W",
-    "YTT",
-]
+select = ["ALL"]
 ignore = [
-    "RUF012", # Mutable class attributes should be annotated with `typing.ClassVar`
+    "ANN101", # missing-type-self (deprecated)
+    "ANN102", # missing-type-cls (deprecated)
+    "ANN401", # any-type in function args
     "N818", # Exception names should be named with an Error suffix
     "PLR0912", # Too many branches
+    "D105", # Undocumented magic method
     "D107", # Missing docstring in `__init__`
     "S105", # Possible hardcoded password
-    "ISC001", # single-line-implicit-string-concatenation
 ]
 
 [tool.ruff.lint.pylint]

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import re
 import secrets
-from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, ClassVar, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Sequence
 
 from attrs import Factory, asdict, field, fields, frozen
 from binapy import BinaPy
@@ -23,8 +22,12 @@ from .exceptions import (
     MissingAuthCode,
     MissingIssuer,
     SessionSelectionRequired,
+    UnsupportedCodeChallengeMethod,
 )
 from .utils import accepts_expires_in
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class PkceUtils:
@@ -71,11 +74,10 @@ class PkceUtils:
 
         if method == "S256":
             return BinaPy(verifier).to("sha256").to("b64u").ascii()
-        elif method == "plain":
+        if method == "plain":
             return verifier
-        else:
-            msg = "Unsupported code_challenge_method"
-            raise ValueError(msg, method)
+
+        raise UnsupportedCodeChallengeMethod(method)
 
     @classmethod
     def generate_code_verifier_and_challenge(cls, method: str = "S256") -> tuple[str, str]:
@@ -165,7 +167,7 @@ class AuthorizationResponse:
         max_age: int | None = None,
         issuer: str | None = None,
         **kwargs: str,
-    ):
+    ) -> None:
         if not acr_values:
             acr_values = None
         elif isinstance(acr_values, str):
@@ -429,7 +431,7 @@ class AuthorizationRequest:
         received_issuer = response_url.args.get("iss")
         if self.authorization_response_iss_parameter_supported or received_issuer:
             if received_issuer is None:
-                raise MissingIssuer()
+                raise MissingIssuer
             if self.issuer and received_issuer != self.issuer:
                 raise MismatchingIssuer(self.issuer, received_issuer)
 
@@ -447,9 +449,9 @@ class AuthorizationRequest:
         if "code" in self.response_type:
             code: str = response_url.args.get("code")
             if code is None:
-                raise MissingAuthCode()
+                raise MissingAuthCode
         else:
-            raise NotImplementedError()
+            raise NotImplementedError
 
         return AuthorizationResponse(
             code_verifier=self.code_verifier,
@@ -669,7 +671,7 @@ class RequestParameterAuthorizationRequest:
         request: str,
         expires_at: datetime | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
@@ -732,7 +734,7 @@ class RequestUriParameterAuthorizationRequest:
         request_uri: str,
         expires_at: datetime | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
@@ -775,7 +777,7 @@ class AuthorizationRequestSerializer:
         self,
         dumper: Callable[[AuthorizationRequest], str] | None = None,
         loader: Callable[[str], AuthorizationRequest] | None = None,
-    ):
+    ) -> None:
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
 
@@ -800,7 +802,8 @@ class AuthorizationRequestSerializer:
 
     @staticmethod
     def default_loader(
-        serialized: str, azr_class: type[AuthorizationRequest] = AuthorizationRequest
+        serialized: str,
+        azr_class: type[AuthorizationRequest] = AuthorizationRequest,
     ) -> AuthorizationRequest:
         """Provide a default deserializer implementation.
 

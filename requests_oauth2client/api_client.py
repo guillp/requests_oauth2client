@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from typing import IO, Any, Callable, Iterable, Mapping, MutableMapping
+from typing import IO, TYPE_CHECKING, Any, Callable, Iterable, Mapping, MutableMapping, Self
 from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
 from attrs import field, frozen
-from requests.cookies import RequestsCookieJar
 from typing_extensions import Literal
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from requests.cookies import RequestsCookieJar
 
 
 @frozen(init=False)
@@ -99,7 +103,7 @@ class ApiClient:
         bool_fields: tuple[Any, Any] | None = ("true", "false"),
         session: requests.Session | None = None,
         **session_kwargs: Any,
-    ):
+    ) -> None:
         session = session or requests.Session()
         for key, val in session_kwargs.items():
             setattr(session, key, val)
@@ -285,33 +289,32 @@ class ApiClient:
         """
         url = relative_url
 
-        if self.base_url:
-            if url is not None:
-                if not isinstance(url, (str, bytes)):
-                    try:
-                        url = "/".join(
-                            [urlencode(part.decode() if isinstance(part, bytes) else str(part)) for part in url if part]
-                        )
-                    except Exception as exc:
-                        msg = (
-                            "Unexpected url type, please pass a relative path as string or"
-                            " bytes, or an iterable of string-able objects"
-                        )
-                        raise TypeError(
-                            msg,
-                            type(url),
-                        ) from exc
+        if url is not None:
+            if not isinstance(url, (str, bytes)):
+                try:
+                    url = "/".join(
+                        [urlencode(part.decode() if isinstance(part, bytes) else str(part)) for part in url if part],
+                    )
+                except Exception as exc:
+                    msg = (
+                        "Unexpected url type, please pass a relative path as string or"
+                        " bytes, or an iterable of string-able objects"
+                    )
+                    raise TypeError(
+                        msg,
+                        type(url),
+                    ) from exc
 
-                if isinstance(url, bytes):
-                    url = url.decode()
+            if isinstance(url, bytes):
+                url = url.decode()
 
-                if "://" in url:
-                    msg = "url must be relative to root_url"
-                    raise ValueError(msg)
+            if "://" in url:
+                msg = "url must be relative to root_url"
+                raise ValueError(msg)
 
-                url = urljoin(self.base_url + "/", url.lstrip("/"))
-            else:
-                url = self.base_url
+            url = urljoin(self.base_url + "/", url.lstrip("/"))
+        else:
+            url = self.base_url
 
         if url is None or not isinstance(url, str):
             msg = "Unable to determine an absolute url."
@@ -494,7 +497,7 @@ class ApiClient:
             raise_for_status=self.raise_for_status,
         )
 
-    def __enter__(self) -> ApiClient:
+    def __enter__(self) -> Self:
         """Allow `ApiClient` to act as a context manager.
 
         You can then use an `ApiClient` instance in a `with` clause, the same way as
@@ -509,6 +512,11 @@ class ApiClient:
         """
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Close the underlying requests.Session on exit."""
         self.session.close()

@@ -18,7 +18,7 @@ class OAuth2Error(Exception):
 
     """
 
-    def __init__(self, response: requests.Response):
+    def __init__(self, response: requests.Response) -> None:
         self.response = response
 
     @property
@@ -47,7 +47,7 @@ class EndpointError(OAuth2Error):
         error: str,
         description: str | None = None,
         uri: str | None = None,
-    ):
+    ) -> None:
         super().__init__(response)
         self.error = error
         self.description = description
@@ -155,7 +155,7 @@ class AuthorizationResponseError(Exception):
 
     """
 
-    def __init__(self, error: str, description: str | None = None, uri: str | None = None):
+    def __init__(self, error: str, description: str | None = None, uri: str | None = None) -> None:
         self.error = error
         self.description = description
         self.uri = uri
@@ -276,3 +276,11 @@ class InvalidBackChannelAuthenticationResponse(OAuth2Error):
 
 class InvalidPushedAuthorizationResponse(OAuth2Error):
     """Raised when the Pushed Authorization Endpoint returns an error."""
+
+
+class UnsupportedCodeChallengeMethod(ValueError):
+    """Raised when an unsupported code_challenge_method is provided."""
+
+
+class UnsupportedTokenParameterType(TypeError):
+    """Raised when an unsupported type is passed as token value."""
