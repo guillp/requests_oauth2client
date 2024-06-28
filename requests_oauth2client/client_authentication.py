@@ -165,7 +165,7 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
             a Client Assertion, as `str`.
 
         """
-        raise NotImplementedError  # pragma: no cover
+        raise NotImplementedError
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add a `client_assertion` field in the request body.

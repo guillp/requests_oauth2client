@@ -1,6 +1,9 @@
+import time
 from datetime import datetime, timezone
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
+from pytest_mock import MockerFixture
 
 from requests_oauth2client import (
     BearerToken,
@@ -204,31 +207,43 @@ def test_device_authorization_pooling_job(
     device_code: str,
     device_code_grant_validator: RequestValidatorType,
     access_token: str,
+    freezer: FrozenDateTimeFactory,
+    mocker: MockerFixture,
 ) -> None:
+    INTERVAL = 20
     client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
     job = DeviceAuthorizationPoolingJob(
         client=client,
         device_code=device_code,
-        interval=1,
+        interval=INTERVAL,
     )
+    assert job.interval == INTERVAL
+    assert job.slow_down_interval == 5
+
+    assert job == DeviceAuthorizationPoolingJob(client, DeviceAuthorizationResponse(device_code=device_code, user_code="foo", verification_uri="https://foo.bar", interval=INTERVAL))
 
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
-    assert job() is None
+    with mocker.patch("time.sleep"):
+        assert job() is None
+    time.sleep.assert_called_once_with(INTERVAL)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == 1
+    assert job.interval == INTERVAL
     device_code_grant_validator(requests_mock.last_request, device_code=device_code)
 
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, status_code=401, json={"error": "slow_down"})
-    assert job() is None
+    with mocker.patch("time.sleep"):
+        assert job() is None
+    time.sleep.assert_called_once_with(INTERVAL)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == 1 + 5
+    assert job.interval == INTERVAL + job.slow_down_interval
     device_code_grant_validator(requests_mock.last_request, device_code=device_code)
 
     requests_mock.reset_mock()
-    job.interval = 1
     requests_mock.post(token_endpoint, json={"access_token": access_token})
-    token = job()
+    with mocker.patch("time.sleep"):
+        token = job()
+    time.sleep.assert_called_once_with(INTERVAL + job.slow_down_interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token
