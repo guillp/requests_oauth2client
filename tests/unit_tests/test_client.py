@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 import requests.auth
-from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs
+from jwskate import Jwk, JwkSet, Jwt, KeyManagementAlgs, SignatureAlgs
 from requests import HTTPError
 
 from requests_oauth2client import (
@@ -1052,7 +1052,7 @@ def test_server_jwks_no_jwks_uri(token_endpoint: str) -> None:
     """If JWKS URI is not known, update_authorization_server_public_keys() raises an exception."""
     client = OAuth2Client(token_endpoint=token_endpoint, auth=("foo", "bar"))
     with pytest.raises(AttributeError):
-        assert client.update_authorization_server_public_keys()
+        client.update_authorization_server_public_keys()
 
 
 def test_server_jwks_not_json(requests_mock: RequestsMocker, token_endpoint: str, jwks_uri: str) -> None:
@@ -1060,7 +1060,7 @@ def test_server_jwks_not_json(requests_mock: RequestsMocker, token_endpoint: str
     requests_mock.get(jwks_uri, text="Hello World!")
     client = OAuth2Client(token_endpoint=token_endpoint, jwks_uri=jwks_uri, auth=("foo", "bar"))
     with pytest.raises(ValueError):
-        assert client.update_authorization_server_public_keys()
+        client.update_authorization_server_public_keys()
     assert requests_mock.called_once
 
 
@@ -1080,7 +1080,7 @@ def test_get_token_type() -> None:
     assert OAuth2Client.get_token_type(token_type="saml2") == "urn:ietf:params:oauth:token-type:saml2"
 
     with pytest.raises(ValueError):
-        assert OAuth2Client.get_token_type(token="token")
+        OAuth2Client.get_token_type(token="token")
 
     assert (
         OAuth2Client.get_token_type(token=BearerToken("access_token"))
@@ -1382,7 +1382,7 @@ def test_custom_token_type(requests_mock: RequestsMocker) -> None:
 
 
 def test_client_jwks() -> None:
-    private_key = Jwk.generate_for_alg(KeyManagementAlgs.RSA_OAEP_256).with_kid_thumbprint()
+    private_key = Jwk.generate_for_alg(SignatureAlgs.RS256).with_kid_thumbprint()
     id_token_decryption_key = Jwk.generate_for_alg(KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
     client = OAuth2Client(
         authorization_endpoint="https://as.local/authorize",
@@ -1440,7 +1440,7 @@ def test_client_id_token_decryption_key() -> None:
     )
 
     with pytest.raises(ValueError, match="no decryption algorithm is defined"):
-        assert OAuth2Client(
+        OAuth2Client(
             "https://as.local/token", client_id="client_id", id_token_decryption_key=decryption_key.minimize()
         )
 
