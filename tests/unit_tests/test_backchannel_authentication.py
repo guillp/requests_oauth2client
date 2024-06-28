@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
+from freezegun.api import FrozenDateTimeFactory
 from jwskate import Jwk
+from pytest_mock import MockerFixture
 
 from requests_oauth2client import (
     BackChannelAuthenticationPoolingJob,
@@ -254,31 +257,51 @@ def test_pooling_job(
     auth_req_id: str,
     ciba_request_validator: RequestValidatorType,
     access_token: str,
+    freezer: FrozenDateTimeFactory,
+    mocker: MockerFixture,
 ) -> None:
+    INTERVAL = 20
     job = BackChannelAuthenticationPoolingJob(
         client=bca_client,
         auth_req_id=auth_req_id,
-        interval=1,
+        interval = INTERVAL
+    )
+    assert job.interval == INTERVAL
+    assert job.slow_down_interval == 5
+
+    assert job == BackChannelAuthenticationPoolingJob(
+        bca_client,
+        BackChannelAuthenticationResponse(auth_req_id, interval=INTERVAL),
     )
 
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
-    assert job() is None
+    with mocker.patch("time.sleep"):
+        assert job() is None
+    time.sleep.assert_called_once_with(job.interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == 1
+    assert job.interval == INTERVAL
+
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
 
+    freezer.tick(job.interval)
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, status_code=401, json={"error": "slow_down"})
-    assert job() is None
+    with mocker.patch("time.sleep"):
+        assert job() is None
+    time.sleep.assert_called_once_with(INTERVAL)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == 1 + 5
+    assert job.interval == INTERVAL + job.slow_down_interval
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
 
+
+    freezer.tick(job.interval)
     requests_mock.reset_mock()
-    job.interval = 1
     requests_mock.post(token_endpoint, json={"access_token": access_token})
-    token = job()
+    with mocker.patch("time.sleep"):
+        token = job()
+    time.sleep.assert_called_once_with(INTERVAL+job.slow_down_interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
+    assert job.interval == INTERVAL + job.slow_down_interval
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token

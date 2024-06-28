@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
+from attrs import define
+
 from .pooling import TokenEndpointPoolingJob
 from .utils import accepts_expires_in
 
@@ -66,6 +68,7 @@ class DeviceAuthorizationResponse:
         return None
 
 
+@define(init=False)
 class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
     """A Token Endpoint pooling job for the Device Authorization Flow.
 
@@ -90,6 +93,8 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
 
     """
 
+    device_code: str
+
     def __init__(
         self,
         client: OAuth2Client,
@@ -99,14 +104,18 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> None:
-        super().__init__(
+        if isinstance(device_code, DeviceAuthorizationResponse):
+            interval = interval or device_code.interval
+            device_code = device_code.device_code
+
+        self.__attrs_init__(
             client=client,
-            interval=interval,
+            device_code=device_code,
+            interval=interval or 5,
             slow_down_interval=slow_down_interval,
-            requests_kwargs=requests_kwargs,
-            **token_kwargs,
+            requests_kwargs=requests_kwargs or {},
+            token_kwargs=token_kwargs,
         )
-        self.device_code = device_code
 
     def token_request(self) -> BearerToken:
         """Implement the Device Code token request.

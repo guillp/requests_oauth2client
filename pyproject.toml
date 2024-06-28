@@ -49,6 +49,7 @@ pre-commit = ">=3.5.0"
 pytest = ">=7.0.1"
 pytest-cov = ">=3.0.0"
 pytest-freezer = ">=0.4.8"
+pytest-mock = "^3.14.0"
 pytest-mypy = ">=0.9.1"
 requests-mock = ">=1.9.3"
 toml = ">=0.10.2"
@@ -65,6 +66,22 @@ doc = ["mdformat", "mkdocs", "mkdocs-autorefs", "mkdocs-include-markdown-plugin"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.coverage.run]
+source = "requests_oauth2client"
+
+[tool.coveragereport]
+exclude_also = [
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "def main",
+    "if TYPE_CHECKING:",
+]
 
 [tool.docformatter]
 black = true
@@ -87,8 +104,6 @@ line-ending = "lf"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101", # missing-type-self (deprecated)
-    "ANN102", # missing-type-cls (deprecated)
     "ANN401", # any-type in function args
     "N818", # Exception names should be named with an Error suffix
     "PLR0912", # Too many branches
@@ -106,7 +121,6 @@ ignore-decorators = ['override']
 
 [tool.mypy]
 strict = true
-implicit_reexport = true
 show_error_context = true
 show_column_numbers = true
 show_error_codes = true
