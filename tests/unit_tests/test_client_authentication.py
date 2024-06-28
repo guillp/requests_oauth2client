@@ -162,7 +162,7 @@ def test_invalid_request(requests_mock: RequestsMocker, client_id: str, client_s
 def test_private_key_jwt_missing_alg(client_id: str, private_jwk: Jwk) -> None:
     private_jwk.pop("alg")
     with pytest.raises(ValueError):
-        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk, alg=None)  # type: ignore[arg-type]
+        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk, alg=None)
 
 
 def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:

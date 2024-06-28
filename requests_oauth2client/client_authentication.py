@@ -14,10 +14,12 @@ from urllib.parse import parse_qs
 from uuid import uuid4
 
 import requests
+from attr import field, frozen
 from binapy import BinaPy
-from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk
+from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
 
 
+@frozen
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase].
 
@@ -26,8 +28,7 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
 
     """
 
-    def __init__(self, client_id: str) -> None:
-        self.client_id = str(client_id)
+    client_id: str
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Check that the request is suitable for Client Authentication.
@@ -56,6 +57,7 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
         return request
 
 
+@frozen
 class ClientSecretBasic(BaseClientAuthenticationMethod):
     """Implement `client_secret_basic` authentication.
 
@@ -68,9 +70,7 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
 
     """
 
-    def __init__(self, client_id: str, client_secret: str) -> None:
-        super().__init__(client_id)
-        self.client_secret = str(client_secret)
+    client_secret: str
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the appropriate `Authorization` header in each request.
@@ -91,6 +91,7 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
         return request
 
 
+@frozen
 class ClientSecretPost(BaseClientAuthenticationMethod):
     """Implement `client_secret_post` client authentication method.
 
@@ -103,9 +104,7 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
 
     """
 
-    def __init__(self, client_id: str, client_secret: str) -> None:
-        super().__init__(client_id)
-        self.client_secret = str(client_secret)
+    client_secret: str
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the `client_id` and `client_secret` parameters in the request body.
@@ -129,7 +128,8 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
         return request
 
 
-class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
+@frozen
+class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
     """Base class for assertion-based client authentication methods.
 
     Args:
@@ -141,19 +141,9 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
 
     """
 
-    def __init__(
-        self,
-        client_id: str,
-        alg: str,
-        lifetime: int,
-        jti_gen: Callable[[], str],
-        aud: str | None = None,
-    ) -> None:
-        super().__init__(client_id)
-        self.alg = alg
-        self.lifetime = lifetime
-        self.jti_gen = jti_gen
-        self.aud = aud
+    lifetime: int
+    jti_gen: Callable[[], str]
+    aud: str | None
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion for a specific audience.
@@ -195,12 +185,12 @@ class ClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         return request
 
 
-class ClientSecretJwt(ClientAssertionAuthenticationMethod):
+@frozen(init=False)
+class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
     """Implement `client_secret_jwt` client authentication method.
 
-    With this method, the client generates and signs a client assertion that is symmetrically
-    signed with its Client Secret. The assertion is then sent to the AS in a `client_assertion`
-    field with each authenticated request.
+    With this method, the client generates a client assertion, then symmetrically signs it with its Client Secret.
+    The assertion is then sent to the AS in a `client_assertion` field with each authenticated request.
 
     Args:
         client_id: the `client_id` to use.
@@ -212,17 +202,26 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
 
     """
 
+    client_secret: str
+    alg: str
+
     def __init__(
         self,
         client_id: str,
         client_secret: str,
-        alg: str = "HS256",
         lifetime: int = 60,
-        jti_gen: Callable[[], Any] = lambda: uuid4(),
+        alg: str = SignatureAlgs.HS256,
+        jti_gen: Callable[[], str] = lambda: str(uuid4()),
         aud: str | None = None,
     ) -> None:
-        super().__init__(client_id, alg, lifetime, jti_gen, aud)
-        self.client_secret = str(client_secret)
+        self.__attrs_init__(
+            client_id=client_id,
+            client_secret=client_secret,
+            lifetime=lifetime,
+            alg=alg,
+            jti_gen=jti_gen,
+            aud=aud,
+        )
 
     def client_assertion(self, audience: str) -> str:
         """Generate a symmetrically signed Client Assertion.
@@ -257,7 +256,8 @@ class ClientSecretJwt(ClientAssertionAuthenticationMethod):
         return str(jwt)
 
 
-class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
+@frozen(init=False)
+class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
     """Implement `private_key_jwt` client authentication method.
 
     With this method, the client generates and sends a client_assertion, that is asymmetrically
@@ -273,33 +273,48 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
 
     """
 
+    private_jwk: Jwk = field(converter=to_jwk)
+    alg: str | None
+
     def __init__(
         self,
         client_id: str,
-        private_jwk: Jwk | dict[str, Any],
-        alg: str = SignatureAlgs.RS256,
+        private_jwk: Jwk | dict[str, Any] | Any,
+        *,
+        alg: str | None = None,
         lifetime: int = 60,
-        jti_gen: Callable[[], Any] = lambda: uuid4(),
+        jti_gen: Callable[[], str] = lambda: str(uuid4()),
         aud: str | None = None,
     ) -> None:
-        if not isinstance(private_jwk, Jwk):
-            private_jwk = Jwk(private_jwk)
+        self.__attrs_init__(
+            client_id=client_id,
+            private_jwk=private_jwk,
+            alg=alg,
+            lifetime=lifetime,
+            jti_gen=jti_gen,
+            aud=aud,
+        )
 
-        if not private_jwk.is_private or private_jwk.is_symmetric:
-            msg = "Private Key JWT client authentication method uses asymmetric signing thus requires a private key."
-            raise ValueError(msg)
-
-        alg = private_jwk.alg or alg
+        alg = self.private_jwk.alg or alg
         if not alg:
             msg = "An asymmetric signing alg is required, either as part of the private JWK, or passed as parameter."
             raise ValueError(msg)
-        kid = private_jwk.get("kid")
+
+        if alg not in self.private_jwk.supported_signing_algorithms():
+            msg = (
+                f"This signing alg '{alg}' is not supported"
+                f" by the provided private key of type '{self.private_jwk.kty}'."
+            )
+            raise ValueError(msg)
+
+        if not self.private_jwk.is_private or self.private_jwk.is_symmetric:
+            msg = "Private Key JWT client authentication method uses asymmetric signing thus requires a private key."
+            raise ValueError(msg)
+
+        kid = self.private_jwk.get("kid")
         if not kid:
             msg = "Asymmetric signing requires the private JWK to have a Key ID (kid)."
             raise ValueError(msg)
-
-        super().__init__(client_id, alg, lifetime, jti_gen, aud)
-        self.private_jwk = private_jwk
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion, asymmetrically signed with `private_jwk` as key.
@@ -330,6 +345,7 @@ class PrivateKeyJwt(ClientAssertionAuthenticationMethod):
         return str(jwt)
 
 
+@frozen
 class PublicApp(BaseClientAuthenticationMethod):
     """Implement the `none` authentication method for public apps.
 
@@ -340,9 +356,6 @@ class PublicApp(BaseClientAuthenticationMethod):
         client_id: the client_id to use.
 
     """
-
-    def __init__(self, client_id: str) -> None:
-        self.client_id = client_id
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the `client_id` field in the request body.
@@ -427,7 +440,7 @@ def client_auth_factory(
         raise ValueError(msg)
 
     if private_key is not None:
-        return PrivateKeyJwt(str(client_id), private_key)
+        return PrivateKeyJwt(client_id, private_jwk=private_key)
     if client_secret is None:
         return PublicApp(str(client_id))
 

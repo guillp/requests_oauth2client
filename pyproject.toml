@@ -110,6 +110,8 @@ ignore = [
     "D105", # Undocumented magic method
     "D107", # Missing docstring in `__init__`
     "S105", # Possible hardcoded password
+    "COM812",
+    "ISC001",
 ]
 
 [tool.ruff.lint.pylint]
