@@ -144,11 +144,11 @@ class BearerToken(AccessToken):
         token_type: str = TOKEN_TYPE,
         id_token: str | bytes | IdToken | jwskate.JweCompact | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         if token_type.title() != self.TOKEN_TYPE.title():
             msg = f"Token Type is not '{self.TOKEN_TYPE}'!"
             raise ValueError(msg, token_type)
-        id_token_jwt: IdToken | jwskate.JweCompact | None = None
+        id_token_jwt: IdToken | jwskate.JweCompact | None
         if isinstance(id_token, (str, bytes)):
             try:
                 id_token_jwt = IdToken(id_token)
@@ -210,14 +210,14 @@ class BearerToken(AccessToken):
 
         """
         if not self.id_token:
-            raise MissingIdToken()
+            raise MissingIdToken
 
         raw_id_token = self.id_token
 
         if isinstance(raw_id_token, jwskate.JweCompact) and client.id_token_encrypted_response_alg is None:
             msg = "ID Token is encrypted while it should be clear-text"
             raise InvalidIdToken(msg, self)
-        elif isinstance(raw_id_token, IdToken) and client.id_token_encrypted_response_alg is not None:
+        if isinstance(raw_id_token, IdToken) and client.id_token_encrypted_response_alg is not None:
             msg = "ID Token is clear-text while it should be encrypted"
             raise InvalidIdToken(msg, self)
 
@@ -238,7 +238,7 @@ class BearerToken(AccessToken):
                 " id_token_signed_response_alg`."
             )
             raise InvalidIdToken(msg)
-        elif client.id_token_signed_response_alg is not None and id_token.alg != client.id_token_signed_response_alg:
+        if client.id_token_signed_response_alg is not None and id_token.alg != client.id_token_signed_response_alg:
             raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
 
         id_token_alg = id_token.alg or client.id_token_signed_response_alg
@@ -256,7 +256,7 @@ class BearerToken(AccessToken):
             raise ExpiredIdToken(id_token)
 
         if azr.nonce and id_token.nonce != azr.nonce:
-            raise MismatchingNonce()
+            raise MismatchingNonce
 
         if azr.acr_values and id_token.acr not in azr.acr_values:
             raise MismatchingAcr(id_token.acr, azr.acr_values)
@@ -413,7 +413,7 @@ class BearerTokenSerializer:
         self,
         dumper: Callable[[BearerToken], str] | None = None,
         loader: Callable[[str], BearerToken] | None = None,
-    ):
+    ) -> None:
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
 

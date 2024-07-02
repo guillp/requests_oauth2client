@@ -35,8 +35,8 @@ from .client import (
     OAuth2Client,
 )
 from .client_authentication import (
+    BaseClientAssertionAuthenticationMethod,
     BaseClientAuthenticationMethod,
-    ClientAssertionAuthenticationMethod,
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
@@ -125,7 +125,7 @@ __all__ = [
     "BearerAuth",
     "BearerToken",
     "BearerTokenSerializer",
-    "ClientAssertionAuthenticationMethod",
+    "BaseClientAssertionAuthenticationMethod",
     "ClientSecretBasic",
     "ClientSecretJwt",
     "ClientSecretPost",
