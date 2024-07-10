@@ -93,9 +93,7 @@ blank = true
 [tool.ruff]
 target-version = "py38"
 line-length = 120
-extend-exclude = [
-    "tests"
-]
+
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -113,6 +111,10 @@ ignore = [
     "COM812",
     "ISC001",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = ["ARG001", "B018", "D100", "D101", "D102", "D103", "D104", "F821", "PGH005", "PLR0913", "PLR0915", "PLR2004", "S101", "S106", "S113",
+"PT011", "E501"]
 
 [tool.ruff.lint.pylint]
 max-args = 10

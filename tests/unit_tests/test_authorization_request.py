@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import jwskate
 import pytest
 from freezegun import freeze_time
-from furl import furl  # type: ignore[import-untyped]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (
@@ -17,8 +16,12 @@ from requests_oauth2client import (
     MismatchingState,
     MissingAuthCode,
     MissingIssuer,
-    RequestUriParameterAuthorizationRequest, RequestParameterAuthorizationRequest,
+    RequestParameterAuthorizationRequest,
+    RequestUriParameterAuthorizationRequest,
 )
+
+if TYPE_CHECKING:
+    from furl import furl  # type: ignore[import-untyped]
 
 
 def test_authorization_url(authorization_request: AuthorizationRequest) -> None:
@@ -83,7 +86,7 @@ def test_authorization_signed_and_encrypted_request(
     assert Jwt.decrypt_and_verify(jwt, enc_jwk, public_jwk).claims == args
 
 
-@pytest.mark.parametrize("request_uri", ("this_is_a_request_uri", "https://foo.bar/request_uri"))
+@pytest.mark.parametrize("request_uri", ["this_is_a_request_uri", "https://foo.bar/request_uri"])
 def test_request_uri_authorization_request(authorization_endpoint: str, client_id: str, request_uri: str) -> None:
     request_uri_azr = RequestUriParameterAuthorizationRequest(
         authorization_endpoint=authorization_endpoint,
@@ -92,7 +95,7 @@ def test_request_uri_authorization_request(authorization_endpoint: str, client_i
     )
     assert isinstance(request_uri_azr.uri, str)
     url = request_uri_azr.furl
-    assert url.origin+url.pathstr == authorization_endpoint
+    assert url.origin + url.pathstr == authorization_endpoint
     assert url.args == {"client_id": client_id, "request_uri": request_uri}
 
 
@@ -104,14 +107,15 @@ def test_request_uri_authorization_request_with_custom_param(authorization_endpo
         authorization_endpoint=authorization_endpoint,
         client_id=client_id,
         request_uri=request_uri,
-        custom_attr=custom_attr
+        custom_attr=custom_attr,
     )
     assert isinstance(request_uri_azr.uri, str)
     url = request_uri_azr.furl
-    assert url.origin+url.pathstr == authorization_endpoint
+    assert url.origin + url.pathstr == authorization_endpoint
     assert url.args == {"client_id": client_id, "request_uri": request_uri, "custom_attr": custom_attr}
 
-@pytest.mark.parametrize("error", ("consent_required",))
+
+@pytest.mark.parametrize("error", ["consent_required"])
 def test_error_response(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,

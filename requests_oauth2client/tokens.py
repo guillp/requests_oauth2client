@@ -7,11 +7,13 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import jwskate
+import requests
 from attrs import Factory, asdict, frozen
 from binapy import BinaPy
 from typing_extensions import Self
 
 from .exceptions import (
+    ExpiredAccessToken,
     ExpiredIdToken,
     InvalidIdToken,
     MismatchingAcr,
@@ -101,7 +103,7 @@ class AccessToken:
 
 
 @frozen(init=False)
-class BearerToken(AccessToken):
+class BearerToken(AccessToken, requests.auth.AuthBase):
     """Represents a Bearer Token as returned by a Token Endpoint.
 
     This is a wrapper around a Bearer Token and associated parameters, such as expiration date and
@@ -392,6 +394,30 @@ class BearerToken(AccessToken):
 
         """
         return self.kwargs.get(key) or super().__getattribute__(key)
+
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """Implement the usage of Bearer Tokens in requests.
+
+        This will add a properly formatted `Authorization: Bearer <token>` header in the request.
+
+        If the configured token is an instance of BearerToken with an expires_at attribute, raises
+        [ExpiredAccessToken][requests_oauth2client.exceptions.ExpiredAccessToken] once the access
+        token is expired.
+
+        Args:
+            request: a [PreparedRequest][requests.PreparedRequest]
+
+        Returns:
+            a [PreparedRequest][requests.PreparedRequest] with an Access Token added in
+            Authorization Header
+
+        """
+        if self.access_token is None:
+            return request
+        if self.is_expired():
+            raise ExpiredAccessToken(self)
+        request.headers["Authorization"] = self.authorization_header()
+        return request
 
 
 class BearerTokenSerializer:

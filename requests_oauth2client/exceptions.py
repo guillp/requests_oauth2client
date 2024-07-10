@@ -284,3 +284,7 @@ class UnsupportedCodeChallengeMethod(ValueError):
 
 class UnsupportedTokenParameterType(TypeError):
     """Raised when an unsupported type is passed as token value."""
+
+
+class NonRenewableTokenError(Exception):
+    """Raised when attempting to renew a token non-interactively when missing renewing material."""

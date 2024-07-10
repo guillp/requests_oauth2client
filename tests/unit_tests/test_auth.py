@@ -5,7 +5,6 @@ import pytest
 import requests
 
 from requests_oauth2client import (
-    BearerAuth,
     BearerToken,
     ExpiredAccessToken,
     OAuth2AccessTokenAuth,
@@ -25,30 +24,20 @@ def minutes_ago() -> datetime:
 def test_bearer_auth(
     requests_mock: RequestsMocker,
     target_api: str,
-    bearer_auth: BearerAuth,
+    bearer_token: BearerToken,
     access_token: str,
 ) -> None:
     requests_mock.post(target_api)
-    response = requests.post(target_api, auth=bearer_auth)
+    response = requests.post(target_api, auth=bearer_token)
     assert response.ok
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.headers.get("Authorization") == f"Bearer {access_token}"
 
 
-def test_bearer_auth_none(requests_mock: RequestsMocker, target_api: str) -> None:
-    requests_mock.post(target_api)
-    auth = BearerAuth()
-    response = requests.post(target_api, auth=auth)
-    assert response.ok
-    assert requests_mock.last_request is not None
-    assert requests_mock.last_request.headers.get("Authorization") is None
-
-
 def test_expired_token(minutes_ago: datetime) -> None:
     token = BearerToken(access_token="foo", expires_at=minutes_ago)
-    auth = BearerAuth(token)
     with pytest.raises(ExpiredAccessToken):
-        requests.post("http://localhost/test", auth=auth)
+        requests.post("http://localhost/test", auth=token)
 
 
 def test_access_token_auth(
