@@ -26,8 +26,8 @@ from requests_oauth2client.exceptions import (
 
 @freeze_time("2011-07-21 20:42:55")
 @pytest.mark.parametrize(
-    "kwargs, at_hash, c_hash, s_hash",
-    (
+    ("kwargs", "at_hash", "c_hash", "s_hash"),
+    [
         (
             {"alg": "PS256"},
             "xsZZrUssMXjL3FBlzoSh2g",
@@ -57,8 +57,8 @@ from requests_oauth2client.exceptions import (
             "p2LHG4H-8pYDc0hyVOo3iIHvZJUqe9tbj3jESOuXbkY",
             "E9z1C-c0Az4eTEzE0Nm3OQ3BS2BhMgxuP7x5JAQj1_4",
             "aVrO6_zIGuPg0pvBhlmB9jnpmFoY6MXEt1nJeHp1pmI",
-        )
-    ),
+        ),
+    ],
 )
 def test_validate_id_token(kwargs: dict[str, str], at_hash: str, c_hash: str, s_hash: str) -> None:
     signing_key = jwskate.Jwk.generate(**kwargs).with_kid_thumbprint()

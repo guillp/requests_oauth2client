@@ -67,15 +67,15 @@ Or you can import individual objects from this package as usual. Note that impor
 
 ## Calling APIs with Access Tokens
 
-If you already managed to obtain an access token for the API you want to call, you can simply use the [BearerAuth] Auth
-Handler for [requests]:
+If you already managed to obtain an access token for the API you want to call, you can simply convert it to an instance of [BearerToken].
+Instances of that class work as a `requests` compatible auth handler.
 
 ```python
 import requests
-from requests_oauth2client import BearerAuth
+from requests_oauth2client import BearerToken
 
-token = "an_access_token"
-resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
+token = BearerToken("my_access_token")
+resp = requests.get("https://my.protected.api/endpoint", auth=token)
 ```
 
 This authentication handler will add a `Authorization: Bearer <access_token>` header in the request, with your access

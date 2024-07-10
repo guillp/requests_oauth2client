@@ -11,12 +11,11 @@ import requests_mock
 from furl import Query, furl  # type: ignore[import-untyped]
 from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
-from requests_mock.request import _RequestObjectProxy
 
 from requests_oauth2client import (
     ApiClient,
     BaseClientAuthenticationMethod,
-    BearerAuth,
+    BearerToken,
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
@@ -26,17 +25,17 @@ from requests_oauth2client import (
 RequestValidatorType = Callable[..., None]
 
 if TYPE_CHECKING:
-    from pytest import FixtureRequest as __FixtureRequest
+    from pytest import FixtureRequest as __FixtureRequest  # noqa: PT013
+    from requests_mock.request import _RequestObjectProxy
 
     class FixtureRequest(__FixtureRequest):
         param: str
 
     class RequestsMocker(Mocker):
-        def reset_mock(self) -> None:
-            ...
+        def reset_mock(self) -> None: ...
 
 else:
-    from pytest import FixtureRequest
+    from pytest import FixtureRequest  # noqa: PT013
 
     RequestsMocker = Mocker
 
@@ -51,8 +50,7 @@ def join_url(root: str, path: str) -> str:
         f = furl(root).add(path=path)
         f.path.normalize()
         return str(f.url)
-    else:
-        return root
+    return root
 
 
 @pytest.fixture(
@@ -65,8 +63,8 @@ def access_token(request: FixtureRequest) -> str:
 
 
 @pytest.fixture(scope="session")
-def bearer_auth(access_token: str) -> BearerAuth:
-    return BearerAuth(access_token)
+def bearer_token(access_token: str) -> BearerToken:
+    return BearerToken(access_token)
 
 
 @pytest.fixture(
@@ -83,8 +81,8 @@ def target_api(request: FixtureRequest) -> str:
 
 
 @pytest.fixture(scope="session")
-def api(target_api: str, bearer_auth: BearerAuth) -> ApiClient:
-    return ApiClient(target_api, auth=bearer_auth)
+def api(target_api: str, bearer_token: BearerToken) -> ApiClient:
+    return ApiClient(target_api, auth=bearer_token)
 
 
 @pytest.fixture(scope="session")
@@ -154,7 +152,7 @@ def client_auth_method_handler(
 
 @pytest.fixture(scope="session")
 def client_auth_method(
-    client_auth_method_handler: type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt],
+    client_auth_method_handler: type[ClientSecretPost | ClientSecretBasic | ClientSecretJwt],
     client_id: str,
     client_secret: str,
 ) -> ClientSecretPost | ClientSecretBasic | ClientSecretJwt:
@@ -359,11 +357,10 @@ def backchannel_auth_request_validator() -> RequestValidatorType:
         id_token_hint = params.get("id_token_hint")
 
         assert login_hint or login_hint_token or id_token_hint
-        assert (
-            not (login_hint and login_hint_token)
-            and not (login_hint and id_token_hint)
-            and not (login_hint_token and id_token_hint)
-        )
+        assert not (login_hint and login_hint_token)
+        assert not (login_hint and id_token_hint)
+        assert not (login_hint_token and id_token_hint)
+
         for key, val in kwargs.items():
             assert params.get(key) == val
 
@@ -394,16 +391,14 @@ def backchannel_auth_request_jwt_validator() -> RequestValidatorType:
         elif isinstance(scope, Iterable):
             assert claims.get("scope") == " ".join(scope)
         else:
-            assert False, f"unexpected scope type {type(scope)}"
+            pytest.fail(f"unexpected scope type {type(scope)}")
         login_hint = claims.get("login_hint")
         login_hint_token = claims.get("login_hint_token")
         id_token_hint = claims.get("id_token_hint")
         assert login_hint or login_hint_token or id_token_hint
-        assert (
-            not (login_hint and login_hint_token)
-            and not (login_hint and id_token_hint)
-            and not (login_hint_token and id_token_hint)
-        )
+        assert not (login_hint and login_hint_token)
+        assert not (login_hint and id_token_hint)
+        assert not (login_hint_token and id_token_hint)
         for key, val in kwargs.items():
             assert claims.get(key) == val
 

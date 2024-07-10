@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import requests
+import requests  # noqa: TCH002
 
 from requests_oauth2client import OAuth2Client
 

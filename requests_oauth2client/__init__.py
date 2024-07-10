@@ -10,7 +10,6 @@ from jwskate import EncryptionAlgs, KeyManagementAlgs, SignatureAlgs
 from .api_client import ApiClient
 from .auth import (
     BaseOAuth2RenewableTokenAuth,
-    BearerAuth,
     OAuth2AccessTokenAuth,
     OAuth2AuthorizationCodeAuth,
     OAuth2ClientCredentialsAuth,
@@ -35,8 +34,8 @@ from .client import (
     OAuth2Client,
 )
 from .client_authentication import (
+    BaseClientAssertionAuthenticationMethod,
     BaseClientAuthenticationMethod,
-    ClientAssertionAuthenticationMethod,
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
@@ -88,6 +87,7 @@ from .exceptions import (
     MissingAuthCode,
     MissingIdToken,
     MissingIssuer,
+    NonRenewableTokenError,
     OAuth2Error,
     RevocationError,
     ServerError,
@@ -122,10 +122,9 @@ __all__ = [
     "BackChannelAuthenticationResponse",
     "BaseClientAuthenticationMethod",
     "BaseOAuth2RenewableTokenAuth",
-    "BearerAuth",
     "BearerToken",
     "BearerTokenSerializer",
-    "ClientAssertionAuthenticationMethod",
+    "BaseClientAssertionAuthenticationMethod",
     "ClientSecretBasic",
     "ClientSecretJwt",
     "ClientSecretPost",
@@ -166,6 +165,7 @@ __all__ = [
     "MissingAuthCode",
     "MissingIdToken",
     "MissingIssuer",
+    "NonRenewableTokenError",
     "OAuth2AccessTokenAuth",
     "OAuth2AuthorizationCodeAuth",
     "OAuth2Client",

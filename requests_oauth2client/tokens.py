@@ -7,11 +7,13 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import jwskate
+import requests
 from attrs import Factory, asdict, frozen
 from binapy import BinaPy
 from typing_extensions import Self
 
 from .exceptions import (
+    ExpiredAccessToken,
     ExpiredIdToken,
     InvalidIdToken,
     MismatchingAcr,
@@ -101,7 +103,7 @@ class AccessToken:
 
 
 @frozen(init=False)
-class BearerToken(AccessToken):
+class BearerToken(AccessToken, requests.auth.AuthBase):
     """Represents a Bearer Token as returned by a Token Endpoint.
 
     This is a wrapper around a Bearer Token and associated parameters, such as expiration date and
@@ -144,11 +146,11 @@ class BearerToken(AccessToken):
         token_type: str = TOKEN_TYPE,
         id_token: str | bytes | IdToken | jwskate.JweCompact | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         if token_type.title() != self.TOKEN_TYPE.title():
             msg = f"Token Type is not '{self.TOKEN_TYPE}'!"
             raise ValueError(msg, token_type)
-        id_token_jwt: IdToken | jwskate.JweCompact | None = None
+        id_token_jwt: IdToken | jwskate.JweCompact | None
         if isinstance(id_token, (str, bytes)):
             try:
                 id_token_jwt = IdToken(id_token)
@@ -210,14 +212,14 @@ class BearerToken(AccessToken):
 
         """
         if not self.id_token:
-            raise MissingIdToken()
+            raise MissingIdToken
 
         raw_id_token = self.id_token
 
         if isinstance(raw_id_token, jwskate.JweCompact) and client.id_token_encrypted_response_alg is None:
             msg = "ID Token is encrypted while it should be clear-text"
             raise InvalidIdToken(msg, self)
-        elif isinstance(raw_id_token, IdToken) and client.id_token_encrypted_response_alg is not None:
+        if isinstance(raw_id_token, IdToken) and client.id_token_encrypted_response_alg is not None:
             msg = "ID Token is clear-text while it should be encrypted"
             raise InvalidIdToken(msg, self)
 
@@ -238,7 +240,7 @@ class BearerToken(AccessToken):
                 " id_token_signed_response_alg`."
             )
             raise InvalidIdToken(msg)
-        elif client.id_token_signed_response_alg is not None and id_token.alg != client.id_token_signed_response_alg:
+        if client.id_token_signed_response_alg is not None and id_token.alg != client.id_token_signed_response_alg:
             raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
 
         id_token_alg = id_token.alg or client.id_token_signed_response_alg
@@ -256,7 +258,7 @@ class BearerToken(AccessToken):
             raise ExpiredIdToken(id_token)
 
         if azr.nonce and id_token.nonce != azr.nonce:
-            raise MismatchingNonce()
+            raise MismatchingNonce
 
         if azr.acr_values and id_token.acr not in azr.acr_values:
             raise MismatchingAcr(id_token.acr, azr.acr_values)
@@ -393,6 +395,30 @@ class BearerToken(AccessToken):
         """
         return self.kwargs.get(key) or super().__getattribute__(key)
 
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """Implement the usage of Bearer Tokens in requests.
+
+        This will add a properly formatted `Authorization: Bearer <token>` header in the request.
+
+        If the configured token is an instance of BearerToken with an expires_at attribute, raises
+        [ExpiredAccessToken][requests_oauth2client.exceptions.ExpiredAccessToken] once the access
+        token is expired.
+
+        Args:
+            request: a [PreparedRequest][requests.PreparedRequest]
+
+        Returns:
+            a [PreparedRequest][requests.PreparedRequest] with an Access Token added in
+            Authorization Header
+
+        """
+        if self.access_token is None:
+            return request
+        if self.is_expired():
+            raise ExpiredAccessToken(self)
+        request.headers["Authorization"] = self.authorization_header()
+        return request
+
 
 class BearerTokenSerializer:
     """A helper class to serialize Token Response returned by an AS.
@@ -413,7 +439,7 @@ class BearerTokenSerializer:
         self,
         dumper: Callable[[BearerToken], str] | None = None,
         loader: Callable[[str], BearerToken] | None = None,
-    ):
+    ) -> None:
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
 

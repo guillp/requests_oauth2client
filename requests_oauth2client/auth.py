@@ -5,102 +5,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import requests
+from attr import field
+from attrs import define, setters
 from typing_extensions import override
 
-from .authorization_request import AuthorizationResponse
-from .device_authorization import DeviceAuthorizationResponse
-from .exceptions import ExpiredAccessToken
+from .exceptions import NonRenewableTokenError
 from .tokens import BearerToken
 
 if TYPE_CHECKING:
+    from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
+    from .device_authorization import DeviceAuthorizationResponse
 
 
-class BearerAuth(requests.auth.AuthBase):
-    """An Auth Handler that includes a Bearer Token in API calls, as defined in [RFC6750$2.1].
-
-    As a prerequisite to using this `AuthBase`, you have to obtain an access token manually.
-    You most likely don't want to do that by yourself, but instead use an instance of
-    [OAuth2Client][requests_oauth2client.client.OAuth2Client] to do that for you.
-    See the others Auth Handlers in this module, which will automatically obtain
-    access tokens from an OAuth 2.x server.
-
-    [RFC6750$2.1]: https://datatracker.ietf.org/doc/html/rfc6750#section-2.1
-
-    Usage:
-        ```python
-        auth = BearerAuth("my_access_token")
-        resp = requests.get("https://my.api.local/resource", auth=auth)
-        ```
-
-        The HTTP request will look like:
-        ```
-        GET /resource HTTP/1.1
-        Host: my.api.local
-        Authorization: Bearer my_access_token
-        ```
-
-    Args:
-        token: a [BearerToken][requests_oauth2client.tokens.BearerToken] or a string
-            to use as token for this Auth Handler. If `None`, this Auth Handler is a no-op.
-
-    """
-
-    def __init__(self, token: str | BearerToken | None = None) -> None:
-        self.token = token  # type: ignore[assignment] # until https://github.com/python/mypy/issues/3004 is fixed
-
-    @property
-    def token(self) -> BearerToken | None:
-        """Return the [BearerToken] that is used for authorization against the API.
-
-        Returns:
-            the configured [BearerToken][requests_oauth2client.tokens.BearerToken] used with this
-            AuthHandler.
-
-        """
-        return self._token
-
-    @token.setter
-    def token(self, token: str | BearerToken | None) -> None:
-        """Change the access token used with this AuthHandler.
-
-        Accepts a [BearerToken][requests_oauth2client.tokens.BearerToken] or an access token as
-        `str`.
-
-        Args:
-            token: an access token to use for this Auth Handler
-
-        """
-        if token is not None and not isinstance(token, BearerToken):
-            token = BearerToken(token)
-        self._token = token
-
-    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
-        """Implement the usage of Bearer Tokens in requests.
-
-        This will add a properly formatted `Authorization: Bearer <token>` header in the request.
-
-        If the configured token is an instance of BearerToken with an expires_at attribute, raises
-        [ExpiredAccessToken][requests_oauth2client.exceptions.ExpiredAccessToken] once the access
-        token is expired.
-
-        Args:
-            request: a [PreparedRequest][requests.PreparedRequest]
-
-        Returns:
-            a [PreparedRequest][requests.PreparedRequest] with an Access Token added in
-            Authorization Header
-
-        """
-        if self.token is None:
-            return request
-        if self.token.is_expired():
-            raise ExpiredAccessToken(self.token)
-        request.headers["Authorization"] = self.token.authorization_header()
-        return request
-
-
-class BaseOAuth2RenewableTokenAuth(BearerAuth):
+@define
+class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     """Base class for BearerToken-based Auth Handlers, with an obtainable or renewable token.
 
     In addition to adding a properly formatted `Authorization` header, this will obtain a new token
@@ -117,24 +36,22 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
 
     """
 
-    def __init__(
-        self,
-        client: OAuth2Client,
-        token: None | BearerToken | str = None,
-        leeway: int = 20,
-        **token_kwargs: Any,
-    ) -> None:
-        super().__init__(token)
-        self.client = client
-        self.leeway = leeway
-        self.token_kwargs = token_kwargs
+    client: OAuth2Client = field(on_setattr=setters.frozen)
+    token: BearerToken | None
+    leeway: int = field(on_setattr=setters.frozen)
+    token_kwargs: dict[str, Any] = field(on_setattr=setters.frozen)
 
-    @override
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
-        token = self.token
-        if token is None or token.is_expired(self.leeway):
+        """Add the Access Token to the request.
+
+        If Access Token is not specified or expired, obtain a new one first.
+
+        """
+        if self.token is None or self.token.is_expired(self.leeway):
             self.renew_token()
-        return super().__call__(request)
+        if self.token is None:
+            return request
+        return self.token(request)
 
     def renew_token(self) -> None:
         """Obtain a new Bearer Token.
@@ -149,6 +66,24 @@ class BaseOAuth2RenewableTokenAuth(BearerAuth):
         self.token = None
 
 
+@define
+class BaseOAuth2RefreshTokenAuth(BaseOAuth2RenewableTokenAuth):
+    """Base class for flows which can have a refresh-token.
+
+    This implements a `renew_token()` method which uses the refresh token to obtain new tokens.
+
+    """
+
+    @override
+    def renew_token(self) -> None:
+        """Obtain a new token, using the Refresh Token, if available."""
+        if self.token is None or self.token.refresh_token is None:
+            raise NonRenewableTokenError
+
+        self.token = self.client.refresh_token(refresh_token=self.token, **self.token_kwargs)
+
+
+@define(init=False)
 class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
     """An Auth Handler for the Client Credentials grant.
 
@@ -169,13 +104,21 @@ class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
 
     """
 
+    def __init__(
+        self, client: OAuth2Client, *, leeway: int = 20, token: str | BearerToken | None = None, **token_kwargs: Any
+    ) -> None:
+        if isinstance(token, str):
+            token = BearerToken(token)
+        self.__attrs_init__(client=client, token=token, leeway=leeway, token_kwargs=token_kwargs)
+
     @override
     def renew_token(self) -> None:
         """Obtain a new token for use within this Auth Handler."""
         self.token = self.client.client_credentials(**self.token_kwargs)
 
 
-class OAuth2AccessTokenAuth(BaseOAuth2RenewableTokenAuth):
+@define(init=False)
+class OAuth2AccessTokenAuth(BaseOAuth2RefreshTokenAuth):
     """Authentication Handler for OAuth 2.0 Access Tokens and (optional) Refresh Tokens.
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation uses an access token as
@@ -203,14 +146,16 @@ class OAuth2AccessTokenAuth(BaseOAuth2RenewableTokenAuth):
 
     """
 
-    @override
-    def renew_token(self) -> None:
-        """Obtain a new token, using the Refresh Token, if available."""
-        if self.token and self.token.refresh_token and self.client is not None:
-            self.token = self.client.refresh_token(refresh_token=self.token.refresh_token, **self.token_kwargs)
+    def __init__(
+        self, client: OAuth2Client, token: str | BearerToken | None, *, leeway: int = 20, **token_kwargs: Any
+    ) -> None:
+        if isinstance(token, str):
+            token = BearerToken(token)
+        self.__attrs_init__(client=client, token=token, leeway=leeway, token_kwargs=token_kwargs)
 
 
-class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
+@define(init=False)
+class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):
     """Authentication handler for the Authorization Code grant.
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges an Authorization
@@ -230,17 +175,27 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
 
     """
 
+    code: str | AuthorizationResponse | None
+
     def __init__(
         self,
         client: OAuth2Client,
-        code: str | AuthorizationResponse,
+        code: str | AuthorizationResponse | None,
+        *,
         leeway: int = 20,
+        token: str | BearerToken | None = None,
         **token_kwargs: Any,
     ) -> None:
-        super().__init__(client, token=None, leeway=leeway, **token_kwargs)
-        self.code: str | AuthorizationResponse | None = code
+        if isinstance(token, str):
+            token = BearerToken(token)
+        self.__attrs_init__(
+            client=client,
+            token=token,
+            code=code,
+            leeway=leeway,
+            token_kwargs=token_kwargs,
+        )
 
-    @override
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Implement the Authorization Code grant as an Authentication Handler.
 
@@ -254,8 +209,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
             Authorization Header
 
         """
-        token = self.token
-        if token is None or token.is_expired():
+        if self.token is None or self.token.is_expired():
             self.exchange_code_for_token()
         return super().__call__(request)
 
@@ -266,6 +220,7 @@ class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):
             self.code = None
 
 
+@define(init=False)
 class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
     """Authentication Handler for the [Resource Owner Password Flow](https://www.rfc-editor.org/rfc/rfc6749#section-4.3).
 
@@ -291,17 +246,29 @@ class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
 
     """
 
+    username: str
+    password: str
+
     def __init__(
         self,
         client: OAuth2Client,
+        *,
         username: str,
         password: str,
         leeway: int = 20,
+        token: str | BearerToken | None = None,
         **token_kwargs: Any,
-    ):
-        super().__init__(client=client, leeway=leeway, **token_kwargs)
-        self.username = username
-        self.password = password
+    ) -> None:
+        if isinstance(token, str):
+            token = BearerToken(token)
+        self.__attrs_init__(
+            client=client,
+            token=token,
+            leeway=leeway,
+            token_kwargs=token_kwargs,
+            username=username,
+            password=password,
+        )
 
     @override
     def renew_token(self) -> None:
@@ -313,7 +280,8 @@ class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
         )
 
 
-class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
+@define(init=False)
+class OAuth2DeviceCodeAuth(BaseOAuth2RefreshTokenAuth):
     """Authentication Handler for the [Device Code Flow](https://www.rfc-editor.org/rfc/rfc8628).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges a Device Code for
@@ -339,19 +307,32 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
         ````
     """
 
+    device_code: str | DeviceAuthorizationResponse
+    interval: int
+    expires_in: int
+
     def __init__(
         self,
         client: OAuth2Client,
+        *,
         device_code: str | DeviceAuthorizationResponse,
         leeway: int = 20,
         interval: int = 5,
         expires_in: int = 360,
+        token: str | BearerToken | None = None,
         **token_kwargs: Any,
     ) -> None:
-        super().__init__(client=client, leeway=leeway, token=None, **token_kwargs)
-        self.device_code: str | DeviceAuthorizationResponse | None = device_code
-        self.interval = interval
-        self.expires_in = expires_in
+        if isinstance(token, str):
+            token = BearerToken(token)
+        self.__attrs_init__(
+            client=client,
+            token=token,
+            leeway=leeway,
+            token_kwargs=token_kwargs,
+            device_code=device_code,
+            interval=interval,
+            expires_in=expires_in,
+        )
 
     @override
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
@@ -366,9 +347,10 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
             a [requests.PreparedRequest][] with an Access Token added in Authorization Header
 
         """
-        token = self.token
-        if token is None or token.is_expired():
+        if self.token is None:
             self.exchange_device_code_for_token()
+        if self.token is not None and self.token.is_expired():
+            self.renew_token()
         return super().__call__(request)
 
     def exchange_device_code_for_token(self) -> None:
@@ -385,6 +367,8 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):
                 device_code=self.device_code,
                 interval=self.interval,
             )
-            while self.token is None:
-                self.token = pooling_job()
+            token = None
+            while token is None:
+                token = pooling_job()
+            self.token = token
             self.device_code = None
