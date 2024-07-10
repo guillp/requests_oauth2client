@@ -11,7 +11,6 @@ from attrs import Attribute, field, frozen
 from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs
 from typing_extensions import Self
 
-from .auth import BearerAuth
 from .authorization_request import (
     AuthorizationRequest,
     AuthorizationResponse,
@@ -880,9 +879,11 @@ class OAuth2Client:
             the [Response][requests.Response] returned by the userinfo endpoint.
 
         """
+        if isinstance(access_token, str):
+            access_token = BearerToken(access_token)
         return self._request(
             "userinfo_endpoint",
-            auth=BearerAuth(access_token),
+            auth=access_token,
             on_success=self.parse_userinfo_response,
             on_failure=self.on_userinfo_error,
         )

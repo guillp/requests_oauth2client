@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
 from freezegun import freeze_time
-from freezegun.api import FrozenDateTimeFactory
-from jwskate import Jwk
-from pytest_mock import MockerFixture
 
 from requests_oauth2client import (
     BackChannelAuthenticationPoolingJob,
@@ -18,7 +16,13 @@ from requests_oauth2client import (
     OAuth2Client,
     UnauthorizedClient,
 )
-from tests.conftest import RequestsMocker, RequestValidatorType
+
+if TYPE_CHECKING:
+    from freezegun.api import FrozenDateTimeFactory
+    from jwskate import Jwk
+    from pytest_mock import MockerFixture
+
+    from tests.conftest import RequestsMocker, RequestValidatorType
 
 
 def test_backchannel_authentication_response(auth_req_id: str) -> None:
@@ -118,7 +122,6 @@ def test_backchannel_authentication_scope_acr_values_as_list(
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
     assert 355 <= bca_resp.expires_in <= 360
-
 
     with pytest.raises(ValueError, match="Unsupported `acr_values`"):
         bca_client.backchannel_authentication_request(login_hint="user@example.net", acr_values=1.44)  # type: ignore[arg-type]
@@ -260,18 +263,14 @@ def test_pooling_job(
     freezer: FrozenDateTimeFactory,
     mocker: MockerFixture,
 ) -> None:
-    INTERVAL = 20
-    job = BackChannelAuthenticationPoolingJob(
-        client=bca_client,
-        auth_req_id=auth_req_id,
-        interval = INTERVAL
-    )
-    assert job.interval == INTERVAL
+    interval = 20
+    job = BackChannelAuthenticationPoolingJob(client=bca_client, auth_req_id=auth_req_id, interval=interval)
+    assert job.interval == interval
     assert job.slow_down_interval == 5
 
     assert job == BackChannelAuthenticationPoolingJob(
         bca_client,
-        BackChannelAuthenticationResponse(auth_req_id, interval=INTERVAL),
+        BackChannelAuthenticationResponse(auth_req_id, interval=interval),
     )
 
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
@@ -279,7 +278,7 @@ def test_pooling_job(
         assert job() is None
     time.sleep.assert_called_once_with(job.interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == INTERVAL
+    assert job.interval == interval
 
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
 
@@ -288,20 +287,19 @@ def test_pooling_job(
     requests_mock.post(token_endpoint, status_code=401, json={"error": "slow_down"})
     with mocker.patch("time.sleep"):
         assert job() is None
-    time.sleep.assert_called_once_with(INTERVAL)  # type: ignore[attr-defined]
+    time.sleep.assert_called_once_with(interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == INTERVAL + job.slow_down_interval
+    assert job.interval == interval + job.slow_down_interval
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
-
 
     freezer.tick(job.interval)
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, json={"access_token": access_token})
     with mocker.patch("time.sleep"):
         token = job()
-    time.sleep.assert_called_once_with(INTERVAL+job.slow_down_interval)  # type: ignore[attr-defined]
+    time.sleep.assert_called_once_with(interval + job.slow_down_interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
-    assert job.interval == INTERVAL + job.slow_down_interval
+    assert job.interval == interval + job.slow_down_interval
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
     assert isinstance(token, BearerToken)
     assert token.access_token == access_token

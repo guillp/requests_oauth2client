@@ -64,9 +64,8 @@ def test_flask(
         resp = client.get("/api?call=3")
         assert resp.json == json_resp
 
-    # assert api_client.session.auth.token == access_token
-
     token_request1 = requests_mock.request_history[0]
+    assert token_request1.url == token_endpoint
     token_params = parse_qs(token_request1.text)
     assert token_params.get("client_id") == [client_id]
     if not scope:
@@ -78,12 +77,15 @@ def test_flask(
     assert token_params.get("client_secret") == [client_secret]
 
     api_request1 = requests_mock.request_history[1]
+    assert api_request1.url == "https://myapi.local/root/?call=1"
     assert api_request1.headers.get("Authorization") == f"Bearer {access_token}"
 
     api_request2 = requests_mock.request_history[2]
+    assert api_request2.url == "https://myapi.local/root/?call=2"
     assert api_request2.headers.get("Authorization") == f"Bearer {access_token}"
 
     token_request2 = requests_mock.request_history[3]
+    assert token_request2.url == token_endpoint
     token_params = parse_qs(token_request2.text)
     assert token_params.get("client_id") == [client_id]
     if not scope:
@@ -95,4 +97,5 @@ def test_flask(
     assert token_params.get("client_secret") == [client_secret]
 
     api_request3 = requests_mock.request_history[4]
+    assert api_request3.url == "https://myapi.local/root/?call=3"
     assert api_request3.headers.get("Authorization") == f"Bearer {access_token}"

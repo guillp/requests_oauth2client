@@ -21,7 +21,7 @@ def device_authorization_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 def test_device_authorization(
     requests_mock: Mocker,
     device_authorization_endpoint: str,
@@ -136,7 +136,8 @@ def test_auth_handler(
         auth=client_id,
     )
 
-    assert isinstance(da_client.auth, PublicApp) and da_client.auth.client_id == client_id
+    assert isinstance(da_client.auth, PublicApp)
+    assert da_client.auth.client_id == client_id
 
 
 def test_invalid_response(

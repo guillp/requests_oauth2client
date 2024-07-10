@@ -284,11 +284,21 @@ def test_token_serializer() -> None:
     assert serializer.dumps(BearerToken("access_token")) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
     assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA") == BearerToken("access_token")
 
-    assert serializer.dumps(BearerToken("access_token", expires_in=60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA"
-    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA") == BearerToken("access_token", expires_in=60)
+    assert (
+        serializer.dumps(BearerToken("access_token", expires_in=60))
+        == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA"
+    )
+    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA") == BearerToken(
+        "access_token", expires_in=60
+    )
 
-    assert serializer.dumps(BearerToken("access_token", expires_in=-60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA"
-    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA") == BearerToken("access_token", expires_in=-60)
+    assert (
+        serializer.dumps(BearerToken("access_token", expires_in=-60))
+        == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA"
+    )
+    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA") == BearerToken(
+        "access_token", expires_in=-60
+    )
 
 
 @freeze_time()

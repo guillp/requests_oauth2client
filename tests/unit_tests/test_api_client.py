@@ -4,7 +4,7 @@ import pytest
 import requests
 from requests import HTTPError
 
-from requests_oauth2client import ApiClient, BearerAuth
+from requests_oauth2client import ApiClient, BearerToken
 from tests.conftest import RequestsMocker, RequestValidatorType, join_url
 
 
@@ -160,7 +160,7 @@ def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None
 
     class NonStringableObject:
         def __str__(self) -> str:
-            raise ValueError()
+            raise ValueError
 
     with pytest.raises(TypeError, match="iterable of string-able objects"):
         api.get(("resource", NonStringableObject()))  # type: ignore[arg-type]
@@ -184,10 +184,10 @@ def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> Non
 
 def test_other_api(
     access_token: str,
-    bearer_auth: BearerAuth,
+    bearer_token: BearerToken,
     bearer_auth_validator: RequestValidatorType,
 ) -> None:
-    api = ApiClient("https://some.api/foo", auth=bearer_auth)
+    api = ApiClient("https://some.api/foo", auth=bearer_token)
     with pytest.raises(ValueError):
         api.get("https://other.api/somethingelse")
 
