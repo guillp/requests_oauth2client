@@ -68,7 +68,7 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.coverage.run]
-source = "requests_oauth2client"
+source = ["requests_oauth2client"]
 
 [tool.coveragereport]
 exclude_also = [
