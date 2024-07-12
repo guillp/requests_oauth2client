@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 @define
-class TokenEndpointPoolingJob:
+class BaseTokenEndpointPoolingJob:
     """Base class for Token Endpoint pooling jobs.
 
     This is used for decoupled flows like CIBA or Device Authorization.
@@ -23,15 +23,6 @@ class TokenEndpointPoolingJob:
     This class must be subclassed to implement actual BackChannel flows. This needs an
     [OAuth2Client][requests_oauth2client.client.OAuth2Client] that will be used to pool the token
     endpoint. The initial pooling `interval` is configurable.
-
-    Args:
-        client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] that will be used
-            to pool the token endpoint.
-        interval: initial pooling interval, in seconds. If `None`, default to `5`.
-        slow_down_interval: when a [SlowDown][requests_oauth2client.exceptions.SlowDown] is
-            received, this number of seconds will be added to the pooling interval.
-        requests_kwargs: additional parameters for the underlying calls to [requests.request][]
-        **token_kwargs: additional parameters for the token request
 
     """
 

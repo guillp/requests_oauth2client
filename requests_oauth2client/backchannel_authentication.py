@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from attrs import define
 
-from .pooling import TokenEndpointPoolingJob
+from .pooling import BaseTokenEndpointPoolingJob
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -91,7 +91,7 @@ class BackChannelAuthenticationResponse:
 
 
 @define(init=False)
-class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
+class BackChannelAuthenticationPoolingJob(BaseTokenEndpointPoolingJob):
     """A pooling job for the BackChannel Authentication flow.
 
     This will poll the Token Endpoint until the user finishes with its authentication.

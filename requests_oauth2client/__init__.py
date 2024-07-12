@@ -100,7 +100,7 @@ from .exceptions import (
     UnsupportedTokenType,
 )
 from .pooling import (
-    TokenEndpointPoolingJob,
+    BaseTokenEndpointPoolingJob,
 )
 from .tokens import (
     BearerToken,
@@ -122,6 +122,7 @@ __all__ = [
     "BackChannelAuthenticationResponse",
     "BaseClientAuthenticationMethod",
     "BaseOAuth2RenewableTokenAuth",
+    "BaseTokenEndpointPoolingJob",
     "BearerToken",
     "BearerTokenSerializer",
     "BaseClientAssertionAuthenticationMethod",
@@ -184,7 +185,6 @@ __all__ = [
     "SignatureAlgs",
     "SlowDown",
     "TokenEndpointError",
-    "TokenEndpointPoolingJob",
     "UnauthorizedClient",
     "UnknownIntrospectionError",
     "UnknownTokenEndpointError",
