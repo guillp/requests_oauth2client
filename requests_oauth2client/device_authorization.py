@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from attrs import define
 
-from .pooling import TokenEndpointPoolingJob
+from .pooling import BaseTokenEndpointPoolingJob
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -69,7 +69,7 @@ class DeviceAuthorizationResponse:
 
 
 @define(init=False)
-class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
+class DeviceAuthorizationPoolingJob(BaseTokenEndpointPoolingJob):
     """A Token Endpoint pooling job for the Device Authorization Flow.
 
     This periodically checks if the user has finished with his authorization in a Device
