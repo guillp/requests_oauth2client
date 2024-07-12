@@ -11,8 +11,6 @@ nav:
   - Installation: installation.md
   - API: api.md
   - Contributing: contributing.md
-  #- Authors: authors.md
-  #- Changelog: history.md
 theme:
   name: material
   language: en
@@ -59,13 +57,15 @@ plugins:
       handlers:
         python:
           options:
-              filters:
-                  - "!^_"
-                  - "^__init__"
-                  - "!^utils"
-              members_order: source
-              show_root_heading: true
-              show_submodules: true
+            extensions:
+            - griffe_fieldz
+            filters:
+            - "!^_"
+            - "^__init__"
+            - "!^utils"
+            members_order: source
+            show_root_heading: true
+            show_submodules: true
           import:
             - https://requests.readthedocs.io/en/master/objects.inv
 

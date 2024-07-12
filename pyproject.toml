@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "requests_oauth2client"
-version = "1.5.3"
+version = "2.0.0"
 homepage = "https://github.com/guillp/requests_oauth2client"
 description = "An OAuth2.x client based on `requests`."
 authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
@@ -37,6 +37,7 @@ attrs = ">=23.2.0"
 [tool.poetry.dev-dependencies]
 coverage = ">=7.4"
 flask = ">=2.0.1"
+griffe-fieldz = ">=0.0.2"
 livereload = ">=2.6.3"
 mypy = ">=1.8"
 mkdocs = ">=1.3.1"
