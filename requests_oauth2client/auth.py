@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from .device_authorization import DeviceAuthorizationResponse
 
 
-@define
+@define(init=False)
 class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     """Base class for BearerToken-based Auth Handlers, with an obtainable or renewable token.
 
@@ -31,7 +31,7 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
         client: an OAuth2Client
         token: an initial Access Token, if you have one already. In most cases, leave `None`.
         leeway: expiration leeway, in number of seconds
-        token_kwargs: additional kwargs to include in token requests
+        **token_kwargs: additional kwargs to include in token requests
 
     """
 
@@ -50,10 +50,7 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
         if isinstance(token, str):
             token = BearerToken(token)
 
-        self.client = client
-        self.token = token
-        self.leeway = leeway
-        self.token_kwargs = token_kwargs
+        self.__attrs_init__(client=client, token=token, leeway=leeway, token_kwargs=token_kwargs)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the Access Token to the request.
@@ -148,7 +145,7 @@ class OAuth2AccessTokenAuth(BaseOAuth2RefreshTokenAuth):
     this Auth Handler will automatically refresh the access token once it is expired.
 
     Args:
-        client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] to use to refresh tokens.
+        client: the client to use to refresh tokens.
         token: an initial Access Token, if you have one already. In most cases, leave `None`.
         leeway: expiration leeway, in number of seconds.
         **token_kwargs: additional kwargs to pass to the token endpoint.
@@ -245,7 +242,7 @@ class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[o
 
 
 @define(init=False)
-class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
+class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):  # type: ignore[override]
     """Authentication Handler for the [Resource Owner Password Credentials Flow](https://www.rfc-editor.org/rfc/rfc6749#section-4.3).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges the user
