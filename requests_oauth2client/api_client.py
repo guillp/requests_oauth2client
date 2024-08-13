@@ -40,7 +40,7 @@ class ApiClient:
     you set `raise_for_status` to `False`. Additional parameters passed at init time, including
     `auth` will be used to configure the [Session][requests.Session].
 
-    Usage:
+    Example:
         ```python
         from requests_oauth2client import ApiClient
 
@@ -68,13 +68,13 @@ class ApiClient:
             Can be set to `None` to disable timeout.
         raise_for_status: if `True`, exceptions will be raised everytime a request returns an
             error code (>= 400).
-        none_fields: what to do with parameters with value `None` in `data` or `json` fields.
+        none_fields: defines what to do with parameters with value `None` in `data` or `json` fields.
 
             - if `"exclude"` (default), fields whose values are `None` are not included in the request.
-            - if `"include"`, they are included with string value `None`. Note that this is
-            the default behavior of `requests`.
-            - if "empty", they are included with an empty value (as an empty string).
-        bool_fields: a tuple of (true_value, false_value). Fields from `data` or `params` with
+            - if `"include"`, they are included with string value `None`. This is
+            the default behavior of `requests`. Note that they will be serialized to `null` in JSON.
+            - if `"empty"`, they are included with an empty value (as an empty string).
+        bool_fields: a tuple of `(true_value, false_value)`. Fields from `data` or `params` with
             a boolean value (`True` or `False`) will be serialized to the corresponding value.
             This can be useful since some APIs expect a `'true'` or `'false'` value as boolean,
             and `requests` serializes `True` to `'True'` and `False` to `'False'`.
@@ -165,22 +165,21 @@ class ApiClient:
     ) -> requests.Response:
         """Overridden `request` method with extra features.
 
-        Features added compared to plain request():
+        Features added compared to plain `request()`:
 
-        - takes a relative path instead of a full url, which will be appended to the
-          base_url
+        - takes a relative path instead of a full url, which will be appended to the `base_url`
         - it can raise an exception when the API returns a non-success status code
-        - allow_redirects is False by default (since API usually don't use redirects)
-        - `data` or `json` fields with value `None` can either be included or excluded from the
-          request
-        - boolean fields can be serialized to `'true'` or `'false'` instead of `'True'` and
-          `'False'`
+        - `allow_redirects` is `False` by default (since API usually don't use redirects)
+        - `data` or `json` fields with value `None` can be automatically either included or
+           excluded from the request
+        - boolean fields can be serialized to configurable strings like `'true'` or `'false'`
+          instead of `'True'` and `'False'`
 
         Args:
           method: the HTTP method to use
-          url: the url where the request will be sent to. Can be a path, as str ;
-            that path will be joined to the configured API url. Can also be an iterable of path
-            segments, that will be joined to the root url.
+          url: the url where the request will be sent to. Can be:
+            - a path, as `str`: that path will be joined to the configured API url,
+            - an iterable of path segments: that will be joined to the root url.
           raise_for_status: like the parameter of the same name from `ApiClient.__init__`,
             but this will be applied for this request only.
           none_fields: like the parameter of the same name from `ApiClient.__init__`,
@@ -272,13 +271,13 @@ class ApiClient:
 
         | base_url | relative_url | result_url |
         |---------------------------|-----------------------------|-------------------------------------------|
-        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | b"/path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | "path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | None | "https://myhost.com/root" |
-        | "https://myhost.com/root" |  ("user", 1, "resource") | "https://myhost.com/root/user/1/resource" |
-        | "https://myhost.com/root" | "https://otherhost.org/foo" | ValueError |
+        | `"https://myhost.com/root"` | `"/path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `"/path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `b"/path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `"path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `None` | `"https://myhost.com/root"` |
+        | `"https://myhost.com/root"` |  `("user", 1, "resource")` | `"https://myhost.com/root/user/1/resource"` |
+        | `"https://myhost.com/root"` | `"https://otherhost.org/foo"` | `ValueError` |
 
         Args:
           relative_url: a relative url
@@ -328,18 +327,18 @@ class ApiClient:
         raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
-        """Send a GET request. Return a [Response][requests.Response] object.
+        """Send a GET request and return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-            url: a url where the request will be sent.
+            url: the path where the request will be sent.
             raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-            **kwargs: Optional arguments that [request()][requests.request] takes.
+            **kwargs: additional kwargs for `requests.request()`
 
         Returns:
-            a [Response][requests.Response] object.
+            a response object.
 
         Raises:
             requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
@@ -353,18 +352,18 @@ class ApiClient:
         raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
-        """Send a POST request. Return a [Response][requests.Response] object.
+        """Send a POST request and return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: an url where the request will be sent.
+          url: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-          **kwargs: Optional arguments that ``request`` takes.
+          **kwargs: additional kwargs for `requests.request()`
 
         Returns:
-          a [Response][requests.Response] object.
+          a response object.
 
         Raises:
           requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
@@ -380,13 +379,13 @@ class ApiClient:
     ) -> requests.Response:
         """Send a PATCH request. Return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: an url where the request will be sent.
+          url: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-          **kwargs: Optional arguments that ``request`` takes.
+          **kwargs: additional kwargs for `requests.request()`
 
         Returns:
           a [Response][requests.Response] object.
@@ -405,11 +404,11 @@ class ApiClient:
     ) -> requests.Response:
         """Send a PUT request. Return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: a url where the request will be sent.
+          url: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
           **kwargs: additional kwargs for `requests.request()`
 
@@ -434,12 +433,12 @@ class ApiClient:
         parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: a url where the request will be sent.
+          url: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
           **kwargs: additional kwargs for `requests.request()`.
 
         Returns:
-          a [Response][requests.Response] object.
+          a response object.
 
         Raises:
           requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
@@ -454,9 +453,9 @@ class ApiClient:
             item: a subpath
 
         Returns:
-            a new ApiClient initialised on the new base url
+            a new `ApiClient` initialized on the new base url
 
-        Usage:
+        Example:
             ```python
             from requests_oauth2client import ApiClient
 
@@ -475,9 +474,9 @@ class ApiClient:
             item: a subpath
 
         Returns:
-            a new ApiClient initialised on the new base url
+            a new `ApiClient` initialized on the new base url
 
-        Usage:
+        Example:
             ```python
             from requests_oauth2client import ApiClient
 
@@ -503,7 +502,7 @@ class ApiClient:
         You can then use an `ApiClient` instance in a `with` clause, the same way as
         `requests.Session`. The underlying request.Session will be closed on exit.
 
-        Usage:
+        Example:
             ```python
             with ApiClient("https://myapi.com/path") as client:
                 resp = client.get("resource")

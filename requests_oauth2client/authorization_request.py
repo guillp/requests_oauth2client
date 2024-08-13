@@ -200,7 +200,7 @@ class AuthorizationResponse:
         return self.kwargs.get(item)
 
 
-@frozen(init=False)
+@frozen(init=False, repr=False)
 class AuthorizationRequest:
     """Represent an Authorization Request.
 
@@ -225,13 +225,17 @@ class AuthorizationRequest:
       appropriate `code_challenge` will be included in the request, according to the
       `code_challenge_method`.
     - `authorization_response_iss_parameter_supported` and `issuer`:
-       those are used for Server Issuer Identification. If `ìssuer` is set and an issuer is
-       included in the Authorization Response, then the consistency between those 2 values will be
-       checked when using `validate_callback()`. If issuer is not included in the response, and
-       `authorization_response_iss_parameter_supported` is `False` (default), then no issuer check
-       is performed. Set `authorization_response_iss_parameter_supported`
-       to `True` to enforce server identification: if no issuer is included in the Authorization
-       Response, then an error will be raised instead.
+       those are used for Server Issuer Identification. By default:
+
+        - If `ìssuer` is set and an issuer is included in the Authorization Response,
+        then the consistency between those 2 values will be checked when using `validate_callback()`.
+        - If issuer is not included in the response, then no issuer check is performed.
+
+        Set `authorization_response_iss_parameter_supported` to `True` to enforce server identification:
+
+        - an `issuer` must also be provided as parameter, and the AS must return that same value
+        for the response to be considered valid by `validate_callback()`.
+        - if no issuer is included in the Authorization Response, then an error will be raised.
 
     Args:
         authorization_endpoint: the uri for the authorization endpoint.
@@ -250,6 +254,19 @@ class AuthorizationRequest:
         acr_values: requested Authentication Context Class Reference values.
         issuer: Issuer Identifier value from the OAuth/OIDC Server, if using Server Issuer Identification.
         **kwargs: extra parameters to include in the request, as-is.
+
+    Example:
+        ```python
+        from requests_oauth2client import AuthorizationRequest
+
+        azr = AuthorizationRequest(
+            authorization_endpoint="https://url.to.the/authorization_endpoint",
+            client_id="my_client_id",
+            redirect_uri="http://localhost/callback",
+            scope="openid email profile",
+        )
+        print(azr)
+        ```
 
     """
 
@@ -644,9 +661,14 @@ class AuthorizationRequest:
         return self.uri
 
 
-@frozen(init=False)
+@frozen(init=False, repr=False)
 class RequestParameterAuthorizationRequest:
     """Represent an Authorization Request that includes a `request` JWT.
+
+    To construct such a request yourself, the easiest way is to initialize
+    an [`AuthorizationRequest`][requests_oauth2client.authorization_request.AuthorizationRequest]
+    then sign it with
+    [`AuthorizationRequest.sign()`][requests_oauth2client.authorization_request.AuthorizationRequest.sign].
 
     Args:
         authorization_endpoint: the Authorization Endpoint uri
@@ -659,7 +681,7 @@ class RequestParameterAuthorizationRequest:
 
     authorization_endpoint: str
     client_id: str
-    request: str
+    request: Jwt
     expires_at: datetime | None = None
     kwargs: dict[str, Any] = Factory(dict)
 
@@ -668,10 +690,13 @@ class RequestParameterAuthorizationRequest:
         self,
         authorization_endpoint: str,
         client_id: str,
-        request: str,
+        request: Jwt | str,
         expires_at: datetime | None = None,
         **kwargs: Any,
     ) -> None:
+        if isinstance(request, str):
+            request = Jwt(request)
+
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
@@ -685,7 +710,7 @@ class RequestParameterAuthorizationRequest:
         """Return the Authorization Request URI, as a `furl` instance."""
         return furl(
             self.authorization_endpoint,
-            args={"client_id": self.client_id, "request": self.request, **self.kwargs},
+            args={"client_id": self.client_id, "request": str(self.request), **self.kwargs},
         )
 
     @property

@@ -46,8 +46,7 @@ class BaseTokenEndpointPoolingJob:
         [SlowDown][requests_oauth2client.exceptions.SlowDown] requests by the AS.
 
         Returns:
-            a [BearerToken][requests_oauth2client.tokens.BearerToken] if the AS returns one, or
-            `None` if the Authorization is still pending.
+            a `BearerToken` if the AS returns one, or `None` if the Authorization is still pending.
 
         """
         self.sleep()
@@ -95,3 +94,13 @@ class BaseTokenEndpointPoolingJob:
 
         """
         raise NotImplementedError
+
+    def pool_until_token(self) -> BearerToken:
+        """Pools the token endpoint until a token is returned.
+
+        Caution: This can take a while and is blocking.
+
+        """
+        while (token := self()) is None:
+            pass
+        return token

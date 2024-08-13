@@ -107,7 +107,7 @@ class Auth0:
                 Same definition as for [OAuth2Client][requests_oauth2client.client.OAuth2Client]
             **kwargs: additional kwargs to pass to the ApiClient base class
 
-        Usage:
+        Example:
             ```python
             from requests_oauth2client.vendor_specific import Auth0
 
