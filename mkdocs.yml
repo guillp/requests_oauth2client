@@ -61,8 +61,8 @@ plugins:
       handlers:
         python:
           options:
-            extensions:
-            - griffe_fieldz: {include_inherited: true}
+            #extensions:
+            #- griffe_fieldz: {include_inherited: true}
             filters:
             - "!^_"
             - "^__init__"

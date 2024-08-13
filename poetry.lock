@@ -496,24 +496,6 @@ files = [
 test = ["pytest (>=6)"]
 
 [[package]]
-name = "fieldz"
-version = "0.0.2"
-description = "Utilities for providing compatibility with many dataclass-like libraries"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "fieldz-0.0.2-py3-none-any.whl", hash = "sha256:cf385cc75765370819cc6a87522316a6a3283d8bab5361b173b21dd0d921aec1"},
-    {file = "fieldz-0.0.2.tar.gz", hash = "sha256:dad3a0998fbf414acd9468d8110d8e9680428f2f8223f83a08641c43251ab9cc"},
-]
-
-[package.dependencies]
-typing-extensions = "*"
-
-[package.extras]
-dev = ["black", "hatch", "ipython", "mypy", "pdbpp", "rich", "ruff"]
-test = ["annotated-types", "attrs", "dataclassy", "msgspec", "pydantic", "pytest", "pytest-cov"]
-
-[[package]]
 name = "filelock"
 version = "3.15.4"
 description = "A platform independent file lock."
@@ -612,25 +594,6 @@ files = [
 [package.dependencies]
 astunparse = {version = ">=1.6", markers = "python_version < \"3.9\""}
 colorama = ">=0.4"
-
-[[package]]
-name = "griffe-fieldz"
-version = "0.1.2"
-description = "Griffe extension adding support for data-class like things (pydantic, attrs, etc...)"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "griffe_fieldz-0.1.2-py3-none-any.whl", hash = "sha256:2528af30f5a1ff91c3a34e73225e3d173b80c28b3ba019bcadfde119b6344d98"},
-    {file = "griffe_fieldz-0.1.2.tar.gz", hash = "sha256:7a109c0f3fc38cce2107f1ae6270045f937406587bd6c20a1d1e7565c9d8c57d"},
-]
-
-[package.dependencies]
-fieldz = ">=0.0.2"
-griffe = ">=0.35"
-
-[package.extras]
-dev = ["black", "ipython", "mypy", "pdbpp", "pre-commit", "rich", "ruff"]
-test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "identify"
@@ -1825,4 +1788,4 @@ test = []
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8"
-content-hash = "497a8f95677acec5bc74b243757b8ef97f6e946edbe1e5d54ee112d58692d75a"
+content-hash = "9fa15527fcebf811cc8e5ae510ca45abd52de2cfa25d5a550940e09a6f2e25b7"
