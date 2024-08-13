@@ -85,11 +85,17 @@ class DeviceAuthorizationPoolingJob(BaseTokenEndpointPoolingJob):
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
 
-    Usage: ```python client = OAuth2Client( token_endpoint="https://my.as.local/token",
-    auth=("client_id", "client_secret") ) pool_job = DeviceAuthorizationPoolingJob(client=client,
-    device_code="my_device_code")
+    Example:
+        ```python
+        from requests_oauth2client import DeviceAuthorizationPoolingJob, OAuth2Client
 
-        token = None while token is None: token = pool_job() ```
+        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
+        pooler = DeviceAuthorizationPoolingJob(client=client, device_code="my_device_code")
+
+        token = None
+        while token is None:
+            token = pooler()
+        ```
 
     """
 
@@ -120,7 +126,8 @@ class DeviceAuthorizationPoolingJob(BaseTokenEndpointPoolingJob):
     def token_request(self) -> BearerToken:
         """Implement the Device Code token request.
 
-        This actually calls [OAuth2Client.device_code(device_code)] on `client`.
+        This actually calls [OAuth2Client.device_code(device_code)][requests_oauth2client.OAuth2Client.device_code]
+        on `self.client`.
 
         Returns:
             a [BearerToken][requests_oauth2client.tokens.BearerToken]

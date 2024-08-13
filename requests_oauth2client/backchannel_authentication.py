@@ -107,11 +107,18 @@ class BackChannelAuthenticationPoolingJob(BaseTokenEndpointPoolingJob):
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
 
-    Usage: ```python client = OAuth2Client( token_endpoint="https://my.as.local/token",
-    auth=("client_id", "client_secret") ) pool_job = BackChannelAuthenticationPoolingJob(
-    client=client, auth_req_id="my_auth_req_id" )
+    Example:
+        ```python
+        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
+        pool_job = BackChannelAuthenticationPoolingJob(
+            client=client,
+            auth_req_id="my_auth_req_id",
+        )
 
-        token = None while token is None: token = pool_job() ```
+        token = None
+        while token is None:
+            token = pool_job()
+        ```
 
     """
 

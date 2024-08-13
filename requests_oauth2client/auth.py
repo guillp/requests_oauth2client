@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import requests
-from attr import field
-from attrs import define, setters
+from attrs import define, field, setters
 from typing_extensions import override
 
 from .exceptions import NonRenewableTokenError
@@ -41,6 +40,21 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     leeway: int = field(on_setattr=setters.frozen)
     token_kwargs: dict[str, Any] = field(on_setattr=setters.frozen)
 
+    def __init__(
+        self,
+        client: OAuth2Client,
+        token: None | BearerToken | str = None,
+        leeway: int = 20,
+        **token_kwargs: Any,
+    ) -> None:
+        if isinstance(token, str):
+            token = BearerToken(token)
+
+        self.client = client
+        self.token = token
+        self.leeway = leeway
+        self.token_kwargs = token_kwargs
+
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the Access Token to the request.
 
@@ -66,7 +80,7 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
         self.token = None
 
 
-@define
+@define(init=False)
 class BaseOAuth2RefreshTokenAuth(BaseOAuth2RenewableTokenAuth):
     """Base class for flows which can have a refresh-token.
 
@@ -85,7 +99,7 @@ class BaseOAuth2RefreshTokenAuth(BaseOAuth2RenewableTokenAuth):
 
 @define(init=False)
 class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
-    """An Auth Handler for the Client Credentials grant.
+    """An Auth Handler for the [Client Credentials grant](https://www.rfc-editor.org/rfc/rfc6749#section-4.4).
 
     This [requests AuthBase][requests.auth.AuthBase] automatically gets Access Tokens from an OAuth
     2.0 Token Endpoint with the Client Credentials grant, and will get a new one once the current
@@ -93,10 +107,14 @@ class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
 
     Args:
         client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] to use to obtain Access Tokens.
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
+        leeway: expiration leeway, in number of seconds
         **token_kwargs: extra kw parameters to pass to the Token Endpoint. May include `scope`, `resource`, etc.
 
-    Usage:
+    Example:
         ```python
+        from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth, requests
+
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
         oauth2cc = OAuth2ClientCredentialsAuth(client, scope="my_scope")
         resp = requests.post("https://my.api.local/resource", auth=oauth2cc)
@@ -125,24 +143,27 @@ class OAuth2AccessTokenAuth(BaseOAuth2RefreshTokenAuth):
     Bearer token, and can automatically refresh it when expired, if a refresh token is available.
 
     Token can be a simple `str` containing a raw access token value, or a
-    [BearerToken][requests_oauth2client.tokens.BearerToken] that can contain a refresh_token. If a
-    refresh_token and an expiration date are available, this Auth Handler will automatically refresh
-    the access token once it is expired.
+    [BearerToken][requests_oauth2client.tokens.BearerToken] that can contain a `refresh_token`.
+    If a `refresh_token` and an expiration date are available (based on `expires_in` hint),
+    this Auth Handler will automatically refresh the access token once it is expired.
 
     Args:
         client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] to use to refresh tokens.
-        token: a access token that has been previously obtained
-        **token_kwargs: additional kwargs to pass to the token endpoint
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
+        leeway: expiration leeway, in number of seconds.
+        **token_kwargs: additional kwargs to pass to the token endpoint.
 
-    Usage:
+    Example:
         ```python
+        from requests_oauth2client import BearerToken, OAuth2Client, OAuth2AccessTokenAuth, requests
+
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
-        token = BearerToken(
-            access_token="access_token", expires_in=600, refresh_token="refresh_token"
-        )  # obtain a BearerToken any way you see fit, including a refresh token
-        oauth2at_auth = OAuth2ClientCredentialsAuth(client, token, scope="my_scope")
-        resp = requests.post("https://my.api.local/resource", auth=oauth2at_auth)
-        ````
+        # obtain a BearerToken any way you see fit, optionally including a refresh token
+        # for this example, the token value is hardcoded
+        token = BearerToken(access_token="access_token", expires_in=600, refresh_token="refresh_token")
+        auth = OAuth2AccessTokenAuth(client, token, scope="my_scope")
+        resp = requests.post("https://my.api.local/resource", auth=auth)
+        ```
 
     """
 
@@ -155,23 +176,27 @@ class OAuth2AccessTokenAuth(BaseOAuth2RefreshTokenAuth):
 
 
 @define(init=False)
-class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):
-    """Authentication handler for the Authorization Code grant.
+class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[override]
+    """Authentication handler for the [Authorization Code grant](https://www.rfc-editor.org/rfc/rfc6749#section-4.1).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges an Authorization
     Code for an access token, then automatically refreshes it once it is expired.
 
     Args:
-        client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] to use to obtain Access Tokens.
+        client: the client to use to obtain Access Tokens.
         code: an Authorization Code that has been obtained from the AS.
-        **token_kwargs: additional kwargs to pass to the token endpoint
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
+        leeway: expiration leeway, in number of seconds.
+        **token_kwargs: additional kwargs to pass to the token endpoint.
 
-    Usage:
+    Example:
         ```python
-        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
+        from requests_oauth2client import ApiClient, OAuth2Client, OAuth2AuthorizationCodeAuth
+
+        client = OAuth2Client(token_endpoint="https://myas.local/token", auth=("client_id", "client_secret"))
         code = "my_code"  # you must obtain this code yourself
-        resp = requests.post("https://my.api.local/resource", auth=OAuth2AuthorizationCodeAuth(client, code))
-        ````
+        api = ApiClient("https://my.api.local/resource", auth=OAuth2AuthorizationCodeAuth(client, code))
+        ```
 
     """
 
@@ -202,11 +227,10 @@ class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):
         This exchanges an Authorization Code for an access token and adds it in the request.
 
         Args:
-            request: a [PreparedRequest][requests.PreparedRequest]
+            request: the request
 
         Returns:
-            a [PreparedRequest][requests.PreparedRequest] with an Access Token added in
-            Authorization Header
+            the request, with an Access Token added in Authorization Header
 
         """
         if self.token is None or self.token.is_expired():
@@ -214,7 +238,7 @@ class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):
         return super().__call__(request)
 
     def exchange_code_for_token(self) -> None:
-        """Obtain the initial access token with the authorization_code grant."""
+        """Exchange the authorization code for an access token."""
         if self.code:  # pragma: no branch
             self.token = self.client.authorization_code(code=self.code, **self.token_kwargs)
             self.code = None
@@ -222,28 +246,46 @@ class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):
 
 @define(init=False)
 class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
-    """Authentication Handler for the [Resource Owner Password Flow](https://www.rfc-editor.org/rfc/rfc6749#section-4.3).
+    """Authentication Handler for the [Resource Owner Password Credentials Flow](https://www.rfc-editor.org/rfc/rfc6749#section-4.3).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges the user
-    credentials for an Access Token, then automatically obtains a new one once it is expired.
+    credentials for an Access Token, then automatically repeats the process to get a new one
+    once the current one is expired.
 
     Note that this flow is considered *deprecated*, and the Authorization Code flow should be
-    used whenever possible. Among other bad things, ROPC does not support SSO nor MFA and
-    depends on the user typing its credentials directly inside the application instead of on a
-    dedicated login page, which makes it totally insecure for 3rd party apps.
+    used whenever possible.
+    Among other bad things, ROPC:
+
+    - does not support SSO between multiple apps,
+    - does not support MFA or risk-based adaptative authentication,
+    - depends on the user typing its credentials directly inside the application, instead of on a
+    dedicated, centralized login page managed by the AS, which makes it totally insecure for 3rd party apps.
 
     It needs the username and password and an
     [OAuth2Client][requests_oauth2client.client.OAuth2Client] to be able to get a token from
     the AS Token Endpoint just before the first request using this Auth Handler is being sent.
 
     Args:
-        client: the [OAuth2Client][requests_oauth2client.client.OAuth2Client] to use to obtain
-            Access Tokens
+        client: the client to use to obtain Access Tokens
         username: the username
         password: the user password
         leeway: an amount of time, in seconds
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
         **token_kwargs: additional kwargs to pass to the token endpoint
 
+    Example:
+        ```python
+        from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ResourceOwnerPasswordAuth
+
+        client = OAuth2Client(
+            token_endpoint="https://myas.local/token",
+            auth=("client_id", "client_secret"),
+        )
+        username = "my_username"
+        password = "my_password"  # you must obtain those credentials from the user
+        auth = OAuth2ResourceOwnerPasswordAuth(client, username=username, password=password)
+        api = ApiClient("https://myapi.local", auth=auth)
+        ```
     """
 
     username: str
@@ -281,7 +323,7 @@ class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):
 
 
 @define(init=False)
-class OAuth2DeviceCodeAuth(BaseOAuth2RefreshTokenAuth):
+class OAuth2DeviceCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[override]
     """Authentication Handler for the [Device Code Flow](https://www.rfc-editor.org/rfc/rfc8628).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges a Device Code for
@@ -296,15 +338,20 @@ class OAuth2DeviceCodeAuth(BaseOAuth2RefreshTokenAuth):
         device_code: a Device Code obtained from the AS.
         interval: the interval to use to pool the Token Endpoint, in seconds.
         expires_in: the lifetime of the token, in seconds.
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
+        leeway: expiration leeway, in number of seconds.
         **token_kwargs: additional kwargs to pass to the token endpoint.
 
-    Usage:
+    Example:
         ```python
+        from requests_oauth2client import OAuth2Client, OAuth2DeviceCodeAuth, requests
+
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
         device_code = client.device_authorization()
         auth = OAuth2DeviceCodeAuth(client, device_code)
         resp = requests.post("https://my.api.local/resource", auth=auth)
-        ````
+        ```
+
     """
 
     device_code: str | DeviceAuthorizationResponse

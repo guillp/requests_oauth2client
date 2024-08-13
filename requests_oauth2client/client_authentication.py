@@ -21,10 +21,10 @@ from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
 
 @frozen
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
-    """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase].
+    """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase][].
 
-    This base class only checks that requests are suitable to add Client Authentication parameters
-    to, and doesn't modify the request.
+    This base class checks that requests are suitable to add Client Authentication parameters to,
+    and does not modify the request.
 
     """
 
@@ -57,29 +57,43 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
         return request
 
 
-@frozen
+@frozen(init=False)
 class ClientSecretBasic(BaseClientAuthenticationMethod):
     """Implement `client_secret_basic` authentication.
 
-    With this method, the client sends its Client ID and Secret, in the Authorization header, with
-    the "Basic" scheme, in each authenticated request to the AS.
+    With this method, the client sends its Client ID and Secret, in the HTTP `Authorization` header, with
+    the `Basic` scheme, in each authenticated request to the Authorization Server.
 
     Args:
-        client_id: `client_id` to use.
-        client_secret: `client_secret` to use.
+        client_id: Client ID
+        client_secret: Client Secret
+
+    Example:
+        ```python
+        from requests_oauth2client import ClientSecretBasic, OAuth2Client
+
+        auth = ClientSecretBasic("my_client_id", "my_client_secret")
+        client = OAuth2Client("https://url.to.the/token_endpoint", auth=auth)
+        ```
 
     """
 
     client_secret: str
 
+    def __init__(self, client_id: str, client_secret: str) -> None:
+        self.__attrs_init__(
+            client_id=client_id,
+            client_secret=client_secret,
+        )
+
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the appropriate `Authorization` header in each request.
 
-        The Authorization header is formatted as such: `Authorization: Basic
-        BASE64('<client_id:client_secret>')`
+        The Authorization header is formatted as such:
+        `Authorization: Basic BASE64('<client_id:client_secret>')`
 
         Args:
-            request: a [requests.PreparedRequest][].
+            request: the request
 
         Returns:
             a [requests.PreparedRequest][] with the added Authorization header.
@@ -91,20 +105,34 @@ class ClientSecretBasic(BaseClientAuthenticationMethod):
         return request
 
 
-@frozen
+@frozen(init=False)
 class ClientSecretPost(BaseClientAuthenticationMethod):
     """Implement `client_secret_post` client authentication method.
 
-     With this method, the client inserts its client_id and client_secret in each authenticated
-     request to the AS.
+    With this method, the client inserts its client_id and client_secret in each authenticated
+    request to the AS.
 
     Args:
-        client_id: `client_id` to use.
-        client_secret: `client_secret` to use.
+        client_id: Client ID
+        client_secret: Client Secret
+
+    Example:
+        ```python
+        from requests_oauth2client import ClientSecretPost, OAuth2Client
+
+        auth = ClientSecretPost("my_client_id", "my_client_secret")
+        client = OAuth2Client("https://url.to.the/token_endpoint", auth=auth)
+        ```
 
     """
 
     client_secret: str
+
+    def __init__(self, client_id: str, client_secret: str) -> None:
+        self.__attrs_init__(
+            client_id=client_id,
+            client_secret=client_secret,
+        )
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the `client_id` and `client_secret` parameters in the request body.
@@ -130,16 +158,7 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
 
 @frozen
 class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
-    """Base class for assertion-based client authentication methods.
-
-    Args:
-        client_id: the client_id to use
-        alg: the alg to use to sign generated Client Assertions.
-        lifetime: the lifetime to use for generated Client Assertions.
-        jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
-        aud: the audience value to use. If `None` (default), the endpoint URL will be used.
-
-    """
+    """Base class for assertion-based client authentication methods."""
 
     lifetime: int
     jti_gen: Callable[[], str]
@@ -199,6 +218,14 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
         lifetime: the lifetime to use for generated Client Assertions.
         jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
         aud: the audience value to use. If `None` (default), the endpoint URL will be used.
+
+    Example:
+        ```python
+        from requests_oauth2client import OAuth2Client, ClientSecretJwt
+
+        auth = ClientSecretJwt("my_client_id", "my_client_secret")
+        client = OAuth2Client("https://url.to.the/token_endpoint", auth=auth)
+        ```
 
     """
 
@@ -263,13 +290,29 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
     With this method, the client generates and sends a client_assertion, that is asymmetrically
     signed with a private key, on each direct request to the Authorization Server.
 
+    The private key must be supplied as a [`jwskate.Jwk`][jwskate.jwk.Jwk] instance,
+    or any key material that can be used to initialize one.
+
     Args:
         client_id: the `client_id` to use.
-        private_jwk: the private JWK to use to sign generated Client Assertions.
+        private_jwk: the private key to use to sign generated Client Assertions.
         alg: the alg to use to sign generated Client Assertions.
         lifetime: the lifetime to use for generated Client Assertions.
         jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
         aud: the audience value to use. If `None` (default), the endpoint URL will be used.k
+
+    Example:
+        ```python
+        from jwskate import Jwk
+        from requests_oauth2client import OAuth2Client, PrivateKeyJwt
+
+        # load your private key from wherever it is stored:
+        with open("my_private_key.pem") as f:
+            my_private_key = Jwk.from_pem(f.read(), password="my_private_key_password")
+
+        auth = PrivateKeyJwt("my_client_id", my_private_key, alg="RS256")
+        client = OAuth2Client("https://url.to.the/token_endpoint", auth=auth)
+        ```
 
     """
 
@@ -352,8 +395,13 @@ class PublicApp(BaseClientAuthenticationMethod):
     This scheme is used for Public Clients, which do not have any secret credentials. Those only
     send their client_id to the Authorization Server.
 
-    Args:
-        client_id: the client_id to use.
+    Example:
+        ```python
+        from requests_oauth2client import OAuth2Client, PublicApp
+
+        auth = PublicApp("my_client_id")
+        client = OAuth2Client("https://url.to.the/token_endpoint", auth=auth)
+        ```
 
     """
 
@@ -361,10 +409,10 @@ class PublicApp(BaseClientAuthenticationMethod):
         """Add the `client_id` field in the request body.
 
         Args:
-            request: a [requests.PreparedRequest][].
+            request: a request.
 
         Returns:
-            a [requests.PreparedRequest][] with the added `client_id` field.
+            the request with the added `client_id` form field.
 
         """
         request = super().__call__(request)

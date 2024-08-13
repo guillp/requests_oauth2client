@@ -106,7 +106,7 @@ class OAuth2Client:
         **extra_metadata: additional metadata for this client, unused by this class, but may be
             used by subclasses. Those will be accessible with the `extra_metadata` attribute.
 
-    Usage:
+    Example:
         ```python
         client = OAuth2Client(
             token_endpoint="https://my.as.local/token",
@@ -1494,7 +1494,7 @@ class OAuth2Client:
         )
 
     @classmethod
-    def from_discovery_document(  # noqa: PLR0913
+    def from_discovery_document(
         cls,
         discovery: dict[str, Any],
         issuer: str | None = None,
