@@ -39,6 +39,9 @@ markdown_extensions:
       generic: true
   - pymdownx.highlight:
       linenums: true
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.details
@@ -52,13 +55,14 @@ plugins:
   - include-markdown
   - search:
       lang: en
+  - autorefs
   - mkdocstrings:
       default_handler: python
       handlers:
         python:
           options:
             extensions:
-            - griffe_fieldz
+            - griffe_fieldz: {include_inherited: true}
             filters:
             - "!^_"
             - "^__init__"
@@ -68,7 +72,7 @@ plugins:
             show_submodules: true
           import:
             - https://requests.readthedocs.io/en/master/objects.inv
-
+            - https://guillp.github.io/jwskate/objects.inv
 extra:
   social:
     - icon: fontawesome/brands/github
