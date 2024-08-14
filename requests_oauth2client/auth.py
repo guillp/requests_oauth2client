@@ -30,12 +30,6 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     token is obtained some seconds before the actual expiration is reached. This may help in
     situations where the client, AS and RS have slightly offset clocks.
 
-    Args:
-        client: an OAuth2Client
-        token: an initial Access Token, if you have one already. In most cases, leave `None`.
-        leeway: expiration leeway, in number of seconds
-        **token_kwargs: additional kwargs to include in token requests
-
     """
 
     client: OAuth2Client = field(on_setattr=setters.frozen)
