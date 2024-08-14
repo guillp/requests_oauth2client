@@ -8,13 +8,16 @@ import requests
 from attrs import define, field, setters
 from typing_extensions import override
 
-from .exceptions import NonRenewableTokenError
 from .tokens import BearerToken
 
 if TYPE_CHECKING:
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
     from .device_authorization import DeviceAuthorizationResponse
+
+
+class NonRenewableTokenError(Exception):
+    """Raised when attempting to renew a token non-interactively when missing renewing material."""
 
 
 @define(init=False)
@@ -40,18 +43,6 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     leeway: int = field(on_setattr=setters.frozen)
     token_kwargs: dict[str, Any] = field(on_setattr=setters.frozen)
 
-    def __init__(
-        self,
-        client: OAuth2Client,
-        token: None | BearerToken | str = None,
-        leeway: int = 20,
-        **token_kwargs: Any,
-    ) -> None:
-        if isinstance(token, str):
-            token = BearerToken(token)
-
-        self.__attrs_init__(client=client, token=token, leeway=leeway, token_kwargs=token_kwargs)
-
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the Access Token to the request.
 
@@ -61,7 +52,7 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
         if self.token is None or self.token.is_expired(self.leeway):
             self.renew_token()
         if self.token is None:
-            return request
+            raise NonRenewableTokenError  # pragma: no cover
         return self.token(request)
 
     def renew_token(self) -> None:
@@ -165,7 +156,7 @@ class OAuth2AccessTokenAuth(BaseOAuth2RefreshTokenAuth):
     """
 
     def __init__(
-        self, client: OAuth2Client, token: str | BearerToken | None, *, leeway: int = 20, **token_kwargs: Any
+        self, client: OAuth2Client, token: str | BearerToken, *, leeway: int = 20, **token_kwargs: Any
     ) -> None:
         if isinstance(token, str):
             token = BearerToken(token)
@@ -393,8 +384,6 @@ class OAuth2DeviceCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[override
         """
         if self.token is None:
             self.exchange_device_code_for_token()
-        if self.token is not None and self.token.is_expired():
-            self.renew_token()
         return super().__call__(request)
 
     def exchange_device_code_for_token(self) -> None:

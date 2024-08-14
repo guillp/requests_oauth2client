@@ -4,24 +4,17 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
 import jwskate
 import requests
 from attrs import Factory, asdict, frozen
 from binapy import BinaPy
+from jwskate import InvalidJwt
 from typing_extensions import Self
 
 from .exceptions import (
-    ExpiredAccessToken,
-    ExpiredIdToken,
-    InvalidIdToken,
-    MismatchingAcr,
-    MismatchingAudience,
-    MismatchingAzp,
-    MismatchingIdTokenAlg,
     MismatchingIssuer,
-    MismatchingNonce,
     MissingIdToken,
 )
 from .utils import accepts_expires_in
@@ -43,6 +36,14 @@ class AccessTokenType(str, Enum):
     """An enum of standardised `access_token` types."""
 
     BEARER = "Bearer"
+
+
+class UnsupportedTokenType(ValueError):
+    """Raised when an unsupported token_type is provided."""
+
+    def __init__(self, token_type: str) -> None:
+        super().__init__(f"Unsupported token_type: {token_type}")
+        self.token_type = token_type
 
 
 class IdToken(jwskate.SignedJwt):
@@ -96,14 +97,81 @@ class IdToken(jwskate.SignedJwt):
         return hash_method
 
 
-class AccessToken:
+class InvalidIdToken(InvalidJwt):
+    """Raised when trying to validate an invalid ID Token value."""
+
+    def __init__(self, message: str, token: TokenResponse, id_token: IdToken | None = None) -> None:
+        super().__init__(f"Invalid ID Token: {message}")
+        self.token = token
+        self.id_token = id_token
+
+
+class MismatchingNonce(InvalidIdToken):
+    """Raised on mismatching `nonce` value in an ID Token.
+
+    This happens when the authorization request includes a `nonce` but the returned ID Token include
+    a different value.
+
+    """
+
+    def __init__(self, nonce: str, expected: str, token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__(f"nonce from token '{nonce}' does not match expected value '{expected}'", token, id_token)
+
+
+class MismatchingAcr(InvalidIdToken):
+    """Raised when the returned ID Token doesn't contain one of the requested ACR Values.
+
+    This happens when the authorization request includes an `acr_values` parameter but the returned
+    ID Token includes a different value.
+
+    """
+
+    def __init__(self, acr: str, expected: Sequence[str], token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__(f"token contains acr '{acr}' while client expects one of '{expected}'", token, id_token)
+
+
+class MismatchingAudience(InvalidIdToken):
+    """Raised when the ID Token audience does not include the requesting Client ID."""
+
+    def __init__(self, audiences: Sequence[str], client_id: str, token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__(f"token audience '{audiences}' does not match client_id '{client_id}'", token, id_token)
+
+
+class MismatchingAzp(InvalidIdToken):
+    """Raised when the ID Token Authorized Presenter (azp) claim is not the Client ID."""
+
+    def __init__(self, azp: str, client_id: str, token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__(
+            f"token Authorized Presenter (azp) claim '{azp}' does not match client_id '{client_id}'", token, id_token
+        )
+
+
+class MismatchingIdTokenAlg(InvalidIdToken):
+    """Raised when the returned ID Token is signed with an unexpected alg."""
+
+    def __init__(self, token_alg: str, client_alg: str, token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__(f"token is signed with alg {token_alg}, client expects {client_alg}", token, id_token)
+
+
+class ExpiredIdToken(InvalidIdToken):
+    """Raised when the returned ID Token is expired."""
+
+    def __init__(self, token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__("token is expired", token, id_token)
+
+
+class TokenResponse:
     """Base class for Access Tokens."""
 
     TOKEN_TYPE: ClassVar[str]
 
 
+class ExpiredAccessToken(RuntimeError):
+    """Raised when an expired access token is used."""
+
+
 @frozen(init=False)
-class BearerToken(AccessToken, requests.auth.AuthBase):
+class BearerToken(TokenResponse, requests.auth.AuthBase):
     """Represents a Bearer Token as returned by a Token Endpoint.
 
     This is a wrapper around a Bearer Token and associated parameters, such as expiration date and
@@ -148,8 +216,7 @@ class BearerToken(AccessToken, requests.auth.AuthBase):
         **kwargs: Any,
     ) -> None:
         if token_type.title() != self.TOKEN_TYPE.title():
-            msg = f"Token Type is not '{self.TOKEN_TYPE}'!"
-            raise ValueError(msg, token_type)
+            raise UnsupportedTokenType(token_type)
         id_token_jwt: IdToken | jwskate.JweCompact | None
         if isinstance(id_token, (str, bytes)):
             try:
@@ -158,8 +225,8 @@ class BearerToken(AccessToken, requests.auth.AuthBase):
                 try:
                     id_token_jwt = jwskate.JweCompact(id_token)
                 except jwskate.InvalidJwe:
-                    msg = "ID Token is invalid because it is  neither a JWT or a JWE."
-                    raise InvalidIdToken(msg) from None
+                    msg = "token is neither a JWT or a JWE."
+                    raise InvalidIdToken(msg, self) from None
         else:
             id_token_jwt = id_token
         self.__attrs_init__(
@@ -217,16 +284,16 @@ class BearerToken(AccessToken, requests.auth.AuthBase):
         raw_id_token = self.id_token
 
         if isinstance(raw_id_token, jwskate.JweCompact) and client.id_token_encrypted_response_alg is None:
-            msg = "ID Token is encrypted while it should be clear-text"
+            msg = "token is encrypted while it should be clear-text"
             raise InvalidIdToken(msg, self)
         if isinstance(raw_id_token, IdToken) and client.id_token_encrypted_response_alg is not None:
-            msg = "ID Token is clear-text while it should be encrypted"
+            msg = "token is clear-text while it should be encrypted"
             raise InvalidIdToken(msg, self)
 
         if isinstance(raw_id_token, jwskate.JweCompact):
             enc_jwk = client.id_token_decryption_key
             if enc_jwk is None:
-                msg = "ID Token is encrypted but client does not have a decryption key"
+                msg = "token is encrypted but client does not have a decryption key"
                 raise InvalidIdToken(msg, self)
             nested_id_token = raw_id_token.decrypt(enc_jwk)
             id_token = IdToken(nested_id_token)
@@ -234,65 +301,64 @@ class BearerToken(AccessToken, requests.auth.AuthBase):
             id_token = raw_id_token
 
         if id_token.get_header("alg") is None and client.id_token_signed_response_alg is None:
-            msg = (
-                "ID Token does not contain an `alg` parameter to specify the signature"
-                " algorithm, and no algorithm has been configured for the client (using param"
-                " id_token_signed_response_alg`."
-            )
-            raise InvalidIdToken(msg)
+            msg = """
+token does not contain an `alg` parameter to specify the signature algorithm,
+and no algorithm has been configured for the client (using param `id_token_signed_response_alg`.
+"""
+            raise InvalidIdToken(msg, self, id_token)
         if client.id_token_signed_response_alg is not None and id_token.alg != client.id_token_signed_response_alg:
-            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg)
+            raise MismatchingIdTokenAlg(id_token.alg, client.id_token_signed_response_alg, self, id_token)
 
         id_token_alg = id_token.alg or client.id_token_signed_response_alg
 
         if azr.issuer and id_token.issuer != azr.issuer:
-            raise MismatchingIssuer(id_token.issuer, azr.issuer, self)
+            raise MismatchingIssuer(id_token.issuer, azr.issuer, self, id_token)
 
         if id_token.audiences and client.client_id not in id_token.audiences:
-            raise MismatchingAudience(id_token.audiences, client.client_id, self)
+            raise MismatchingAudience(id_token.audiences, client.client_id, self, id_token)
 
         if id_token.get_claim("azp") is not None and id_token.azp != client.client_id:
-            raise MismatchingAzp(id_token.azp, client.client_id, self)
+            raise MismatchingAzp(id_token.azp, client.client_id, self, id_token)
 
         if id_token.is_expired():
-            raise ExpiredIdToken(id_token)
+            raise ExpiredIdToken(self, id_token)
 
         if azr.nonce and id_token.nonce != azr.nonce:
-            raise MismatchingNonce
+            raise MismatchingNonce(id_token.nonce, azr.nonce, self, id_token)
 
         if azr.acr_values and id_token.acr not in azr.acr_values:
-            raise MismatchingAcr(id_token.acr, azr.acr_values)
+            raise MismatchingAcr(id_token.acr, azr.acr_values, self, id_token)
 
         hash_function: Callable[[str], str]  # method used to calculate at_hash, s_hash, etc.
 
         if id_token_alg in jwskate.SignatureAlgs.ALL_SYMMETRIC:
             if not client.client_secret:
-                msg = "ID Token is symmetrically signed but this client does not have a Client Secret."
-                raise InvalidIdToken(msg)
+                msg = "token is symmetrically signed but this client does not have a Client Secret."
+                raise InvalidIdToken(msg, self, id_token)
             id_token.verify_signature(jwskate.SymmetricJwk.from_bytes(client.client_secret), alg=id_token_alg)
         elif id_token_alg in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             if not client.authorization_server_jwks:
-                msg = "ID Token is asymmetrically signed but the Authorization Server JWKS is not available."
-                raise InvalidIdToken(msg)
+                msg = "token is asymmetrically signed but the Authorization Server JWKS is not available."
+                raise InvalidIdToken(msg, self, id_token)
 
             if id_token.get_header("kid") is None:
-                msg = (
-                    "ID Token does not contain a Key ID (kid) to specify the asymmetric key "
-                    "to use for signature verification."
-                )
-                raise InvalidIdToken(msg)
+                msg = """
+token does not contain a Key ID (kid) to specify the asymmetric key
+to use for signature verification.
+"""
+                raise InvalidIdToken(msg, self, id_token)
             try:
                 verification_jwk = client.authorization_server_jwks.get_jwk_by_kid(id_token.kid)
             except KeyError:
                 msg = (
-                    f"ID Token is asymmetrically signed but its Key ID '{id_token.kid}' "
+                    f"token is asymmetrically signed but its Key ID '{id_token.kid}' "
                     "is not part of the Authorization Server JWKS."
                 )
-                raise InvalidIdToken(msg) from None
+                raise InvalidIdToken(msg, self, id_token) from None
 
             if id_token_alg not in verification_jwk.supported_signing_algorithms():
-                msg = "ID Token is asymmetrically signed but its algorithm is not supported by the verification key."
-                raise InvalidIdToken(msg)
+                msg = "token is asymmetrically signed but its algorithm is not supported by the verification key."
+                raise InvalidIdToken(msg, self, id_token)
 
             id_token.verify_signature(verification_jwk, alg=id_token_alg)
 
@@ -302,45 +368,45 @@ class BearerToken(AccessToken, requests.auth.AuthBase):
         if at_hash is not None:
             expected_at_hash = hash_function(self.access_token)
             if expected_at_hash != at_hash:
-                msg = f"Mismatching 'at_hash' value: expected '{expected_at_hash}', got '{at_hash}'"
-                raise InvalidIdToken(msg)
+                msg = f"mismatching 'at_hash' value (expected '{expected_at_hash}', got '{at_hash}')"
+                raise InvalidIdToken(msg, self, id_token)
 
         c_hash = id_token.get_claim("c_hash")
         if c_hash is not None:
             expected_c_hash = hash_function(azr.code)
             if expected_c_hash != c_hash:
-                msg = f"Mismatching 'c_hash' value: expected '{expected_c_hash}', got '{c_hash}'"
-                raise InvalidIdToken(msg)
+                msg = f"mismatching 'c_hash' value (expected '{expected_c_hash}', got '{c_hash}')"
+                raise InvalidIdToken(msg, self, id_token)
 
         s_hash = id_token.get_claim("s_hash")
         if s_hash is not None:
             if azr.state is None:
-                msg = "ID Token has a 's_hash' claim but no state was included in the request."
-                raise InvalidIdToken(msg)
+                msg = "token has a 's_hash' claim but no state was included in the request."
+                raise InvalidIdToken(msg, self, id_token)
             expected_s_hash = hash_function(azr.state)
             if expected_s_hash != s_hash:
-                msg = f"Mismatching 's_hash' value (expected '{expected_s_hash}', got '{s_hash}'"
-                raise InvalidIdToken(msg)
+                msg = f"mismatching 's_hash' value (expected '{expected_s_hash}', got '{s_hash}')"
+                raise InvalidIdToken(msg, self, id_token)
 
         if azr.max_age is not None:
             try:
                 auth_time = id_token.auth_time
             except AttributeError:
-                msg = (
-                    "A `max_age` parameter was included in the authorization request, "
-                    "but the ID Token does not contain an `auth_time` claim."
-                )
-                raise InvalidIdToken(msg) from None
+                msg = """
+a `max_age` parameter was included in the authorization request,
+but the ID Token does not contain an `auth_time` claim.
+"""
+                raise InvalidIdToken(msg, self, id_token) from None
             auth_age = datetime.now(tz=timezone.utc) - auth_time
             if auth_age.seconds > azr.max_age + 60:
-                msg = (
-                    "User authentication happened too long ago. The `auth_time` parameter from"
-                    " the ID Token indicate that the last Authentication Time was at"
-                    f" {auth_time} ({auth_age.seconds} sec ago), but the authorization request"
-                    f" `max_age` parameter specified that it must be maximum {azr.max_age} sec"
-                    " ago."
-                )
-                raise InvalidIdToken(msg)
+                msg = f"""
+user authentication happened too far in the past.
+The `auth_time` parameter from the ID Token indicate that
+the last Authentication Time was at {auth_time} ({auth_age.seconds} sec ago),
+but the authorization request `max_age` parameter specified that it must
+be a maximum of {azr.max_age} sec ago.
+"""
+                raise InvalidIdToken(msg, self, id_token)
 
         return self.__class__(
             access_token=self.access_token,
@@ -500,5 +566,5 @@ class BearerTokenSerializer:
         return self.loader(serialized)
 
 
-class DPoPToken(AccessToken):
+class DPoPToken(TokenResponse):
     """Represents a DPoP Token."""

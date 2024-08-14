@@ -16,6 +16,7 @@ from requests_oauth2client import (
     OAuth2Client,
     UnauthorizedClient,
 )
+from requests_oauth2client.client import InvalidAcrValuesParam
 
 if TYPE_CHECKING:
     from freezegun.api import FrozenDateTimeFactory
@@ -123,8 +124,9 @@ def test_backchannel_authentication_scope_acr_values_as_list(
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
     assert 355 <= bca_resp.expires_in <= 360
 
-    with pytest.raises(ValueError, match="Unsupported `acr_values`"):
+    with pytest.raises(ValueError, match="Invalid 'acr_values'") as exc:
         bca_client.backchannel_authentication_request(login_hint="user@example.net", acr_values=1.44)  # type: ignore[arg-type]
+    assert exc.type is InvalidAcrValuesParam
 
 
 def test_backchannel_authentication_invalid_response(

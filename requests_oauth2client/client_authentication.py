@@ -19,6 +19,14 @@ from binapy import BinaPy
 from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
 
 
+class InvalidRequestForClientAuthentication(RuntimeError):
+    """Raised when a request is not suitable for OAuth 2.0 client authentication."""
+
+    def __init__(self, request: requests.PreparedRequest) -> None:
+        super().__init__("This request is not suitabe for OAuth 2.0 client authentication.")
+        self.request = request
+
+
 @frozen
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase][].
@@ -52,8 +60,7 @@ class BaseClientAuthenticationMethod(requests.auth.AuthBase):
             "application/x-www-form-urlencoded",
             None,
         ):
-            msg = "This request is not suitable for OAuth 2.0 Client Authentication"
-            raise RuntimeError(msg)
+            raise InvalidRequestForClientAuthentication(request)
         return request
 
 
@@ -189,8 +196,7 @@ class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
         request = super().__call__(request)
         audience = self.aud or request.url
         if audience is None:
-            msg = "No url defined for this request. This should never happen..."  # pragma: no cover
-            raise ValueError(msg)  # pragma: no cover
+            raise InvalidRequestForClientAuthentication(request)  # pragma: no cover
         params = (
             parse_qs(request.body, strict_parsing=True, keep_blank_values=True)  # type: ignore[type-var]
             if request.body
@@ -283,6 +289,23 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
         return str(jwt)
 
 
+class InvalidClientAssertionSigningKeyOrAlg(ValueError):
+    """Raised when the client assertion signing alg is not specified or invalid."""
+
+    def __init__(self, alg: str | None) -> None:
+        super().__init__("""\
+An asymmetric private signing key, and an alg that is supported by the signing key is required.
+It can be provided either:
+- as part of the private `Jwk`, in the parameter 'alg'
+- or passed as parameter `alg` when initializing a `PrivateKeyJwt`.
+Examples of valid `alg` values and matching key type:
+- 'RS256', 'RS512' (with a key of type RSA)
+- 'ES256', 'ES512' (with a key of type EC)
+The private key must include a Key ID (in its 'kid' parameter).
+""")
+        self.alg = alg
+
+
 @frozen(init=False)
 class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
     """Implement `private_key_jwt` client authentication method.
@@ -340,24 +363,17 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
 
         alg = self.private_jwk.alg or alg
         if not alg:
-            msg = "An asymmetric signing alg is required, either as part of the private JWK, or passed as parameter."
-            raise ValueError(msg)
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
 
         if alg not in self.private_jwk.supported_signing_algorithms():
-            msg = (
-                f"This signing alg '{alg}' is not supported"
-                f" by the provided private key of type '{self.private_jwk.kty}'."
-            )
-            raise ValueError(msg)
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
 
         if not self.private_jwk.is_private or self.private_jwk.is_symmetric:
-            msg = "Private Key JWT client authentication method uses asymmetric signing thus requires a private key."
-            raise ValueError(msg)
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
 
         kid = self.private_jwk.get("kid")
         if not kid:
-            msg = "Asymmetric signing requires the private JWK to have a Key ID (kid)."
-            raise ValueError(msg)
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion, asymmetrically signed with `private_jwk` as key.
@@ -426,6 +442,10 @@ class PublicApp(BaseClientAuthenticationMethod):
         return request
 
 
+class UnsupportedClientCredentials(TypeError, ValueError):
+    """Raised when unsupported client credentials are provided."""
+
+
 def client_auth_factory(
     auth: requests.auth.AuthBase | tuple[str, str] | tuple[str, Jwk] | tuple[str, dict[str, Any]] | str | None,
     *,
@@ -463,11 +483,11 @@ def client_auth_factory(
 
     """
     if auth is not None and (client_id is not None or client_secret is not None or private_key is not None):
-        msg = (
-            "Please use either `auth` parameter to provide an authentication method, or use"
-            " `client_id` and one of `client_secret` or `private_key`."
-        )
-        raise ValueError(msg)
+        msg = """\
+Please use either `auth` parameter to provide an authentication method,
+or use `client_id` and one of `client_secret` or `private_key`.
+"""
+        raise UnsupportedClientCredentials(msg)
 
     if isinstance(auth, str):
         client_id = auth
@@ -481,11 +501,11 @@ def client_auth_factory(
             client_secret = credential
         else:
             msg = "This credential type is not supported:"
-            raise TypeError(msg, type(credential), credential)
+            raise UnsupportedClientCredentials(msg, type(credential), credential)
 
     if client_id is None:
         msg = "A client_id must be provided."
-        raise ValueError(msg)
+        raise UnsupportedClientCredentials(msg)
 
     if private_key is not None:
         return PrivateKeyJwt(client_id, private_jwk=private_key)

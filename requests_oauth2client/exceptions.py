@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from jwskate import InvalidJwt
-
 if TYPE_CHECKING:
     import requests
 
@@ -56,10 +54,6 @@ class EndpointError(OAuth2Error):
 
 class InvalidTokenResponse(OAuth2Error):
     """Raised when the Token Endpoint returns a non-standard response."""
-
-
-class ExpiredAccessToken(RuntimeError):
-    """Raised when an expired access token is used."""
 
 
 class UnknownTokenEndpointError(EndpointError):
@@ -136,10 +130,6 @@ class ExpiredToken(TokenEndpointError):
 
 class InvalidDeviceAuthorizationResponse(OAuth2Error):
     """Raised when the Device Authorization Endpoint returns a non-standard error response."""
-
-
-class InvalidIdToken(InvalidJwt):
-    """Raised when trying to validate an invalid ID Token value."""
 
 
 class AuthorizationResponseError(Exception):
@@ -232,40 +222,6 @@ class MismatchingIssuer(InvalidAuthResponse):
     """
 
 
-class MismatchingNonce(InvalidIdToken):
-    """Raised on mismatching `nonce` value in an ID Token.
-
-    This happens when the authorization request includes a `nonce` but the returned ID Token include
-    a different value.
-
-    """
-
-
-class MismatchingAcr(InvalidIdToken):
-    """Raised when the returned ID Token doesn't contain one of the requested ACR Values.
-
-    This happens when the authorization request includes an `acr_values` parameter but the returned
-    ID Token includes a different value.
-
-    """
-
-
-class MismatchingAudience(InvalidIdToken):
-    """Raised when the ID Token audience does not include the requesting Client ID."""
-
-
-class MismatchingAzp(InvalidIdToken):
-    """Raised when the ID Token Authorized Presenter (azp) claim is not the Client ID."""
-
-
-class MismatchingIdTokenAlg(InvalidIdToken):
-    """Raised when the returned ID Token is signed with an unexpected alg."""
-
-
-class ExpiredIdToken(InvalidIdToken):
-    """Raised when the returned ID Token is expired."""
-
-
 class BackChannelAuthenticationError(EndpointError):
     """Base class for errors returned by the BackChannel Authentication endpoint."""
 
@@ -276,15 +232,3 @@ class InvalidBackChannelAuthenticationResponse(OAuth2Error):
 
 class InvalidPushedAuthorizationResponse(OAuth2Error):
     """Raised when the Pushed Authorization Endpoint returns an error."""
-
-
-class UnsupportedCodeChallengeMethod(ValueError):
-    """Raised when an unsupported code_challenge_method is provided."""
-
-
-class UnsupportedTokenParameterType(TypeError):
-    """Raised when an unsupported type is passed as token value."""
-
-
-class NonRenewableTokenError(Exception):
-    """Raised when attempting to renew a token non-interactively when missing renewing material."""

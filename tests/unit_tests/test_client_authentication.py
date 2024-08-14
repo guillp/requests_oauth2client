@@ -1,14 +1,17 @@
 import pytest
 import requests
-from jwskate import Jwk
+from jwskate import InvalidJwk, Jwk
 from requests_mock import ANY
 
 from requests_oauth2client import (
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
+    InvalidClientAssertionSigningKeyOrAlg,
+    InvalidRequestForClientAuthentication,
     OAuth2Client,
     PrivateKeyJwt,
+    UnsupportedClientCredentials,
 )
 from tests.conftest import RequestsMocker, RequestValidatorType
 
@@ -78,8 +81,9 @@ def test_private_key_jwt(
         endpoint=token_endpoint,
     )
 
-    with pytest.raises(ValueError, match="requires a private key"):
+    with pytest.raises(ValueError, match="asymmetric private signing key") as exc:
         PrivateKeyJwt(client_id, private_jwk.public_jwk())
+    assert exc.type is InvalidClientAssertionSigningKeyOrAlg
 
 
 def test_private_key_jwt_with_kid(
@@ -155,22 +159,33 @@ def test_public_client(
 
 def test_invalid_request(requests_mock: RequestsMocker, client_id: str, client_secret: str) -> None:
     requests_mock.get(ANY)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as exc:
         requests.get("http://localhost", auth=ClientSecretBasic(client_id, client_secret))
+    assert exc.type is InvalidRequestForClientAuthentication
 
 
 def test_private_key_jwt_missing_alg(client_id: str, private_jwk: Jwk) -> None:
     private_jwk_without_alg = dict(private_jwk)
     private_jwk_without_alg.pop("alg")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc:
         PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk_without_alg, alg=None)
+    assert exc.type is InvalidClientAssertionSigningKeyOrAlg
+
+
+def test_private_key_jwt_unsupported_alg(client_id: str, private_jwk: Jwk) -> None:
+    private_jwk_without_alg = dict(private_jwk)
+    private_jwk_without_alg.pop("alg")
+    with pytest.raises(ValueError) as exc:
+        PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk_without_alg, alg="FOO")
+    assert exc.type is InvalidClientAssertionSigningKeyOrAlg
 
 
 def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:
     private_jwk_without_kid = dict(private_jwk)
     private_jwk_without_kid.pop("kid")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc:
         PrivateKeyJwt(client_id=client_id, private_jwk=private_jwk_without_kid)
+    assert exc.type is InvalidClientAssertionSigningKeyOrAlg
 
 
 def test_init_auth(token_endpoint: str, client_id: str, client_secret: str, private_jwk: Jwk) -> None:
@@ -184,8 +199,10 @@ def test_init_auth(token_endpoint: str, client_id: str, client_secret: str, priv
     assert pkj_client.auth.client_id == client_id
     assert pkj_client.auth.private_jwk == private_jwk
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must have a Key Type") as exc:
         OAuth2Client(token_endpoint, (client_id, {"foo": "bar"}))
+    assert exc.type is InvalidJwk
 
-    with pytest.raises(TypeError, match="not supported"):
+    with pytest.raises(TypeError, match="not supported") as exc2:
         OAuth2Client(token_endpoint, (client_id, object()))  # type: ignore[arg-type]
+    assert exc2.type is UnsupportedClientCredentials

@@ -94,13 +94,3 @@ class BaseTokenEndpointPoolingJob:
 
         """
         raise NotImplementedError
-
-    def pool_until_token(self) -> BearerToken:
-        """Pools the token endpoint until a token is returned.
-
-        Caution: This can take a while and is blocking.
-
-        """
-        while (token := self()) is None:
-            pass
-        return token

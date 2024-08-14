@@ -9,9 +9,41 @@ from __future__ import annotations
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 from furl import furl  # type: ignore[import-untyped]
+
+
+class InvalidUri(ValueError):
+    """Raised when a URI does not pass validation by `validate_endpoint_uri()`."""
+
+    def __init__(
+        self, url: str, *, https: bool, no_credentials: bool, no_port: bool, no_fragment: bool, path: bool
+    ) -> None:
+        super().__init__("Invalid endpoint uri.")
+        self.url = url
+        self.https = https
+        self.no_credentials = no_credentials
+        self.no_port = no_port
+        self.no_fragment = no_fragment
+        self.path = path
+
+    def errors(self) -> Iterator[str]:
+        """Iterate over all error descriptions, as str."""
+        if self.https:
+            yield "must use https"
+        if self.no_credentials:
+            yield "must not contain basic credentials"
+        if self.no_port:
+            yield "no custom port number allowed"
+        if self.no_fragment:
+            yield "must not contain a uri fragment"
+        if self.path:
+            yield "must include a path other than /"
+
+    def __str__(self) -> str:
+        all_errors = ", ".join(self.errors())
+        return f"Invalid URI: {all_errors}"
 
 
 def validate_endpoint_uri(
@@ -33,11 +65,7 @@ def validate_endpoint_uri(
     - that no fragment is included
     - that a path is present
 
-    Those checks can be individually disabled using the parameters
-
-    - `https`
-    - `no_fragment`
-    - `path`
+    Those checks can be individually disabled by using the parameters.
 
     Args:
         uri: the uri
@@ -55,20 +83,21 @@ def validate_endpoint_uri(
 
     """
     url = furl(uri)
-    msg: list[str] = []
-    if https and url.scheme != "https":
-        msg.append("url must use https")
-    if no_port and url.port != 443:  # noqa: PLR2004
-        msg.append("no custom port number allowed")
-    if no_credentials and url.username or url.password:
-        msg.append("no username or password are allowed")
-    if no_fragment and url.fragment:
-        msg.append("url must not contain a fragment")
-    if path and (not url.path or url.path == "/"):
-        msg.append("url must include a path")
+    if https and url.scheme == "https":
+        https = False
+    if no_port and url.port == 443:  # noqa: PLR2004
+        no_port = False
+    if no_credentials and not url.username and not url.password:
+        no_credentials = False
+    if no_fragment and not url.fragment:
+        no_fragment = False
+    if path and url.path and url.path != "/":
+        path = False
 
-    if msg:
-        raise ValueError(", ".join(msg))
+    if https or no_port or no_credentials or no_fragment or path:
+        raise InvalidUri(
+            uri, https=https, no_port=no_port, no_credentials=no_credentials, no_fragment=no_fragment, path=path
+        )
 
     return uri
 

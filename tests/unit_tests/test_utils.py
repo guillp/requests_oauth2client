@@ -4,21 +4,27 @@ from datetime import datetime, timezone
 
 import pytest
 
-from requests_oauth2client.utils import accepts_expires_in, validate_endpoint_uri
+from requests_oauth2client import InvalidUri, validate_endpoint_uri
+from requests_oauth2client.utils import accepts_expires_in
 
 
 def test_validate_uri() -> None:
     validate_endpoint_uri("https://myas.local/token")
-    with pytest.raises(ValueError, match="https"):
+    with pytest.raises(ValueError, match="https") as exc:
         validate_endpoint_uri("http://myas.local/token")
-    with pytest.raises(ValueError, match="path"):
+    assert exc.type is InvalidUri
+    with pytest.raises(ValueError, match="path") as exc:
         validate_endpoint_uri("https://myas.local")
-    with pytest.raises(ValueError, match="fragment"):
+    assert exc.type is InvalidUri
+    with pytest.raises(ValueError, match="fragment") as exc:
         validate_endpoint_uri("https://myas.local/token#foo")
-    with pytest.raises(ValueError, match="username"):
+    assert exc.type is InvalidUri
+    with pytest.raises(ValueError, match="credentials") as exc:
         validate_endpoint_uri("https://user:passwd@myas.local/token")
-    with pytest.raises(ValueError, match="port"):
+    assert exc.type is InvalidUri
+    with pytest.raises(ValueError, match="port") as exc:
         validate_endpoint_uri("https://myas.local:1234/token")
+    assert exc.type is InvalidUri
 
 
 @pytest.mark.parametrize("expires_in", [10, "10"])

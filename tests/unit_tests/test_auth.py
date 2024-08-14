@@ -7,9 +7,11 @@ import requests
 from requests_oauth2client import (
     BearerToken,
     ExpiredAccessToken,
+    NonRenewableTokenError,
     OAuth2AccessTokenAuth,
     OAuth2AuthorizationCodeAuth,
     OAuth2Client,
+    OAuth2ClientCredentialsAuth,
     OAuth2DeviceCodeAuth,
     OAuth2ResourceOwnerPasswordAuth,
 )
@@ -57,6 +59,9 @@ def test_access_token_auth(
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     auth = OAuth2AccessTokenAuth(client, token)
 
+    assert auth.client is client
+    assert auth.token is token
+
     requests_mock.post(target_uri)
     requests_mock.post(
         token_endpoint,
@@ -87,6 +92,60 @@ def test_access_token_auth(
     assert auth.token.access_token == new_access_token
     assert auth.token.refresh_token == new_refresh_token
 
+    assert OAuth2AccessTokenAuth(client, token=access_token).token == BearerToken(access_token)
+
+
+def test_client_credentials_auth(
+    requests_mock: RequestsMocker,
+    target_api: str,
+    token_endpoint: str,
+    client_id: str,
+    client_secret: str,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    client = OAuth2Client(token_endpoint, (client_id, client_secret))
+    auth = OAuth2ClientCredentialsAuth(client)
+
+    assert auth.client is client
+    assert auth.token is None
+
+    requests_mock.post(target_api)
+    requests_mock.post(
+        token_endpoint,
+        json={
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "expires_in": 3600,
+            "token_type": "Bearer",
+        },
+    )
+    requests.post(target_api, auth=auth)
+
+    assert len(requests_mock.request_history) == 2
+    cc_request = requests_mock.request_history[0]
+    api_request = requests_mock.request_history[-1]
+
+    assert cc_request.url == token_endpoint
+    refresh_params = parse_qs(cc_request.body)
+    assert refresh_params["grant_type"] == ["client_credentials"]
+    assert refresh_params["client_id"] == [client_id]
+    assert refresh_params["client_secret"] == [client_secret]
+
+    assert api_request.url == target_api
+    assert api_request.headers.get("Authorization") == f"Bearer {access_token}"
+
+    assert auth.token is not None
+    assert auth.token.access_token == access_token
+    assert auth.token.refresh_token == refresh_token
+
+    requests_mock.reset_mock()
+    requests.post(target_api, auth=auth)
+    assert len(requests_mock.request_history) == 1
+
+    assert OAuth2ClientCredentialsAuth(client, token=access_token).token == BearerToken(access_token)
+    assert OAuth2ClientCredentialsAuth(client, token=BearerToken(access_token)).token == BearerToken(access_token)
+
 
 def test_authorization_code_auth(
     requests_mock: RequestsMocker,
@@ -100,6 +159,10 @@ def test_authorization_code_auth(
 ) -> None:
     client = OAuth2Client(token_endpoint, (client_id, client_secret))
     auth = OAuth2AuthorizationCodeAuth(client, authorization_code)
+
+    assert auth.client is client
+    assert auth.code is authorization_code
+    assert auth.token is None
 
     requests_mock.post(target_api)
     requests_mock.post(
@@ -135,6 +198,10 @@ def test_authorization_code_auth(
     requests.post(target_api, auth=auth)
     assert len(requests_mock.request_history) == 1
 
+    assert OAuth2AuthorizationCodeAuth(client, code=authorization_code, token=access_token).token == BearerToken(
+        access_token
+    )
+
 
 def test_ropc_auth(
     requests_mock: RequestsMocker,
@@ -154,6 +221,11 @@ def test_ropc_auth(
     password = "T0t@lly_5eCur3!"
 
     auth = OAuth2ResourceOwnerPasswordAuth(client=oauth2client, username=username, password=password)
+
+    assert auth.client is oauth2client
+    assert auth.username is username
+    assert auth.password is password
+    assert auth.token is None
 
     requests_mock.post(
         token_endpoint,
@@ -188,6 +260,10 @@ def test_ropc_auth(
     requests.post(target_api, auth=auth)
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.url == target_api
+
+    assert OAuth2ResourceOwnerPasswordAuth(
+        oauth2client, username=username, password=password, token=access_token
+    ).token == BearerToken(access_token)
 
 
 def test_device_code_auth(
@@ -235,6 +311,10 @@ def test_device_code_auth(
     requests_mock.post(target_api)
 
     auth = OAuth2DeviceCodeAuth(client=oauth2client, device_code=da_resp.device_code, interval=1, expires_in=60)
+    assert auth.client is oauth2client
+    assert auth.device_code is da_resp.device_code
+    assert auth.token is None
+
     assert requests.post(target_api, auth=auth)
     assert len(requests_mock.request_history) == 2
     device_code_request = requests_mock.request_history[0]
@@ -258,3 +338,11 @@ def test_device_code_auth(
     requests.post(target_api, auth=auth)
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.url == target_api
+
+    auth.forget_token()
+    with pytest.raises(NonRenewableTokenError):
+        requests.post(target_api, auth=auth)
+
+    assert OAuth2DeviceCodeAuth(oauth2client, device_code=device_code, token=access_token).token == BearerToken(
+        access_token
+    )

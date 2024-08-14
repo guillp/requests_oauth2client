@@ -12,12 +12,14 @@ from requests_oauth2client import (
     AuthorizationRequestSerializer,
     AuthorizationResponse,
     AuthorizationResponseError,
+    InvalidMaxAgeParam,
     MismatchingIssuer,
     MismatchingState,
     MissingAuthCode,
     MissingIssuer,
     RequestParameterAuthorizationRequest,
     RequestUriParameterAuthorizationRequest,
+    UnsupportedResponseTypeParam,
 )
 
 if TYPE_CHECKING:
@@ -231,7 +233,7 @@ def test_issuer_parameter() -> None:
 
 
 def test_invalid_max_age() -> None:
-    with pytest.raises(ValueError, match="cannot be negative"):
+    with pytest.raises(ValueError, match="Invalid 'max_age' parameter") as exc:
         AuthorizationRequest(
             "https://as.local/authorize",
             client_id="foo",
@@ -239,6 +241,7 @@ def test_invalid_max_age() -> None:
             scope="openid",
             max_age=-1,
         )
+    assert exc.type is InvalidMaxAgeParam
 
 
 def test_acr_values() -> None:
@@ -250,6 +253,16 @@ def test_acr_values() -> None:
             redirect_uri="http://localhost/local",
             scope="openid",
             acr_values=list(acr_values),
+        ).acr_values
+        == acr_values
+    )
+    assert (
+        AuthorizationResponse(
+            code="code",
+            client_id="foo",
+            redirect_uri="http://localhost/local",
+            scope="openid",
+            acr_values=" ".join(acr_values),
         ).acr_values
         == acr_values
     )
@@ -293,3 +306,8 @@ def test_request_as_dict() -> None:
         "max_age": 0,
         "customattr": "customvalue",
     }
+
+
+def test_unsupported_response_type() -> None:
+    with pytest.raises(UnsupportedResponseTypeParam):
+        AuthorizationRequest("https://as.local/authorize", client_id="client_id", response_type="token")

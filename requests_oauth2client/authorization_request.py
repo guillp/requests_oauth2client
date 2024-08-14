@@ -22,12 +22,29 @@ from .exceptions import (
     MissingAuthCode,
     MissingIssuer,
     SessionSelectionRequired,
-    UnsupportedCodeChallengeMethod,
 )
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
     from datetime import datetime
+
+
+class UnsupportedCodeChallengeMethod(ValueError):
+    """Raised when an unsupported code_challenge_method is provided."""
+
+
+class InvalidCodeVerifierParam(ValueError):
+    """Raised when an invalid code_verifier is supplied."""
+
+    def __init__(self, code_verifier: str) -> None:
+        super().__init__("""\
+Invalid 'code_verifier'. It must be a 43 to 128 characters long string, with:
+- lowercase letters
+- uppercase letters
+- digits
+- underscore, dash, tilde, or dot (_-~.)
+""")
+        self.code_verifier = code_verifier
 
 
 class PkceUtils:
@@ -66,11 +83,7 @@ class PkceUtils:
             verifier = verifier.decode()
 
         if not cls.code_verifier_re.match(verifier):
-            msg = f"Invalid code verifier, does not match {cls.code_verifier_re}"
-            raise ValueError(
-                msg,
-                verifier,
-            )
+            raise InvalidCodeVerifierParam(verifier)
 
         if method == "S256":
             return BinaPy(verifier).to("sha256").to("b64u").ascii()
@@ -115,6 +128,34 @@ class CodeChallengeMethods(str, Enum):
 
     plain = "plain"
     S256 = "S256"
+
+
+class UnsupportedResponseTypeParam(ValueError):
+    """Raised when an unsupported response_type is passed as parameter."""
+
+    def __init__(self, response_type: str) -> None:
+        super().__init__("""The only supported response type is 'code'.""", response_type)
+
+
+class MissingIssuerParam(ValueError):
+    """Raised when the 'issuer' parameter is required but not provided."""
+
+    def __init__(self) -> None:
+        super().__init__("""\
+When 'authorization_response_iss_parameter_supported' is `True`, you must
+provide the expected `issuer` as parameter.
+""")
+
+
+class InvalidMaxAgeParam(ValueError):
+    """Raised when an invalid 'max_age' parameter is provided."""
+
+    def __init__(self) -> None:
+        super().__init__("""\
+Invalid 'max_age' parameter. It must be a positive number of seconds.
+This specifies the allowable elapsed time in seconds since the last time
+the End-User was actively authenticated by the OP.
+""")
 
 
 @frozen(init=False)
@@ -323,12 +364,11 @@ class AuthorizationRequest:
         authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
     ) -> None:
+        if response_type != "code":
+            raise UnsupportedResponseTypeParam(response_type)
+
         if authorization_response_iss_parameter_supported and not issuer:
-            msg = (
-                "When 'authorization_response_iss_parameter_supported' is `True`, you must"
-                " provide the expected `issuer` as parameter."
-            )
-            raise ValueError(msg)
+            raise MissingIssuerParam
 
         if state is ...:
             state = self.generate_state()
@@ -350,8 +390,7 @@ class AuthorizationRequest:
             acr_values = tuple(acr_values.split()) if isinstance(acr_values, str) else tuple(acr_values)
 
         if max_age is not None and max_age < 0:
-            msg = "The `max_age` parameter is a number of seconds and cannot be negative."
-            raise ValueError(msg)
+            raise InvalidMaxAgeParam
 
         if "code_challenge" in kwargs:
             msg = (
@@ -463,12 +502,12 @@ class AuthorizationRequest:
         if error:
             return self.on_response_error(response)
 
-        if "code" in self.response_type:
+        if self.response_type == "code":
             code: str = response_url.args.get("code")
             if code is None:
                 raise MissingAuthCode
         else:
-            raise NotImplementedError
+            raise UnsupportedResponseTypeParam(self.response_type)  # pragma: no cover
 
         return AuthorizationResponse(
             code_verifier=self.code_verifier,

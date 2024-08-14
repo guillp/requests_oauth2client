@@ -78,7 +78,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.coverage.run]
 source = ["requests_oauth2client"]
 
-[tool.coveragereport]
+[tool.coverage.report]
 exclude_also = [
     "def __repr__",
     "if self.debug:",

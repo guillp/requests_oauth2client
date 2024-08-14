@@ -4,7 +4,7 @@ import pytest
 import requests
 from requests import HTTPError
 
-from requests_oauth2client import ApiClient, BearerToken
+from requests_oauth2client import ApiClient, BearerToken, InvalidBoolFieldsParam, InvalidPathParam
 from tests.conftest import RequestsMocker, RequestValidatorType, join_url
 
 
@@ -162,8 +162,9 @@ def test_url_as_iterable(requests_mock: RequestsMocker, target_api: str) -> None
         def __str__(self) -> str:
             raise ValueError
 
-    with pytest.raises(TypeError, match="iterable of string-able objects"):
+    with pytest.raises(TypeError, match="Unexpected path") as exc:
         api.get(("resource", NonStringableObject()))  # type: ignore[arg-type]
+    assert exc.type is InvalidPathParam
 
 
 def test_raise_for_status(requests_mock: RequestsMocker, target_api: str) -> None:
@@ -194,8 +195,9 @@ def test_other_api(
 
 def test_url_type(target_api: str) -> None:
     api = ApiClient(target_api)
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as exc:
         api.get(True)  # type: ignore[arg-type]
+    assert exc.type is InvalidPathParam
 
 
 def test_additional_kwargs(target_api: str) -> None:
@@ -286,8 +288,9 @@ def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
     assert requests_mock.last_request.text == "foo=bar&true=1&false=0"
 
-    with pytest.raises(ValueError, match="2 value tuple"):
+    with pytest.raises(ValueError, match="Invalid value for 'bool_fields'") as exc:
         ApiClient(target_api).get(bool_fields=(1, 2, 3))
+    assert exc.type is InvalidBoolFieldsParam
 
 
 def test_getattr(requests_mock: RequestsMocker, target_api: str) -> None:
@@ -333,9 +336,3 @@ def test_contextmanager(requests_mock: RequestsMocker, target_api: str) -> None:
         api.post()
 
     assert requests_mock.last_request is not None
-
-
-def test_invalid_url() -> None:
-    api = ApiClient(None)  # type: ignore[arg-type]
-    with pytest.raises(ValueError, match="Unable to determine an absolute url."):
-        api.get()
