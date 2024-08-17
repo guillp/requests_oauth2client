@@ -18,7 +18,7 @@ from requests_oauth2client import (
 from tests.conftest import RequestsMocker
 
 
-@pytest.fixture()
+@pytest.fixture
 def minutes_ago() -> datetime:
     return datetime.now(tz=timezone.utc) - timedelta(minutes=3)
 

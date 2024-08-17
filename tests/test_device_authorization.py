@@ -21,7 +21,7 @@ def device_authorization_endpoint(request: FixtureRequest, issuer: str) -> str:
     return join_url(issuer, request.param)
 
 
-@pytest.mark.slow()
+@pytest.mark.slow
 def test_device_authorization(
     requests_mock: Mocker,
     device_authorization_endpoint: str,

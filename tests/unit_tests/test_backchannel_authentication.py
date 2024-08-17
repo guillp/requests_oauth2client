@@ -52,7 +52,7 @@ def test_backchannel_authentication_response_defaults(auth_req_id: str) -> None:
     assert bca_resp.expires_in is None
 
 
-@pytest.fixture()
+@pytest.fixture
 def bca_client(
     token_endpoint: str,
     backchannel_authentication_endpoint: str,

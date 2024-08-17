@@ -368,7 +368,7 @@ def code_challenge_method(request: FixtureRequest) -> str | None:
 
 
 @pytest.fixture(scope="session")
-@pytest.mark.slow()
+@pytest.mark.slow
 def authorization_request(  # noqa: C901
     authorization_endpoint: str,
     client_id: str,
@@ -493,7 +493,7 @@ def authorization_request(  # noqa: C901
     return azr
 
 
-@pytest.fixture()
+@pytest.fixture
 def authorization_response_uri(
     authorization_request: AuthorizationRequest,
     redirect_uri: str,
@@ -509,7 +509,7 @@ def authorization_response_uri(
     return auth_url
 
 
-@pytest.fixture()
+@pytest.fixture
 def authorization_response(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,

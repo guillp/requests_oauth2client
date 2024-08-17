@@ -91,7 +91,7 @@ def test_device_authorization_response_no_expiration(
     assert response.interval == 10
 
 
-@pytest.fixture()
+@pytest.fixture
 def device_authorization_client(
     token_endpoint: str,
     device_authorization_endpoint: str,
