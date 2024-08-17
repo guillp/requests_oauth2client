@@ -36,6 +36,7 @@ from .backchannel_authentication import (
     BackChannelAuthenticationResponse,
 )
 from .client import (
+    Endpoints,
     GrantTypes,
     OAuth2Client,
 )
@@ -149,6 +150,7 @@ __all__ = [
     "DeviceAuthorizationResponse",
     "EncryptionAlgs",
     "EndpointError",
+    "Endpoints",
     "ExpiredAccessToken",
     "ExpiredIdToken",
     "ExpiredToken",

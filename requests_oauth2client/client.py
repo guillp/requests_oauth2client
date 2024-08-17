@@ -173,6 +173,24 @@ class InvalidDiscoveryDocument(ValueError):
         self.discovery_document = discovery_document
 
 
+class Endpoints(str, Enum):
+    """All standardised OAuth 2.0 and extensions endpoints.
+
+    If an endpoint is not mentioned here, then its usage is not supported by OAuth2Client.
+
+    """
+
+    TOKEN = "token_endpoint"
+    AUTHORIZATION = "authorization_endpoint"
+    BACKCHANNEL_AUTHENTICATION = "backchannel_authentication_endpoint"
+    DEVICE_AUTHORIZATION = "device_authorization_endpoint"
+    INSTROSPECTION = "introspection_endpoint"
+    REVOCATION = "revocation_endpoint"
+    PUSHED_AUTHORIZATION_REQUEST = "pushed_authorization_request_endpoint"
+    JWKS = "jwks_uri"
+    USER_INFO = "userinfo_endpoint"
+
+
 class MissingEndpointUri(AttributeError):
     """Raised when a required endpoint uri is not known."""
 
@@ -519,7 +537,7 @@ class OAuth2Client:
 
         """
         return self._request(
-            "token_endpoint",
+            Endpoints.TOKEN,
             auth=self.auth,
             data=data,
             timeout=timeout,
@@ -917,7 +935,7 @@ class OAuth2Client:
         """
         requests_kwargs = requests_kwargs or {}
         return self._request(
-            "pushed_authorization_request_endpoint",
+            Endpoints.PUSHED_AUTHORIZATION_REQUEST,
             data=authorization_request.args,
             auth=self.auth,
             on_success=self.parse_pushed_authorization_response,
@@ -994,7 +1012,7 @@ class OAuth2Client:
         if isinstance(access_token, str):
             access_token = BearerToken(access_token)
         return self._request(
-            "userinfo_endpoint",
+            Endpoints.USER_INFO,
             auth=access_token,
             on_success=self.parse_userinfo_response,
             on_failure=self.on_userinfo_error,
@@ -1179,7 +1197,7 @@ An IdToken or a string representation of it is expected.
             data["token_type_hint"] = token_type_hint
 
         return self._request(
-            "revocation_endpoint",
+            Endpoints.REVOCATION,
             data=data,
             auth=self.auth,
             on_success=lambda _: True,
@@ -1265,7 +1283,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             data["token_type_hint"] = token_type_hint
 
         return self._request(
-            "introspection_endpoint",
+            Endpoints.INSTROSPECTION,
             data=data,
             auth=self.auth,
             on_success=self.parse_introspection_response,
@@ -1393,7 +1411,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             data = {"request": str(Jwt.sign(data, key=private_jwk, alg=alg))}
 
         return self._request(
-            "backchannel_authentication_endpoint",
+            Endpoints.BACKCHANNEL_AUTHENTICATION,
             data=data,
             auth=self.auth,
             on_success=self.parse_backchannel_authentication_response,
@@ -1467,7 +1485,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         requests_kwargs = requests_kwargs or {}
 
         return self._request(
-            "device_authorization_endpoint",
+            Endpoints.DEVICE_AUTHORIZATION,
             data=data,
             auth=self.auth,
             on_success=self.parse_device_authorization_response,
@@ -1531,7 +1549,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         requests_kwargs = requests_kwargs or {}
 
         jwks = self._request(
-            "jwks_uri",
+            Endpoints.JWKS,
             auth=None,
             method="GET",
             on_success=lambda resp: resp.json(),
@@ -1660,15 +1678,15 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         if issuer is None:
             issuer = discovery.get("issuer")
 
-        token_endpoint = discovery.get("token_endpoint")
+        token_endpoint = discovery.get(Endpoints.TOKEN)
         if token_endpoint is None:
             msg = "token_endpoint not found in that discovery document"
             raise InvalidDiscoveryDocument(msg, discovery)
-        authorization_endpoint = discovery.get("authorization_endpoint")
-        revocation_endpoint = discovery.get("revocation_endpoint")
-        introspection_endpoint = discovery.get("introspection_endpoint")
-        userinfo_endpoint = discovery.get("userinfo_endpoint")
-        jwks_uri = discovery.get("jwks_uri")
+        authorization_endpoint = discovery.get(Endpoints.AUTHORIZATION)
+        revocation_endpoint = discovery.get(Endpoints.REVOCATION)
+        introspection_endpoint = discovery.get(Endpoints.INSTROSPECTION)
+        userinfo_endpoint = discovery.get(Endpoints.USER_INFO)
+        jwks_uri = discovery.get(Endpoints.JWKS)
         if jwks_uri is not None:
             validate_endpoint_uri(jwks_uri, https=https)
         authorization_response_iss_parameter_supported = discovery.get(
