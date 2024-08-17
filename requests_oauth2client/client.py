@@ -178,6 +178,19 @@ class MissingEndpointUri(AttributeError):
         super().__init__(f"No '{endpoint}' defined for this client.")
 
 
+class GrantTypes(str, Enum):
+    """An enum of standardized `grant_type` values."""
+
+    CLIENT_CREDENTIALS = "client_credentials"
+    AUTHORIZATION_CODE = "authorization_code"
+    REFRESH_TOKEN = "refresh_token"
+    RESOURCE_OWNER_PASSWORD = "password"
+    TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
+    JWT_BEARER = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+    CLIENT_INITIATED_BACKCHANNEL_AUTHENTICATION = "urn:openid:params:grant-type:ciba"
+    DEVICE_CODE = "urn:ietf:params:oauth:grant-type:device_code"
+
+
 @frozen(init=False)
 class OAuth2Client:
     """An OAuth 2.x Client, that can send requests to an OAuth 2.x Authorization Server.
@@ -588,7 +601,7 @@ class OAuth2Client:
             except Exception as exc:
                 raise InvalidScopeParam(scope) from exc
 
-        data = dict(grant_type=GrantType.CLIENT_CREDENTIALS, scope=scope, **token_kwargs)
+        data = dict(grant_type=GrantTypes.CLIENT_CREDENTIALS, scope=scope, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
     def authorization_code(
@@ -620,7 +633,7 @@ class OAuth2Client:
 
         requests_kwargs = requests_kwargs or {}
 
-        data = dict(grant_type=GrantType.AUTHORIZATION_CODE, code=code, **token_kwargs)
+        data = dict(grant_type=GrantTypes.AUTHORIZATION_CODE, code=code, **token_kwargs)
         token = self.token_request(data, **requests_kwargs)
         if validate and token.id_token and isinstance(azr, AuthorizationResponse):
             return token.validate_id_token(self, azr)
@@ -651,7 +664,7 @@ class OAuth2Client:
             refresh_token = refresh_token.refresh_token
 
         requests_kwargs = requests_kwargs or {}
-        data = dict(grant_type=GrantType.REFRESH_TOKEN, refresh_token=refresh_token, **token_kwargs)
+        data = dict(grant_type=GrantTypes.REFRESH_TOKEN, refresh_token=refresh_token, **token_kwargs)
         return self.token_request(data, **requests_kwargs)
 
     def device_code(
@@ -681,7 +694,7 @@ class OAuth2Client:
 
         requests_kwargs = requests_kwargs or {}
         data = dict(
-            grant_type=GrantType.DEVICE_CODE,
+            grant_type=GrantTypes.DEVICE_CODE,
             device_code=device_code,
             **token_kwargs,
         )
@@ -713,7 +726,7 @@ class OAuth2Client:
 
         requests_kwargs = requests_kwargs or {}
         data = dict(
-            grant_type=GrantType.CLIENT_INITIATED_BACKCHANNEL_AUTHENTICATION,
+            grant_type=GrantTypes.CLIENT_INITIATED_BACKCHANNEL_AUTHENTICATION,
             auth_req_id=auth_req_id,
             **token_kwargs,
         )
@@ -762,7 +775,7 @@ class OAuth2Client:
                 raise UnknownActorTokenType(actor_token, actor_token_type) from exc
 
         data = dict(
-            grant_type=GrantType.TOKEN_EXCHANGE,
+            grant_type=GrantTypes.TOKEN_EXCHANGE,
             subject_token=subject_token,
             subject_token_type=subject_token_type,
             actor_token=actor_token,
@@ -797,7 +810,7 @@ class OAuth2Client:
             assertion = Jwt(assertion)
 
         data = dict(
-            grant_type=GrantType.JWT_BEARER,
+            grant_type=GrantTypes.JWT_BEARER,
             assertion=assertion,
             **token_kwargs,
         )
@@ -827,7 +840,7 @@ class OAuth2Client:
         """
         requests_kwargs = requests_kwargs or {}
         data = dict(
-            grant_type=GrantType.RESOURCE_OWNER_PASSWORD,
+            grant_type=GrantTypes.RESOURCE_OWNER_PASSWORD,
             username=username,
             password=password,
             **token_kwargs,
@@ -1704,16 +1717,3 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             raise MissingEndpointUri(endpoint)
 
         return str(url)
-
-
-class GrantType(str, Enum):
-    """An enum of standardized `grant_type` values."""
-
-    CLIENT_CREDENTIALS = "client_credentials"
-    AUTHORIZATION_CODE = "authorization_code"
-    REFRESH_TOKEN = "refresh_token"
-    RESOURCE_OWNER_PASSWORD = "password"
-    TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
-    JWT_BEARER = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-    CLIENT_INITIATED_BACKCHANNEL_AUTHENTICATION = "urn:openid:params:grant-type:ciba"
-    DEVICE_CODE = "urn:ietf:params:oauth:grant-type:device_code"

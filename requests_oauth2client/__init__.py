@@ -35,7 +35,7 @@ from .backchannel_authentication import (
     BackChannelAuthenticationResponse,
 )
 from .client import (
-    GrantType,
+    GrantTypes,
     OAuth2Client,
 )
 from .client_authentication import (
@@ -151,7 +151,7 @@ __all__ = [
     "ExpiredAccessToken",
     "ExpiredIdToken",
     "ExpiredToken",
-    "GrantType",
+    "GrantTypes",
     "IdToken",
     "InteractionRequired",
     "IntrospectionError",
