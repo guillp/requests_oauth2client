@@ -82,7 +82,7 @@ class PkceUtils:
 
     """
 
-    code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
+    code_verifier_pattern = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
     """A regex that matches valid code verifiers."""
 
     @classmethod
@@ -106,11 +106,15 @@ class PkceUtils:
         Returns:
             a `code_challenge` derived from the given verifier
 
+        Raises:
+            InvalidCodeVerifierParam: if the `verifier` does not match `code_verifier_pattern`
+            UnsupportedCodeChallengeMethod: if the method is not supported
+
         """
         if isinstance(verifier, bytes):
             verifier = verifier.decode()
 
-        if not cls.code_verifier_re.match(verifier):
+        if not cls.code_verifier_pattern.match(verifier):
             raise InvalidCodeVerifierParam(verifier)
 
         if method == CodeChallengeMethods.S256:
@@ -148,7 +152,10 @@ class PkceUtils:
             `True` if verifier is valid, or `False` otherwise
 
         """
-        return cls.code_verifier_re.match(verifier) is not None and cls.derive_challenge(verifier, method) == challenge
+        return (
+            cls.code_verifier_pattern.match(verifier) is not None
+            and cls.derive_challenge(verifier, method) == challenge
+        )
 
 
 class UnsupportedResponseTypeParam(ValueError):
