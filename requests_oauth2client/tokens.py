@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
@@ -191,7 +191,7 @@ class ExpiredIdToken(InvalidIdToken):
     def __init__(self, token: TokenResponse, id_token: IdToken) -> None:
         super().__init__("token is expired", token, id_token)
         self.received = id_token.expires_at
-        self.expected = datetime.now(tz=UTC)
+        self.expected = datetime.now(tz=timezone.utc)
 
 
 class TokenResponse:
