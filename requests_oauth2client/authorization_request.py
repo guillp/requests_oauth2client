@@ -330,6 +330,12 @@ class AuthorizationRequest:
         print(azr)
         ```
 
+    Raises:
+        InvalidMaxAgeParam: if the `max_age` parameter is invalid.
+        MissingIssuerParam: if `authorization_response_iss_parameter_supported` is set to `True`
+            but the `issuer` parameter is not provided.
+        UnsupportedResponseTypeParam: if `response_type` is not supported.
+
     """
 
     authorization_endpoint: str
@@ -350,7 +356,7 @@ class AuthorizationRequest:
     authorization_response_iss_parameter_supported: bool = False
     issuer: str | None = None
 
-    exception_classes: ClassVar[dict[str, type[Exception]]] = {
+    exception_classes: ClassVar[dict[str, type[AuthorizationResponseError]]] = {
         "interaction_required": InteractionRequired,
         "login_required": LoginRequired,
         "session_selection_required": SessionSelectionRequired,
@@ -491,12 +497,15 @@ class AuthorizationRequest:
             the extracted code, if all checks are successful
 
         Raises:
+            MissingAuthCode: if the `code` is missing in the response
+            MissingIssuer: if Server Issuer verification is active and the response does
+                not contain an `iss`.
             MismatchingIssuer: if the 'iss' received from the response does not match the
                 expected value.
             MismatchingState: if the response `state` does not match the expected value.
             OAuth2Error: if the response includes an error.
             MissingAuthCode: if the response does not contain a `code`.
-            NotImplementedError: if response_type anything else than 'code'.
+            UnsupportedResponseTypeParam: if response_type anything else than 'code'.
 
         """
         try:
@@ -508,16 +517,16 @@ class AuthorizationRequest:
         received_issuer = response_url.args.get("iss")
         if self.authorization_response_iss_parameter_supported or received_issuer:
             if received_issuer is None:
-                raise MissingIssuer
+                raise MissingIssuer(self, response)
             if self.issuer and received_issuer != self.issuer:
-                raise MismatchingIssuer(self.issuer, received_issuer)
+                raise MismatchingIssuer(self.issuer, received_issuer, self, response)
 
         # validate state
         requested_state = self.state
         if requested_state:
             received_state = response_url.args.get("state")
             if requested_state != received_state:
-                raise MismatchingState(requested_state, received_state)
+                raise MismatchingState(requested_state, received_state, self, response)
 
         error = response_url.args.get("error")
         if error:
@@ -526,7 +535,7 @@ class AuthorizationRequest:
         if self.response_type == ResponseTypes.CODE:
             code: str = response_url.args.get("code")
             if code is None:
-                raise MissingAuthCode
+                raise MissingAuthCode(self, response)
         else:
             raise UnsupportedResponseTypeParam(self.response_type)  # pragma: no cover
 
@@ -691,13 +700,18 @@ class AuthorizationRequest:
             may return a default code that will be returned by `validate_callback`. But this method
             will most likely raise exceptions instead.
 
+        Raises:
+            AuthorizationResponseError: if the response contains an `error`. The raised exception may be a subclass
+
         """
         response_url = furl(response)
         error = response_url.args.get("error")
         error_description = response_url.args.get("error_description")
         error_uri = response_url.args.get("error_uri")
         exception_class = self.exception_classes.get(error, AuthorizationResponseError)
-        raise exception_class(error, error_description, error_uri)
+        raise exception_class(
+            request=self, response=response, error=error, description=error_description, uri=error_uri
+        )
 
     @property
     def furl(self) -> furl:

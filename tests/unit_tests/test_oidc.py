@@ -12,11 +12,11 @@ from requests_oauth2client import (
     IdToken,
     InvalidIdToken,
     MismatchingAcr,
-    MismatchingAudience,
-    MismatchingAzp,
     MismatchingIdTokenAlg,
-    MismatchingIssuer,
-    MismatchingNonce,
+    MismatchingIdTokenAudience,
+    MismatchingIdTokenAzp,
+    MismatchingIdTokenIssuer,
+    MismatchingIdTokenNonce,
     MissingIdToken,
     OAuth2Client,
 )
@@ -122,10 +122,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         )
 
     with pytest.raises(InvalidIdToken, match="token is neither a JWT or a JWE"):
-        BearerToken(access_token="an_access_token", expires_in=60, id_token="foo").validate_id_token(
-            client=OAuth2Client(token_endpoint, client_id="client_id"),
-            azr=AuthorizationResponse(code="code"),
-        )
+        BearerToken(access_token="an_access_token", expires_in=60, id_token="foo")
 
     sig_jwk = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
     enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
@@ -183,13 +180,13 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code"),
         )
 
-    with pytest.raises(MismatchingIssuer):
+    with pytest.raises(MismatchingIdTokenIssuer):
         BearerToken(access_token="an_access_token", id_token=Jwt.sign(claims, sig_jwk).value).validate_id_token(
             client=OAuth2Client(token_endpoint, client_id=client_id),
             azr=AuthorizationResponse(code="code", issuer="https://a.different.issuer"),
         )
 
-    with pytest.raises(MismatchingAudience):
+    with pytest.raises(MismatchingIdTokenAudience):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -206,7 +203,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(MismatchingAzp):
+    with pytest.raises(MismatchingIdTokenAzp):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -242,7 +239,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(MismatchingNonce):
+    with pytest.raises(MismatchingIdTokenNonce):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(

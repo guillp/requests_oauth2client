@@ -28,6 +28,7 @@ from requests_oauth2client import (
     ServerError,
     UnauthorizedClient,
     UnknownIntrospectionError,
+    UnsupportedResponseTypeParam,
     oidc_discovery_document_url,
 )
 
@@ -1382,15 +1383,9 @@ def test_authorization_request(oauth2client: OAuth2Client, authorization_endpoin
     assert auth_req.response_type == "code"
     assert auth_req.scope == tuple(scope.split())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as exc:
         oauth2client.authorization_request(response_type="token")
-
-    with pytest.raises(AttributeError, match="No 'redirect_uri'"):
-        OAuth2Client(
-            auth=("client_id", "client_secret"),
-            token_endpoint="https://url.to.the/token_endpoint",
-            authorization_endpoint="https://url.to.the/authorization_endpoint",
-        ).authorization_request()
+    assert exc.type is UnsupportedResponseTypeParam
 
 
 def test_custom_token_type(requests_mock: RequestsMocker, token_endpoint: str) -> None:

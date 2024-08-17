@@ -28,6 +28,7 @@ from .exceptions import (
     AuthorizationPending,
     BackChannelAuthenticationError,
     DeviceAuthorizationError,
+    EndpointError,
     ExpiredToken,
     IntrospectionError,
     InvalidBackChannelAuthenticationResponse,
@@ -60,7 +61,7 @@ class InvalidParam(ValueError):
     """Base class for invalid parameters errors."""
 
 
-class MissingIDTokenEncryptedResponseAlgParam(InvalidParam):
+class MissingIdTokenEncryptedResponseAlgParam(InvalidParam):
     """Raised when an ID Token encryption is required but not provided."""
 
     def __init__(self) -> None:
@@ -130,7 +131,7 @@ class UnknownTokenType(InvalidParam, TypeError):
 
 
 class UnknownSubjectTokenType(UnknownTokenType):
-    """Raised when the type of subject_token cannot be determined automatially."""
+    """Raised when the type of subject_token cannot be determined automatically."""
 
     def __init__(self, subject_token: object, subject_token_type: str | None) -> None:
         super().__init__("subject_token", subject_token, subject_token_type)
@@ -141,16 +142,6 @@ class UnknownActorTokenType(UnknownTokenType):
 
     def __init__(self, actor_token: object, actor_token_type: str | None) -> None:
         super().__init__("actor_token", token=actor_token, token_type=actor_token_type)
-
-
-class MissingRedirectUri(AttributeError):
-    """Raised when a redirect_uri is required but is not configured."""
-
-    def __init__(self) -> None:
-        super().__init__("""\
-No 'redirect_uri' defined for this client. You must either pass a redirect_uri as parameter to this method,
-or include a redirect_uri when initializing your OAuth2Client.
-""")
 
 
 class InvalidBackchannelAuthenticationRequestHintParam(InvalidParam):
@@ -278,6 +269,17 @@ class OAuth2Client:
         client.revoke_access_token(cc_token)
         ```
 
+    Raises:
+        MissingIDTokenEncryptedResponseAlgParam: if an `id_token_decryption_key` is provided
+          but no decryption alg is provided, either:
+          - using `id_token_encrypted_response_alg`,
+          - or in the `alg` parameter of the `Jwk` key
+        MissingIssuerParam: if `authorization_response_iss_parameter_supported` is set to `True`
+          but the `issuer` is not provided.
+        InvalidEndpointUri: if a provided endpoint uri is not considered valid. For the rare cases
+          where those checks must be disabled, you can use `testing=True`.
+        InvalidIssuer: if the `issuer` value is not considered valid.
+
     """
 
     auth: requests.auth.AuthBase = field(converter=client_auth_factory)
@@ -304,7 +306,7 @@ class OAuth2Client:
 
     bearer_token_class: type[BearerToken] = BearerToken
 
-    exception_classes: ClassVar[dict[str, type[Exception]]] = {
+    exception_classes: ClassVar[dict[str, type[EndpointError]]] = {
         "server_error": ServerError,
         "invalid_request": InvalidRequest,
         "invalid_client": InvalidClient,
@@ -373,7 +375,7 @@ class OAuth2Client:
             if id_token_decryption_key.alg:
                 id_token_encrypted_response_alg = id_token_decryption_key.alg
             else:
-                raise MissingIDTokenEncryptedResponseAlgParam
+                raise MissingIdTokenEncryptedResponseAlgParam
 
         if session is None:
             session = requests.Session()
@@ -582,6 +584,10 @@ class OAuth2Client:
             [`BearerToken`][requests_oauth2client.tokens.BearerToken] to implement a default
             behaviour if needed.
 
+        Raises:
+            InvalidTokenResponse: if the error response does not contain an OAuth 2.0 standard
+            error response.
+
         """
         try:
             data = response.json()
@@ -589,9 +595,15 @@ class OAuth2Client:
             error_description = data.get("error_description")
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
-            exception = exception_class(response, error, error_description, error_uri)
+            exception = exception_class(
+                response=response,
+                client=self,
+                error=error,
+                description=error_description,
+                uri=error_uri,
+            )
         except Exception as exc:
-            raise InvalidTokenResponse(response) from exc
+            raise InvalidTokenResponse(response=response, client=self) from exc
         raise exception
 
     def client_credentials(
@@ -611,6 +623,9 @@ class OAuth2Client:
 
         Returns:
             a TokenResponse
+
+        Raises:
+            InvalidScopeParam: if the `scope` parameter is not suitable
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -677,6 +692,10 @@ class OAuth2Client:
         Returns:
             a `BearerToken`
 
+        Raises:
+            MissingRefreshToken: if `refresh_token` is a BearerToken instance but does not
+              contain a `refresh_token`
+
         """
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None or not isinstance(refresh_token.refresh_token, str):
@@ -705,6 +724,10 @@ class OAuth2Client:
 
         Returns:
             a `BearerToken`
+
+        Raises:
+            MissingDeviceCode: if `device_code` is a DeviceAuthorizationResponse but does not
+              contain a `device_code`.
 
         """
         if isinstance(device_code, DeviceAuthorizationResponse):
@@ -737,6 +760,10 @@ class OAuth2Client:
 
         Returns:
             a `BearerToken`
+
+        Raises:
+            MissingAuthRequestId: if `auth_req_id` is a BackChannelAuthenticationResponse but does not contain
+            an `auth_req_id`.
 
         """
         if isinstance(auth_req_id, BackChannelAuthenticationResponse):
@@ -780,6 +807,10 @@ class OAuth2Client:
 
         Returns:
             a `BearerToken` as returned by the Authorization Server.
+
+        Raises:
+            UnknownSubjectTokenType: if the type of `subject_token` cannot be determined automatically.
+            UnknownActorTokenType: if the type of `actor_token` cannot be determined automaticatlly.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -898,8 +929,6 @@ class OAuth2Client:
         authorization_endpoint = self._require_endpoint("authorization_endpoint")
 
         redirect_uri = redirect_uri or self.redirect_uri
-        if not redirect_uri:
-            raise MissingRedirectUri
 
         return AuthorizationRequest(
             authorization_endpoint=authorization_endpoint,
@@ -982,7 +1011,8 @@ class OAuth2Client:
         Raises:
             EndpointError: a subclass of this error depending on the error returned by the AS
             InvalidPushedAuthorizationResponse: if the returned response is not following the
-            specifications UnknownTokenEndpointError: for unknown/unhandled errors
+               specifications
+            UnknownTokenEndpointError: for unknown/unhandled errors
 
         """
         try:
@@ -991,9 +1021,15 @@ class OAuth2Client:
             error_description = data.get("error_description")
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, UnknownTokenEndpointError)
-            exception = exception_class(response, error, error_description, error_uri)
+            exception = exception_class(
+                response=response,
+                client=self,
+                error=error,
+                description=error_description,
+                uri=error_uri,
+            )
         except Exception as exc:
-            raise InvalidPushedAuthorizationResponse(response) from exc
+            raise InvalidPushedAuthorizationResponse(response=response, client=self) from exc
         raise exception
 
     def userinfo(self, access_token: BearerToken | str) -> Any:
@@ -1064,6 +1100,9 @@ class OAuth2Client:
         Returns:
             the token_type as defined in the Token Exchange RFC8693.
 
+        Raises:
+            UnknownTokenType: if the type of token cannot be determined
+
         """
         if not (token_type or token):
             msg = "Cannot determine type of an empty token without a token_type hint"
@@ -1092,9 +1131,9 @@ A BearerToken or an access_token as a `str` is expected.
         if token_type == TokenType.REFRESH_TOKEN:
             if token is not None and isinstance(token, BearerToken) and not token.refresh_token:
                 msg = f"""\
-                The supplied token is of type '{type(token)}' which is inconsistent with token_type '{token_type}'.
-                A BearerToken containing a refresh_token is expected.
-                """
+The supplied BearerToken does not contain a refresh_token, which is inconsistent with token_type '{token_type}'.
+A BearerToken containing a refresh_token is expected.
+"""
                 raise UnknownTokenType(msg, token, token_type)
             return "urn:ietf:params:oauth:token-type:refresh_token"
         if token_type == TokenType.ID_TOKEN:
@@ -1150,6 +1189,10 @@ An IdToken or a string representation of it is expected.
             `True` if the revocation request is successful, `False` if this client has no configured
             revocation endpoint.
 
+        Raises:
+            MissingRefreshToken: when `refresh_token` is a [BearerToken][requests_oauth2client.tokens.BearerToken]
+              but does not contain a `refresh_token`.
+
         """
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None:
@@ -1183,6 +1226,11 @@ An IdToken or a string representation of it is expected.
         Returns:
             `True` if the revocation succeeds, `False` if no revocation endpoint is present or a
             non-standardised error is returned.
+
+        Raises:
+            MissingEndpointUri: if the Revocation Endpoint URI is not configured.
+            MissingRefreshToken: if `token_type_hint` is `"refresh_token"` and `token` is a BearerToken
+              but does not contain a `refresh_token`.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -1218,6 +1266,9 @@ An IdToken or a string representation of it is expected.
             `False` to signal that an error occurred. May raise exceptions instead depending on the
             revocation response.
 
+        Raises:
+            EndpointError: if the response contains a standardised OAuth 2.0 error.
+
         """
         try:
             data = response.json()
@@ -1225,7 +1276,13 @@ An IdToken or a string representation of it is expected.
             error_description = data.get("error_description")
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, RevocationError)
-            exception = exception_class(error, error_description, error_uri)
+            exception = exception_class(
+                response=response,
+                client=self,
+                error=error,
+                description=error_description,
+                uri=error_uri,
+            )
         except Exception:  # noqa: BLE001
             return False
         raise exception
@@ -1261,6 +1318,11 @@ An IdToken or a string representation of it is expected.
 
         Returns:
             the response as returned by the Introspection Endpoint.
+
+        Raises:
+            MissingRefreshToken: if `token_type_hint` is `"refresh_token"` and `token` is a BearerToken
+              but does not contain a `refresh_token`.
+            UnknownTokenType: if `token_type_hint` is neither `None`, `"access_token"` or `"refresh_token"`.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -1322,6 +1384,10 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         Returns:
             usually raises exceptions. A subclass can return a default response instead.
 
+        Raises:
+            EndpointError: (or one of its subclasses) if the response contains a standard OAuth 2.0 error.
+            UnknownIntrospectionError: if the response is not a standard error response.
+
         """
         try:
             data = response.json()
@@ -1329,9 +1395,15 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             error_description = data.get("error_description")
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, IntrospectionError)
-            exception = exception_class(error, error_description, error_uri)
+            exception = exception_class(
+                response=response,
+                client=self,
+                error=error,
+                description=error_description,
+                uri=error_uri,
+            )
         except Exception as exc:
-            raise UnknownIntrospectionError(response) from exc
+            raise UnknownIntrospectionError(response=response, client=self) from exc
         raise exception
 
     def backchannel_authentication_request(  # noqa: PLR0913
@@ -1370,6 +1442,13 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Returns:
             a BackChannelAuthenticationResponse as returned by AS
+
+        Raises:
+            InvalidBackchannelAuthenticationRequestHintParam: if none of `login_hint`, `login_hint_token`
+              or `id_token_hint` is provided, or more than one of them is provided.
+
+            InvalidScopeParam: if the `scope` parameter is invalid.
+            InvalidAcrValuesParam: if the `acr_values` parameter is invalid.
 
         """
         if not (login_hint or login_hint_token or id_token_hint):
@@ -1435,11 +1514,15 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         Returns:
             a `BackChannelAuthenticationResponse`
 
+        Raises:
+            InvalidBackChannelAuthenticationResponse: if the response does not contain a standard
+            BackChannel Authentication response.
+
         """
         try:
             return BackChannelAuthenticationResponse(**response.json())
         except TypeError as exc:
-            raise InvalidBackChannelAuthenticationResponse(response) from exc
+            raise InvalidBackChannelAuthenticationResponse(response=response, client=self) from exc
 
     def on_backchannel_authentication_error(self, response: requests.Response) -> BackChannelAuthenticationResponse:
         """Error handler for `backchannel_authentication_request()`.
@@ -1455,6 +1538,10 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         Returns:
             usually raises an exception. But a subclass can return a default response instead.
 
+        Raises:
+            EndpointError: (or one of its subclasses) if the response contains a standard OAuth 2.0 error.
+            InvalidBackChannelAuthenticationResponse: for non-standard error responses.
+
         """
         try:
             data = response.json()
@@ -1462,9 +1549,15 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             error_description = data.get("error_description")
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, BackChannelAuthenticationError)
-            exception = exception_class(error, error_description, error_uri)
+            exception = exception_class(
+                response=response,
+                client=self,
+                error=error,
+                description=error_description,
+                uri=error_uri,
+            )
         except Exception as exc:
-            raise InvalidBackChannelAuthenticationResponse(response) from exc
+            raise InvalidBackChannelAuthenticationResponse(response=response, client=self) from exc
         raise exception
 
     def authorize_device(
@@ -1480,6 +1573,9 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Returns:
             a Device Authorization Response
+
+        Raises:
+            MissingEndpointUri: if the Device Authorization URI is not configured
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -1521,6 +1617,10 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         Returns:
             usually raises an Exception. But a subclass may return a default response instead.
 
+        Raises:
+            EndpointError: for standard OAuth 2.0 errors
+            InvalidDeviceAuthorizationResponse: for non-standard error responses.
+
         """
         try:
             data = response.json()
@@ -1528,9 +1628,15 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             error_description = data.get("error_description")
             error_uri = data.get("error_uri")
             exception_class = self.exception_classes.get(error, DeviceAuthorizationError)
-            exception = exception_class(response, error, error_description, error_uri)
+            exception = exception_class(
+                response=response,
+                client=self,
+                error=error,
+                description=error_description,
+                uri=error_uri,
+            )
         except Exception as exc:
-            raise InvalidDeviceAuthorizationResponse(response) from exc
+            raise InvalidDeviceAuthorizationResponse(response=response, client=self) from exc
         raise exception
 
     def update_authorization_server_public_keys(self, requests_kwargs: dict[str, Any] | None = None) -> JwkSet:
@@ -1594,8 +1700,19 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             an OAuth2Client with endpoint initialised based on the obtained metadata
 
         Raises:
-            ValueError: if neither `url` nor `issuer` are suitable urls
+            InvalidParam: if neither `url` nor `issuer` are suitable urls
             requests.HTTPError: if an error happens while fetching the documents
+
+        Example:
+            ```python
+            from requests_oauth2client import OAuth2Client
+
+            client = OAuth2Client.from_discovery_endpoint(
+                issuer="https://myserver.net",
+                client_id="my_client_id,
+                client_secret="my_client_secret"
+            )
+            ```
 
         """
         if url is None and issuer is not None:
@@ -1642,7 +1759,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         testing: bool = False,
         **kwargs: Any,
     ) -> OAuth2Client:
-        """Initialise an OAuth2Client, based on the server metadata from `discovery`.
+        """Initialize an OAuth2Client, based on the server metadata from `discovery`.
 
         Args:
              discovery: a dict of server metadata, in the same format as retrieved from a discovery endpoint.
@@ -1658,18 +1775,25 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
              **kwargs: additional args that will be passed to OAuth2Client
 
         Returns:
-            an `OAuth2Client`
+            an `OAuth2Client` initialized with the endpoints from the discovery document
+
+        Raises:
+            InvalidDiscoveryDocument: if the document does not contain at least a `"token_endpoint"`.
 
         """
         if not https:
             warnings.warn(
-                "The https parameter is deprecated."
-                " To disable endpoint uri validation, set `testing=True` when initializing your OAuth2Client.",
+                """\
+The https parameter is deprecated.
+To disable endpoint uri validation, set `testing=True` when initializing your `OAuth2Client`.""",
                 stacklevel=1,
             )
             testing = True
         if issuer and discovery.get("issuer") != issuer:
-            msg = "Mismatching issuer value in discovery document: "
+            msg = (
+                f"Mismatching `issuer` value in discovery document"
+                f" (received '{discovery.get('issuer')}', expected '{issuer}')"
+            )
             raise InvalidParam(
                 msg,
                 issuer,

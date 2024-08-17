@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
@@ -10,13 +10,8 @@ import jwskate
 import requests
 from attrs import Factory, asdict, frozen
 from binapy import BinaPy
-from jwskate import InvalidJwt
 from typing_extensions import Self
 
-from .exceptions import (
-    MismatchingIssuer,
-    MissingIdToken,
-)
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -97,7 +92,7 @@ class IdToken(jwskate.SignedJwt):
         return hash_method
 
 
-class InvalidIdToken(InvalidJwt):
+class InvalidIdToken(ValueError):
     """Raised when trying to validate an invalid ID Token value."""
 
     def __init__(self, message: str, token: TokenResponse, id_token: IdToken | None = None) -> None:
@@ -106,7 +101,32 @@ class InvalidIdToken(InvalidJwt):
         self.id_token = id_token
 
 
-class MismatchingNonce(InvalidIdToken):
+class MissingIdToken(InvalidIdToken):
+    """Raised when the Authorization Endpoint does not return a mandatory ID Token.
+
+    This happens when the Authorization Endpoint does not return an error, but does not return an ID
+    Token either.
+
+    """
+
+    def __init__(self, token: TokenResponse) -> None:
+        super().__init__("An expected `id_token` is missing in the response.", token, None)
+
+
+class MismatchingIdTokenIssuer(InvalidIdToken):
+    """Raised on mismatching `iss` value in an ID Token.
+
+    This happens when the expected `issuer` value is different from the `iss` value in an obtained ID Token.
+
+    """
+
+    def __init__(self, iss: str | None, expected: str, token: TokenResponse, id_token: IdToken) -> None:
+        super().__init__(f"`iss` from token '{iss}' does not match expected value '{expected}'", token, id_token)
+        self.received = iss
+        self.expected = expected
+
+
+class MismatchingIdTokenNonce(InvalidIdToken):
     """Raised on mismatching `nonce` value in an ID Token.
 
     This happens when the authorization request includes a `nonce` but the returned ID Token include
@@ -116,6 +136,8 @@ class MismatchingNonce(InvalidIdToken):
 
     def __init__(self, nonce: str, expected: str, token: TokenResponse, id_token: IdToken) -> None:
         super().__init__(f"nonce from token '{nonce}' does not match expected value '{expected}'", token, id_token)
+        self.received = nonce
+        self.expected = expected
 
 
 class MismatchingAcr(InvalidIdToken):
@@ -128,22 +150,30 @@ class MismatchingAcr(InvalidIdToken):
 
     def __init__(self, acr: str, expected: Sequence[str], token: TokenResponse, id_token: IdToken) -> None:
         super().__init__(f"token contains acr '{acr}' while client expects one of '{expected}'", token, id_token)
+        self.received = acr
+        self.expected = expected
 
 
-class MismatchingAudience(InvalidIdToken):
+class MismatchingIdTokenAudience(InvalidIdToken):
     """Raised when the ID Token audience does not include the requesting Client ID."""
 
     def __init__(self, audiences: Sequence[str], client_id: str, token: TokenResponse, id_token: IdToken) -> None:
-        super().__init__(f"token audience '{audiences}' does not match client_id '{client_id}'", token, id_token)
+        super().__init__(
+            f"token audience (`aud`) '{audiences}' does not match client_id '{client_id}'", token, id_token
+        )
+        self.received = audiences
+        self.expected = client_id
 
 
-class MismatchingAzp(InvalidIdToken):
+class MismatchingIdTokenAzp(InvalidIdToken):
     """Raised when the ID Token Authorized Presenter (azp) claim is not the Client ID."""
 
     def __init__(self, azp: str, client_id: str, token: TokenResponse, id_token: IdToken) -> None:
         super().__init__(
-            f"token Authorized Presenter (azp) claim '{azp}' does not match client_id '{client_id}'", token, id_token
+            f"token Authorized Presenter (`azp`) claim '{azp}' does not match client_id '{client_id}'", token, id_token
         )
+        self.received = azp
+        self.expected = client_id
 
 
 class MismatchingIdTokenAlg(InvalidIdToken):
@@ -151,6 +181,8 @@ class MismatchingIdTokenAlg(InvalidIdToken):
 
     def __init__(self, token_alg: str, client_alg: str, token: TokenResponse, id_token: IdToken) -> None:
         super().__init__(f"token is signed with alg {token_alg}, client expects {client_alg}", token, id_token)
+        self.received = token_alg
+        self.expected = client_alg
 
 
 class ExpiredIdToken(InvalidIdToken):
@@ -158,10 +190,12 @@ class ExpiredIdToken(InvalidIdToken):
 
     def __init__(self, token: TokenResponse, id_token: IdToken) -> None:
         super().__init__("token is expired", token, id_token)
+        self.received = id_token.expires_at
+        self.expected = datetime.now(tz=UTC)
 
 
 class TokenResponse:
-    """Base class for Access Tokens."""
+    """Base class for Token Endpoint Responses."""
 
     TOKEN_TYPE: ClassVar[str]
 
@@ -277,9 +311,30 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
 
         If the ID Token is encrypted, this decrypts it and returns the clear-text ID Token.
 
+        Raises:
+            MissingIdToken: if the ID Token is missing
+            InvalidIdToken: this is a base exception class, which is raised:
+
+                - if the ID Token is not a JWT
+                - or is encrypted while a clear-text token is expected
+                - or is clear-text while an encrypted token is expected
+                - if token is encrypted but client does not have a decryption key
+                - if the token does not contain an `alg` header
+            MismatchingIdTokenAlg: if the `alg` header from the ID Token does not match
+              the expected `client.id_token_signed_response_alg`.
+            MismatchingIdTokenIssuer: if the `iss` claim from the ID Token does not match
+              the expected `self.issuer`.
+            MismatchingIdTokenAudience: if the `aud` claim from the ID Token does not match
+              the expected `client.client_id`.
+            MismatchingIdTokenAzp: if the `azp` claim from the ID Token does not match
+              the expected `client.client_id`.
+            MismatchingIdTokenNonce: if the `nonce` claim from the ID Token does not match
+              the expected `azr.nonce`.
+            ExpiredIdToken: if the ID Token is expired at the time of the check.
+
         """
         if not self.id_token:
-            raise MissingIdToken
+            raise MissingIdToken(self)
 
         raw_id_token = self.id_token
 
@@ -312,19 +367,19 @@ and no algorithm has been configured for the client (using param `id_token_signe
         id_token_alg = id_token.alg or client.id_token_signed_response_alg
 
         if azr.issuer and id_token.issuer != azr.issuer:
-            raise MismatchingIssuer(id_token.issuer, azr.issuer, self, id_token)
+            raise MismatchingIdTokenIssuer(id_token.issuer, azr.issuer, self, id_token)
 
         if id_token.audiences and client.client_id not in id_token.audiences:
-            raise MismatchingAudience(id_token.audiences, client.client_id, self, id_token)
+            raise MismatchingIdTokenAudience(id_token.audiences, client.client_id, self, id_token)
 
         if id_token.get_claim("azp") is not None and id_token.azp != client.client_id:
-            raise MismatchingAzp(id_token.azp, client.client_id, self, id_token)
+            raise MismatchingIdTokenAzp(id_token.azp, client.client_id, self, id_token)
 
         if id_token.is_expired():
             raise ExpiredIdToken(self, id_token)
 
         if azr.nonce and id_token.nonce != azr.nonce:
-            raise MismatchingNonce(id_token.nonce, azr.nonce, self, id_token)
+            raise MismatchingIdTokenNonce(id_token.nonce, azr.nonce, self, id_token)
 
         if azr.acr_values and id_token.acr not in azr.acr_values:
             raise MismatchingAcr(id_token.acr, azr.acr_values, self, id_token)
@@ -471,11 +526,13 @@ be a maximum of {azr.max_age} sec ago.
         token is expired.
 
         Args:
-            request: a [PreparedRequest][requests.PreparedRequest]
+            request: the request
 
         Returns:
-            a [PreparedRequest][requests.PreparedRequest] with an Access Token added in
-            Authorization Header
+            the same request with an Access Token added in `Authorization` Header
+
+        Raises:
+            ExpiredAccessToken: if the token is expired
 
         """
         if self.access_token is None:

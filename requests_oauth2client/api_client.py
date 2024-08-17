@@ -335,6 +335,9 @@ class ApiClient:
         Returns:
           the resulting absolute url
 
+        Raises:
+            InvalidPathParam: if the provided path does not allow constructing a valid url
+
         """
         url = path
 

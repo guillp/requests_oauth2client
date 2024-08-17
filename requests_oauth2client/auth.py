@@ -42,6 +42,9 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
 
         If Access Token is not specified or expired, obtain a new one first.
 
+        Raises:
+            NonRenewableTokenError: if the token is not renewable
+
         """
         if self.token is None or self.token.is_expired(self.leeway):
             self.renew_token()
@@ -72,7 +75,12 @@ class BaseOAuth2RefreshTokenAuth(BaseOAuth2RenewableTokenAuth):
 
     @override
     def renew_token(self) -> None:
-        """Obtain a new token, using the Refresh Token, if available."""
+        """Obtain a new token, using the Refresh Token, if available.
+
+        Raises:
+            NonRenewableTokenError: if the token is not renewable.
+
+        """
         if self.token is None or self.token.refresh_token is None:
             raise NonRenewableTokenError
 
