@@ -35,6 +35,21 @@ Use this parameter when the target API expects some other values, e.g.:
         self.value = bool_fields
 
 
+def validate_bool_fields(bool_fields: tuple[str, str]) -> tuple[str, str]:
+    """Validate the `bool_fields` paremeter.
+
+    It must be a sequence of 2 values. First one is the `True` value, second one is the `False` value.
+    Both must be `str` or string-able values.
+
+    """
+    try:
+        true_value, false_value = bool_fields
+    except ValueError:
+        raise InvalidBoolFieldsParam(bool_fields) from None
+    else:
+        return str(true_value), str(false_value)
+
+
 class InvalidPathParam(TypeError, ValueError):
     """Raised when an unexpected path is passed as 'url' parameter."""
 
@@ -68,7 +83,7 @@ class ApiClient:
     [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request],
     [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
 
-    An `HTTPError` will be raised everytime an API call returns an error code (>= 400), unless
+    A [requests.HTTPError][] will be raised everytime an API call returns an error code (>= 400), unless
     you set `raise_for_status` to `False`. Additional parameters passed at init time, including
     `auth` will be used to configure the [Session][requests.Session].
 
@@ -114,6 +129,9 @@ class ApiClient:
         session: a preconfigured `requests.Session` to use with this `ApiClient`.
         **session_kwargs: additional kwargs to configure the underlying `requests.Session`.
 
+    Raises:
+        InvalidBoolFieldsParam: if the provided `bool_fields` parameter is invalid.
+
     """
 
     base_url: str
@@ -141,7 +159,9 @@ class ApiClient:
             setattr(session, key, val)
 
         if bool_fields is None:
-            bool_fields = (True, False)
+            bool_fields = ("True", "False")
+        else:
+            validate_bool_fields(bool_fields)
 
         self.__attrs_init__(
             base_url=base_url,
@@ -195,32 +215,34 @@ class ApiClient:
         none_fields: Literal["include", "exclude", "empty"] | None = None,
         bool_fields: tuple[Any, Any] | None = None,
     ) -> requests.Response:
-        """Overridden `request` method with extra features.
+        """A wrapper around [requests.Session.request][] method with extra features.
 
-        Features added compared to plain `request()`:
+        Additional features are described in
+        [ApiClient][requests_oauth2client.api_client.ApiClient] documentation.
 
-        - takes a relative path instead of a full url, which will be appended to the `base_url`
-        - it can raise an exception when the API returns a non-success status code
-        - `allow_redirects` is `False` by default (since API usually don't use redirects)
-        - `data` or `json` fields with value `None` can be automatically either included or
-           excluded from the request
-        - boolean fields can be serialized to configurable strings like `'true'` or `'false'`
-          instead of `'True'` and `'False'`
+        All parameters will be passed as-is to [requests.Session.request][], expected those
+        described below which have a special behavior.
 
         Args:
-          method: the HTTP method to use
           path: the url where the request will be sent to. Can be:
+
             - a path, as `str`: that path will be joined to the configured API url,
             - an iterable of path segments: that will be joined to the root url.
-          raise_for_status: like the parameter of the same name from `ApiClient.__init__`,
+          raise_for_status: like the parameter of the same name from
+            [ApiClient][requests_oauth2client.api_client.ApiClient],
             but this will be applied for this request only.
-          none_fields: like the parameter of the same name from `ApiClient.__init__`,
+          none_fields: like the parameter of the same name from
+            [ApiClient][requests_oauth2client.api_client.ApiClient],
             but this will be applied for this request only.
-          bool_fields: like the parameter of the same name from `ApiClient.__init__`,
+          bool_fields: like the parameter of the same name from
+            [ApiClient][requests_oauth2client.api_client.ApiClient],
             but this will be applied for this request only.
 
         Returns:
-          a [requests.Response][] as returned by requests
+          a Response as returned by requests
+
+        Raises:
+            InvalidBoolFieldsParam: if the provided `bool_fields` parameter is invalid.
 
         """
         path = self.to_absolute_url(path)
@@ -243,10 +265,7 @@ class ApiClient:
             bool_fields = self.bool_fields
 
         if bool_fields:
-            try:
-                true_value, false_value = bool_fields
-            except ValueError:
-                raise InvalidBoolFieldsParam(bool_fields) from None
+            true_value, false_value = validate_bool_fields(bool_fields)
             if isinstance(data, MutableMapping):
                 for key, val in data.items():
                     if val is True:
@@ -290,7 +309,7 @@ class ApiClient:
     def to_absolute_url(self, path: None | str | bytes | Iterable[str | bytes | int] = None) -> str:
         """Convert a relative url to an absolute url.
 
-        Given a `relative_url`, return the matching absolute url, based on the `base_url` that is
+        Given a `path`, return the matching absolute url, based on the `base_url` that is
         configured for this API.
 
         The result of this method is different from a standard `urljoin()`, because a relative_url
