@@ -14,8 +14,10 @@ from typing_extensions import Self
 from .authorization_request import (
     AuthorizationRequest,
     AuthorizationResponse,
+    CodeChallengeMethods,
     MissingIssuerParam,
     RequestUriParameterAuthorizationRequest,
+    ResponseTypes,
 )
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
@@ -276,7 +278,7 @@ class OAuth2Client:
     id_token_signed_response_alg: str | None = SignatureAlgs.RS256
     id_token_encrypted_response_alg: str | None = None
     id_token_decryption_key: Jwk | None = None
-    code_challenge_method: str | None = "S256"
+    code_challenge_method: str | None = CodeChallengeMethods.S256
     authorization_response_iss_parameter_supported: bool = False
     session: requests.Session = field(factory=requests.Session)
     extra_metadata: dict[str, Any] = field(factory=dict)
@@ -323,7 +325,7 @@ class OAuth2Client:
         id_token_signed_response_alg: str | None = SignatureAlgs.RS256,
         id_token_encrypted_response_alg: str | None = None,
         id_token_decryption_key: Jwk | dict[str, Any] | None = None,
-        code_challenge_method: str = "S256",
+        code_challenge_method: str = CodeChallengeMethods.S256,
         authorization_response_iss_parameter_supported: bool = False,
         bearer_token_class: type[BearerToken] = BearerToken,
         session: requests.Session | None = None,
@@ -852,7 +854,7 @@ class OAuth2Client:
         self,
         *,
         scope: None | str | Iterable[str] = "openid",
-        response_type: str = "code",
+        response_type: str = ResponseTypes.CODE,
         redirect_uri: str | None = None,
         state: str | ellipsis | None = ...,  # noqa: F821
         nonce: str | ellipsis | None = ...,  # noqa: F821

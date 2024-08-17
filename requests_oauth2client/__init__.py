@@ -27,6 +27,7 @@ from .authorization_request import (
     PkceUtils,
     RequestParameterAuthorizationRequest,
     RequestUriParameterAuthorizationRequest,
+    ResponseTypes,
     UnsupportedCodeChallengeMethod,
     UnsupportedResponseTypeParam,
 )
@@ -198,6 +199,7 @@ __all__ = [
     "PublicApp",
     "RequestParameterAuthorizationRequest",
     "RequestUriParameterAuthorizationRequest",
+    "ResponseTypes",
     "RevocationError",
     "ServerError",
     "SessionSelectionRequired",

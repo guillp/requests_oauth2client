@@ -29,6 +29,34 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
+class ResponseTypes(str, Enum):
+    """All standardised `response_type` values.
+
+    Note that you should always use `code`. All other values are deprecated.
+
+    """
+
+    CODE = "code"
+    NONE = "none"
+    TOKEN = "token"
+    IDTOKEN = "id_token"
+    CODE_IDTOKEN = "code id_token"
+    CODE_TOKEN = "code token"
+    CODE_IDTOKEN_TOKEN = "code id_token token"
+    IDTOKEN_TOKEN = "id_token token"
+
+
+class CodeChallengeMethods(str, Enum):
+    """All standardised `code_challenge` values.
+
+    You should always use `S256`.
+
+    """
+
+    S256 = "S256"
+    plain = "plain"
+
+
 class UnsupportedCodeChallengeMethod(ValueError):
     """Raised when an unsupported code_challenge_method is provided."""
 
@@ -68,7 +96,7 @@ class PkceUtils:
         return secrets.token_urlsafe(96)
 
     @classmethod
-    def derive_challenge(cls, verifier: str | bytes, method: str = "S256") -> str:
+    def derive_challenge(cls, verifier: str | bytes, method: str = CodeChallengeMethods.S256) -> str:
         """Derive the `code_challenge` from a given `code_verifier`.
 
         Args:
@@ -85,15 +113,15 @@ class PkceUtils:
         if not cls.code_verifier_re.match(verifier):
             raise InvalidCodeVerifierParam(verifier)
 
-        if method == "S256":
+        if method == CodeChallengeMethods.S256:
             return BinaPy(verifier).to("sha256").to("b64u").ascii()
-        if method == "plain":
+        if method == CodeChallengeMethods.plain:
             return verifier
 
         raise UnsupportedCodeChallengeMethod(method)
 
     @classmethod
-    def generate_code_verifier_and_challenge(cls, method: str = "S256") -> tuple[str, str]:
+    def generate_code_verifier_and_challenge(cls, method: str = CodeChallengeMethods.S256) -> tuple[str, str]:
         """Generate a valid `code_verifier` and derive its `code_challenge`.
 
         Args:
@@ -108,7 +136,7 @@ class PkceUtils:
         return verifier, challenge
 
     @classmethod
-    def validate_code_verifier(cls, verifier: str, challenge: str, method: str = "S256") -> bool:
+    def validate_code_verifier(cls, verifier: str, challenge: str, method: str = CodeChallengeMethods.S256) -> bool:
         """Validate a `code_verifier` against a `code_challenge`.
 
         Args:
@@ -121,13 +149,6 @@ class PkceUtils:
 
         """
         return cls.code_verifier_re.match(verifier) is not None and cls.derive_challenge(verifier, method) == challenge
-
-
-class CodeChallengeMethods(str, Enum):
-    """PKCE Code Challenge Methods."""
-
-    plain = "plain"
-    S256 = "S256"
 
 
 class UnsupportedResponseTypeParam(ValueError):
@@ -316,10 +337,10 @@ class AuthorizationRequest:
     client_id: str = field(metadata={"query": True})
     redirect_uri: str | None = field(metadata={"query": True}, default=None)
     scope: tuple[str, ...] | None = field(metadata={"query": True}, default=("openid",))
-    response_type: str = field(metadata={"query": True}, default="code")
+    response_type: str = field(metadata={"query": True}, default=ResponseTypes.CODE)
     state: str | None = field(metadata={"query": True}, default=None)
     nonce: str | None = field(metadata={"query": True}, default=None)
-    code_challenge_method: str | None = field(metadata={"query": True}, default="S256")
+    code_challenge_method: str | None = field(metadata={"query": True}, default=CodeChallengeMethods.S256)
     acr_values: tuple[str, ...] | None = field(metadata={"query": True}, default=None)
     max_age: int | None = field(metadata={"query": True}, default=None)
     kwargs: dict[str, Any] = Factory(dict)
@@ -353,18 +374,18 @@ class AuthorizationRequest:
         client_id: str,
         redirect_uri: str | None = None,
         scope: None | str | Iterable[str] = "openid",
-        response_type: str = "code",
+        response_type: str = ResponseTypes.CODE,
         state: str | ellipsis | None = ...,  # noqa: F821
         nonce: str | ellipsis | None = ...,  # noqa: F821
         code_verifier: str | None = None,
-        code_challenge_method: str | None = "S256",
+        code_challenge_method: str | None = CodeChallengeMethods.S256,
         acr_values: str | Iterable[str] | None = None,
         max_age: int | None = None,
         issuer: str | None = None,
         authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
     ) -> None:
-        if response_type != "code":
+        if response_type != ResponseTypes.CODE:
             raise UnsupportedResponseTypeParam(response_type)
 
         if authorization_response_iss_parameter_supported and not issuer:
@@ -502,7 +523,7 @@ class AuthorizationRequest:
         if error:
             return self.on_response_error(response)
 
-        if self.response_type == "code":
+        if self.response_type == ResponseTypes.CODE:
             code: str = response_url.args.get("code")
             if code is None:
                 raise MissingAuthCode
