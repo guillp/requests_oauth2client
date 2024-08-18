@@ -321,15 +321,15 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
                 - if token is encrypted but client does not have a decryption key
                 - if the token does not contain an `alg` header
             MismatchingIdTokenAlg: if the `alg` header from the ID Token does not match
-              the expected `client.id_token_signed_response_alg`.
+                the expected `client.id_token_signed_response_alg`.
             MismatchingIdTokenIssuer: if the `iss` claim from the ID Token does not match
-              the expected `self.issuer`.
+                the expected `self.issuer`.
             MismatchingIdTokenAudience: if the `aud` claim from the ID Token does not match
-              the expected `client.client_id`.
+                the expected `client.client_id`.
             MismatchingIdTokenAzp: if the `azp` claim from the ID Token does not match
-              the expected `client.client_id`.
+                the expected `client.client_id`.
             MismatchingIdTokenNonce: if the `nonce` claim from the ID Token does not match
-              the expected `azr.nonce`.
+                the expected `azr.nonce`.
             ExpiredIdToken: if the ID Token is expired at the time of the check.
 
         """

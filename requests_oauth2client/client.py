@@ -271,13 +271,14 @@ class OAuth2Client:
 
     Raises:
         MissingIDTokenEncryptedResponseAlgParam: if an `id_token_decryption_key` is provided
-          but no decryption alg is provided, either:
-          - using `id_token_encrypted_response_alg`,
-          - or in the `alg` parameter of the `Jwk` key
+            but no decryption alg is provided, either:
+
+            - using `id_token_encrypted_response_alg`,
+            - or in the `alg` parameter of the `Jwk` key
         MissingIssuerParam: if `authorization_response_iss_parameter_supported` is set to `True`
-          but the `issuer` is not provided.
+            but the `issuer` is not provided.
         InvalidEndpointUri: if a provided endpoint uri is not considered valid. For the rare cases
-          where those checks must be disabled, you can use `testing=True`.
+            where those checks must be disabled, you can use `testing=True`.
         InvalidIssuer: if the `issuer` value is not considered valid.
 
     """
@@ -586,7 +587,7 @@ class OAuth2Client:
 
         Raises:
             InvalidTokenResponse: if the error response does not contain an OAuth 2.0 standard
-            error response.
+                error response.
 
         """
         try:
@@ -694,7 +695,7 @@ class OAuth2Client:
 
         Raises:
             MissingRefreshToken: if `refresh_token` is a BearerToken instance but does not
-              contain a `refresh_token`
+                contain a `refresh_token`
 
         """
         if isinstance(refresh_token, BearerToken):
@@ -727,7 +728,7 @@ class OAuth2Client:
 
         Raises:
             MissingDeviceCode: if `device_code` is a DeviceAuthorizationResponse but does not
-              contain a `device_code`.
+                contain a `device_code`.
 
         """
         if isinstance(device_code, DeviceAuthorizationResponse):
@@ -763,7 +764,7 @@ class OAuth2Client:
 
         Raises:
             MissingAuthRequestId: if `auth_req_id` is a BackChannelAuthenticationResponse but does not contain
-            an `auth_req_id`.
+                an `auth_req_id`.
 
         """
         if isinstance(auth_req_id, BackChannelAuthenticationResponse):
@@ -1011,7 +1012,7 @@ class OAuth2Client:
         Raises:
             EndpointError: a subclass of this error depending on the error returned by the AS
             InvalidPushedAuthorizationResponse: if the returned response is not following the
-               specifications
+                specifications
             UnknownTokenEndpointError: for unknown/unhandled errors
 
         """
@@ -1191,7 +1192,7 @@ An IdToken or a string representation of it is expected.
 
         Raises:
             MissingRefreshToken: when `refresh_token` is a [BearerToken][requests_oauth2client.tokens.BearerToken]
-              but does not contain a `refresh_token`.
+                but does not contain a `refresh_token`.
 
         """
         if isinstance(refresh_token, BearerToken):
@@ -1230,7 +1231,7 @@ An IdToken or a string representation of it is expected.
         Raises:
             MissingEndpointUri: if the Revocation Endpoint URI is not configured.
             MissingRefreshToken: if `token_type_hint` is `"refresh_token"` and `token` is a BearerToken
-              but does not contain a `refresh_token`.
+                but does not contain a `refresh_token`.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -1321,7 +1322,7 @@ An IdToken or a string representation of it is expected.
 
         Raises:
             MissingRefreshToken: if `token_type_hint` is `"refresh_token"` and `token` is a BearerToken
-              but does not contain a `refresh_token`.
+                but does not contain a `refresh_token`.
             UnknownTokenType: if `token_type_hint` is neither `None`, `"access_token"` or `"refresh_token"`.
 
         """
@@ -1445,8 +1446,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Raises:
             InvalidBackchannelAuthenticationRequestHintParam: if none of `login_hint`, `login_hint_token`
-              or `id_token_hint` is provided, or more than one of them is provided.
-
+                or `id_token_hint` is provided, or more than one of them is provided.
             InvalidScopeParam: if the `scope` parameter is invalid.
             InvalidAcrValuesParam: if the `acr_values` parameter is invalid.
 
@@ -1516,7 +1516,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Raises:
             InvalidBackChannelAuthenticationResponse: if the response does not contain a standard
-            BackChannel Authentication response.
+                BackChannel Authentication response.
 
         """
         try:
