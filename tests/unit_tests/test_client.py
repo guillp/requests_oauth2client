@@ -158,6 +158,30 @@ def test_client_credentials_invalid_scope(oauth2client: OAuth2Client) -> None:
         oauth2client.client_credentials(scope=1.634)  # type: ignore[arg-type]
 
 
+def test_token_endpoint_error(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    token_endpoint: str,
+) -> None:
+    requests_mock.post(
+        token_endpoint,
+        json={
+            "error": "server_error",
+            "error_description": "something bad happened",
+            "error_uri": "https://lmgtfy.com",
+        },
+    )
+
+    with pytest.raises(ServerError) as exc_info:
+        oauth2client.client_credentials()
+
+    assert exc_info.type is ServerError
+    assert exc_info.value.error == "server_error"
+    assert exc_info.value.description == "something bad happened"
+    assert exc_info.value.uri == "https://lmgtfy.com"
+    assert exc_info.value.request.url == token_endpoint
+
+
 def test_authorization_code_grant(
     requests_mock: RequestsMocker,
     oauth2client: OAuth2Client,
@@ -462,6 +486,13 @@ def test_device_code_grant(
             endpoint=token_endpoint,
             public_jwk=public_jwk,
         )
+
+    requests_mock.reset()
+    oauth2client.device_code(
+        DeviceAuthorizationResponse(device_code=device_code, user_code="user_code", verification_uri="https://foo.bar")
+    )
+    assert requests_mock.called_once
+    device_code_grant_validator(requests_mock.last_request, device_code=device_code)
 
 
 def test_token_exchange_grant(

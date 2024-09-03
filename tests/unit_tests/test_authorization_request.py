@@ -94,11 +94,13 @@ def test_request_uri_authorization_request(authorization_endpoint: str, client_i
         authorization_endpoint=authorization_endpoint,
         client_id=client_id,
         request_uri=request_uri,
+        custom_param="custom_value",
     )
     assert isinstance(request_uri_azr.uri, str)
     url = request_uri_azr.furl
     assert url.origin + url.pathstr == authorization_endpoint
-    assert url.args == {"client_id": client_id, "request_uri": request_uri}
+    assert url.args == {"client_id": client_id, "request_uri": request_uri, "custom_param": "custom_value"}
+    assert request_uri_azr.custom_param == "custom_value"
 
 
 def test_request_uri_authorization_request_with_custom_param(authorization_endpoint: str) -> None:

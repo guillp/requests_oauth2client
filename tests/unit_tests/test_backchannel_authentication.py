@@ -78,6 +78,7 @@ def test_backchannel_authentication(
     auth_req_id: str,
     scope: None | str | list[str],
     backchannel_auth_request_validator: RequestValidatorType,
+    ciba_request_validator: RequestValidatorType,
     token_endpoint: str,
     access_token: str,
 ) -> None:
@@ -97,6 +98,12 @@ def test_backchannel_authentication(
 
     token_resp = bca_client.ciba(bca_resp)
     assert isinstance(token_resp, BearerToken)
+    ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
+
+    requests_mock.reset()
+    bca_client.ciba(BackChannelAuthenticationResponse(auth_req_id=auth_req_id))
+    assert requests_mock.called_once
+    ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
 
 
 @freeze_time()

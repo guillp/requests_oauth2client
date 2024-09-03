@@ -361,7 +361,7 @@ class ApiClient:
             url = urljoin(self.base_url + "/", url.lstrip("/"))
 
         if url is None or not isinstance(url, str):
-            raise InvalidPathParam(url)  # pragma: no-cover
+            raise InvalidPathParam(url)  # pragma: no cover
 
         return url
 

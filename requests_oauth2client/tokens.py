@@ -537,7 +537,7 @@ be a maximum of {azr.max_age} sec ago.
 
         """
         if self.access_token is None:
-            return request
+            return request  # pragma: no cover
         if self.is_expired():
             raise ExpiredAccessToken(self)
         request.headers["Authorization"] = self.authorization_header()
