@@ -139,9 +139,9 @@ def accepts_expires_in(f: Callable[..., Any]) -> Callable[..., Any]:
             return f(*args, **kwargs)
         if expires_in and isinstance(expires_in, str):
             with suppress(ValueError):
-                expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=int(expires_in))
+                expires_at = datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=int(expires_in))
         elif expires_in and isinstance(expires_in, int):
-            expires_at = datetime.now(tz=timezone.utc) + timedelta(seconds=expires_in)
+            expires_at = datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=expires_in)
         return f(*args, expires_at=expires_at, **kwargs)
 
     return decorator

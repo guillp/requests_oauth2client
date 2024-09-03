@@ -10,6 +10,7 @@ authentication-core-1_0.html.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from math import ceil
 from typing import TYPE_CHECKING, Any
 
 from attrs import define
@@ -67,6 +68,13 @@ class BackChannelAuthenticationResponse:
             return datetime.now(tz=timezone.utc) - timedelta(seconds=leeway) > self.expires_at
         return None
 
+    @property
+    def expires_in(self) -> int | None:
+        """Number of seconds until expiration."""
+        if self.expires_at:
+            return ceil((self.expires_at - datetime.now(tz=timezone.utc)).total_seconds())
+        return None
+
     def __getattr__(self, key: str) -> Any:
         """Return attributes from this `BackChannelAuthenticationResponse`.
 
@@ -83,10 +91,6 @@ class BackChannelAuthenticationResponse:
             AttributeError: if the attribute is not present in the response
 
         """
-        if key == "expires_in":
-            if self.expires_at is None:
-                return None
-            return int(self.expires_at.timestamp() - datetime.now(tz=timezone.utc).timestamp())
         return self.other.get(key) or super().__getattribute__(key)
 
 

@@ -19,7 +19,7 @@ from requests_oauth2client import (
 )
 
 
-@freeze_time("2023-12-31T23:59:59")
+@freeze_time()
 def test_authorization_code(
     session: requests.Session,
     requests_mock: Mocker,
@@ -104,7 +104,7 @@ def test_authorization_code(
     assert token.access_token == access_token
     assert not token.is_expired()
     assert token.expires_at is not None
-    assert token.expires_at == datetime.now(tz=timezone.utc) + timedelta(seconds=3600)
+    assert token.expires_at == datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=3600)
 
     assert requests_mock.last_request is not None
     params = Query(requests_mock.last_request.text).params
@@ -114,6 +114,7 @@ def test_authorization_code(
     assert params.get("code") == authorization_code
 
 
+@freeze_time()
 def test_authorization_code_legacy(
     session: requests.Session,
     requests_mock: Mocker,
@@ -188,11 +189,7 @@ def test_authorization_code_legacy(
     assert token.access_token == access_token
     assert not token.is_expired()
     assert token.expires_at is not None
-    assert (
-        datetime.now(tz=timezone.utc) + timedelta(seconds=3598)
-        <= token.expires_at
-        <= datetime.now(tz=timezone.utc) + timedelta(seconds=3600)
-    )
+    assert token.expires_at == datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=3600)
 
     assert requests_mock.last_request is not None
     params = Query(requests_mock.last_request.text).params

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from math import ceil
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
 import jwskate
@@ -498,7 +499,7 @@ be a maximum of {azr.max_age} sec ago.
     def expires_in(self) -> int | None:
         """Number of seconds until expiration."""
         if self.expires_at:
-            return int(self.expires_at.timestamp() - datetime.now(tz=timezone.utc).timestamp())
+            return ceil((self.expires_at - datetime.now(tz=timezone.utc)).total_seconds())
         return None
 
     def __getattr__(self, key: str) -> Any:
@@ -577,7 +578,11 @@ class BearerTokenSerializer:
             the serialized value
 
         """
-        return BinaPy.serialize_to("json", token.as_dict()).to("deflate").to("b64u").ascii()
+        d = asdict(token)
+        d.update(**d.pop("kwargs", {}))
+        return (
+            BinaPy.serialize_to("json", {k: w for k, w in d.items() if w is not None}).to("deflate").to("b64u").ascii()
+        )
 
     def default_loader(self, serialized: str, token_class: type[BearerToken] = BearerToken) -> BearerToken:
         """Deserialize a BearerToken.

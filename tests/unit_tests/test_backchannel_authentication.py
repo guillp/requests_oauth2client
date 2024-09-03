@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from tests.conftest import RequestsMocker, RequestValidatorType
 
 
+@freeze_time()
 def test_backchannel_authentication_response(auth_req_id: str) -> None:
     bca_resp = BackChannelAuthenticationResponse(auth_req_id=auth_req_id, expires_in=10, interval=10, foo="bar")
 
@@ -34,7 +35,7 @@ def test_backchannel_authentication_response(auth_req_id: str) -> None:
     assert not bca_resp.is_expired()
     assert isinstance(bca_resp.expires_at, datetime)
     assert isinstance(bca_resp.expires_in, int)
-    assert bca_resp.expires_in <= 10
+    assert bca_resp.expires_in == 10
     assert bca_resp.foo == "bar"
     with pytest.raises(AttributeError):
         bca_resp.notfound
@@ -98,6 +99,7 @@ def test_backchannel_authentication(
     assert isinstance(token_resp, BearerToken)
 
 
+@freeze_time()
 def test_backchannel_authentication_scope_acr_values_as_list(
     requests_mock: RequestsMocker,
     backchannel_authentication_endpoint: str,
@@ -122,7 +124,7 @@ def test_backchannel_authentication_scope_acr_values_as_list(
     )
 
     assert isinstance(bca_resp, BackChannelAuthenticationResponse)
-    assert 355 <= bca_resp.expires_in <= 360
+    assert bca_resp.expires_in == 360
 
     with pytest.raises(ValueError, match="Invalid 'acr_values'") as exc:
         bca_client.backchannel_authentication_request(login_hint="user@example.net", acr_values=1.44)  # type: ignore[arg-type]
