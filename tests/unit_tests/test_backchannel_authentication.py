@@ -12,11 +12,11 @@ from requests_oauth2client import (
     BackChannelAuthenticationResponse,
     BaseClientAuthenticationMethod,
     BearerToken,
+    InvalidAcrValuesParam,
     InvalidBackChannelAuthenticationResponse,
     OAuth2Client,
     UnauthorizedClient,
 )
-from requests_oauth2client.client import InvalidAcrValuesParam
 
 if TYPE_CHECKING:
     from freezegun.api import FrozenDateTimeFactory
