@@ -1423,7 +1423,7 @@ def test_custom_token_type(requests_mock: RequestsMocker, token_endpoint: str) -
     class CustomBearerToken(BearerToken):
         TOKEN_TYPE = "CustomBearerToken"
 
-    client = OAuth2Client(token_endpoint, ("client_id", "client_secret"), bearer_token_class=CustomBearerToken)
+    client = OAuth2Client(token_endpoint, ("client_id", "client_secret"), token_class=CustomBearerToken)
 
     requests_mock.post(
         token_endpoint,
@@ -1532,3 +1532,17 @@ def test_testing_oauth2client() -> None:
 
     assert test_client.token_endpoint == token_endpoint
     assert test_client.issuer == issuer
+
+
+def test_proxy_authorization(requests_mock: RequestsMocker, target_api: str) -> None:
+    access_token = "my_proxy_auth_token"
+    auth_header = "Proxy-Authorization"
+
+    class ProxyAuthorizationBearerToken(BearerToken):
+        AUTHORIZATION_HEADER = auth_header
+
+    requests_mock.post(target_api)
+
+    requests.post(target_api, auth=ProxyAuthorizationBearerToken(access_token))
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.headers[auth_header] == f"Bearer {access_token}"

@@ -305,7 +305,7 @@ class OAuth2Client:
     extra_metadata: dict[str, Any] = field(factory=dict)
     testing: bool = False
 
-    bearer_token_class: type[BearerToken] = BearerToken
+    token_class: type[BearerToken] = BearerToken
 
     exception_classes: ClassVar[dict[str, type[EndpointError]]] = {
         "server_error": ServerError,
@@ -348,7 +348,7 @@ class OAuth2Client:
         id_token_decryption_key: Jwk | dict[str, Any] | None = None,
         code_challenge_method: str = CodeChallengeMethods.S256,
         authorization_response_iss_parameter_supported: bool = False,
-        bearer_token_class: type[BearerToken] = BearerToken,
+        token_class: type[BearerToken] = BearerToken,
         session: requests.Session | None = None,
         testing: bool = False,
         **extra_metadata: Any,
@@ -402,8 +402,8 @@ class OAuth2Client:
             id_token_decryption_key=id_token_decryption_key,
             code_challenge_method=code_challenge_method,
             authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
-            bearer_token_class=bearer_token_class,
             extra_metadata=extra_metadata,
+            token_class=token_class,
         )
 
     @token_endpoint.validator
@@ -565,7 +565,7 @@ class OAuth2Client:
 
         """
         try:
-            token_response = self.bearer_token_class(**response.json())
+            token_response = self.token_class(**response.json())
         except Exception:  # noqa: BLE001
             return self.on_token_error(response)
         else:
@@ -623,7 +623,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`. Common parameters
 
         Returns:
-            a TokenResponse
+            a BearerToken
 
         Raises:
             InvalidScopeParam: if the `scope` parameter is not suitable

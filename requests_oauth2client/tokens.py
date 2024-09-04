@@ -229,6 +229,7 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
     """
 
     TOKEN_TYPE: ClassVar[str] = AccessTokenType.BEARER.value
+    AUTHORIZATION_HEADER: ClassVar[str] = "Authorization"
 
     access_token: str
     expires_at: datetime | None = None
@@ -540,7 +541,7 @@ be a maximum of {azr.max_age} sec ago.
             return request  # pragma: no cover
         if self.is_expired():
             raise ExpiredAccessToken(self)
-        request.headers["Authorization"] = self.authorization_header()
+        request.headers[self.AUTHORIZATION_HEADER] = self.authorization_header()
         return request
 
 
@@ -626,7 +627,3 @@ class BearerTokenSerializer:
 
         """
         return self.loader(serialized)
-
-
-class DPoPToken(TokenResponse):
-    """Represents a DPoP Token."""
