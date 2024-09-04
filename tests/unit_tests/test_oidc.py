@@ -11,7 +11,7 @@ from requests_oauth2client import (
     ExpiredIdToken,
     IdToken,
     InvalidIdToken,
-    MismatchingAcr,
+    MismatchingIdTokenAcr,
     MismatchingIdTokenAlg,
     MismatchingIdTokenAudience,
     MismatchingIdTokenAzp,
@@ -257,7 +257,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer, nonce="nonce"),
         )
 
-    with pytest.raises(MismatchingAcr):
+    with pytest.raises(MismatchingIdTokenAcr):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(

@@ -141,7 +141,7 @@ class MismatchingIdTokenNonce(InvalidIdToken):
         self.expected = expected
 
 
-class MismatchingAcr(InvalidIdToken):
+class MismatchingIdTokenAcr(InvalidIdToken):
     """Raised when the returned ID Token doesn't contain one of the requested ACR Values.
 
     This happens when the authorization request includes an `acr_values` parameter but the returned
@@ -384,7 +384,7 @@ and no algorithm has been configured for the client (using param `id_token_signe
             raise MismatchingIdTokenNonce(id_token.nonce, azr.nonce, self, id_token)
 
         if azr.acr_values and id_token.acr not in azr.acr_values:
-            raise MismatchingAcr(id_token.acr, azr.acr_values, self, id_token)
+            raise MismatchingIdTokenAcr(id_token.acr, azr.acr_values, self, id_token)
 
         hash_function: Callable[[str], str]  # method used to calculate at_hash, s_hash, etc.
 
