@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from jwskate import InvalidJwt
-
 if TYPE_CHECKING:
     import requests
+
+    from requests_oauth2client.authorization_request import AuthorizationRequest
+    from requests_oauth2client.client import OAuth2Client
 
 
 class OAuth2Error(Exception):
@@ -15,11 +16,14 @@ class OAuth2Error(Exception):
 
     Args:
         response: the HTTP response containing the error
+        client : the OAuth2Client used to send the request
 
     """
 
-    def __init__(self, response: requests.Response):
+    def __init__(self, response: requests.Response, client: OAuth2Client) -> None:
+        super().__init__("The remote endpoint returned an error")
         self.response = response
+        self.client = client
 
     @property
     def request(self) -> requests.PreparedRequest:
@@ -30,11 +34,11 @@ class OAuth2Error(Exception):
 class EndpointError(OAuth2Error):
     """Base class for exceptions raised from backend endpoint errors.
 
-    This contains the error message, description and uri that are returned by the AS in the OAuth
-    2.0 standardised way.
+    This contains the error message, description and uri that are returned
+    by the AS in the OAuth 2.0 standardised way.
 
     Args:
-        response: the raw requests.PreparedResponse containing the error.
+        response: the raw response containing the error.
         error: the `error` identifier as returned by the AS.
         description: the `error_description` as returned by the AS.
         uri: the `error_uri` as returned by the AS.
@@ -44,11 +48,12 @@ class EndpointError(OAuth2Error):
     def __init__(
         self,
         response: requests.Response,
+        client: OAuth2Client,
         error: str,
         description: str | None = None,
         uri: str | None = None,
-    ):
-        super().__init__(response)
+    ) -> None:
+        super().__init__(response=response, client=client)
         self.error = error
         self.description = description
         self.uri = uri
@@ -56,10 +61,6 @@ class EndpointError(OAuth2Error):
 
 class InvalidTokenResponse(OAuth2Error):
     """Raised when the Token Endpoint returns a non-standard response."""
-
-
-class ExpiredAccessToken(RuntimeError):
-    """Raised when an expired access token is used."""
 
 
 class UnknownTokenEndpointError(EndpointError):
@@ -138,10 +139,6 @@ class InvalidDeviceAuthorizationResponse(OAuth2Error):
     """Raised when the Device Authorization Endpoint returns a non-standard error response."""
 
 
-class InvalidIdToken(InvalidJwt):
-    """Raised when trying to validate an invalid ID Token value."""
-
-
 class AuthorizationResponseError(Exception):
     """Base class for error responses returned by the Authorization endpoint.
 
@@ -155,10 +152,19 @@ class AuthorizationResponseError(Exception):
 
     """
 
-    def __init__(self, error: str, description: str | None = None, uri: str | None = None):
+    def __init__(
+        self,
+        request: AuthorizationRequest,
+        response: str,
+        error: str,
+        description: str | None = None,
+        uri: str | None = None,
+    ) -> None:
         self.error = error
         self.description = description
         self.uri = uri
+        self.request = request
+        self.response = response
 
 
 class InteractionRequired(AuthorizationResponseError):
@@ -181,8 +187,13 @@ class ConsentRequired(InteractionRequired):
     """Raised when the Authorization Endpoint returns `error = consent_required`."""
 
 
-class InvalidAuthResponse(Exception):
+class InvalidAuthResponse(ValueError):
     """Raised when the Authorization Endpoint returns an invalid response."""
+
+    def __init__(self, message: str, request: AuthorizationRequest, response: str) -> None:
+        super().__init__(f"The Authorization Response is invalid: {message}")
+        self.request = request
+        self.response = response
 
 
 class MissingAuthCode(InvalidAuthResponse):
@@ -192,6 +203,9 @@ class MissingAuthCode(InvalidAuthResponse):
     authorization `code` either.
 
     """
+
+    def __init__(self, request: AuthorizationRequest, response: str) -> None:
+        super().__init__("missing `code` query parameter in response", request, response)
 
 
 class MissingIssuer(InvalidAuthResponse):
@@ -204,14 +218,8 @@ class MissingIssuer(InvalidAuthResponse):
 
     """
 
-
-class MissingIdToken(InvalidAuthResponse):
-    """Raised when the Authorization Endpoint does not return a mandatory ID Token.
-
-    This happens when the Authorization Endpoint does not return an error, but does not return an ID
-    Token either.
-
-    """
+    def __init__(self, request: AuthorizationRequest, response: str) -> None:
+        super().__init__("missing `iss` query parameter in response", request, response)
 
 
 class MismatchingState(InvalidAuthResponse):
@@ -222,6 +230,11 @@ class MismatchingState(InvalidAuthResponse):
 
     """
 
+    def __init__(self, received: str, expected: str, request: AuthorizationRequest, response: str) -> None:
+        super().__init__(f"mismatching `state` (received '{received}', expected '{expected}')", request, response)
+        self.received = received
+        self.expected = expected
+
 
 class MismatchingIssuer(InvalidAuthResponse):
     """Raised on mismatching `iss` value.
@@ -231,39 +244,10 @@ class MismatchingIssuer(InvalidAuthResponse):
 
     """
 
-
-class MismatchingNonce(InvalidIdToken):
-    """Raised on mismatching `nonce` value in an ID Token.
-
-    This happens when the authorization request includes a `nonce` but the returned ID Token include
-    a different value.
-
-    """
-
-
-class MismatchingAcr(InvalidIdToken):
-    """Raised when the returned ID Token doesn't contain one of the requested ACR Values.
-
-    This happens when the authorization request includes an `acr_values` parameter but the returned
-    ID Token includes a different value.
-
-    """
-
-
-class MismatchingAudience(InvalidIdToken):
-    """Raised when the ID Token audience does not include the requesting Client ID."""
-
-
-class MismatchingAzp(InvalidIdToken):
-    """Raised when the ID Token Authorized Presenter (azp) claim is not the Client ID."""
-
-
-class MismatchingIdTokenAlg(InvalidIdToken):
-    """Raised when the returned ID Token is signed with an unexpected alg."""
-
-
-class ExpiredIdToken(InvalidIdToken):
-    """Raised when the returned ID Token is expired."""
+    def __init__(self, received: str, expected: str, request: AuthorizationRequest, response: str) -> None:
+        super().__init__(f"mismatching `iss` (received '{received}', expected '{expected}')", request, response)
+        self.received = received
+        self.expected = expected
 
 
 class BackChannelAuthenticationError(EndpointError):

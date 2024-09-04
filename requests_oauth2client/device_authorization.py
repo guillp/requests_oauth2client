@@ -9,12 +9,14 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
-from .pooling import TokenEndpointPoolingJob
-from .tokens import BearerToken
+from attrs import define
+
+from .pooling import BaseTokenEndpointPoolingJob
 from .utils import accepts_expires_in
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import OAuth2Client
+    from .tokens import BearerToken
 
 
 class DeviceAuthorizationResponse:
@@ -44,7 +46,7 @@ class DeviceAuthorizationResponse:
         expires_at: datetime | None = None,
         interval: int | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.device_code = device_code
         self.user_code = user_code
         self.verification_uri = verification_uri
@@ -66,7 +68,8 @@ class DeviceAuthorizationResponse:
         return None
 
 
-class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
+@define(init=False)
+class DeviceAuthorizationPoolingJob(BaseTokenEndpointPoolingJob):
     """A Token Endpoint pooling job for the Device Authorization Flow.
 
     This periodically checks if the user has finished with his authorization in a Device
@@ -82,13 +85,21 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
 
-    Usage: ```python client = OAuth2Client( token_endpoint="https://my.as.local/token",
-    auth=("client_id", "client_secret") ) pool_job = DeviceAuthorizationPoolingJob(client=client,
-    device_code="my_device_code")
+    Example:
+        ```python
+        from requests_oauth2client import DeviceAuthorizationPoolingJob, OAuth2Client
 
-        token = None while token is None: token = pool_job() ```
+        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
+        pooler = DeviceAuthorizationPoolingJob(client=client, device_code="my_device_code")
+
+        token = None
+        while token is None:
+            token = pooler()
+        ```
 
     """
+
+    device_code: str
 
     def __init__(
         self,
@@ -98,20 +109,25 @@ class DeviceAuthorizationPoolingJob(TokenEndpointPoolingJob):
         slow_down_interval: int = 5,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
-    ):
-        super().__init__(
+    ) -> None:
+        if isinstance(device_code, DeviceAuthorizationResponse):
+            interval = interval or device_code.interval
+            device_code = device_code.device_code
+
+        self.__attrs_init__(
             client=client,
-            interval=interval,
+            device_code=device_code,
+            interval=interval or 5,
             slow_down_interval=slow_down_interval,
-            requests_kwargs=requests_kwargs,
-            **token_kwargs,
+            requests_kwargs=requests_kwargs or {},
+            token_kwargs=token_kwargs,
         )
-        self.device_code = device_code
 
     def token_request(self) -> BearerToken:
         """Implement the Device Code token request.
 
-        This actually calls [OAuth2Client.device_code(device_code)] on `client`.
+        This actually calls [OAuth2Client.device_code(device_code)][requests_oauth2client.OAuth2Client.device_code]
+        on `self.client`.
 
         Returns:
             a [BearerToken][requests_oauth2client.tokens.BearerToken]

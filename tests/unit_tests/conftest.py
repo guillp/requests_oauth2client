@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import requests
@@ -13,7 +13,7 @@ from requests_oauth2client import (
     ApiClient,
     AuthorizationRequest,
     AuthorizationResponse,
-    BearerAuth,
+    BearerToken,
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
@@ -21,8 +21,10 @@ from requests_oauth2client import (
     PrivateKeyJwt,
     PublicApp,
 )
-from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
-from tests.conftest import FixtureRequest
+
+if TYPE_CHECKING:
+    from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
+    from tests.conftest import FixtureRequest
 
 
 @pytest.fixture(scope="session")
@@ -35,8 +37,7 @@ def join_url(root: str, path: str) -> str:
         f = furl(root).add(path=path)
         f.path.normalize()
         return str(f.url)
-    else:
-        return root
+    return root
 
 
 @pytest.fixture(scope="session")
@@ -45,8 +46,8 @@ def access_token() -> str:
 
 
 @pytest.fixture(scope="session")
-def bearer_auth(access_token: str) -> BearerAuth:
-    return BearerAuth(access_token)
+def bearer_auth(access_token: str) -> BearerToken:
+    return BearerToken(access_token)
 
 
 @pytest.fixture(scope="session")
@@ -55,8 +56,8 @@ def target_api() -> str:
 
 
 @pytest.fixture(scope="session")
-def api(target_api: str, bearer_auth: BearerAuth) -> ApiClient:
-    return ApiClient(target_api, auth=bearer_auth)
+def api(target_api: str, bearer_token: BearerToken) -> ApiClient:
+    return ApiClient(target_api, auth=bearer_token)
 
 
 @pytest.fixture(scope="session")
@@ -161,28 +162,28 @@ def client_secret() -> str:
 @pytest.fixture(scope="session")
 def client_credential(
     client_auth_method_handler: (
-        type[PublicApp] | type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] | type[PrivateKeyJwt]
+        type[PublicApp | ClientSecretPost | ClientSecretBasic | ClientSecretJwt | PrivateKeyJwt]
     ),
     client_secret: str,
     private_jwk: Jwk,
 ) -> None | str | Jwk:
     if client_auth_method_handler == PublicApp:
         return None
-    elif client_auth_method_handler in (
+    if client_auth_method_handler in (
         ClientSecretPost,
         ClientSecretBasic,
         ClientSecretJwt,
     ):
         return client_secret
-    elif client_auth_method_handler == PrivateKeyJwt:
+    if client_auth_method_handler == PrivateKeyJwt:
         return private_jwk
-    assert False
+    pytest.fail("unexpected client_auth_method_handler")
 
 
 @pytest.fixture(scope="session")
 def client_auth_method(
     client_auth_method_handler: (
-        type[PublicApp] | type[ClientSecretPost] | type[ClientSecretBasic] | type[ClientSecretJwt] | type[PrivateKeyJwt]
+        type[PublicApp | ClientSecretPost | ClientSecretBasic | ClientSecretJwt | PrivateKeyJwt]
     ),
     client_id: str,
     client_credential: None | str | Jwk,
@@ -368,7 +369,7 @@ def code_challenge_method(request: FixtureRequest) -> str | None:
 
 @pytest.fixture(scope="session")
 @pytest.mark.slow
-def authorization_request(
+def authorization_request(  # noqa: C901
     authorization_endpoint: str,
     client_id: str,
     redirect_uri: str,
@@ -380,7 +381,7 @@ def authorization_request(
     expected_issuer: str | None,
     auth_request_kwargs: dict[str, Any],
 ) -> AuthorizationRequest:
-    authorization_response_iss_parameter_supported = True if expected_issuer else False
+    authorization_response_iss_parameter_supported = bool(expected_issuer)
 
     azr = AuthorizationRequest(
         authorization_endpoint=authorization_endpoint,
@@ -429,7 +430,7 @@ def authorization_request(
         assert azr.nonce == nonce
         assert args.pop("nonce") == nonce
     else:
-        assert False
+        pytest.fail("unexpected nonce", nonce)
 
     if state is ...:
         generated_state = args.pop("state")
@@ -492,7 +493,7 @@ def authorization_request(
     return azr
 
 
-@pytest.fixture()
+@pytest.fixture
 def authorization_response_uri(
     authorization_request: AuthorizationRequest,
     redirect_uri: str,
@@ -508,7 +509,7 @@ def authorization_response_uri(
     return auth_url
 
 
-@pytest.fixture()
+@pytest.fixture
 def authorization_response(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: furl,

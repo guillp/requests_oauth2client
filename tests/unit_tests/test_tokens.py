@@ -1,7 +1,8 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from freezegun import freeze_time
+from freezegun.api import FrozenDateTimeFactory
 from jwskate import (
     ExpiredJwt,
     InvalidClaim,
@@ -278,17 +279,21 @@ def test_id_token_eq() -> None:
     assert id_token != 13.37
 
 
-@freeze_time()
-def test_token_serializer() -> None:
+@pytest.mark.parametrize(
+    "token",
+    [
+        BearerToken("access_token"),
+        # note that "expires_at" is calculated when the test is ran, so before `freezer` takes effect
+        BearerToken("access_token", expires_in=60),
+        BearerToken("access_token", expires_in=-60),
+    ],
+)
+def test_token_serializer(token: BearerToken, freezer: FrozenDateTimeFactory) -> None:
+    freezer.move_to("2024-08-01")
     serializer = BearerTokenSerializer()
-    assert serializer.dumps(BearerToken("access_token")) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA"
-    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRapFSLQA") == BearerToken("access_token")
-
-    assert serializer.dumps(BearerToken("access_token", expires_in=60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA"
-    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6jDzKAWAA") == BearerToken("access_token", expires_in=60)
-
-    assert serializer.dumps(BearerToken("access_token", expires_in=-60)) == "q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA"
-    assert serializer.loads("q1ZKTE5OLS6OL8nPTs1TskLl6iiB6fiSyoJUoJxTamJRahFQNLWiILMotTg-E6hD18ygFgA") == BearerToken("access_token", expires_in=-60)
+    candidate = serializer.dumps(token)
+    freezer.move_to(datetime.now(tz=timezone.utc) + timedelta(days=365))
+    assert serializer.loads(candidate) == token
 
 
 @freeze_time()

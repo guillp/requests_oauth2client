@@ -4,7 +4,7 @@ import pytest
 from freezegun import freeze_time
 from furl import Query  # type: ignore[import-untyped]
 
-from requests_oauth2client import BearerToken, ClientSecretPost, IdToken, OAuth2Client
+from requests_oauth2client import BearerToken, ClientSecretPost, IdToken, OAuth2Client, UnknownTokenType
 from tests.conftest import RequestsMocker
 
 
@@ -94,7 +94,7 @@ def test_token_type() -> None:
     assert OAuth2Client.get_token_type("saml2") == "urn:ietf:params:oauth:token-type:saml2"
     assert OAuth2Client.get_token_type("jwt") == "urn:ietf:params:oauth:token-type:jwt"
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="token is of type '<class 'requests_oauth2client.tokens.IdToken'>'") as exc:
         OAuth2Client.get_token_type(
             token_type="access_token",
             token=IdToken(
@@ -115,9 +115,12 @@ def test_token_type() -> None:
                 "6cQQWNiDpWOl_lxXjQEvQ"
             ),
         )
+    assert exc.type is UnknownTokenType
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError, match="does not contain a refresh_token") as exc:
         OAuth2Client.get_token_type(token_type="refresh_token", token=BearerToken("mytoken"))
+    assert exc.type is UnknownTokenType
 
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="token is of type '<class 'requests_oauth2client.tokens.BearerToken'>") as exc2:
         OAuth2Client.get_token_type(token_type="id_token", token=BearerToken("mytoken"))
+    assert exc2.type is UnknownTokenType

@@ -2,14 +2,65 @@
 
 from __future__ import annotations
 
-from typing import IO, Any, Callable, Iterable, Mapping, MutableMapping
+from typing import IO, TYPE_CHECKING, Any, Callable, Iterable, Mapping, MutableMapping
 from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
 from attrs import field, frozen
-from requests.cookies import RequestsCookieJar
-from typing_extensions import Literal
+from typing_extensions import Literal, Self
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    from requests.cookies import RequestsCookieJar
+
+
+class InvalidBoolFieldsParam(ValueError):
+    """Raised when an invalid value is passed as 'bool_fields' parameter."""
+
+    def __init__(self, bool_fields: object) -> None:
+        super().__init__("""\
+Invalid value for 'bool_fields' parameter. It must be an iterable of 2 str values:
+- first one for the True value
+- second one for the False value
+boolean fields in `data` or `params` with a boolean value (`True` or `False`)
+will be serialized to the corresponding value.
+Default is `('true', 'false')`
+Use this parameter when the target API expects some other values, e.g.:
+- ('on', 'off')
+- ('1', '0')
+- ('yes', 'no')
+""")
+        self.value = bool_fields
+
+
+def validate_bool_fields(bool_fields: tuple[str, str]) -> tuple[str, str]:
+    """Validate the `bool_fields` paremeter.
+
+    It must be a sequence of 2 values. First one is the `True` value, second one is the `False` value.
+    Both must be `str` or string-able values.
+
+    """
+    try:
+        true_value, false_value = bool_fields
+    except ValueError:
+        raise InvalidBoolFieldsParam(bool_fields) from None
+    else:
+        return str(true_value), str(false_value)
+
+
+class InvalidPathParam(TypeError, ValueError):
+    """Raised when an unexpected path is passed as 'url' parameter."""
+
+    def __init__(self, path: None | str | bytes | Iterable[str | bytes | int]) -> None:
+        super().__init__("""\
+Unexpected path. Please provide a path that is relative to the configured `base_url`:
+- `None` (default) to call the base_url
+- a `str` or `bytes`, that will be joined to the base_url (with a / separator, if required)
+- or an iterable of string-able objects, which will be joined to the base_url with / separators
+""")
+        self.url = path
 
 
 @frozen(init=False)
@@ -32,11 +83,11 @@ class ApiClient:
     [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request],
     [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
 
-    An `HTTPError` will be raised everytime an API call returns an error code (>= 400), unless
+    A [requests.HTTPError][] will be raised everytime an API call returns an error code (>= 400), unless
     you set `raise_for_status` to `False`. Additional parameters passed at init time, including
     `auth` will be used to configure the [Session][requests.Session].
 
-    Usage:
+    Example:
         ```python
         from requests_oauth2client import ApiClient
 
@@ -64,19 +115,22 @@ class ApiClient:
             Can be set to `None` to disable timeout.
         raise_for_status: if `True`, exceptions will be raised everytime a request returns an
             error code (>= 400).
-        none_fields: what to do with parameters with value `None` in `data` or `json` fields.
+        none_fields: defines what to do with parameters with value `None` in `data` or `json` fields.
 
             - if `"exclude"` (default), fields whose values are `None` are not included in the request.
-            - if `"include"`, they are included with string value `None`. Note that this is
-            the default behavior of `requests`.
-            - if "empty", they are included with an empty value (as an empty string).
-        bool_fields: a tuple of (true_value, false_value). Fields from `data` or `params` with
+            - if `"include"`, they are included with string value `None`. This is
+            the default behavior of `requests`. Note that they will be serialized to `null` in JSON.
+            - if `"empty"`, they are included with an empty value (as an empty string).
+        bool_fields: a tuple of `(true_value, false_value)`. Fields from `data` or `params` with
             a boolean value (`True` or `False`) will be serialized to the corresponding value.
             This can be useful since some APIs expect a `'true'` or `'false'` value as boolean,
             and `requests` serializes `True` to `'True'` and `False` to `'False'`.
             Set it to `None` to restore default requests behaviour.
         session: a preconfigured `requests.Session` to use with this `ApiClient`.
         **session_kwargs: additional kwargs to configure the underlying `requests.Session`.
+
+    Raises:
+        InvalidBoolFieldsParam: if the provided `bool_fields` parameter is invalid.
 
     """
 
@@ -99,13 +153,15 @@ class ApiClient:
         bool_fields: tuple[Any, Any] | None = ("true", "false"),
         session: requests.Session | None = None,
         **session_kwargs: Any,
-    ):
+    ) -> None:
         session = session or requests.Session()
         for key, val in session_kwargs.items():
             setattr(session, key, val)
 
         if bool_fields is None:
-            bool_fields = (True, False)
+            bool_fields = ("True", "False")
+        else:
+            validate_bool_fields(bool_fields)
 
         self.__attrs_init__(
             base_url=base_url,
@@ -120,7 +176,7 @@ class ApiClient:
     def request(  # noqa: C901, PLR0913, D417
         self,
         method: str,
-        url: None | str | bytes | Iterable[str | bytes | int] = None,
+        path: None | str | bytes | Iterable[str | bytes | int] = None,
         *,
         params: None | bytes | MutableMapping[str, str] = None,
         data: (
@@ -159,36 +215,37 @@ class ApiClient:
         none_fields: Literal["include", "exclude", "empty"] | None = None,
         bool_fields: tuple[Any, Any] | None = None,
     ) -> requests.Response:
-        """Overridden `request` method with extra features.
+        """A wrapper around [requests.Session.request][] method with extra features.
 
-        Features added compared to plain request():
+        Additional features are described in
+        [ApiClient][requests_oauth2client.api_client.ApiClient] documentation.
 
-        - takes a relative path instead of a full url, which will be appended to the
-          base_url
-        - it can raise an exception when the API returns a non-success status code
-        - allow_redirects is False by default (since API usually don't use redirects)
-        - `data` or `json` fields with value `None` can either be included or excluded from the
-          request
-        - boolean fields can be serialized to `'true'` or `'false'` instead of `'True'` and
-          `'False'`
+        All parameters will be passed as-is to [requests.Session.request][], expected those
+        described below which have a special behavior.
 
         Args:
-          method: the HTTP method to use
-          url: the url where the request will be sent to. Can be a path, as str ;
-            that path will be joined to the configured API url. Can also be an iterable of path
-            segments, that will be joined to the root url.
-          raise_for_status: like the parameter of the same name from `ApiClient.__init__`,
+          path: the url where the request will be sent to. Can be:
+
+            - a path, as `str`: that path will be joined to the configured API url,
+            - an iterable of path segments: that will be joined to the root url.
+          raise_for_status: like the parameter of the same name from
+            [ApiClient][requests_oauth2client.api_client.ApiClient],
             but this will be applied for this request only.
-          none_fields: like the parameter of the same name from `ApiClient.__init__`,
+          none_fields: like the parameter of the same name from
+            [ApiClient][requests_oauth2client.api_client.ApiClient],
             but this will be applied for this request only.
-          bool_fields: like the parameter of the same name from `ApiClient.__init__`,
+          bool_fields: like the parameter of the same name from
+            [ApiClient][requests_oauth2client.api_client.ApiClient],
             but this will be applied for this request only.
 
         Returns:
-          a [requests.Response][] as returned by requests
+          a Response as returned by requests
+
+        Raises:
+            InvalidBoolFieldsParam: if the provided `bool_fields` parameter is invalid.
 
         """
-        url = self.to_absolute_url(url)
+        path = self.to_absolute_url(path)
 
         if none_fields is None:
             none_fields = self.none_fields
@@ -208,11 +265,7 @@ class ApiClient:
             bool_fields = self.bool_fields
 
         if bool_fields:
-            try:
-                true_value, false_value = bool_fields
-            except ValueError:
-                msg = "Invalid value for 'bool_fields'. Must be a 2 value tuple, with (true_value, false_value)."
-                raise ValueError(msg) from None
+            true_value, false_value = validate_bool_fields(bool_fields)
             if isinstance(data, MutableMapping):
                 for key, val in data.items():
                     if val is True:
@@ -230,7 +283,7 @@ class ApiClient:
 
         response = self.session.request(
             method,
-            url,
+            path,
             params=params,
             data=data,
             headers=headers,
@@ -253,10 +306,10 @@ class ApiClient:
             response.raise_for_status()
         return response
 
-    def to_absolute_url(self, relative_url: None | str | bytes | Iterable[str | bytes | int] = None) -> str:
+    def to_absolute_url(self, path: None | str | bytes | Iterable[str | bytes | int] = None) -> str:
         """Convert a relative url to an absolute url.
 
-        Given a `relative_url`, return the matching absolute url, based on the `base_url` that is
+        Given a `path`, return the matching absolute url, based on the `base_url` that is
         configured for this API.
 
         The result of this method is different from a standard `urljoin()`, because a relative_url
@@ -268,145 +321,113 @@ class ApiClient:
 
         | base_url | relative_url | result_url |
         |---------------------------|-----------------------------|-------------------------------------------|
-        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | "/path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | b"/path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | "path" | "https://myhost.com/root/path" |
-        | "https://myhost.com/root" | None | "https://myhost.com/root" |
-        | "https://myhost.com/root" |  ("user", 1, "resource") | "https://myhost.com/root/user/1/resource" |
-        | "https://myhost.com/root" | "https://otherhost.org/foo" | ValueError |
+        | `"https://myhost.com/root"` | `"/path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `"/path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `b"/path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `"path"` | `"https://myhost.com/root/path"` |
+        | `"https://myhost.com/root"` | `None` | `"https://myhost.com/root"` |
+        | `"https://myhost.com/root"` |  `("user", 1, "resource")` | `"https://myhost.com/root/user/1/resource"` |
+        | `"https://myhost.com/root"` | `"https://otherhost.org/foo"` | `ValueError` |
 
         Args:
-          relative_url: a relative url
+          path: a relative url
 
         Returns:
           the resulting absolute url
 
+        Raises:
+            InvalidPathParam: if the provided path does not allow constructing a valid url
+
         """
-        url = relative_url
+        url = path
 
-        if self.base_url:
-            if url is not None:
-                if not isinstance(url, (str, bytes)):
-                    try:
-                        url = "/".join(
-                            [urlencode(part.decode() if isinstance(part, bytes) else str(part)) for part in url if part]
-                        )
-                    except Exception as exc:
-                        msg = (
-                            "Unexpected url type, please pass a relative path as string or"
-                            " bytes, or an iterable of string-able objects"
-                        )
-                        raise TypeError(
-                            msg,
-                            type(url),
-                        ) from exc
+        if url is None:
+            url = self.base_url
+        else:
+            if not isinstance(url, (str, bytes)):
+                try:
+                    url = "/".join(
+                        [urlencode(part.decode() if isinstance(part, bytes) else str(part)) for part in url if part],
+                    )
+                except Exception as exc:
+                    raise InvalidPathParam(url) from exc
 
-                if isinstance(url, bytes):
-                    url = url.decode()
+            if isinstance(url, bytes):
+                url = url.decode()
 
-                if "://" in url:
-                    msg = "url must be relative to root_url"
-                    raise ValueError(msg)
+            if "://" in url:
+                raise InvalidPathParam(url)
 
-                url = urljoin(self.base_url + "/", url.lstrip("/"))
-            else:
-                url = self.base_url
+            url = urljoin(self.base_url + "/", url.lstrip("/"))
 
         if url is None or not isinstance(url, str):
-            msg = "Unable to determine an absolute url."
-            raise ValueError(msg)
+            raise InvalidPathParam(url)  # pragma: no cover
 
         return url
 
     def get(
         self,
-        url: None | str | bytes | Iterable[str | bytes | int] = None,
+        path: None | str | bytes | Iterable[str | bytes | int] = None,
         raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
-        """Send a GET request. Return a [Response][requests.Response] object.
+        """Send a GET request and return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-            url: a url where the request will be sent.
+            path: the path where the request will be sent.
             raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-            **kwargs: Optional arguments that [request()][requests.request] takes.
+            **kwargs: additional kwargs for `requests.request()`
 
         Returns:
-            a [Response][requests.Response] object.
+            a response object.
 
         Raises:
             requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
 
         """
-        return self.request("GET", url, raise_for_status=raise_for_status, **kwargs)
+        return self.request("GET", path, raise_for_status=raise_for_status, **kwargs)
 
     def post(
         self,
-        url: str | bytes | Iterable[str | bytes] | None = None,
+        path: str | bytes | Iterable[str | bytes] | None = None,
         raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
-        """Send a POST request. Return a [Response][requests.Response] object.
+        """Send a POST request and return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: an url where the request will be sent.
+          path: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-          **kwargs: Optional arguments that ``request`` takes.
+          **kwargs: additional kwargs for `requests.request()`
 
         Returns:
-          a [Response][requests.Response] object.
+          a response object.
 
         Raises:
           requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
 
         """
-        return self.request("POST", url, raise_for_status=raise_for_status, **kwargs)
+        return self.request("POST", path, raise_for_status=raise_for_status, **kwargs)
 
     def patch(
         self,
-        url: str | bytes | Iterable[str | bytes] | None = None,
+        path: str | bytes | Iterable[str | bytes] | None = None,
         raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
         """Send a PATCH request. Return a [Response][requests.Response] object.
 
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: an url where the request will be sent.
-          raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
-          **kwargs: Optional arguments that ``request`` takes.
-
-        Returns:
-          a [Response][requests.Response] object.
-
-        Raises:
-          requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
-
-        """
-        return self.request("PATCH", url, raise_for_status=raise_for_status, **kwargs)
-
-    def put(
-        self,
-        url: str | bytes | Iterable[str | bytes] | None = None,
-        raise_for_status: bool | None = None,
-        **kwargs: Any,
-    ) -> requests.Response:
-        """Send a PUT request. Return a [Response][requests.Response] object.
-
-        The passed `url` may be relative to the url passed at initialization time. It takes the same
-        parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
-
-        Args:
-          url: a url where the request will be sent.
+          path: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
           **kwargs: additional kwargs for `requests.request()`
 
@@ -417,11 +438,36 @@ class ApiClient:
           requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
 
         """
-        return self.request("PUT", url, raise_for_status=raise_for_status, **kwargs)
+        return self.request("PATCH", path, raise_for_status=raise_for_status, **kwargs)
+
+    def put(
+        self,
+        path: str | bytes | Iterable[str | bytes] | None = None,
+        raise_for_status: bool | None = None,
+        **kwargs: Any,
+    ) -> requests.Response:
+        """Send a PUT request. Return a [Response][requests.Response] object.
+
+        The passed `url` is relative to the `base_url` passed at initialization time.
+        It takes the same parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
+
+        Args:
+          path: the path where the request will be sent.
+          raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
+          **kwargs: additional kwargs for `requests.request()`
+
+        Returns:
+          a [Response][requests.Response] object.
+
+        Raises:
+          requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
+
+        """
+        return self.request("PUT", path, raise_for_status=raise_for_status, **kwargs)
 
     def delete(
         self,
-        url: str | bytes | Iterable[str | bytes] | None = None,
+        path: str | bytes | Iterable[str | bytes] | None = None,
         raise_for_status: bool | None = None,
         **kwargs: Any,
     ) -> requests.Response:
@@ -431,18 +477,18 @@ class ApiClient:
         parameters as [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request].
 
         Args:
-          url: a url where the request will be sent.
+          path: the path where the request will be sent.
           raise_for_status: overrides the `raises_for_status` parameter passed at initialization time.
           **kwargs: additional kwargs for `requests.request()`.
 
         Returns:
-          a [Response][requests.Response] object.
+          a response object.
 
         Raises:
           requests.HTTPError: if `raises_for_status` is `True` and an error response is returned.
 
         """
-        return self.request("DELETE", url, raise_for_status=raise_for_status, **kwargs)
+        return self.request("DELETE", path, raise_for_status=raise_for_status, **kwargs)
 
     def __getattr__(self, item: str) -> ApiClient:
         """Allow access sub resources with an attribute-based syntax.
@@ -451,9 +497,9 @@ class ApiClient:
             item: a subpath
 
         Returns:
-            a new ApiClient initialised on the new base url
+            a new `ApiClient` initialized on the new base url
 
-        Usage:
+        Example:
             ```python
             from requests_oauth2client import ApiClient
 
@@ -472,9 +518,9 @@ class ApiClient:
             item: a subpath
 
         Returns:
-            a new ApiClient initialised on the new base url
+            a new `ApiClient` initialized on the new base url
 
-        Usage:
+        Example:
             ```python
             from requests_oauth2client import ApiClient
 
@@ -494,13 +540,13 @@ class ApiClient:
             raise_for_status=self.raise_for_status,
         )
 
-    def __enter__(self) -> ApiClient:
+    def __enter__(self) -> Self:
         """Allow `ApiClient` to act as a context manager.
 
         You can then use an `ApiClient` instance in a `with` clause, the same way as
         `requests.Session`. The underlying request.Session will be closed on exit.
 
-        Usage:
+        Example:
             ```python
             with ApiClient("https://myapi.com/path") as client:
                 resp = client.get("resource")
@@ -509,6 +555,11 @@ class ApiClient:
         """
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Close the underlying requests.Session on exit."""
         self.session.close()

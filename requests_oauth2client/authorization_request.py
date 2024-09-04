@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import re
 import secrets
-from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, ClassVar, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Sequence
 
 from attrs import Factory, asdict, field, fields, frozen
 from binapy import BinaPy
@@ -26,6 +25,55 @@ from .exceptions import (
 )
 from .utils import accepts_expires_in
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
+
+class ResponseTypes(str, Enum):
+    """All standardised `response_type` values.
+
+    Note that you should always use `code`. All other values are deprecated.
+
+    """
+
+    CODE = "code"
+    NONE = "none"
+    TOKEN = "token"
+    IDTOKEN = "id_token"
+    CODE_IDTOKEN = "code id_token"
+    CODE_TOKEN = "code token"
+    CODE_IDTOKEN_TOKEN = "code id_token token"
+    IDTOKEN_TOKEN = "id_token token"
+
+
+class CodeChallengeMethods(str, Enum):
+    """All standardised `code_challenge` values.
+
+    You should always use `S256`.
+
+    """
+
+    S256 = "S256"
+    plain = "plain"
+
+
+class UnsupportedCodeChallengeMethod(ValueError):
+    """Raised when an unsupported code_challenge_method is provided."""
+
+
+class InvalidCodeVerifierParam(ValueError):
+    """Raised when an invalid code_verifier is supplied."""
+
+    def __init__(self, code_verifier: str) -> None:
+        super().__init__("""\
+Invalid 'code_verifier'. It must be a 43 to 128 characters long string, with:
+- lowercase letters
+- uppercase letters
+- digits
+- underscore, dash, tilde, or dot (_-~.)
+""")
+        self.code_verifier = code_verifier
+
 
 class PkceUtils:
     """Contains helper methods for PKCE, as described in RFC7636.
@@ -34,7 +82,7 @@ class PkceUtils:
 
     """
 
-    code_verifier_re = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
+    code_verifier_pattern = re.compile(r"^[a-zA-Z0-9_\-~.]{43,128}$")
     """A regex that matches valid code verifiers."""
 
     @classmethod
@@ -48,7 +96,7 @@ class PkceUtils:
         return secrets.token_urlsafe(96)
 
     @classmethod
-    def derive_challenge(cls, verifier: str | bytes, method: str = "S256") -> str:
+    def derive_challenge(cls, verifier: str | bytes, method: str = CodeChallengeMethods.S256) -> str:
         """Derive the `code_challenge` from a given `code_verifier`.
 
         Args:
@@ -58,27 +106,26 @@ class PkceUtils:
         Returns:
             a `code_challenge` derived from the given verifier
 
+        Raises:
+            InvalidCodeVerifierParam: if the `verifier` does not match `code_verifier_pattern`
+            UnsupportedCodeChallengeMethod: if the method is not supported
+
         """
         if isinstance(verifier, bytes):
             verifier = verifier.decode()
 
-        if not cls.code_verifier_re.match(verifier):
-            msg = f"Invalid code verifier, does not match {cls.code_verifier_re}"
-            raise ValueError(
-                msg,
-                verifier,
-            )
+        if not cls.code_verifier_pattern.match(verifier):
+            raise InvalidCodeVerifierParam(verifier)
 
-        if method == "S256":
+        if method == CodeChallengeMethods.S256:
             return BinaPy(verifier).to("sha256").to("b64u").ascii()
-        elif method == "plain":
+        if method == CodeChallengeMethods.plain:
             return verifier
-        else:
-            msg = "Unsupported code_challenge_method"
-            raise ValueError(msg, method)
+
+        raise UnsupportedCodeChallengeMethod(method)
 
     @classmethod
-    def generate_code_verifier_and_challenge(cls, method: str = "S256") -> tuple[str, str]:
+    def generate_code_verifier_and_challenge(cls, method: str = CodeChallengeMethods.S256) -> tuple[str, str]:
         """Generate a valid `code_verifier` and derive its `code_challenge`.
 
         Args:
@@ -93,7 +140,7 @@ class PkceUtils:
         return verifier, challenge
 
     @classmethod
-    def validate_code_verifier(cls, verifier: str, challenge: str, method: str = "S256") -> bool:
+    def validate_code_verifier(cls, verifier: str, challenge: str, method: str = CodeChallengeMethods.S256) -> bool:
         """Validate a `code_verifier` against a `code_challenge`.
 
         Args:
@@ -105,14 +152,38 @@ class PkceUtils:
             `True` if verifier is valid, or `False` otherwise
 
         """
-        return cls.code_verifier_re.match(verifier) is not None and cls.derive_challenge(verifier, method) == challenge
+        return (
+            cls.code_verifier_pattern.match(verifier) is not None
+            and cls.derive_challenge(verifier, method) == challenge
+        )
 
 
-class CodeChallengeMethods(str, Enum):
-    """PKCE Code Challenge Methods."""
+class UnsupportedResponseTypeParam(ValueError):
+    """Raised when an unsupported response_type is passed as parameter."""
 
-    plain = "plain"
-    S256 = "S256"
+    def __init__(self, response_type: str) -> None:
+        super().__init__("""The only supported response type is 'code'.""", response_type)
+
+
+class MissingIssuerParam(ValueError):
+    """Raised when the 'issuer' parameter is required but not provided."""
+
+    def __init__(self) -> None:
+        super().__init__("""\
+When 'authorization_response_iss_parameter_supported' is `True`, you must
+provide the expected `issuer` as parameter.
+""")
+
+
+class InvalidMaxAgeParam(ValueError):
+    """Raised when an invalid 'max_age' parameter is provided."""
+
+    def __init__(self) -> None:
+        super().__init__("""\
+Invalid 'max_age' parameter. It must be a positive number of seconds.
+This specifies the allowable elapsed time in seconds since the last time
+the End-User was actively authenticated by the OP.
+""")
 
 
 @frozen(init=False)
@@ -165,7 +236,7 @@ class AuthorizationResponse:
         max_age: int | None = None,
         issuer: str | None = None,
         **kwargs: str,
-    ):
+    ) -> None:
         if not acr_values:
             acr_values = None
         elif isinstance(acr_values, str):
@@ -198,7 +269,7 @@ class AuthorizationResponse:
         return self.kwargs.get(item)
 
 
-@frozen(init=False)
+@frozen(init=False, repr=False)
 class AuthorizationRequest:
     """Represent an Authorization Request.
 
@@ -223,13 +294,17 @@ class AuthorizationRequest:
       appropriate `code_challenge` will be included in the request, according to the
       `code_challenge_method`.
     - `authorization_response_iss_parameter_supported` and `issuer`:
-       those are used for Server Issuer Identification. If `ìssuer` is set and an issuer is
-       included in the Authorization Response, then the consistency between those 2 values will be
-       checked when using `validate_callback()`. If issuer is not included in the response, and
-       `authorization_response_iss_parameter_supported` is `False` (default), then no issuer check
-       is performed. Set `authorization_response_iss_parameter_supported`
-       to `True` to enforce server identification: if no issuer is included in the Authorization
-       Response, then an error will be raised instead.
+       those are used for Server Issuer Identification. By default:
+
+        - If `ìssuer` is set and an issuer is included in the Authorization Response,
+        then the consistency between those 2 values will be checked when using `validate_callback()`.
+        - If issuer is not included in the response, then no issuer check is performed.
+
+        Set `authorization_response_iss_parameter_supported` to `True` to enforce server identification:
+
+        - an `issuer` must also be provided as parameter, and the AS must return that same value
+        for the response to be considered valid by `validate_callback()`.
+        - if no issuer is included in the Authorization Response, then an error will be raised.
 
     Args:
         authorization_endpoint: the uri for the authorization endpoint.
@@ -249,6 +324,25 @@ class AuthorizationRequest:
         issuer: Issuer Identifier value from the OAuth/OIDC Server, if using Server Issuer Identification.
         **kwargs: extra parameters to include in the request, as-is.
 
+    Example:
+        ```python
+        from requests_oauth2client import AuthorizationRequest
+
+        azr = AuthorizationRequest(
+            authorization_endpoint="https://url.to.the/authorization_endpoint",
+            client_id="my_client_id",
+            redirect_uri="http://localhost/callback",
+            scope="openid email profile",
+        )
+        print(azr)
+        ```
+
+    Raises:
+        InvalidMaxAgeParam: if the `max_age` parameter is invalid.
+        MissingIssuerParam: if `authorization_response_iss_parameter_supported` is set to `True`
+            but the `issuer` parameter is not provided.
+        UnsupportedResponseTypeParam: if `response_type` is not supported.
+
     """
 
     authorization_endpoint: str
@@ -256,10 +350,10 @@ class AuthorizationRequest:
     client_id: str = field(metadata={"query": True})
     redirect_uri: str | None = field(metadata={"query": True}, default=None)
     scope: tuple[str, ...] | None = field(metadata={"query": True}, default=("openid",))
-    response_type: str = field(metadata={"query": True}, default="code")
+    response_type: str = field(metadata={"query": True}, default=ResponseTypes.CODE)
     state: str | None = field(metadata={"query": True}, default=None)
     nonce: str | None = field(metadata={"query": True}, default=None)
-    code_challenge_method: str | None = field(metadata={"query": True}, default="S256")
+    code_challenge_method: str | None = field(metadata={"query": True}, default=CodeChallengeMethods.S256)
     acr_values: tuple[str, ...] | None = field(metadata={"query": True}, default=None)
     max_age: int | None = field(metadata={"query": True}, default=None)
     kwargs: dict[str, Any] = Factory(dict)
@@ -269,7 +363,7 @@ class AuthorizationRequest:
     authorization_response_iss_parameter_supported: bool = False
     issuer: str | None = None
 
-    exception_classes: ClassVar[dict[str, type[Exception]]] = {
+    exception_classes: ClassVar[dict[str, type[AuthorizationResponseError]]] = {
         "interaction_required": InteractionRequired,
         "login_required": LoginRequired,
         "session_selection_required": SessionSelectionRequired,
@@ -293,23 +387,22 @@ class AuthorizationRequest:
         client_id: str,
         redirect_uri: str | None = None,
         scope: None | str | Iterable[str] = "openid",
-        response_type: str = "code",
+        response_type: str = ResponseTypes.CODE,
         state: str | ellipsis | None = ...,  # noqa: F821
         nonce: str | ellipsis | None = ...,  # noqa: F821
         code_verifier: str | None = None,
-        code_challenge_method: str | None = "S256",
+        code_challenge_method: str | None = CodeChallengeMethods.S256,
         acr_values: str | Iterable[str] | None = None,
         max_age: int | None = None,
         issuer: str | None = None,
         authorization_response_iss_parameter_supported: bool = False,
         **kwargs: Any,
     ) -> None:
+        if response_type != ResponseTypes.CODE:
+            raise UnsupportedResponseTypeParam(response_type)
+
         if authorization_response_iss_parameter_supported and not issuer:
-            msg = (
-                "When 'authorization_response_iss_parameter_supported' is `True`, you must"
-                " provide the expected `issuer` as parameter."
-            )
-            raise ValueError(msg)
+            raise MissingIssuerParam
 
         if state is ...:
             state = self.generate_state()
@@ -331,8 +424,7 @@ class AuthorizationRequest:
             acr_values = tuple(acr_values.split()) if isinstance(acr_values, str) else tuple(acr_values)
 
         if max_age is not None and max_age < 0:
-            msg = "The `max_age` parameter is a number of seconds and cannot be negative."
-            raise ValueError(msg)
+            raise InvalidMaxAgeParam
 
         if "code_challenge" in kwargs:
             msg = (
@@ -412,12 +504,15 @@ class AuthorizationRequest:
             the extracted code, if all checks are successful
 
         Raises:
+            MissingAuthCode: if the `code` is missing in the response
+            MissingIssuer: if Server Issuer verification is active and the response does
+                not contain an `iss`.
             MismatchingIssuer: if the 'iss' received from the response does not match the
                 expected value.
             MismatchingState: if the response `state` does not match the expected value.
             OAuth2Error: if the response includes an error.
             MissingAuthCode: if the response does not contain a `code`.
-            NotImplementedError: if response_type anything else than 'code'.
+            UnsupportedResponseTypeParam: if response_type anything else than 'code'.
 
         """
         try:
@@ -429,27 +524,27 @@ class AuthorizationRequest:
         received_issuer = response_url.args.get("iss")
         if self.authorization_response_iss_parameter_supported or received_issuer:
             if received_issuer is None:
-                raise MissingIssuer()
+                raise MissingIssuer(self, response)
             if self.issuer and received_issuer != self.issuer:
-                raise MismatchingIssuer(self.issuer, received_issuer)
+                raise MismatchingIssuer(self.issuer, received_issuer, self, response)
 
         # validate state
         requested_state = self.state
         if requested_state:
             received_state = response_url.args.get("state")
             if requested_state != received_state:
-                raise MismatchingState(requested_state, received_state)
+                raise MismatchingState(requested_state, received_state, self, response)
 
         error = response_url.args.get("error")
         if error:
             return self.on_response_error(response)
 
-        if "code" in self.response_type:
+        if self.response_type == ResponseTypes.CODE:
             code: str = response_url.args.get("code")
             if code is None:
-                raise MissingAuthCode()
+                raise MissingAuthCode(self, response)
         else:
-            raise NotImplementedError()
+            raise UnsupportedResponseTypeParam(self.response_type)  # pragma: no cover
 
         return AuthorizationResponse(
             code_verifier=self.code_verifier,
@@ -612,13 +707,18 @@ class AuthorizationRequest:
             may return a default code that will be returned by `validate_callback`. But this method
             will most likely raise exceptions instead.
 
+        Raises:
+            AuthorizationResponseError: if the response contains an `error`. The raised exception may be a subclass
+
         """
         response_url = furl(response)
         error = response_url.args.get("error")
         error_description = response_url.args.get("error_description")
         error_uri = response_url.args.get("error_uri")
         exception_class = self.exception_classes.get(error, AuthorizationResponseError)
-        raise exception_class(error, error_description, error_uri)
+        raise exception_class(
+            request=self, response=response, error=error, description=error_description, uri=error_uri
+        )
 
     @property
     def furl(self) -> furl:
@@ -642,9 +742,14 @@ class AuthorizationRequest:
         return self.uri
 
 
-@frozen(init=False)
+@frozen(init=False, repr=False)
 class RequestParameterAuthorizationRequest:
     """Represent an Authorization Request that includes a `request` JWT.
+
+    To construct such a request yourself, the easiest way is to initialize
+    an [`AuthorizationRequest`][requests_oauth2client.authorization_request.AuthorizationRequest]
+    then sign it with
+    [`AuthorizationRequest.sign()`][requests_oauth2client.authorization_request.AuthorizationRequest.sign].
 
     Args:
         authorization_endpoint: the Authorization Endpoint uri
@@ -657,7 +762,7 @@ class RequestParameterAuthorizationRequest:
 
     authorization_endpoint: str
     client_id: str
-    request: str
+    request: Jwt
     expires_at: datetime | None = None
     kwargs: dict[str, Any] = Factory(dict)
 
@@ -666,10 +771,13 @@ class RequestParameterAuthorizationRequest:
         self,
         authorization_endpoint: str,
         client_id: str,
-        request: str,
+        request: Jwt | str,
         expires_at: datetime | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
+        if isinstance(request, str):
+            request = Jwt(request)
+
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
@@ -683,7 +791,7 @@ class RequestParameterAuthorizationRequest:
         """Return the Authorization Request URI, as a `furl` instance."""
         return furl(
             self.authorization_endpoint,
-            args={"client_id": self.client_id, "request": self.request, **self.kwargs},
+            args={"client_id": self.client_id, "request": str(self.request), **self.kwargs},
         )
 
     @property
@@ -732,7 +840,7 @@ class RequestUriParameterAuthorizationRequest:
         request_uri: str,
         expires_at: datetime | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
@@ -775,7 +883,7 @@ class AuthorizationRequestSerializer:
         self,
         dumper: Callable[[AuthorizationRequest], str] | None = None,
         loader: Callable[[str], AuthorizationRequest] | None = None,
-    ):
+    ) -> None:
         self.dumper = dumper or self.default_dumper
         self.loader = loader or self.default_loader
 
@@ -800,7 +908,8 @@ class AuthorizationRequestSerializer:
 
     @staticmethod
     def default_loader(
-        serialized: str, azr_class: type[AuthorizationRequest] = AuthorizationRequest
+        serialized: str,
+        azr_class: type[AuthorizationRequest] = AuthorizationRequest,
     ) -> AuthorizationRequest:
         """Provide a default deserializer implementation.
 

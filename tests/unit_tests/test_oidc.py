@@ -8,26 +8,24 @@ from jwskate import EncryptionAlgs, Jwk, Jwt, KeyManagementAlgs, SignatureAlgs
 from requests_oauth2client import (
     AuthorizationResponse,
     BearerToken,
+    ExpiredIdToken,
     IdToken,
     InvalidIdToken,
-    MismatchingIssuer,
-    OAuth2Client,
-)
-from requests_oauth2client.exceptions import (
-    ExpiredIdToken,
     MismatchingAcr,
-    MismatchingAudience,
-    MismatchingAzp,
     MismatchingIdTokenAlg,
-    MismatchingNonce,
+    MismatchingIdTokenAudience,
+    MismatchingIdTokenAzp,
+    MismatchingIdTokenIssuer,
+    MismatchingIdTokenNonce,
     MissingIdToken,
+    OAuth2Client,
 )
 
 
 @freeze_time("2011-07-21 20:42:55")
 @pytest.mark.parametrize(
-    "kwargs, at_hash, c_hash, s_hash",
-    (
+    ("kwargs", "at_hash", "c_hash", "s_hash"),
+    [
         (
             {"alg": "PS256"},
             "xsZZrUssMXjL3FBlzoSh2g",
@@ -57,8 +55,8 @@ from requests_oauth2client.exceptions import (
             "p2LHG4H-8pYDc0hyVOo3iIHvZJUqe9tbj3jESOuXbkY",
             "E9z1C-c0Az4eTEzE0Nm3OQ3BS2BhMgxuP7x5JAQj1_4",
             "aVrO6_zIGuPg0pvBhlmB9jnpmFoY6MXEt1nJeHp1pmI",
-        )
-    ),
+        ),
+    ],
 )
 def test_validate_id_token(kwargs: dict[str, str], at_hash: str, c_hash: str, s_hash: str) -> None:
     signing_key = jwskate.Jwk.generate(**kwargs).with_kid_thumbprint()
@@ -103,6 +101,18 @@ def test_validate_id_token(kwargs: dict[str, str], at_hash: str, c_hash: str, s_
         == id_token
     )
 
+    with pytest.raises(AttributeError, match="auth_time"):
+        IdToken.sign(
+            {
+                "iss": "http://server.example.com",
+                "sub": "248289761001",
+                "aud": client_id,
+                "exp": 1311281970,
+                "iat": 1311280970,
+            },
+            signing_key,
+        ).auth_time
+
 
 def test_invalid_id_token(token_endpoint: str) -> None:
     with pytest.raises(MissingIdToken):
@@ -111,11 +121,8 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code"),
         )
 
-    with pytest.raises(InvalidIdToken):
-        BearerToken(access_token="an_access_token", expires_in=60, id_token="foo").validate_id_token(
-            client=OAuth2Client(token_endpoint, client_id="client_id"),
-            azr=AuthorizationResponse(code="code"),
-        )
+    with pytest.raises(InvalidIdToken, match="token is neither a JWT or a JWE"):
+        BearerToken(access_token="an_access_token", expires_in=60, id_token="foo")
 
     sig_jwk = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
     enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
@@ -173,13 +180,13 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code"),
         )
 
-    with pytest.raises(MismatchingIssuer):
+    with pytest.raises(MismatchingIdTokenIssuer):
         BearerToken(access_token="an_access_token", id_token=Jwt.sign(claims, sig_jwk).value).validate_id_token(
             client=OAuth2Client(token_endpoint, client_id=client_id),
             azr=AuthorizationResponse(code="code", issuer="https://a.different.issuer"),
         )
 
-    with pytest.raises(MismatchingAudience):
+    with pytest.raises(MismatchingIdTokenAudience):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -196,7 +203,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(MismatchingAzp):
+    with pytest.raises(MismatchingIdTokenAzp):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -232,7 +239,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(MismatchingNonce):
+    with pytest.raises(MismatchingIdTokenNonce):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -382,7 +389,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(InvalidIdToken, match="Mismatching 'at_hash' value"):
+    with pytest.raises(InvalidIdToken, match="mismatching 'at_hash' value"):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -405,7 +412,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(InvalidIdToken, match="Mismatching 'c_hash' value"):
+    with pytest.raises(InvalidIdToken, match="mismatching 'c_hash' value"):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -451,7 +458,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer),
         )
 
-    with pytest.raises(InvalidIdToken, match="Mismatching 's_hash' value"):
+    with pytest.raises(InvalidIdToken, match="mismatching 's_hash' value"):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign(
@@ -474,7 +481,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
             azr=AuthorizationResponse(code="code", issuer=issuer, state="state"),
         )
 
-    with pytest.raises(InvalidIdToken, match="ID Token does not contain an `alg` parameter"):
+    with pytest.raises(InvalidIdToken, match="does not contain an `alg` parameter"):
         BearerToken(
             access_token="an_access_token",
             id_token=Jwt.sign_arbitrary(

@@ -10,14 +10,17 @@ authentication-core-1_0.html.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from math import ceil
 from typing import TYPE_CHECKING, Any
 
-from .pooling import TokenEndpointPoolingJob
-from .tokens import BearerToken
+from attrs import define
+
+from .pooling import BaseTokenEndpointPoolingJob
 from .utils import accepts_expires_in
 
-if TYPE_CHECKING:  # pragma: no cover
+if TYPE_CHECKING:
     from .client import OAuth2Client
+    from .tokens import BearerToken
 
 
 class BackChannelAuthenticationResponse:
@@ -43,7 +46,7 @@ class BackChannelAuthenticationResponse:
         expires_at: datetime | None = None,
         interval: int | None = 20,
         **kwargs: Any,
-    ):
+    ) -> None:
         self.auth_req_id = auth_req_id
         self.expires_at = expires_at
         self.interval = interval
@@ -65,6 +68,13 @@ class BackChannelAuthenticationResponse:
             return datetime.now(tz=timezone.utc) - timedelta(seconds=leeway) > self.expires_at
         return None
 
+    @property
+    def expires_in(self) -> int | None:
+        """Number of seconds until expiration."""
+        if self.expires_at:
+            return ceil((self.expires_at - datetime.now(tz=timezone.utc)).total_seconds())
+        return None
+
     def __getattr__(self, key: str) -> Any:
         """Return attributes from this `BackChannelAuthenticationResponse`.
 
@@ -81,14 +91,11 @@ class BackChannelAuthenticationResponse:
             AttributeError: if the attribute is not present in the response
 
         """
-        if key == "expires_in":
-            if self.expires_at is None:
-                return None
-            return int(self.expires_at.timestamp() - datetime.now(tz=timezone.utc).timestamp())
         return self.other.get(key) or super().__getattribute__(key)
 
 
-class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
+@define(init=False)
+class BackChannelAuthenticationPoolingJob(BaseTokenEndpointPoolingJob):
     """A pooling job for the BackChannel Authentication flow.
 
     This will poll the Token Endpoint until the user finishes with its authentication.
@@ -96,20 +103,30 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
     Args:
         client: an OAuth2Client that will be used to pool the token endpoint.
         auth_req_id: an `auth_req_id` as `str` or a `BackChannelAuthenticationResponse`.
-        interval: The pooling interval to use. This overrides the one in `auth_req_id` if it is
-            a `BackChannelAuthenticationResponse`.
+        interval: The pooling interval, in seconds, to use. This overrides
+            the one in `auth_req_id` if it is a `BackChannelAuthenticationResponse`.
+            Defaults to 5 seconds.
         slow_down_interval: Number of seconds to add to the pooling interval when the AS returns
             a slow down request.
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
 
-    Usage: ```python client = OAuth2Client( token_endpoint="https://my.as.local/token",
-    auth=("client_id", "client_secret") ) pool_job = BackChannelAuthenticationPoolingJob(
-    client=client, auth_req_id="my_auth_req_id" )
+    Example:
+        ```python
+        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
+        pool_job = BackChannelAuthenticationPoolingJob(
+            client=client,
+            auth_req_id="my_auth_req_id",
+        )
 
-        token = None while token is None: token = pool_job() ```
+        token = None
+        while token is None:
+            token = pool_job()
+        ```
 
     """
+
+    auth_req_id: str
 
     def __init__(
         self,
@@ -120,18 +137,19 @@ class BackChannelAuthenticationPoolingJob(TokenEndpointPoolingJob):
         slow_down_interval: int = 5,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
-    ):
-        if isinstance(auth_req_id, BackChannelAuthenticationResponse) and interval is None:
-            interval = auth_req_id.interval
+    ) -> None:
+        if isinstance(auth_req_id, BackChannelAuthenticationResponse):
+            interval = interval or auth_req_id.interval
+            auth_req_id = auth_req_id.auth_req_id
 
-        super().__init__(
+        self.__attrs_init__(
             client=client,
-            interval=interval,
+            auth_req_id=auth_req_id,
+            interval=interval or 5,
             slow_down_interval=slow_down_interval,
-            requests_kwargs=requests_kwargs,
-            **token_kwargs,
+            requests_kwargs=requests_kwargs or {},
+            token_kwargs=token_kwargs,
         )
-        self.auth_req_id = auth_req_id
 
     def token_request(self) -> BearerToken:
         """Implement the CIBA token request.

@@ -32,7 +32,7 @@ Please note that despite the name, this library has no relationship with Google
 [oauth2client](https://github.com/googleapis/oauth2client) library.
 
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/)
-[![PyPi version](https://img.shields.io/pypi/v/black)](https://pypi.org/project/black/)
+[![PyPi version](https://img.shields.io/pypi/v/requests_oauth2client)](https://pypi.org/project/requests_oauth2client/)
 [![Downloads](https://static.pepy.tech/badge/requests_oauth2client/month)](https://pepy.tech/project/requests_oauth2client)
 [![Supported Versions](https://img.shields.io/pypi/pyversions/requests_oauth2client.svg)](https://pypi.org/project/requests_oauth2client)
 [![PyPi license](https://badgen.net/pypi/license/requests_oauth2client/)](https://pypi.com/project/requests_oauth2client/)
@@ -67,15 +67,15 @@ Or you can import individual objects from this package as usual. Note that impor
 
 ## Calling APIs with Access Tokens
 
-If you already managed to obtain an access token for the API you want to call, you can simply use the [BearerAuth] Auth
-Handler for [requests]:
+If you already managed to obtain an access token for the API you want to call, you can simply convert it to an instance of [BearerToken].
+Instances of that class work as a `requests` compatible auth handler.
 
 ```python
 import requests
-from requests_oauth2client import BearerAuth
+from requests_oauth2client import BearerToken
 
-token = "an_access_token"
-resp = requests.get("https://my.protected.api/endpoint", auth=BearerAuth(token))
+token = BearerToken("my_access_token")
+resp = requests.get("https://my.protected.api/endpoint", auth=token)
 ```
 
 This authentication handler will add a `Authorization: Bearer <access_token>` header in the request, with your access
