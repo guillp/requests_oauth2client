@@ -76,6 +76,13 @@ from .discovery import (
     oidc_discovery_document_url,
     well_known_uri,
 )
+from .dpop import (
+    DPoPKey,
+    DPoPToken,
+    InvalidDPoPAccessToken,
+    InvalidDPoPAlg,
+    InvalidDPoPKey,
+)
 from .exceptions import (
     AccessDenied,
     AccountSelectionRequired,
@@ -160,6 +167,8 @@ __all__ = [
     "ClientSecretPost",
     "CodeChallengeMethods",
     "ConsentRequired",
+    "DPoPKey",
+    "DPoPToken",
     "DeviceAuthorizationError",
     "DeviceAuthorizationPoolingJob",
     "DeviceAuthorizationResponse",
@@ -183,6 +192,9 @@ __all__ = [
     "InvalidCodeVerifierParam",
     "InvalidDeviceAuthorizationResponse",
     "InvalidDiscoveryDocument",
+    "InvalidDPoPAccessToken",
+    "InvalidDPoPAlg",
+    "InvalidDPoPKey",
     "InvalidEndpointUri",
     "InvalidGrant",
     "InvalidIdToken",

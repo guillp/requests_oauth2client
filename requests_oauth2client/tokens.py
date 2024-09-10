@@ -9,13 +9,15 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
 import jwskate
 import requests
-from attrs import asdict, frozen
+from attrs import Attribute, Converter, Factory, asdict, field, frozen
 from binapy import BinaPy
 from typing_extensions import Self
 
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
+    from attrs import AttrsInstance
+
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
 
@@ -28,10 +30,11 @@ class TokenType(str, Enum):
     ID_TOKEN = "id_token"
 
 
-class AccessTokenType(str, Enum):
+class AccessTokenTypes(str, Enum):
     """An enum of standardised `access_token` types."""
 
     BEARER = "Bearer"
+    DPOP = "DPoP"
 
 
 class UnsupportedTokenType(ValueError):
@@ -224,6 +227,26 @@ class ExpiredAccessToken(RuntimeError):
     """Raised when an expired access token is used."""
 
 
+def id_token_converter(
+    raw_id_token: str | bytes | IdToken | jwskate.JweCompact | None, self: AttrsInstance
+) -> IdToken | jwskate.JweCompact | None:
+    """A converter for `id_token` parameter passed to `BearerToken`."""
+    if raw_id_token is None:
+        return None
+    id_token_jwt: IdToken | jwskate.JweCompact
+    if isinstance(raw_id_token, (str, bytes)):
+        try:
+            id_token_jwt = IdToken(raw_id_token)
+        except jwskate.InvalidJwt:
+            try:
+                id_token_jwt = jwskate.JweCompact(raw_id_token)
+            except jwskate.InvalidJwe:
+                msg = "token is neither a JWT or a JWE."
+                raise InvalidIdToken(msg, self) from None  # type: ignore[arg-type]
+        return id_token_jwt
+    return raw_id_token
+
+
 @frozen(init=False)
 class BearerToken(TokenResponse, requests.auth.AuthBase):
     """Represents a Bearer Token as returned by a Token Endpoint.
@@ -247,8 +270,9 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
 
     """
 
-    TOKEN_TYPE: ClassVar[str] = AccessTokenType.BEARER.value
+    TOKEN_TYPE: ClassVar[str] = AccessTokenTypes.BEARER.value
     AUTHORIZATION_HEADER: ClassVar[str] = "Authorization"
+    AUTHORIZATION_SCHEME: ClassVar[str] = AccessTokenTypes.BEARER.value
 
     access_token: str
     expires_at: datetime | None
@@ -270,29 +294,20 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
         id_token: str | bytes | IdToken | jwskate.JweCompact | None = None,
         **kwargs: Any,
     ) -> None:
-        if token_type.title() != self.TOKEN_TYPE.title():
-            raise UnsupportedTokenType(token_type)
-        id_token_jwt: IdToken | jwskate.JweCompact | None
-        if isinstance(id_token, (str, bytes)):
-            try:
-                id_token_jwt = IdToken(id_token)
-            except jwskate.InvalidJwt:
-                try:
-                    id_token_jwt = jwskate.JweCompact(id_token)
-                except jwskate.InvalidJwe:
-                    msg = "token is neither a JWT or a JWE."
-                    raise InvalidIdToken(msg, self) from None
-        else:
-            id_token_jwt = id_token
         self.__attrs_init__(
             access_token=access_token,
             expires_at=expires_at,
             scope=scope,
             refresh_token=refresh_token,
             token_type=token_type,
-            id_token=id_token_jwt,
+            id_token=id_token,
             kwargs=kwargs,
         )
+
+    @token_type.validator
+    def _validate_token_type(self, attribute: Attribute[str], value: str) -> None:  # noqa: ARG002
+        if value.title() != self.TOKEN_TYPE.title():
+            raise UnsupportedTokenType(value)
 
     def is_expired(self, leeway: int = 0) -> bool | None:
         """Check if the access token is expired.
@@ -322,7 +337,7 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
             the value to use in an HTTP Authorization Header
 
         """
-        return f"Bearer {self.access_token}"
+        return f"{self.AUTHORIZATION_SCHEME} {self.access_token}"
 
     def validate_id_token(  # noqa: PLR0915, C901
         self, client: OAuth2Client, azr: AuthorizationResponse, exp_leeway: int = 0, auth_time_leeway: int = 10
