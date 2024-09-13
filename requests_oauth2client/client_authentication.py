@@ -170,6 +170,7 @@ class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
     lifetime: int
     jti_gen: Callable[[], str]
     aud: str | None
+    alg: str | None
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion for a specific audience.
@@ -236,7 +237,6 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
     """
 
     client_secret: str
-    alg: str
 
     def __init__(
         self,
@@ -340,7 +340,6 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
     """
 
     private_jwk: Jwk
-    alg: str | None
 
     def __init__(
         self,
