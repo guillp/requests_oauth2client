@@ -7,7 +7,7 @@ import secrets
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Sequence
 
-from attrs import Factory, asdict, field, fields, frozen
+from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
 from furl import furl  # type: ignore[import-untyped]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
@@ -215,14 +215,14 @@ class AuthorizationResponse:
     """
 
     code: str
-    redirect_uri: str | None = None
-    code_verifier: str | None = None
-    state: str | None = None
-    nonce: str | None = None
-    acr_values: tuple[str, ...] | None = None
-    max_age: int | None = None
-    issuer: str | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    redirect_uri: str | None
+    code_verifier: str | None
+    state: str | None
+    nonce: str | None
+    acr_values: tuple[str, ...] | None
+    max_age: int | None
+    issuer: str | None
+    kwargs: dict[str, Any]
 
     def __init__(
         self,
@@ -348,20 +348,20 @@ class AuthorizationRequest:
     authorization_endpoint: str
 
     client_id: str = field(metadata={"query": True})
-    redirect_uri: str | None = field(metadata={"query": True}, default=None)
-    scope: tuple[str, ...] | None = field(metadata={"query": True}, default=("openid",))
-    response_type: str = field(metadata={"query": True}, default=ResponseTypes.CODE)
-    state: str | None = field(metadata={"query": True}, default=None)
-    nonce: str | None = field(metadata={"query": True}, default=None)
-    code_challenge_method: str | None = field(metadata={"query": True}, default=CodeChallengeMethods.S256)
-    acr_values: tuple[str, ...] | None = field(metadata={"query": True}, default=None)
-    max_age: int | None = field(metadata={"query": True}, default=None)
-    kwargs: dict[str, Any] = Factory(dict)
+    redirect_uri: str | None = field(metadata={"query": True})
+    scope: tuple[str, ...] | None = field(metadata={"query": True})
+    response_type: str = field(metadata={"query": True})
+    state: str | None = field(metadata={"query": True})
+    nonce: str | None = field(metadata={"query": True})
+    code_challenge_method: str | None = field(metadata={"query": True})
+    acr_values: tuple[str, ...] | None = field(metadata={"query": True})
+    max_age: int | None = field(metadata={"query": True})
+    kwargs: dict[str, Any]
 
-    code_verifier: str | None = None
+    code_verifier: str | None
     code_challenge: str | None = field(init=False, metadata={"query": True})
-    authorization_response_iss_parameter_supported: bool = False
-    issuer: str | None = None
+    authorization_response_iss_parameter_supported: bool
+    issuer: str | None
 
     exception_classes: ClassVar[dict[str, type[AuthorizationResponseError]]] = {
         "interaction_required": InteractionRequired,
@@ -763,8 +763,8 @@ class RequestParameterAuthorizationRequest:
     authorization_endpoint: str
     client_id: str
     request: Jwt
-    expires_at: datetime | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    expires_at: datetime | None
+    kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(
@@ -829,8 +829,8 @@ class RequestUriParameterAuthorizationRequest:
     authorization_endpoint: str
     client_id: str
     request_uri: str
-    expires_at: datetime | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    expires_at: datetime | None
+    kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(

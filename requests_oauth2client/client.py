@@ -283,7 +283,7 @@ class OAuth2Client:
 
     """
 
-    auth: requests.auth.AuthBase = field(converter=client_auth_factory)
+    auth: requests.auth.AuthBase
     token_endpoint: str = field()
     revocation_endpoint: str | None = field()
     introspection_endpoint: str | None = field()
@@ -296,14 +296,14 @@ class OAuth2Client:
     jwks_uri: str | None = field()
     authorization_server_jwks: JwkSet
     issuer: str | None = field()
-    id_token_signed_response_alg: str | None = SignatureAlgs.RS256
-    id_token_encrypted_response_alg: str | None = None
-    id_token_decryption_key: Jwk | None = None
-    code_challenge_method: str | None = CodeChallengeMethods.S256
-    authorization_response_iss_parameter_supported: bool = False
-    session: requests.Session = field(factory=requests.Session)
-    extra_metadata: dict[str, Any] = field(factory=dict)
-    testing: bool = False
+    id_token_signed_response_alg: str | None
+    id_token_encrypted_response_alg: str | None
+    id_token_decryption_key: Jwk | None
+    code_challenge_method: str | None
+    authorization_response_iss_parameter_supported: bool
+    session: requests.Session
+    extra_metadata: dict[str, Any]
+    testing: bool
 
     token_class: type[BearerToken] = BearerToken
 

@@ -361,20 +361,6 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
             aud=aud,
         )
 
-        alg = self.private_jwk.alg or alg
-        if not alg:
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
-        if alg not in self.private_jwk.supported_signing_algorithms():
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
-        if not self.private_jwk.is_private or self.private_jwk.is_symmetric:
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
-        kid = self.private_jwk.get("kid")
-        if not kid:
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion, asymmetrically signed with `private_jwk` as key.
 
