@@ -7,7 +7,7 @@ from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
-from attrs import field, frozen
+from attrs import frozen
 from typing_extensions import Literal, Self
 
 if TYPE_CHECKING:
@@ -135,12 +135,12 @@ class ApiClient:
     """
 
     base_url: str
-    auth: requests.auth.AuthBase | None = None
-    timeout: int | None = 60
-    raise_for_status: bool = True
-    none_fields: Literal["include", "exclude", "empty"] = "exclude"
-    bool_fields: tuple[Any, Any] | None = "true", "false"
-    session: requests.Session = field(factory=requests.Session)
+    auth: requests.auth.AuthBase | None
+    timeout: int | None
+    raise_for_status: bool
+    none_fields: Literal["include", "exclude", "empty"]
+    bool_fields: tuple[Any, Any] | None
+    session: requests.Session
 
     def __init__(
         self,
