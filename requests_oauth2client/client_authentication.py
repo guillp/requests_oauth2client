@@ -14,7 +14,7 @@ from urllib.parse import parse_qs
 from uuid import uuid4
 
 import requests
-from attr import field, frozen
+from attrs import frozen
 from binapy import BinaPy
 from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
 
@@ -339,7 +339,7 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
 
     """
 
-    private_jwk: Jwk = field(converter=to_jwk)
+    private_jwk: Jwk
     alg: str | None
 
     def __init__(
@@ -352,6 +352,22 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
         jti_gen: Callable[[], str] = lambda: str(uuid4()),
         aud: str | None = None,
     ) -> None:
+        private_jwk = to_jwk(private_jwk)
+
+        alg = private_jwk.alg or alg
+        if not alg:
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
+        if alg not in private_jwk.supported_signing_algorithms():
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
+        if not private_jwk.is_private or private_jwk.is_symmetric:
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
+        kid = private_jwk.get("kid")
+        if not kid:
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
         self.__attrs_init__(
             client_id=client_id,
             private_jwk=private_jwk,
