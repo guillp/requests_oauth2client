@@ -9,7 +9,6 @@ from jwskate import EncryptionAlgs, KeyManagementAlgs, SignatureAlgs
 
 from .api_client import ApiClient, InvalidBoolFieldsParam, InvalidPathParam
 from .auth import (
-    BaseOAuth2RenewableTokenAuth,
     NonRenewableTokenError,
     OAuth2AccessTokenAuth,
     OAuth2AuthorizationCodeAuth,
@@ -152,7 +151,6 @@ __all__ = [
     "BackChannelAuthenticationPoolingJob",
     "BackChannelAuthenticationResponse",
     "BaseClientAuthenticationMethod",
-    "BaseOAuth2RenewableTokenAuth",
     "BaseTokenEndpointPoolingJob",
     "BearerToken",
     "BearerTokenSerializer",

@@ -21,8 +21,14 @@ class NonRenewableTokenError(Exception):
 
 
 @define(init=False)
-class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
-    """Base class for BearerToken-based Auth Handlers, with an obtainable or renewable token.
+class OAuth2AccessTokenAuth(requests.auth.AuthBase):
+    """Authentication Handler for OAuth 2.0 Access Tokens and (optional) Refresh Tokens.
+
+    This [Requests Auth handler][requests.auth.AuthBase] implementation uses an access token as
+    Bearer or DPoP token, and can automatically refresh it when expired, if a refresh token is available.
+
+    Token can be a simple `str` containing a raw access token value, or a
+    [BearerToken][requests_oauth2client.tokens.BearerToken] that can contain a `refresh_token`.
 
     In addition to adding a properly formatted `Authorization` header, this will obtain a new token
     once the current token is expired. Expiration is detected based on the `expires_in` hint
@@ -30,12 +36,37 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     token is obtained some seconds before the actual expiration is reached. This may help in
     situations where the client, AS and RS have slightly offset clocks.
 
+    Args:
+        client: the client to use to refresh tokens.
+        token: an initial Access Token, if you have one already. In most cases, leave `None`.
+        leeway: expiration leeway, in number of seconds.
+        **token_kwargs: additional kwargs to pass to the token endpoint.
+
+    Example:
+        ```python
+        from requests_oauth2client import BearerToken, OAuth2Client, OAuth2AccessTokenAuth, requests
+
+        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
+        # obtain a BearerToken any way you see fit, optionally including a refresh token
+        # for this example, the token value is hardcoded
+        token = BearerToken(access_token="access_token", expires_in=600, refresh_token="refresh_token")
+        auth = OAuth2AccessTokenAuth(client, token, scope="my_scope")
+        resp = requests.post("https://my.api.local/resource", auth=auth)
+        ```
+
     """
 
     client: OAuth2Client = field(on_setattr=setters.frozen)
     token: BearerToken | None
     leeway: int = field(on_setattr=setters.frozen)
     token_kwargs: dict[str, Any] = field(on_setattr=setters.frozen)
+
+    def __init__(
+        self, client: OAuth2Client, token: str | BearerToken, *, leeway: int = 20, **token_kwargs: Any
+    ) -> None:
+        if isinstance(token, str):
+            token = BearerToken(token)
+        self.__attrs_init__(client=client, token=token, leeway=leeway, token_kwargs=token_kwargs)
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the Access Token to the request.
@@ -55,10 +86,11 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
     def renew_token(self) -> None:
         """Obtain a new Bearer Token.
 
-        Subclasses should implement this.
+        This will try to use the `refresh_token`, if there is one.
 
         """
-        raise NotImplementedError
+        if self.token is not None and self.token.refresh_token is not None:
+            self.token = self.client.refresh_token(refresh_token=self.token, **self.token_kwargs)
 
     def forget_token(self) -> None:
         """Forget the current token, forcing a renewal on the next HTTP request."""
@@ -66,29 +98,7 @@ class BaseOAuth2RenewableTokenAuth(requests.auth.AuthBase):
 
 
 @define(init=False)
-class BaseOAuth2RefreshTokenAuth(BaseOAuth2RenewableTokenAuth):
-    """Base class for flows which can have a refresh-token.
-
-    This implements a `renew_token()` method which uses the refresh token to obtain new tokens.
-
-    """
-
-    @override
-    def renew_token(self) -> None:
-        """Obtain a new token, using the Refresh Token, if available.
-
-        Raises:
-            NonRenewableTokenError: if the token is not renewable.
-
-        """
-        if self.token is None or self.token.refresh_token is None:
-            raise NonRenewableTokenError
-
-        self.token = self.client.refresh_token(refresh_token=self.token, **self.token_kwargs)
-
-
-@define(init=False)
-class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
+class OAuth2ClientCredentialsAuth(OAuth2AccessTokenAuth):
     """An Auth Handler for the [Client Credentials grant](https://www.rfc-editor.org/rfc/rfc6749#section-4.4).
 
     This [requests AuthBase][requests.auth.AuthBase] automatically gets Access Tokens from an OAuth
@@ -126,47 +136,7 @@ class OAuth2ClientCredentialsAuth(BaseOAuth2RenewableTokenAuth):
 
 
 @define(init=False)
-class OAuth2AccessTokenAuth(BaseOAuth2RefreshTokenAuth):
-    """Authentication Handler for OAuth 2.0 Access Tokens and (optional) Refresh Tokens.
-
-    This [Requests Auth handler][requests.auth.AuthBase] implementation uses an access token as
-    Bearer token, and can automatically refresh it when expired, if a refresh token is available.
-
-    Token can be a simple `str` containing a raw access token value, or a
-    [BearerToken][requests_oauth2client.tokens.BearerToken] that can contain a `refresh_token`.
-    If a `refresh_token` and an expiration date are available (based on `expires_in` hint),
-    this Auth Handler will automatically refresh the access token once it is expired.
-
-    Args:
-        client: the client to use to refresh tokens.
-        token: an initial Access Token, if you have one already. In most cases, leave `None`.
-        leeway: expiration leeway, in number of seconds.
-        **token_kwargs: additional kwargs to pass to the token endpoint.
-
-    Example:
-        ```python
-        from requests_oauth2client import BearerToken, OAuth2Client, OAuth2AccessTokenAuth, requests
-
-        client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
-        # obtain a BearerToken any way you see fit, optionally including a refresh token
-        # for this example, the token value is hardcoded
-        token = BearerToken(access_token="access_token", expires_in=600, refresh_token="refresh_token")
-        auth = OAuth2AccessTokenAuth(client, token, scope="my_scope")
-        resp = requests.post("https://my.api.local/resource", auth=auth)
-        ```
-
-    """
-
-    def __init__(
-        self, client: OAuth2Client, token: str | BearerToken, *, leeway: int = 20, **token_kwargs: Any
-    ) -> None:
-        if isinstance(token, str):
-            token = BearerToken(token)
-        self.__attrs_init__(client=client, token=token, leeway=leeway, token_kwargs=token_kwargs)
-
-
-@define(init=False)
-class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[override]
+class OAuth2AuthorizationCodeAuth(OAuth2AccessTokenAuth):  # type: ignore[override]
     """Authentication handler for the [Authorization Code grant](https://www.rfc-editor.org/rfc/rfc6749#section-4.1).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges an Authorization
@@ -235,7 +205,7 @@ class OAuth2AuthorizationCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[o
 
 
 @define(init=False)
-class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):  # type: ignore[override]
+class OAuth2ResourceOwnerPasswordAuth(OAuth2AccessTokenAuth):  # type: ignore[override]
     """Authentication Handler for the [Resource Owner Password Credentials Flow](https://www.rfc-editor.org/rfc/rfc6749#section-4.3).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges the user
@@ -313,7 +283,7 @@ class OAuth2ResourceOwnerPasswordAuth(BaseOAuth2RenewableTokenAuth):  # type: ig
 
 
 @define(init=False)
-class OAuth2DeviceCodeAuth(BaseOAuth2RefreshTokenAuth):  # type: ignore[override]
+class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):  # type: ignore[override]
     """Authentication Handler for the [Device Code Flow](https://www.rfc-editor.org/rfc/rfc8628).
 
     This [Requests Auth handler][requests.auth.AuthBase] implementation exchanges a Device Code for
