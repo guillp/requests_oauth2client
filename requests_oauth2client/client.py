@@ -175,7 +175,7 @@ class Endpoints(str, Enum):
     AUTHORIZATION = "authorization_endpoint"
     BACKCHANNEL_AUTHENTICATION = "backchannel_authentication_endpoint"
     DEVICE_AUTHORIZATION = "device_authorization_endpoint"
-    INSTROSPECTION = "introspection_endpoint"
+    INTROSPECTION = "introspection_endpoint"
     REVOCATION = "revocation_endpoint"
     PUSHED_AUTHORIZATION_REQUEST = "pushed_authorization_request_endpoint"
     JWKS = "jwks_uri"
@@ -1346,7 +1346,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             data["token_type_hint"] = token_type_hint
 
         return self._request(
-            Endpoints.INSTROSPECTION,
+            Endpoints.INTROSPECTION,
             data=data,
             auth=self.auth,
             on_success=self.parse_introspection_response,
@@ -1697,7 +1697,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
              **kwargs: additional keyword parameters to pass to OAuth2Client
 
         Returns:
-            an OAuth2Client with endpoint initialised based on the obtained metadata
+            an `OAuth2Client` with endpoint initialised based on the obtained metadata
 
         Raises:
             InvalidParam: if neither `url` nor `issuer` are suitable urls
@@ -1710,7 +1710,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             client = OAuth2Client.from_discovery_endpoint(
                 issuer="https://myserver.net",
                 client_id="my_client_id,
-                client_secret="my_client_secret"
+                client_secret="my_client_secret",
             )
             ```
 
@@ -1808,7 +1808,7 @@ To disable endpoint uri validation, set `testing=True` when initializing your `O
             raise InvalidDiscoveryDocument(msg, discovery)
         authorization_endpoint = discovery.get(Endpoints.AUTHORIZATION)
         revocation_endpoint = discovery.get(Endpoints.REVOCATION)
-        introspection_endpoint = discovery.get(Endpoints.INSTROSPECTION)
+        introspection_endpoint = discovery.get(Endpoints.INTROSPECTION)
         userinfo_endpoint = discovery.get(Endpoints.USER_INFO)
         jwks_uri = discovery.get(Endpoints.JWKS)
         if jwks_uri is not None:
