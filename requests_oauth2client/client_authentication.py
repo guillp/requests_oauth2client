@@ -482,6 +482,10 @@ def client_auth_factory(
         an Auth Handler that will manage client authentication to the AS Token Endpoint or other
         backend endpoints.
 
+    Raises:
+        UnsupportedClientCredentials: if the provided parameters are not suitable to guess the
+            desired authentication method.
+
     """
     if auth is not None and (client_id is not None or client_secret is not None or private_key is not None):
         msg = """\
