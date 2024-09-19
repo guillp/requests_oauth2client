@@ -285,9 +285,11 @@ def test_pooling_job(
     )
 
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
-    with mocker.patch("time.sleep"):
-        assert job() is None
+    mocker.patch("time.sleep")
+
+    assert job() is None
     time.sleep.assert_called_once_with(job.interval)  # type: ignore[attr-defined]
+    time.sleep.reset_mock()  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert job.interval == interval
 
@@ -296,9 +298,10 @@ def test_pooling_job(
     freezer.tick(job.interval)
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, status_code=401, json={"error": "slow_down"})
-    with mocker.patch("time.sleep"):
-        assert job() is None
+
+    assert job() is None
     time.sleep.assert_called_once_with(interval)  # type: ignore[attr-defined]
+    time.sleep.reset_mock()  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert job.interval == interval + job.slow_down_interval
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)
@@ -306,9 +309,10 @@ def test_pooling_job(
     freezer.tick(job.interval)
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, json={"access_token": access_token})
-    with mocker.patch("time.sleep"):
-        token = job()
+
+    token = job()
     time.sleep.assert_called_once_with(interval + job.slow_down_interval)  # type: ignore[attr-defined]
+    time.sleep.reset_mock()  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert job.interval == interval + job.slow_down_interval
     ciba_request_validator(requests_mock.last_request, auth_req_id=auth_req_id)

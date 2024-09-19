@@ -14,7 +14,7 @@ from urllib.parse import parse_qs
 from uuid import uuid4
 
 import requests
-from attr import field, frozen
+from attrs import frozen
 from binapy import BinaPy
 from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
 
@@ -170,6 +170,7 @@ class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
     lifetime: int
     jti_gen: Callable[[], str]
     aud: str | None
+    alg: str | None
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion for a specific audience.
@@ -236,7 +237,6 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
     """
 
     client_secret: str
-    alg: str
 
     def __init__(
         self,
@@ -339,8 +339,7 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
 
     """
 
-    private_jwk: Jwk = field(converter=to_jwk)
-    alg: str | None
+    private_jwk: Jwk
 
     def __init__(
         self,
@@ -352,6 +351,22 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
         jti_gen: Callable[[], str] = lambda: str(uuid4()),
         aud: str | None = None,
     ) -> None:
+        private_jwk = to_jwk(private_jwk)
+
+        alg = private_jwk.alg or alg
+        if not alg:
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
+        if alg not in private_jwk.supported_signing_algorithms():
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
+        if not private_jwk.is_private or private_jwk.is_symmetric:
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
+        kid = private_jwk.get("kid")
+        if not kid:
+            raise InvalidClientAssertionSigningKeyOrAlg(alg)
+
         self.__attrs_init__(
             client_id=client_id,
             private_jwk=private_jwk,
@@ -360,20 +375,6 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
             jti_gen=jti_gen,
             aud=aud,
         )
-
-        alg = self.private_jwk.alg or alg
-        if not alg:
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
-        if alg not in self.private_jwk.supported_signing_algorithms():
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
-        if not self.private_jwk.is_private or self.private_jwk.is_symmetric:
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
-
-        kid = self.private_jwk.get("kid")
-        if not kid:
-            raise InvalidClientAssertionSigningKeyOrAlg(alg)
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion, asymmetrically signed with `private_jwk` as key.
@@ -480,6 +481,10 @@ def client_auth_factory(
     Returns:
         an Auth Handler that will manage client authentication to the AS Token Endpoint or other
         backend endpoints.
+
+    Raises:
+        UnsupportedClientCredentials: if the provided parameters are not suitable to guess the
+            desired authentication method.
 
     """
     if auth is not None and (client_id is not None or client_secret is not None or private_key is not None):

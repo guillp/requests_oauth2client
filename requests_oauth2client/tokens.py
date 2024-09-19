@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
 import jwskate
 import requests
-from attrs import Factory, asdict, frozen
+from attrs import asdict, frozen
 from binapy import BinaPy
 from typing_extensions import Self
 
@@ -251,12 +251,12 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
     AUTHORIZATION_HEADER: ClassVar[str] = "Authorization"
 
     access_token: str
-    expires_at: datetime | None = None
-    scope: str | None = None
-    refresh_token: str | None = None
-    token_type: str = TOKEN_TYPE
-    id_token: IdToken | jwskate.JweCompact | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    expires_at: datetime | None
+    scope: str | None
+    refresh_token: str | None
+    token_type: str
+    id_token: IdToken | jwskate.JweCompact | None
+    kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(

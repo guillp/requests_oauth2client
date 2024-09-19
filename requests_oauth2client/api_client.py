@@ -7,7 +7,7 @@ from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
 import requests
-from attrs import field, frozen
+from attrs import frozen
 from typing_extensions import Literal, Self
 
 if TYPE_CHECKING:
@@ -21,10 +21,10 @@ class InvalidBoolFieldsParam(ValueError):
 
     def __init__(self, bool_fields: object) -> None:
         super().__init__("""\
-Invalid value for 'bool_fields' parameter. It must be an iterable of 2 str values:
-- first one for the True value
-- second one for the False value
-boolean fields in `data` or `params` with a boolean value (`True` or `False`)
+Invalid value for `bool_fields` parameter. It must be an iterable of 2 `str` values:
+- first one for the `True` value,
+- second one for the `False` value.
+Boolean fields in `data` or `params` with a boolean value (`True` or `False`)
 will be serialized to the corresponding value.
 Default is `('true', 'false')`
 Use this parameter when the target API expects some other values, e.g.:
@@ -36,7 +36,7 @@ Use this parameter when the target API expects some other values, e.g.:
 
 
 def validate_bool_fields(bool_fields: tuple[str, str]) -> tuple[str, str]:
-    """Validate the `bool_fields` paremeter.
+    """Validate the `bool_fields` parameter.
 
     It must be a sequence of 2 values. First one is the `True` value, second one is the `False` value.
     Both must be `str` or string-able values.
@@ -135,12 +135,12 @@ class ApiClient:
     """
 
     base_url: str
-    auth: requests.auth.AuthBase | None = None
-    timeout: int | None = 60
-    raise_for_status: bool = True
-    none_fields: Literal["include", "exclude", "empty"] = "exclude"
-    bool_fields: tuple[Any, Any] | None = "true", "false"
-    session: requests.Session = field(factory=requests.Session)
+    auth: requests.auth.AuthBase | None
+    timeout: int | None
+    raise_for_status: bool
+    none_fields: Literal["include", "exclude", "empty"]
+    bool_fields: tuple[Any, Any] | None
+    session: requests.Session
 
     def __init__(
         self,

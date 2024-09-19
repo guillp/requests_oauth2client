@@ -368,7 +368,6 @@ def code_challenge_method(request: FixtureRequest) -> str | None:
 
 
 @pytest.fixture(scope="session")
-@pytest.mark.slow
 def authorization_request(  # noqa: C901
     authorization_endpoint: str,
     client_id: str,

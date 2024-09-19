@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
-from attrs import define
+from attrs import define, field, setters
 
 from .exceptions import AuthorizationPending, SlowDown
 
@@ -26,11 +26,11 @@ class BaseTokenEndpointPoolingJob:
 
     """
 
-    client: OAuth2Client
-    requests_kwargs: dict[str, Any]
-    token_kwargs: dict[str, Any]
+    client: OAuth2Client = field(on_setattr=setters.frozen)
+    requests_kwargs: dict[str, Any] = field(on_setattr=setters.frozen)
+    token_kwargs: dict[str, Any] = field(on_setattr=setters.frozen)
+    slow_down_interval: int = field(on_setattr=setters.frozen)
     interval: int
-    slow_down_interval: int
 
     def __call__(self) -> BearerToken | None:
         """Wrap the actual Token Endpoint call with a pooling interval.

@@ -175,7 +175,7 @@ class Endpoints(str, Enum):
     AUTHORIZATION = "authorization_endpoint"
     BACKCHANNEL_AUTHENTICATION = "backchannel_authentication_endpoint"
     DEVICE_AUTHORIZATION = "device_authorization_endpoint"
-    INSTROSPECTION = "introspection_endpoint"
+    INTROSPECTION = "introspection_endpoint"
     REVOCATION = "revocation_endpoint"
     PUSHED_AUTHORIZATION_REQUEST = "pushed_authorization_request_endpoint"
     JWKS = "jwks_uri"
@@ -283,7 +283,7 @@ class OAuth2Client:
 
     """
 
-    auth: requests.auth.AuthBase = field(converter=client_auth_factory)
+    auth: requests.auth.AuthBase
     token_endpoint: str = field()
     revocation_endpoint: str | None = field()
     introspection_endpoint: str | None = field()
@@ -296,14 +296,14 @@ class OAuth2Client:
     jwks_uri: str | None = field()
     authorization_server_jwks: JwkSet
     issuer: str | None = field()
-    id_token_signed_response_alg: str | None = SignatureAlgs.RS256
-    id_token_encrypted_response_alg: str | None = None
-    id_token_decryption_key: Jwk | None = None
-    code_challenge_method: str | None = CodeChallengeMethods.S256
-    authorization_response_iss_parameter_supported: bool = False
-    session: requests.Session = field(factory=requests.Session)
-    extra_metadata: dict[str, Any] = field(factory=dict)
-    testing: bool = False
+    id_token_signed_response_alg: str | None
+    id_token_encrypted_response_alg: str | None
+    id_token_decryption_key: Jwk | None
+    code_challenge_method: str | None
+    authorization_response_iss_parameter_supported: bool
+    session: requests.Session
+    extra_metadata: dict[str, Any]
+    testing: bool
 
     token_class: type[BearerToken] = BearerToken
 
@@ -1346,7 +1346,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             data["token_type_hint"] = token_type_hint
 
         return self._request(
-            Endpoints.INSTROSPECTION,
+            Endpoints.INTROSPECTION,
             data=data,
             auth=self.auth,
             on_success=self.parse_introspection_response,
@@ -1831,7 +1831,7 @@ Mismatching `issuer` value in discovery document (received '{discovery.get('issu
             raise InvalidDiscoveryDocument(msg, discovery)
         authorization_endpoint = discovery.get(Endpoints.AUTHORIZATION)
         revocation_endpoint = discovery.get(Endpoints.REVOCATION)
-        introspection_endpoint = discovery.get(Endpoints.INSTROSPECTION)
+        introspection_endpoint = discovery.get(Endpoints.INTROSPECTION)
         userinfo_endpoint = discovery.get(Endpoints.USER_INFO)
         jwks_uri = discovery.get(Endpoints.JWKS)
         if jwks_uri is not None and not testing:

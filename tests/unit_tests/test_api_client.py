@@ -288,7 +288,7 @@ def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     assert requests_mock.last_request.query == "foo=bar&true=1&false=0"
     assert requests_mock.last_request.text == "foo=bar&true=1&false=0"
 
-    with pytest.raises(ValueError, match="Invalid value for 'bool_fields'") as exc:
+    with pytest.raises(ValueError, match="Invalid value for `bool_fields`") as exc:
         ApiClient(target_api).get(bool_fields=(1, 2, 3))
     assert exc.type is InvalidBoolFieldsParam
 

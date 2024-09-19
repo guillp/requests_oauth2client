@@ -115,7 +115,7 @@ def test_request_uri_authorization_request_with_custom_param(authorization_endpo
     )
     assert isinstance(request_uri_azr.uri, str)
     url = request_uri_azr.furl
-    assert url.origin + url.pathstr == authorization_endpoint
+    assert url.origin + str(url.path) == authorization_endpoint
     assert url.args == {"client_id": client_id, "request_uri": request_uri, "custom_attr": custom_attr}
 
 

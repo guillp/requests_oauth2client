@@ -5,9 +5,10 @@ from __future__ import annotations
 import re
 import secrets
 from enum import Enum
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Sequence
 
-from attrs import Factory, asdict, field, fields, frozen
+from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
 from furl import furl  # type: ignore[import-untyped]
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
@@ -47,7 +48,7 @@ class ResponseTypes(str, Enum):
 
 
 class CodeChallengeMethods(str, Enum):
-    """All standardised `code_challenge` values.
+    """All standardised `code_challenge_method` values.
 
     You should always use `S256`.
 
@@ -58,7 +59,7 @@ class CodeChallengeMethods(str, Enum):
 
 
 class UnsupportedCodeChallengeMethod(ValueError):
-    """Raised when an unsupported code_challenge_method is provided."""
+    """Raised when an unsupported `code_challenge_method` is provided."""
 
 
 class InvalidCodeVerifierParam(ValueError):
@@ -126,7 +127,7 @@ class PkceUtils:
 
     @classmethod
     def generate_code_verifier_and_challenge(cls, method: str = CodeChallengeMethods.S256) -> tuple[str, str]:
-        """Generate a valid `code_verifier` and derive its `code_challenge`.
+        """Generate a valid `code_verifier` and its matching `code_challenge`.
 
         Args:
             method: the method to use for deriving the challenge. Accepts 'S256' or 'plain'.
@@ -191,14 +192,15 @@ class AuthorizationResponse:
     """Represent a successful Authorization Response.
 
     An Authorization Response is the redirection initiated by the AS to the client's redirection
-    endpoint (redirect_uri) after an Authorization Request. This Response is typically created with
-    a call to `AuthorizationRequest.validate_callback()` once the call to the client Redirection
-    Endpoint is made. AuthorizationResponse contains the following, all accessible as attributes:
+    endpoint (redirect_uri), after an Authorization Request.
+    This Response is typically created with a call to `AuthorizationRequest.validate_callback()`
+    once the call to the client Redirection Endpoint is made.
+    `AuthorizationResponse` contains the following attributes:
 
      - all the parameters that have been returned by the AS, most notably the `code`, and optional
        parameters such as `state`.
-     - the redirect_uri that was used for the Authorization Request
-     - the code_verifier matching the code_challenge that was used for the Authorization Request
+     - the `redirect_uri` that was used for the Authorization Request
+     - the `code_verifier` matching the `code_challenge` that was used for the Authorization Request
 
     Parameters `redirect_uri` and `code_verifier` must be those from the matching
     `AuthorizationRequest`. All other parameters including `code` and `state` must be those
@@ -215,14 +217,14 @@ class AuthorizationResponse:
     """
 
     code: str
-    redirect_uri: str | None = None
-    code_verifier: str | None = None
-    state: str | None = None
-    nonce: str | None = None
-    acr_values: tuple[str, ...] | None = None
-    max_age: int | None = None
-    issuer: str | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    redirect_uri: str | None
+    code_verifier: str | None
+    state: str | None
+    nonce: str | None
+    acr_values: tuple[str, ...] | None
+    max_age: int | None
+    issuer: str | None
+    kwargs: dict[str, Any]
 
     def __init__(
         self,
@@ -348,20 +350,19 @@ class AuthorizationRequest:
     authorization_endpoint: str
 
     client_id: str = field(metadata={"query": True})
-    redirect_uri: str | None = field(metadata={"query": True}, default=None)
-    scope: tuple[str, ...] | None = field(metadata={"query": True}, default=("openid",))
-    response_type: str = field(metadata={"query": True}, default=ResponseTypes.CODE)
-    state: str | None = field(metadata={"query": True}, default=None)
-    nonce: str | None = field(metadata={"query": True}, default=None)
-    code_challenge_method: str | None = field(metadata={"query": True}, default=CodeChallengeMethods.S256)
-    acr_values: tuple[str, ...] | None = field(metadata={"query": True}, default=None)
-    max_age: int | None = field(metadata={"query": True}, default=None)
-    kwargs: dict[str, Any] = Factory(dict)
+    redirect_uri: str | None = field(metadata={"query": True})
+    scope: tuple[str, ...] | None = field(metadata={"query": True})
+    response_type: str = field(metadata={"query": True})
+    state: str | None = field(metadata={"query": True})
+    nonce: str | None = field(metadata={"query": True})
+    code_challenge_method: str | None = field(metadata={"query": True})
+    acr_values: tuple[str, ...] | None = field(metadata={"query": True})
+    max_age: int | None = field(metadata={"query": True})
+    kwargs: dict[str, Any]
 
-    code_verifier: str | None = None
-    code_challenge: str | None = field(init=False, metadata={"query": True})
-    authorization_response_iss_parameter_supported: bool = False
-    issuer: str | None = None
+    code_verifier: str | None
+    authorization_response_iss_parameter_supported: bool
+    issuer: str | None
 
     exception_classes: ClassVar[dict[str, type[AuthorizationResponseError]]] = {
         "interaction_required": InteractionRequired,
@@ -434,11 +435,9 @@ class AuthorizationRequest:
             )
             raise ValueError(msg)
 
-        code_challenge: str | None = None
         if code_challenge_method:
             if not code_verifier:
                 code_verifier = PkceUtils.generate_code_verifier()
-            code_challenge = PkceUtils.derive_challenge(code_verifier, code_challenge_method)
         else:
             code_verifier = None
 
@@ -458,7 +457,13 @@ class AuthorizationRequest:
             authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
             kwargs=kwargs,
         )
-        object.__setattr__(self, "code_challenge", code_challenge)
+
+    @cached_property
+    def code_challenge(self) -> str | None:
+        """The `code_challenge` that matches `code_verifier` and `code_challenge_method`."""
+        if self.code_verifier and self.code_challenge_method:
+            return PkceUtils.derive_challenge(self.code_verifier, self.code_challenge_method)
+        return None
 
     def as_dict(self) -> dict[str, Any]:
         """Return the full argument dict.
@@ -468,7 +473,6 @@ class AuthorizationRequest:
         """
         d = asdict(self)
         d.update(**d.pop("kwargs", {}))
-        d.pop("code_challenge")
         return d
 
     @property
@@ -482,6 +486,7 @@ class AuthorizationRequest:
         d = {field.name: getattr(self, field.name) for field in fields(type(self)) if field.metadata.get("query")}
         if d["scope"]:
             d["scope"] = " ".join(d["scope"])
+        d["code_challenge"] = self.code_challenge
         d.update(self.kwargs)
 
         return {key: val for key, val in d.items() if val is not None}
@@ -763,8 +768,8 @@ class RequestParameterAuthorizationRequest:
     authorization_endpoint: str
     client_id: str
     request: Jwt
-    expires_at: datetime | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    expires_at: datetime | None
+    kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(
@@ -829,8 +834,8 @@ class RequestUriParameterAuthorizationRequest:
     authorization_endpoint: str
     client_id: str
     request_uri: str
-    expires_at: datetime | None = None
-    kwargs: dict[str, Any] = Factory(dict)
+    expires_at: datetime | None
+    kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(
@@ -903,7 +908,6 @@ class AuthorizationRequestSerializer:
         """
         d = asdict(azr)
         d.update(**d.pop("kwargs", {}))
-        d.pop("code_challenge")
         return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
 
     @staticmethod
