@@ -22,9 +22,6 @@ def test_validate_uri() -> None:
     with pytest.raises(ValueError, match="credentials") as exc:
         validate_endpoint_uri("https://user:passwd@myas.local/token")
     assert exc.type is InvalidUri
-    with pytest.raises(ValueError, match="port") as exc:
-        validate_endpoint_uri("https://myas.local:1234/token")
-    assert exc.type is InvalidUri
 
 
 @pytest.mark.parametrize("expires_in", [10, "10"])

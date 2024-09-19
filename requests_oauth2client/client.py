@@ -1681,7 +1681,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
     ) -> OAuth2Client:
         """Initialise an OAuth2Client based on Authorization Server Metadata.
 
-        This will retrieve the standardised metadata document available at `url`, and will extract
+        This will retrieve the standardized metadata document available at `url`, and will extract
         all Endpoint Uris from that document, will fetch the current public keys from its
         `jwks_uri`, then will initialise an OAuth2Client based on those endpoints.
 
@@ -1693,15 +1693,17 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
              private_key: private key to sign client assertions
              session: a `requests.Session` to use to retrieve the document and initialise the client with
              issuer: if an issuer is given, check that it matches the one from the retrieved document
-             testing: if True, don't try to validate the endpoint urls that are part of the document
+             testing: if `True`, do not try to validate the issuer uri nor the endpoint urls
+                 that are part of the document
              **kwargs: additional keyword parameters to pass to OAuth2Client
 
         Returns:
-            an OAuth2Client with endpoint initialised based on the obtained metadata
+            an OAuth2Client with endpoint initialized based on the obtained metadata
 
         Raises:
-            InvalidParam: if neither `url` nor `issuer` are suitable urls
-            requests.HTTPError: if an error happens while fetching the documents
+            InvalidIssuer: If `issuer` is not using https, or contains credentials or fragment.
+            InvalidParam: If neither `url` nor `issuer` are suitable urls.
+            requests.HTTPError: If an error happens while fetching the documents.
 
         Example:
             ```python
@@ -1710,25 +1712,30 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             client = OAuth2Client.from_discovery_endpoint(
                 issuer="https://myserver.net",
                 client_id="my_client_id,
-                client_secret="my_client_secret"
+                client_secret="my_client_secret",
             )
             ```
 
         """
+        if issuer is not None and not testing:
+            try:
+                validate_issuer_uri(issuer)
+            except InvalidUri as exc:
+                raise InvalidIssuer("issuer", issuer, exc) from exc  # noqa: EM101
         if url is None and issuer is not None:
             url = oidc_discovery_document_url(issuer)
         if url is None:
             msg = "Please specify at least one of `issuer` or `url`"
             raise InvalidParam(msg)
 
-        validate_endpoint_uri(url, path=False)
+        if not testing:
+            validate_endpoint_uri(url, path=False)
 
         session = session or requests.Session()
         discovery = session.get(url).json()
 
         jwks_uri = discovery.get("jwks_uri")
-        if jwks_uri:
-            jwks = JwkSet(session.get(jwks_uri).json())
+        jwks = JwkSet(session.get(jwks_uri).json()) if jwks_uri else None
 
         return cls.from_discovery_document(
             discovery,
@@ -1769,9 +1776,9 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
              client_secret: client secret to use to authenticate the client
              private_key: private key to sign client assertions
              authorization_server_jwks: the current authorization server JWKS keys
-             session: a requests Session to use to retrieve the document and initialise the client with
+             session: a requests Session to use to retrieve the document and initialize the client with
              https: (deprecated) if `True`, validates that urls in the discovery document use the https scheme
-             testing: if True, don't try to validate the endpoint urls that are part of the document
+             testing: if `True`, don't try to validate the endpoint urls that are part of the document
              **kwargs: additional args that will be passed to OAuth2Client
 
         Returns:
@@ -1784,16 +1791,14 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         if not https:
             warnings.warn(
                 """\
-The https parameter is deprecated.
+The `https` parameter is deprecated.
 To disable endpoint uri validation, set `testing=True` when initializing your `OAuth2Client`.""",
                 stacklevel=1,
             )
             testing = True
         if issuer and discovery.get("issuer") != issuer:
-            msg = (
-                f"Mismatching `issuer` value in discovery document"
-                f" (received '{discovery.get('issuer')}', expected '{issuer}')"
-            )
+            msg = f"""\
+Mismatching `issuer` value in discovery document (received '{discovery.get('issuer')}', expected '{issuer}')."""
             raise InvalidParam(
                 msg,
                 issuer,
@@ -1811,8 +1816,8 @@ To disable endpoint uri validation, set `testing=True` when initializing your `O
         introspection_endpoint = discovery.get(Endpoints.INSTROSPECTION)
         userinfo_endpoint = discovery.get(Endpoints.USER_INFO)
         jwks_uri = discovery.get(Endpoints.JWKS)
-        if jwks_uri is not None:
-            validate_endpoint_uri(jwks_uri, https=https)
+        if jwks_uri is not None and not testing:
+            validate_endpoint_uri(jwks_uri)
         authorization_response_iss_parameter_supported = discovery.get(
             "authorization_response_iss_parameter_supported",
             False,
