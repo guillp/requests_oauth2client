@@ -51,7 +51,7 @@ def validate_endpoint_uri(
     *,
     https: bool = True,
     no_credentials: bool = True,
-    no_port: bool = True,
+    no_port: bool = False,
     no_fragment: bool = True,
     path: bool = True,
 ) -> str:

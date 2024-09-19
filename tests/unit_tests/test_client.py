@@ -19,8 +19,11 @@ from requests_oauth2client import (
     ClientSecretPost,
     DeviceAuthorizationResponse,
     IdToken,
+    InvalidIssuer,
+    InvalidParam,
     InvalidPushedAuthorizationResponse,
     InvalidTokenResponse,
+    InvalidUri,
     OAuth2Client,
     PrivateKeyJwt,
     PublicApp,
@@ -658,7 +661,7 @@ def test_from_discovery_document(
             auth=client_id,
         )
 
-    with pytest.warns(match="https parameter is deprecated"):
+    with pytest.warns(match="`https` parameter is deprecated"):
         OAuth2Client.from_discovery_document(
             {
                 "issuer": issuer,
@@ -1516,9 +1519,6 @@ def test_testing_oauth2client() -> None:
     with pytest.raises(ValueError, match="must use https"):
         OAuth2Client(token_endpoint="https://valid.token/endpoint", client_id="client_id", issuer=issuer)
 
-    with pytest.raises(ValueError, match="no custom port number allowed"):
-        OAuth2Client(token_endpoint="https://valid.token/endpoint", client_id="client_id", issuer=issuer)
-
     with pytest.raises(ValueError, match="must include a path"):
         OAuth2Client(token_endpoint="https://foo.bar/", client_id="client_id")
 
@@ -1546,3 +1546,52 @@ def test_proxy_authorization(requests_mock: RequestsMocker, target_api: str) -> 
     requests.post(target_api, auth=ProxyAuthorizationBearerToken(access_token))
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.headers[auth_header] == f"Bearer {access_token}"
+
+
+def test_custom_ports_in_endpoints(requests_mock: RequestsMocker) -> None:
+    issuer = "https://as.local:8443"
+    token_endpoint = "https://as.local:8443/token"
+    client = OAuth2Client(token_endpoint=token_endpoint, client_id="client_id", client_secret="client_secret")
+    assert client.token_endpoint == token_endpoint
+
+    assert not requests_mock.called_once
+    with pytest.raises(InvalidIssuer, match="must use https"):
+        OAuth2Client.from_discovery_endpoint(issuer="http://as.local")
+    assert not requests_mock.called_once
+
+    with pytest.raises(InvalidIssuer, match="must use https"):
+        OAuth2Client.from_discovery_endpoint(issuer="http://as.local:8080")
+    assert not requests_mock.called_once
+
+    with pytest.raises(InvalidUri, match="must use https"):
+        OAuth2Client.from_discovery_endpoint(url="http://as.local/.well-known/openid-configuration")
+    assert not requests_mock.called_once
+
+    requests_mock.get(
+        "https://as.local/.well-known/openid-configuration", json={"issuer": issuer, "token_endpoint": token_endpoint}
+    )
+    with pytest.raises(
+        InvalidParam,
+        match=rf"Mismatching `issuer` value in discovery document \(received '{issuer}', expected 'https://as.local'\)",
+    ):
+        OAuth2Client.from_discovery_endpoint(issuer="https://as.local", client_id="client_id")
+    assert requests_mock.called_once
+
+    discovery_url = "https://as.local:8443/.well-known/openid-configuration"
+    requests_mock.get(discovery_url, json={"issuer": issuer, "token_endpoint": token_endpoint})
+
+    requests_mock.reset()
+    assert (
+        OAuth2Client.from_discovery_endpoint(
+            url="https://as.local:8443/.well-known/openid-configuration", client_id="client_id"
+        ).token_endpoint
+        == token_endpoint
+    )
+    assert requests_mock.called_once
+
+    requests_mock.reset()
+    assert (
+        OAuth2Client.from_discovery_endpoint(issuer="https://as.local:8443", client_id="client_id").token_endpoint
+        == token_endpoint
+    )
+    assert requests_mock.called_once

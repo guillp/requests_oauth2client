@@ -10,6 +10,7 @@ from requests_oauth2client.utils import accepts_expires_in
 
 def test_validate_uri() -> None:
     validate_endpoint_uri("https://myas.local/token")
+    validate_endpoint_uri("https://myas.local:443/token", no_port=True)
     with pytest.raises(ValueError, match="https") as exc:
         validate_endpoint_uri("http://myas.local/token")
     assert exc.type is InvalidUri
@@ -23,7 +24,7 @@ def test_validate_uri() -> None:
         validate_endpoint_uri("https://user:passwd@myas.local/token")
     assert exc.type is InvalidUri
     with pytest.raises(ValueError, match="port") as exc:
-        validate_endpoint_uri("https://myas.local:1234/token")
+        validate_endpoint_uri("https://myas.local:1234/token", no_port=True)
     assert exc.type is InvalidUri
 
 
