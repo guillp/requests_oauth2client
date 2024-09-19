@@ -127,7 +127,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
 
     sig_jwk = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
     enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
-    as_jwks = sig_jwk.as_jwks()
+    as_jwks = sig_jwk.public_jwk().as_jwks()
 
     issuer = "http://issuer.local"
     client_id = "my_client_id"
