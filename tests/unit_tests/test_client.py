@@ -661,7 +661,7 @@ def test_from_discovery_document(
             auth=client_id,
         )
 
-    with pytest.warns(match="https parameter is deprecated"):
+    with pytest.warns(match="`https` parameter is deprecated"):
         OAuth2Client.from_discovery_document(
             {
                 "issuer": issuer,
