@@ -98,7 +98,7 @@ def test_request_uri_authorization_request(authorization_endpoint: str, client_i
     )
     assert isinstance(request_uri_azr.uri, str)
     url = request_uri_azr.furl
-    assert url.origin + url.pathstr == authorization_endpoint
+    assert url.origin + str(url.path) == authorization_endpoint
     assert url.args == {"client_id": client_id, "request_uri": request_uri, "custom_param": "custom_value"}
     assert request_uri_azr.custom_param == "custom_value"
 
@@ -307,6 +307,7 @@ def test_request_as_dict() -> None:
         "authorization_response_iss_parameter_supported": True,
         "max_age": 0,
         "customattr": "customvalue",
+        "dpop_key": None,
     }
 
 

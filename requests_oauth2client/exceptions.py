@@ -95,6 +95,10 @@ class InvalidGrant(TokenEndpointError):
     """Raised when the Token Endpoint returns `error = invalid_grant`."""
 
 
+class UseDPoPNonce(TokenEndpointError):
+    """Raised when the Token Endpoint raises error = use_dpop_nonce`."""
+
+
 class AccessDenied(EndpointError):
     """Raised when the Authorization Server returns `error = access_denied`."""
 
@@ -225,8 +229,8 @@ class MissingIssuer(InvalidAuthResponse):
 class MismatchingState(InvalidAuthResponse):
     """Raised on mismatching `state` value.
 
-    This happens when the Authorization Endpoints returns a 'state' parameter that doesn't match the
-    value passed in the Authorization Request.
+    This happens when the Authorization Endpoints returns a 'state' parameter that doesn't match the value passed in the
+    Authorization Request.
 
     """
 
@@ -239,8 +243,7 @@ class MismatchingState(InvalidAuthResponse):
 class MismatchingIssuer(InvalidAuthResponse):
     """Raised on mismatching `iss` value.
 
-    This happens when the Authorization Endpoints returns an 'iss' that doesn't match the expected
-    value.
+    This happens when the Authorization Endpoints returns an 'iss' that doesn't match the expected value.
 
     """
 

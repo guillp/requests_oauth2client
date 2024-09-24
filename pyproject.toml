@@ -94,8 +94,8 @@ exclude_also = [
 [tool.docformatter]
 black = true
 recursive = true
-wrap-summaries = 100
-wrap-descriptions = 100
+wrap-summaries = 120
+wrap-descriptions = 120
 blank = true
 
 [tool.ruff]

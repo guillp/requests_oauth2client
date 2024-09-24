@@ -1,8 +1,8 @@
 """This module implements OAuth 2.0 Client Authentication Methods.
 
-An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to the Token Endpoint,
-by including appropriate credentials. This module contains helper classes and methods that implement
-the standardized and commonly used Client Authentication Methods.
+An OAuth 2.0 Client must authenticate to the AS whenever it sends a request to the Token Endpoint, by including
+appropriate credentials. This module contains helper classes and methods that implement the standardized and commonly
+used Client Authentication Methods.
 
 """
 
@@ -31,8 +31,8 @@ class InvalidRequestForClientAuthentication(RuntimeError):
 class BaseClientAuthenticationMethod(requests.auth.AuthBase):
     """Base class for all Client Authentication methods. This extends [requests.auth.AuthBase][].
 
-    This base class checks that requests are suitable to add Client Authentication parameters to,
-    and does not modify the request.
+    This base class checks that requests are suitable to add Client Authentication parameters to, and does not modify
+    the request.
 
     """
 
