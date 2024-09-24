@@ -1,7 +1,7 @@
 """Vendor-specific utilities.
 
-This module contains vendor-specific subclasses of [requests_oauth2client] classes, that make it
-easier to work with specific OAuth 2.x providers and/or fix compatibility issues.
+This module contains vendor-specific subclasses of [requests_oauth2client] classes, that make it easier to work with
+specific OAuth 2.x providers and/or fix compatibility issues.
 
 """
 

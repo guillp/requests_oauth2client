@@ -903,8 +903,8 @@ def test_revoke_refresh_token_with_bearer_token_as_param(
 ) -> None:
     """Test for `OAuth2Client.revoke_refresh_token()`.
 
-    If passed a BearerToken containing a refresh_token, it sends a Revocation request to the
-    Revocation Endpoint, with that refresh token, and token_type_hint=refresh_token.
+    If passed a BearerToken containing a refresh_token, it sends a Revocation request to the Revocation Endpoint, with
+    that refresh token, and token_type_hint=refresh_token.
 
     """
     client = OAuth2Client(token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method)
@@ -991,8 +991,7 @@ def test_revoke_token_with_bearer_token_as_param(
 ) -> None:
     """Test for OAuth2Client.revoke_token().
 
-    If a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh token
-    from the BearerToken.
+    If a BearerToken is supplied and token_token_type_hint=refresh_token, take the refresh token from the BearerToken.
 
     """
     client = OAuth2Client(token_endpoint, revocation_endpoint=revocation_endpoint, auth=client_auth_method)
