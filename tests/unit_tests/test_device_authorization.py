@@ -2,6 +2,7 @@ import time
 from datetime import datetime, timezone
 
 import pytest
+from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
 from pytest_mock import MockerFixture
 
@@ -199,6 +200,7 @@ def test_device_authorization_invalid_errors(
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
+@freeze_time()
 def test_device_authorization_pooling_job(
     requests_mock: RequestsMocker,
     token_endpoint: str,
@@ -228,8 +230,9 @@ def test_device_authorization_pooling_job(
     )
 
     requests_mock.post(token_endpoint, status_code=401, json={"error": "authorization_pending"})
-    with mocker.patch("time.sleep"):
-        assert job() is None
+    mocker.patch("time.sleep")
+
+    assert job() is None
     time.sleep.assert_called_once_with(interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert job.interval == interval
@@ -237,8 +240,9 @@ def test_device_authorization_pooling_job(
 
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, status_code=401, json={"error": "slow_down"})
-    with mocker.patch("time.sleep"):
-        assert job() is None
+    time.sleep.reset_mock()  # type: ignore[attr-defined]
+
+    assert job() is None
     time.sleep.assert_called_once_with(interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert job.interval == interval + job.slow_down_interval
@@ -246,8 +250,9 @@ def test_device_authorization_pooling_job(
 
     requests_mock.reset_mock()
     requests_mock.post(token_endpoint, json={"access_token": access_token})
-    with mocker.patch("time.sleep"):
-        token = job()
+    time.sleep.reset_mock()  # type: ignore[attr-defined]
+
+    token = job()
     time.sleep.assert_called_once_with(interval + job.slow_down_interval)  # type: ignore[attr-defined]
     assert requests_mock.called_once
     assert isinstance(token, BearerToken)
