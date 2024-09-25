@@ -106,7 +106,7 @@ def test_dpop_token_api_request(requests_mock: RequestsMocker, alg: str) -> None
     assert dpop.claims["iat"] == Jwt.timestamp()
     assert len(dpop.claims["jti"]) > 16
     assert dpop.claims["ath"] == BinaPy(access_token).to("sha256").to("b64u").ascii()
-    assert dpop.verify_signature(private_key)
+    assert dpop.verify_signature(private_key.public_jwk())
 
 
 @freeze_time()
