@@ -76,7 +76,7 @@ def test_dpop_client_credentials_request(requests_mock: RequestsMocker) -> None:
     assert dpop.claims["htu"] == token_endpoint
     assert dpop.claims["iat"] == Jwt.timestamp()
     assert len(dpop.claims["jti"]) > 16
-    assert dpop.verify_signature(dpop_key.private_key)
+    assert dpop.verify_signature(dpop_key.public_jwk)
 
 
 @freeze_time()
