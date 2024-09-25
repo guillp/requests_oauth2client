@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta, timezone
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 from uuid import uuid4
 
 import jwskate
@@ -68,6 +68,7 @@ class DPoPToken(BearerToken):  # type: ignore[override]
 
     TOKEN_TYPE = AccessTokenTypes.DPOP.value
     AUTHORIZATION_SCHEME = AccessTokenTypes.DPOP.value
+    DPOP_HEADER: ClassVar[str] = "DPoP"
 
     dpop_key: DPoPKey = field(kw_only=True)
 
@@ -114,7 +115,7 @@ class DPoPToken(BearerToken):  # type: ignore[override]
             msg = "request has no 'method'"
             raise RuntimeError(msg)
         proof = self.dpop_key.proof(htm=htm, htu=htu, ath=self.access_token_hash)
-        request.headers["DPoP"] = str(proof)
+        request.headers[self.DPOP_HEADER] = str(proof)
         return request
 
 
