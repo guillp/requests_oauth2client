@@ -761,21 +761,23 @@ class OAuth2Client:
     ) -> BearerToken:
         """Send a request to the token endpoint with the `refresh_token` grant.
 
-        If DPoP was used
+        If `refresh_token` is a `DPoPToken` instance, (which means that DPoP was used to obtain the initial
+        Access/Refresh Tokens), then the same DPoP key will be used to DPoP proof the refresh token request,
+        as defined in RFC9449.
 
         Args:
             refresh_token: A refresh_token, as a string, or as a `BearerToken`.
                 That `BearerToken` must have a `refresh_token`.
-            requests_kwargs: additional parameters for the call to `requests`
-            **token_kwargs: additional parameters for the token endpoint,
+            requests_kwargs: Additional parameters for the call to `requests`.
+            **token_kwargs: Additional parameters for the token endpoint,
                 alongside `grant_type`, `refresh_token`, etc.
 
         Returns:
-            a `BearerToken`
+            The token endpoint response.
 
         Raises:
-            MissingRefreshToken: if `refresh_token` is a BearerToken instance but does not
-                contain a `refresh_token`
+            MissingRefreshToken: If `refresh_token` is a `BearerToken` instance but does not
+                contain a `refresh_token`.
 
         """
         dpop_key: DPoPKey | None = None
@@ -812,7 +814,7 @@ class OAuth2Client:
             **token_kwargs: Additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
 
         Returns:
-            a `BearerToken`
+            The Token Endpoint response.
 
         Raises:
             MissingDeviceCode: if `device_code` is a DeviceAuthorizationResponse but does not
@@ -848,7 +850,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `auth_req_id`, etc.
 
         Returns:
-            a `BearerToken`
+            The Token Endpoint response.
 
         Raises:
             MissingAuthRequestId: if `auth_req_id` is a BackChannelAuthenticationResponse but does not contain
@@ -900,7 +902,7 @@ class OAuth2Client:
             **token_kwargs: Additional parameters to include in the request body.
 
         Returns:
-            A `BearerToken` as returned by the Authorization Server.
+            The Token Endpoint response.
 
         Raises:
             UnknownSubjectTokenType: If the type of `subject_token` cannot be determined automatically.
@@ -951,7 +953,7 @@ class OAuth2Client:
             **token_kwargs: Additional parameters to include in the request body.
 
         Returns:
-            A `BearerToken` as returned by the Authorization Server.
+            The Token Endpoint response.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -990,7 +992,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters to include in the request body.
 
         Returns:
-            a `BearerToken` as returned by the Authorization Server
+            The Token Endpoint response.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -1038,7 +1040,7 @@ class OAuth2Client:
             **kwargs: Additional query parameters to include in the auth request.
 
         Returns:
-            An AuthorizationRequest with the supplied parameters.
+            The Token Endpoint response.
 
         """
         authorization_endpoint = self._require_endpoint("authorization_endpoint")
@@ -1092,6 +1094,7 @@ class OAuth2Client:
             auth=self.auth,
             on_success=self.parse_pushed_authorization_response,
             on_failure=self.on_pushed_authorization_request_error,
+            dpop_key=authorization_request.dpop_key,
             **requests_kwargs,
         )
 
@@ -1099,16 +1102,16 @@ class OAuth2Client:
         self,
         response: requests.Response,
         *,
-        dpop_key: DPoPKey | None = None,  # noqa: ARG002
+        dpop_key: DPoPKey | None = None,
     ) -> RequestUriParameterAuthorizationRequest:
         """Parse the response obtained by `pushed_authorization_request()`.
 
         Args:
-            response: the `requests.Response` returned by the PAR endpoint.
-            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
+            response: The `requests.Response` returned by the PAR endpoint.
+            dpop_key: The `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
-            a RequestUriParameterAuthorizationRequest instance
+            A `RequestUriParameterAuthorizationRequest` instance initialized based on the PAR endpoint response.
 
         """
         response_json = response.json()
@@ -1120,6 +1123,7 @@ class OAuth2Client:
             client_id=self.client_id,
             request_uri=request_uri,
             expires_in=expires_in,
+            dpop_key=dpop_key,
         )
 
     def on_pushed_authorization_request_error(
@@ -1131,17 +1135,17 @@ class OAuth2Client:
         """Error Handler for Pushed Authorization Endpoint errors.
 
         Args:
-            response: the HTTP response as returned by the AS PAR endpoint.
-            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
+            response: The HTTP response as returned by the AS PAR endpoint.
+            dpop_key: The `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
-            a RequestUriParameterAuthorizationRequest, if the error is recoverable
+            Should not return anything, but raise an Exception instead. A `RequestUriParameterAuthorizationRequest`
+            may be returned by subclasses for testing purposes.
 
         Raises:
-            EndpointError: a subclass of this error depending on the error returned by the AS
-            InvalidPushedAuthorizationResponse: if the returned response is not following the
-                specifications
-            UnknownTokenEndpointError: for unknown/unhandled errors
+            EndpointError: A subclass of this error depending on the error returned by the AS.
+            InvalidPushedAuthorizationResponse: If the returned response is not following the specifications.
+            UnknownTokenEndpointError: For unknown/unhandled errors.
 
         """
         try:

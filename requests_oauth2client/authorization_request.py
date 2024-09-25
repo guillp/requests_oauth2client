@@ -795,6 +795,7 @@ class RequestParameterAuthorizationRequest:
     client_id: str
     request: Jwt
     expires_at: datetime | None
+    dpop_key: DPoPKey | None
     kwargs: dict[str, Any]
 
     @accepts_expires_in
@@ -804,6 +805,7 @@ class RequestParameterAuthorizationRequest:
         client_id: str,
         request: Jwt | str,
         expires_at: datetime | None = None,
+        dpop_key: DPoPKey | None = None,
         **kwargs: Any,
     ) -> None:
         if isinstance(request, str):
@@ -814,6 +816,7 @@ class RequestParameterAuthorizationRequest:
             client_id=client_id,
             request=request,
             expires_at=expires_at,
+            dpop_key=dpop_key,
             kwargs=kwargs,
         )
 
@@ -849,11 +852,11 @@ class RequestUriParameterAuthorizationRequest:
     """Represent an Authorization Request that includes a `request_uri` parameter.
 
     Args:
-        authorization_endpoint: the Authorization Endpoint uri
-        client_id: the client_id
-        request_uri: the request_uri
-        expires_at: the expiration date for this request
-        kwargs: extra parameters to include in the request
+        authorization_endpoint: The Authorization Endpoint uri.
+        client_id: The Client ID.
+        request_uri: The `request_uri`.
+        expires_at: The expiration date for this request.
+        kwargs: Extra query parameters to include in the request.
 
     """
 
@@ -861,15 +864,18 @@ class RequestUriParameterAuthorizationRequest:
     client_id: str
     request_uri: str
     expires_at: datetime | None
+    dpop_key: DPoPKey | None
     kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(
         self,
         authorization_endpoint: str,
+        *,
         client_id: str,
         request_uri: str,
         expires_at: datetime | None = None,
+        dpop_key: DPoPKey | None = None,
         **kwargs: Any,
     ) -> None:
         self.__attrs_init__(
@@ -877,6 +883,7 @@ class RequestUriParameterAuthorizationRequest:
             client_id=client_id,
             request_uri=request_uri,
             expires_at=expires_at,
+            dpop_key=dpop_key,
             kwargs=kwargs,
         )
 
