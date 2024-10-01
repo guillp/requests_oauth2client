@@ -84,7 +84,7 @@ def test_invalid_auth(token_endpoint: str) -> None:
         OAuth2Client(
             token_endpoint,
             client_secret="client_secret",
-            private_key=Jwk.generate_for_kty("EC", crv="P-256"),
+            private_key=Jwk.generate(alg="ES256"),
         )
 
 
@@ -1386,7 +1386,7 @@ def test_pushed_authorization_request_error(
 
 
 def test_jwt_bearer_grant(requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str) -> None:
-    key = Jwk.generate_for_kty("EC", alg="ES256")
+    key = Jwk.generate(alg="ES256")
     assertion = Jwt.sign({"iat": 1661759343, "exp": 1661759403, "sub": "some_user_id"}, key)
     scope = "my_scope"
 
@@ -1438,8 +1438,8 @@ def test_custom_token_type(requests_mock: RequestsMocker, token_endpoint: str) -
 
 
 def test_client_jwks() -> None:
-    private_key = Jwk.generate_for_alg(SignatureAlgs.RS256).with_kid_thumbprint()
-    id_token_decryption_key = Jwk.generate_for_alg(KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
+    private_key = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
+    id_token_decryption_key = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW, crv="P-256").with_kid_thumbprint()
     client = OAuth2Client(
         authorization_endpoint="https://as.local/authorize",
         token_endpoint="https://as.local/token",
@@ -1481,7 +1481,7 @@ def test_client_authorization_server_jwks() -> None:
 
 
 def test_client_id_token_decryption_key() -> None:
-    decryption_key = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW)
+    decryption_key = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW, crv="P-256")
     assert (
         OAuth2Client(
             "https://as.local/token", client_id="client_id", id_token_decryption_key=decryption_key

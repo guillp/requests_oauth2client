@@ -126,7 +126,7 @@ def test_invalid_id_token(token_endpoint: str) -> None:
         BearerToken(access_token="an_access_token", expires_in=60, id_token="foo")
 
     sig_jwk = Jwk.generate(alg=SignatureAlgs.RS256).with_kid_thumbprint()
-    enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW).with_kid_thumbprint()
+    enc_jwk = Jwk.generate(alg=KeyManagementAlgs.ECDH_ES_A256KW, crv="P-256").with_kid_thumbprint()
     as_jwks = sig_jwk.public_jwk().as_jwks()
 
     issuer = "http://issuer.local"
