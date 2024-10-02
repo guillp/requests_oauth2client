@@ -107,12 +107,12 @@ class DPoPToken(BearerToken):  # type: ignore[override]
         )
 
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
-        """Add a DPoP proof in each requests."""
+        """Add a DPoP proof in each request."""
         request = super().__call__(request)
-        htu = furl(request.url).remove(query=True, fragment=True).url
+        htu = request.url
         htm = request.method
-        if htm is None:  # pragma: no cover
-            msg = "request has no 'method'"
+        if htu is None or htm is None:  # pragma: no cover
+            msg = "Request has no 'method' or 'url'! This should not happen."
             raise RuntimeError(msg)
         proof = self.dpop_key.proof(htm=htm, htu=htu, ath=self.access_token_hash)
         request.headers[self.DPOP_HEADER] = str(proof)
@@ -133,12 +133,12 @@ class DPoPKey:
 
     """
 
-    private_key: jwskate.Jwk = field(repr=False)
     alg: str
-    jti_generator: Callable[[], str]
-    iat_generator: Callable[[], int]
-    jwt_typ: str
-    dpop_token_class: type[DPoPToken]
+    private_key: jwskate.Jwk = field(repr=False)
+    jti_generator: Callable[[], str] = field(repr=False)
+    iat_generator: Callable[[], int] = field(repr=False)
+    jwt_typ: str = field(repr=False)
+    dpop_token_class: type[DPoPToken] = field(repr=False)
 
     def __init__(
         self,
@@ -153,9 +153,12 @@ class DPoPKey:
             private_key = jwskate.to_jwk(private_key).check(is_private=True, is_symmetric=False)
         except ValueError as exc:
             raise InvalidDPoPKey(private_key) from exc
+
+        alg_name = jwskate.select_alg_class(private_key.SIGNATURE_ALGORITHMS, jwk_alg=private_key.alg, alg=alg).name
+
         self.__attrs_init__(
+            alg=alg_name,
             private_key=private_key,
-            alg=jwskate.select_alg_class(private_key.SIGNATURE_ALGORITHMS, jwk_alg=private_key.alg, alg=alg).name,
             jti_generator=jti_generator,
             iat_generator=iat_generator,
             jwt_typ=jwt_typ,
@@ -197,15 +200,17 @@ class DPoPKey:
         """Generate a DPoP proof.
 
         Args:
-            htm: The value of the HTTP method of the request to which the JWT is attached.
-            htu: The HTTP target URI of the request to which the JWT is attached, without query and fragment parts.
-            ath: The Hash of the access token.
+            htm: The HTTP method value of the request to which the proof is attached.
+            htu: The HTTP target URI of the request to which the proof is attached. Query and Fragment parts will
+                be automatically removed before being used as `htu` value in the generated proof.
+            ath: The Access Token hash value.
             nonce: A recent nonce provided via the DPoP-Nonce HTTP header, from either the AS or RS.
 
         Returns:
             the proof value (as a signed JWT)
 
         """
+        htu = furl(htu).remove(query=True, fragment=True).url
         proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": htu, "iat": self.iat_generator()}
         if nonce:
             proof_claims["nonce"] = nonce
