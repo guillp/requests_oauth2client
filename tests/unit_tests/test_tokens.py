@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+import jwskate
 import pytest
 from freezegun import freeze_time
 from freezegun.api import FrozenDateTimeFactory
@@ -292,3 +293,15 @@ def test_expires_in_as_str() -> None:
     assert BearerToken("access_token", expires_in=60) == BearerToken("access_token", expires_in="60")
     assert BearerToken("access_token", expires_in=-60) == BearerToken("access_token", expires_in="-60")
     assert BearerToken("access_token", expires_in="foo") == BearerToken("access_token")
+
+
+def test_access_token_jwt() -> None:
+    assert isinstance(
+        BearerToken(
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        ).access_token_jwt,
+        jwskate.SignedJwt,
+    )
+
+    with pytest.raises(jwskate.InvalidJwt):
+        BearerToken("not.a.jwt").access_token_jwt
