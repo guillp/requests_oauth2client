@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import Enum
+from functools import cached_property
 from math import ceil
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 
@@ -588,6 +589,18 @@ be a maximum of {azr.max_age} sec ago.
             raise ExpiredAccessToken(self)
         request.headers[self.AUTHORIZATION_HEADER] = self.authorization_header()
         return request
+
+    @cached_property
+    def access_token_jwt(self) -> jwskate.SignedJwt:
+        """If the access token is a JWT, return it as an instance of `jwskate.SignedJwt`.
+
+        This method is just an helper for AS testing purposes. Note that, as an OAuth 2.0 Client, you should never have
+        to decode or analyze an access token, since it is simply an abstract string value. It is not even mandatory that
+        Access Tokens are JWTs, just an implementation choice. Only Resource Servers (APIs) should check for the
+        contents of Access Tokens they receive.
+
+        """
+        return jwskate.SignedJwt(self.access_token)
 
 
 class BearerTokenSerializer:
