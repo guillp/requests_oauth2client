@@ -23,6 +23,7 @@ from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
+from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -47,12 +48,15 @@ from .exceptions import (
     UnknownIntrospectionError,
     UnknownTokenEndpointError,
     UnsupportedTokenType,
+    UseDPoPNonce,
 )
 from .tokens import BearerToken, IdToken, TokenResponse, TokenType
 from .utils import InvalidUri, validate_endpoint_uri, validate_issuer_uri
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+    from mypy_extensions import DefaultNamedArg
 
 T = TypeVar("T")
 
@@ -250,6 +254,11 @@ class OAuth2Client:
         session: a requests Session to use when sending HTTP requests.
             Useful if some extra parameters such as proxy or client certificate must be used
             to connect to the AS.
+        token_class: a custom BearerToken class, if required
+        dpop_bound_access_tokens: if `True`, DPoP will be used by default for every token request.
+            otherwise, you can enable DPoP by passing `dpop=True` when doing a token request.
+        dpop_key_generator: a callable that generates a DPoPKey, for whill be called when doing a token request
+            with DPoP enabled.
         testing: if `True`, don't verify the validity of the endpoint urls that are passed as parameter.
         **extra_metadata: additional metadata for this client, unused by this class, but may be
             used by subclasses. Those will be accessible with the `extra_metadata` attribute.
@@ -305,7 +314,11 @@ class OAuth2Client:
     extra_metadata: dict[str, Any]
     testing: bool
 
-    token_class: type[BearerToken] = BearerToken
+    dpop_bound_access_tokens: bool
+    dpop_key_generator: Callable[[str], DPoPKey]
+    dpop_alg: str
+
+    token_class: type[BearerToken]
 
     exception_classes: ClassVar[dict[str, type[EndpointError]]] = {
         "server_error": ServerError,
@@ -319,6 +332,7 @@ class OAuth2Client:
         "authorization_pending": AuthorizationPending,
         "slow_down": SlowDown,
         "expired_token": ExpiredToken,
+        "use_dpop_nonce": UseDPoPNonce,
         "unsupported_token_type": UnsupportedTokenType,
     }
 
@@ -350,6 +364,9 @@ class OAuth2Client:
         authorization_response_iss_parameter_supported: bool = False,
         token_class: type[BearerToken] = BearerToken,
         session: requests.Session | None = None,
+        dpop_bound_access_tokens: bool = False,
+        dpop_key_generator: Callable[[str], DPoPKey] = DPoPKey.generate,
+        dpop_alg: str = SignatureAlgs.ES256,
         testing: bool = False,
         **extra_metadata: Any,
     ) -> None:
@@ -378,6 +395,9 @@ class OAuth2Client:
             else:
                 raise MissingIdTokenEncryptedResponseAlgParam
 
+        if dpop_alg not in SignatureAlgs.ALL_ASYMMETRIC:
+            raise InvalidDPoPAlg(dpop_alg)
+
         if session is None:
             session = requests.Session()
 
@@ -404,6 +424,9 @@ class OAuth2Client:
             authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
             extra_metadata=extra_metadata,
             token_class=token_class,
+            dpop_key_generator=dpop_key_generator,
+            dpop_bound_access_tokens=dpop_bound_access_tokens,
+            dpop_alg=dpop_alg,
         )
 
     @token_endpoint.validator
@@ -418,8 +441,7 @@ class OAuth2Client:
     def validate_endpoint_uri(self, attribute: Attribute[str | None], uri: str | None) -> str | None:
         """Validate that an endpoint URI is suitable for use.
 
-        If you need to disable some checks (for AS testing purposes only!), provide a different
-        method here.
+        If you need to disable some checks (for AS testing purposes only!), provide a different method here.
 
         """
         if self.testing or uri is None:
@@ -478,8 +500,10 @@ class OAuth2Client:
     def _request(
         self,
         endpoint: str,
-        on_success: Callable[[requests.Response], T],
-        on_failure: Callable[[requests.Response], T],
+        *,
+        on_success: Callable[[requests.Response, DefaultNamedArg(DPoPKey | None, "dpop_key")], T],
+        on_failure: Callable[[requests.Response, DefaultNamedArg(DPoPKey | None, "dpop_key")], T],
+        dpop_key: DPoPKey | None = None,
         accept: str = "application/json",
         method: str = "POST",
         **requests_kwargs: Any,
@@ -499,6 +523,7 @@ class OAuth2Client:
             endpoint: name of the endpoint to use
             on_success: a callable to apply to successful responses
             on_failure: a callable to apply to error responses
+            dpop_key: a `DPoPKey` to proof the request. If `None` (default), no DPoP proofing is done.
             accept: the Accept header to include in the request
             method: the HTTP method to use
             **requests_kwargs: keyword arguments for the request
@@ -514,14 +539,17 @@ class OAuth2Client:
             **requests_kwargs,
         )
         if response.ok:
-            return on_success(response)
+            return on_success(response, dpop_key=dpop_key)
 
-        return on_failure(response)
+        return on_failure(response, dpop_key=dpop_key)
 
     def token_request(
         self,
         data: dict[str, Any],
+        *,
         timeout: int = 10,
+        dpop: bool | None = None,
+        dpop_key: DPoPKey | None = None,
         **requests_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint.
@@ -532,24 +560,40 @@ class OAuth2Client:
           data: parameters to send to the token endpoint. Items with a `None`
                or empty value will not be sent in the request.
           timeout: a timeout value for the call
+          dpop: toggles DPoP-proofing for the token request:
+
+                - if `False`, disable it,
+                - if `True`, enable it,
+                - if `None`, defaults to `dpop_bound_access_tokens` configuration parameter for the client.
+          dpop_key: a chosen `DPoPKey` for this request. If `None`, a new key will be generated automatically
+                with a call to this client `dpop_key_generator`.
           **requests_kwargs: additional parameters for requests.post()
 
         Returns:
-            the token endpoint response, as
-            [`BearerToken`][requests_oauth2client.tokens.BearerToken] instance.
+            the token endpoint response
 
         """
+        if dpop is None:
+            dpop = self.dpop_bound_access_tokens
+        if dpop and not dpop_key:
+            dpop_key = self.dpop_key_generator(self.dpop_alg)
+        if dpop_key:
+            dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint)
+            requests_kwargs.setdefault("headers", {})
+            requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
+
         return self._request(
             Endpoints.TOKEN,
             auth=self.auth,
             data=data,
             timeout=timeout,
+            dpop_key=dpop_key,
             on_success=self.parse_token_response,
             on_failure=self.on_token_error,
             **requests_kwargs,
         )
 
-    def parse_token_response(self, response: requests.Response) -> BearerToken:
+    def parse_token_response(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> BearerToken:
         """Parse a Response returned by the Token Endpoint.
 
         Invoked by [token_request][requests_oauth2client.client.OAuth2Client.token_request] to parse
@@ -557,33 +601,39 @@ class OAuth2Client:
         additional attributes.
 
         Args:
-            response: the [Response][requests.Response] returned by the Token Endpoint.
+            response: the `Response` returned by the Token Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
-            a [`BearerToken`][requests_oauth2client.tokens.BearerToken] based on the response
-            contents.
+            a `BearerToken` based on the response contents.
 
         """
+        token_class = dpop_key.dpop_token_class if dpop_key is not None else self.token_class
         try:
-            token_response = self.token_class(**response.json())
+            token_response = token_class(**response.json(), _dpop_key=dpop_key)
         except Exception:  # noqa: BLE001
-            return self.on_token_error(response)
+            return self.on_token_error(response, dpop_key=dpop_key)
         else:
             return token_response
 
-    def on_token_error(self, response: requests.Response) -> BearerToken:
+    def on_token_error(
+        self,
+        response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
+    ) -> BearerToken:
         """Error handler for `token_request()`.
 
         Invoked by [token_request][requests_oauth2client.client.OAuth2Client.token_request] when the
         Token Endpoint returns an error.
 
         Args:
-            response: the [Response][requests.Response] returned by the Token Endpoint.
+            response: the `Response` returned by the Token Endpoint.
+            dpop_key: the DPoPKey that was used to proof the token request, if any.
 
         Returns:
             nothing, and raises an exception instead. But a subclass may return a
-            [`BearerToken`][requests_oauth2client.tokens.BearerToken] to implement a default
-            behaviour if needed.
+            `BearerToken` to implement a default behaviour if needed.
 
         Raises:
             InvalidTokenResponse: if the error response does not contain an OAuth 2.0 standard
@@ -611,6 +661,8 @@ class OAuth2Client:
         self,
         scope: str | Iterable[str] | None = None,
         *,
+        dpop: bool | None = None,
+        dpop_key: DPoPKey | None = None,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -619,11 +671,19 @@ class OAuth2Client:
         Args:
             scope: the scope to send with the request. Can be a str, or an iterable of str.
                 to pass that way include `scope`, `audience`, `resource`, etc.
+            dpop: toggles DPoP-proofing for the token request:
+
+                - if `False`, disable it,
+                - if `True`, enable it,
+                - if `None`, defaults to `dpop_bound_access_tokens` configuration parameter for the client.
+            dpop_key: a chosen `DPoPKey` for this request. If `None`, a new key will be generated automatically
+                with a call to `dpop_key_generator`.
             requests_kwargs: additional parameters for the call to requests
-            **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`. Common parameters
+            **token_kwargs: additional parameters that will be added in the form data for the token endpoint,
+                 alongside `grant_type`.
 
         Returns:
-            a BearerToken
+            a `BearerToken` or `DPoPToken`, depending on the AS response.
 
         Raises:
             InvalidScopeParam: if the `scope` parameter is not suitable
@@ -638,26 +698,43 @@ class OAuth2Client:
                 raise InvalidScopeParam(scope) from exc
 
         data = dict(grant_type=GrantTypes.CLIENT_CREDENTIALS, scope=scope, **token_kwargs)
-        return self.token_request(data, **requests_kwargs)
+        return self.token_request(data, dpop=dpop, dpop_key=dpop_key, **requests_kwargs)
 
     def authorization_code(
         self,
         code: str | AuthorizationResponse,
         *,
         validate: bool = True,
+        dpop: bool = False,
+        dpop_key: DPoPKey | None = None,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint with the `authorization_code` grant.
 
+        You can either pass an authorization code, as a `str`, or pass an `AuthorizationResponse` instance as
+        returned by `AuthorizationRequest.validate_callback()` (recommended). If you do the latter, this will
+        automatically:
+
+        - add the appropriate `redirect_uri` value that was initially passed in the Authorization Request parameters.
+        This is no longer mandatory in OAuth 2.1, but a lot of Authorization Servers are still expecting it since it was
+        part of the OAuth 2.0 specifications.
+        - add the appropriate `code_verifier` for PKCE that was generated before sending the AuthorizationRequest.
+        - handle DPoP binding based on the same `DPoPKey` that was used to initialize the `AuthenticationRequest` and
+        whose JWK thumbprint was passed as `dpop_jkt` parameter in the Auth Request.
+
         Args:
-             code: an authorization code or an `AuthorizationResponse` to exchange for tokens
-             validate: if `True`, validate the received ID Token (this works only if `code` is an AuthorizationResponse)
-             requests_kwargs: additional parameters for the call to requests
-             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `code`, etc.
+            code: An authorization code or an `AuthorizationResponse` to exchange for tokens.
+            validate: If `True`, validate the ID Token (this works only if `code` is an `AuthorizationResponse`).
+            dpop: Toggles DPoP binding for the Access Token,
+                 even if Authorization Code DPoP binding was not initially done.
+            dpop_key: A chosen DPoP key. Leave `None` to automatically generate a key, if `dpop` is `True`.
+            requests_kwargs: Additional parameters for the call to the underlying HTTP `requests` call.
+            **token_kwargs: Additional parameters that will be added in the form data for the token endpoint,
+                alongside `grant_type`, `code`, etc.
 
         Returns:
-            a `BearerToken`
+            The Token Endpoint Response.
 
         """
         azr: AuthorizationResponse | None = None
@@ -665,12 +742,13 @@ class OAuth2Client:
             token_kwargs.setdefault("code_verifier", code.code_verifier)
             token_kwargs.setdefault("redirect_uri", code.redirect_uri)
             azr = code
+            dpop_key = code.dpop_key
             code = code.code
 
         requests_kwargs = requests_kwargs or {}
 
         data = dict(grant_type=GrantTypes.AUTHORIZATION_CODE, code=code, **token_kwargs)
-        token = self.token_request(data, **requests_kwargs)
+        token = self.token_request(data, dpop=dpop, dpop_key=dpop_key, **requests_kwargs)
         if validate and token.id_token and isinstance(azr, AuthorizationResponse):
             return token.validate_id_token(self, azr)
         return token
@@ -683,33 +761,43 @@ class OAuth2Client:
     ) -> BearerToken:
         """Send a request to the token endpoint with the `refresh_token` grant.
 
+        If `refresh_token` is a `DPoPToken` instance, (which means that DPoP was used to obtain the initial
+        Access/Refresh Tokens), then the same DPoP key will be used to DPoP proof the refresh token request,
+        as defined in RFC9449.
+
         Args:
-            refresh_token: a refresh_token, as a string, or as a `BearerToken`.
+            refresh_token: A refresh_token, as a string, or as a `BearerToken`.
                 That `BearerToken` must have a `refresh_token`.
-            requests_kwargs: additional parameters for the call to `requests`
-            **token_kwargs: additional parameters for the token endpoint,
+            requests_kwargs: Additional parameters for the call to `requests`.
+            **token_kwargs: Additional parameters for the token endpoint,
                 alongside `grant_type`, `refresh_token`, etc.
 
         Returns:
-            a `BearerToken`
+            The token endpoint response.
 
         Raises:
-            MissingRefreshToken: if `refresh_token` is a BearerToken instance but does not
-                contain a `refresh_token`
+            MissingRefreshToken: If `refresh_token` is a `BearerToken` instance but does not
+                contain a `refresh_token`.
 
         """
+        dpop_key: DPoPKey | None = None
         if isinstance(refresh_token, BearerToken):
             if refresh_token.refresh_token is None or not isinstance(refresh_token.refresh_token, str):
                 raise MissingRefreshToken(refresh_token)
+            if isinstance(refresh_token, DPoPToken):
+                dpop_key = refresh_token.dpop_key
             refresh_token = refresh_token.refresh_token
 
         requests_kwargs = requests_kwargs or {}
         data = dict(grant_type=GrantTypes.REFRESH_TOKEN, refresh_token=refresh_token, **token_kwargs)
-        return self.token_request(data, **requests_kwargs)
+        return self.token_request(data, dpop_key=dpop_key, **requests_kwargs)
 
     def device_code(
         self,
         device_code: str | DeviceAuthorizationResponse,
+        *,
+        dpop: bool = False,
+        dpop_key: DPoPKey | None = None,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -719,12 +807,14 @@ class OAuth2Client:
         or a `DeviceAuthorizationResponse` as parameter.
 
         Args:
-            device_code: a device code, or a `DeviceAuthorizationResponse`
-            requests_kwargs: additional parameters for the call to requests
-            **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
+            device_code: A device code, or a `DeviceAuthorizationResponse`.
+            dpop: Toggles DPoP Binding. If `None`, defaults to `self.dpop_bound_access_tokens`.
+            dpop_key: A chosen DPoP key. Leave `None` to have a new key generated for this request.
+            requests_kwargs: Additional parameters for the call to requests.
+            **token_kwargs: Additional parameters for the token endpoint, alongside `grant_type`, `device_code`, etc.
 
         Returns:
-            a `BearerToken`
+            The Token Endpoint response.
 
         Raises:
             MissingDeviceCode: if `device_code` is a DeviceAuthorizationResponse but does not
@@ -742,7 +832,7 @@ class OAuth2Client:
             device_code=device_code,
             **token_kwargs,
         )
-        return self.token_request(data, **requests_kwargs)
+        return self.token_request(data, dpop=dpop, dpop_key=dpop_key, **requests_kwargs)
 
     def ciba(
         self,
@@ -760,7 +850,7 @@ class OAuth2Client:
             **token_kwargs: additional parameters for the token endpoint, alongside `grant_type`, `auth_req_id`, etc.
 
         Returns:
-            a `BearerToken`
+            The Token Endpoint response.
 
         Raises:
             MissingAuthRequestId: if `auth_req_id` is a BackChannelAuthenticationResponse but does not contain
@@ -782,11 +872,14 @@ class OAuth2Client:
 
     def token_exchange(
         self,
+        *,
         subject_token: str | BearerToken | IdToken,
         subject_token_type: str | None = None,
         actor_token: None | str | BearerToken | IdToken = None,
         actor_token_type: str | None = None,
         requested_token_type: str | None = None,
+        dpop: bool = False,
+        dpop_key: DPoPKey | None = None,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -796,22 +889,24 @@ class OAuth2Client:
         `urn:ietf:params:oauth:grant-type:token-exchange`.
 
         Args:
-            subject_token: the subject token to exchange for a new token.
-            subject_token_type: a token type identifier for the subject_token, mandatory if it cannot be guessed based
+            subject_token: The subject token to exchange for a new token.
+            subject_token_type: A token type identifier for the subject_token, mandatory if it cannot be guessed based
                 on `type(subject_token)`.
-            actor_token: the actor token to include in the request, if any.
-            actor_token_type: a token type identifier for the actor_token, mandatory if it cannot be guessed based
+            actor_token: The actor token to include in the request, if any.
+            actor_token_type: A token type identifier for the actor_token, mandatory if it cannot be guessed based
                 on `type(actor_token)`.
-            requested_token_type: a token type identifier for the requested token.
-            requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
-            **token_kwargs: additional parameters to include in the request body.
+            requested_token_type: A token type identifier for the requested token.
+            dpop: Toggles DPoP Binding. If `None`, defaults to `self.dpop_bound_access_tokens`.
+            dpop_key: A chosen DPoP key. Leave `None` to have a new key generated for this request.
+            requests_kwargs: Additional parameters to pass to the underlying `requests.post()` call.
+            **token_kwargs: Additional parameters to include in the request body.
 
         Returns:
-            a `BearerToken` as returned by the Authorization Server.
+            The Token Endpoint response.
 
         Raises:
-            UnknownSubjectTokenType: if the type of `subject_token` cannot be determined automatically.
-            UnknownActorTokenType: if the type of `actor_token` cannot be determined automaticatlly.
+            UnknownSubjectTokenType: If the type of `subject_token` cannot be determined automatically.
+            UnknownActorTokenType: If the type of `actor_token` cannot be determined automatically.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -835,11 +930,14 @@ class OAuth2Client:
             requested_token_type=requested_token_type,
             **token_kwargs,
         )
-        return self.token_request(data, **requests_kwargs)
+        return self.token_request(data, dpop=dpop, dpop_key=dpop_key, **requests_kwargs)
 
     def jwt_bearer(
         self,
         assertion: Jwt | str,
+        *,
+        dpop: bool = False,
+        dpop_key: DPoPKey | None = None,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -848,12 +946,14 @@ class OAuth2Client:
         This is defined in (RFC7523 $2.1)[https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1).
 
         Args:
-            assertion: a JWT (as an instance of `jwskate.Jwt` or as a `str`) to use as authorization grant.
-            requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
-            **token_kwargs: additional parameters to include in the request body.
+            assertion: A JWT (as an instance of `jwskate.Jwt` or as a `str`) to use as authorization grant.
+            dpop: Toggles DPoP Binding. If `None`, defaults to `self.dpop_bound_access_tokens`.
+            dpop_key: A chosen DPoP key. Leave `None` to have a new key generated for this request.
+            requests_kwargs: Additional parameters to pass to the underlying `requests.post()` call.
+            **token_kwargs: Additional parameters to include in the request body.
 
         Returns:
-            a `BearerToken` as returned by the Authorization Server.
+            The Token Endpoint response.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -867,12 +967,15 @@ class OAuth2Client:
             **token_kwargs,
         )
 
-        return self.token_request(data, **requests_kwargs)
+        return self.token_request(data, dpop=dpop, dpop_key=dpop_key, **requests_kwargs)
 
     def resource_owner_password(
         self,
         username: str,
         password: str,
+        *,
+        dpop: bool | None = None,
+        dpop_key: DPoPKey | None = None,
         requests_kwargs: dict[str, Any] | None = None,
         **token_kwargs: Any,
     ) -> BearerToken:
@@ -883,11 +986,13 @@ class OAuth2Client:
         Args:
             username: the resource owner user name
             password: the resource owner password
+            dpop: Toggles DPoP Binding. If `None`, defaults to `self.dpop_bound_access_tokens`.
+            dpop_key: A chosen DPoP key. Leave `None` to have a new key generated for this request.
             requests_kwargs: additional parameters to pass to the underlying `requests.post()` call.
             **token_kwargs: additional parameters to include in the request body.
 
         Returns:
-            a `BearerToken` as returned by the Authorization Server
+            The Token Endpoint response.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -898,7 +1003,7 @@ class OAuth2Client:
             **token_kwargs,
         )
 
-        return self.token_request(data, **requests_kwargs)
+        return self.token_request(data, dpop=dpop, dpop_key=dpop_key, **requests_kwargs)
 
     def authorization_request(
         self,
@@ -909,27 +1014,43 @@ class OAuth2Client:
         state: str | ellipsis | None = ...,  # noqa: F821
         nonce: str | ellipsis | None = ...,  # noqa: F821
         code_verifier: str | None = None,
+        dpop: bool | None = None,
+        dpop_key: DPoPKey | None = None,
+        dpop_alg: str | None = None,
         **kwargs: Any,
     ) -> AuthorizationRequest:
         """Generate an Authorization Request for this client.
 
         Args:
-            scope: the `scope` to use
-            response_type: the `response_type` to use
-            redirect_uri: the `redirect_uri` to include in the request. By default,
+            scope: The `scope` to use.
+            response_type: The `response_type` to use.
+            redirect_uri: The `redirect_uri` to include in the request. By default,
                 the `redirect_uri` defined at init time is used.
-            state: the `state` parameter to use. Leave default to generate a random value.
-            nonce: a `nonce`. Leave default to generate a random value.
-            code_verifier: the PKCE `code_verifier` to use. Leave default to generate a random value.
-            **kwargs: additional parameters to include in the auth request
+            state: The `state` parameter to use. Leave default to generate a random value.
+            nonce: A `nonce`. Leave default to generate a random value.
+            dpop: Toggles DPoP binding.
+                - if `True`, DPoP binding is used
+                - if `False`, DPoP is not used
+                - if `None`, defaults to `self.dpop_bound_access_tokens`
+            dpop_key: A chosen DPoP key. Leave `None` to have a new key generated for you.
+            dpop_alg: A signature alg to sign the DPoP proof. If `None`, this defaults to `self.dpop_alg`.
+                If DPoP is not used, or a chosen `dpop_key` is provided, this is ignored.
+                This affects the key type if a DPoP key must be generated.
+            code_verifier: The PKCE `code_verifier` to use. Leave default to generate a random value.
+            **kwargs: Additional query parameters to include in the auth request.
 
         Returns:
-            an AuthorizationRequest with the supplied parameters
+            The Token Endpoint response.
 
         """
         authorization_endpoint = self._require_endpoint("authorization_endpoint")
 
         redirect_uri = redirect_uri or self.redirect_uri
+
+        if dpop is None:
+            dpop = self.dpop_bound_access_tokens
+        if dpop_alg is None:
+            dpop_alg = self.dpop_alg
 
         return AuthorizationRequest(
             authorization_endpoint=authorization_endpoint,
@@ -942,6 +1063,9 @@ class OAuth2Client:
             nonce=nonce,
             code_verifier=code_verifier,
             code_challenge_method=self.code_challenge_method,
+            dpop=dpop,
+            dpop_key=dpop_key,
+            dpop_alg=dpop_alg,
             **kwargs,
         )
 
@@ -956,11 +1080,11 @@ class OAuth2Client:
         `RequestUriParameterAuthorizationRequest` initialized with the AS response.
 
         Args:
-            authorization_request: the authorization request to send
-            requests_kwargs: additional parameters for `requests.request()`
+            authorization_request: The authorization request to send.
+            requests_kwargs: Additional parameters for `requests.request()`.
 
         Returns:
-            the `RequestUriParameterAuthorizationRequest` initialized based on the AS response
+            The `RequestUriParameterAuthorizationRequest` initialized based on the AS response.
 
         """
         requests_kwargs = requests_kwargs or {}
@@ -970,20 +1094,24 @@ class OAuth2Client:
             auth=self.auth,
             on_success=self.parse_pushed_authorization_response,
             on_failure=self.on_pushed_authorization_request_error,
+            dpop_key=authorization_request.dpop_key,
             **requests_kwargs,
         )
 
     def parse_pushed_authorization_response(
         self,
         response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,
     ) -> RequestUriParameterAuthorizationRequest:
         """Parse the response obtained by `pushed_authorization_request()`.
 
         Args:
-            response: the `requests.Response` returned by the PAR endpoint
+            response: The `requests.Response` returned by the PAR endpoint.
+            dpop_key: The `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
-            a RequestUriParameterAuthorizationRequest instance
+            A `RequestUriParameterAuthorizationRequest` instance initialized based on the PAR endpoint response.
 
         """
         response_json = response.json()
@@ -995,25 +1123,29 @@ class OAuth2Client:
             client_id=self.client_id,
             request_uri=request_uri,
             expires_in=expires_in,
+            dpop_key=dpop_key,
         )
 
     def on_pushed_authorization_request_error(
         self,
         response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
     ) -> RequestUriParameterAuthorizationRequest:
         """Error Handler for Pushed Authorization Endpoint errors.
 
         Args:
-            response: the HTTP response as returned by the AS PAR endpoint.
+            response: The HTTP response as returned by the AS PAR endpoint.
+            dpop_key: The `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
-            a RequestUriParameterAuthorizationRequest, if the error is recoverable
+            Should not return anything, but raise an Exception instead. A `RequestUriParameterAuthorizationRequest`
+            may be returned by subclasses for testing purposes.
 
         Raises:
-            EndpointError: a subclass of this error depending on the error returned by the AS
-            InvalidPushedAuthorizationResponse: if the returned response is not following the
-                specifications
-            UnknownTokenEndpointError: for unknown/unhandled errors
+            EndpointError: A subclass of this error depending on the error returned by the AS.
+            InvalidPushedAuthorizationResponse: If the returned response is not following the specifications.
+            UnknownTokenEndpointError: For unknown/unhandled errors.
 
         """
         try:
@@ -1055,7 +1187,7 @@ class OAuth2Client:
             on_failure=self.on_userinfo_error,
         )
 
-    def parse_userinfo_response(self, resp: requests.Response) -> Any:
+    def parse_userinfo_response(self, resp: requests.Response, *, dpop_key: DPoPKey | None = None) -> Any:  # noqa: ARG002
         """Parse the response obtained by `userinfo()`.
 
         Invoked by [userinfo()][requests_oauth2client.client.OAuth2Client.userinfo] to parse the
@@ -1063,6 +1195,7 @@ class OAuth2Client:
 
         Args:
             resp: a [Response][requests.Response] returned from the UserInfo endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             the parsed JSON content from this response.
@@ -1070,11 +1203,12 @@ class OAuth2Client:
         """
         return resp.json()
 
-    def on_userinfo_error(self, resp: requests.Response) -> Any:
+    def on_userinfo_error(self, resp: requests.Response, *, dpop_key: DPoPKey | None = None) -> Any:  # noqa: ARG002
         """Parse UserInfo error response.
 
         Args:
             resp: a [Response][requests.Response] returned from the UserInfo endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             nothing, raises exception instead.
@@ -1225,8 +1359,7 @@ An IdToken or a string representation of it is expected.
             **revoke_kwargs: additional parameters to send to the revocation endpoint.
 
         Returns:
-            `True` if the revocation succeeds, `False` if no revocation endpoint is present or a
-            non-standardised error is returned.
+            the result from `parse_revocation_response` on the returned AS response.
 
         Raises:
             MissingEndpointUri: if the Revocation Endpoint URI is not configured.
@@ -1249,19 +1382,36 @@ An IdToken or a string representation of it is expected.
             Endpoints.REVOCATION,
             data=data,
             auth=self.auth,
-            on_success=lambda _: True,
+            on_success=self.parse_revocation_response,
             on_failure=self.on_revocation_error,
             **requests_kwargs,
         )
 
-    def on_revocation_error(self, response: requests.Response) -> bool:
+    def parse_revocation_response(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> bool:  # noqa: ARG002
+        """Parse reponses from the Revocation Endpoint.
+
+        Since those do not return any meaningful information in a standardised fashion, this just returns `True`.
+
+        Args:
+            response: the `requests.Response` as returned by the Revocation Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
+
+        Returns:
+            `True` if the revocation succeeds, `False` if no revocation endpoint is present or a
+            non-standardised error is returned.
+
+        """
+        return True
+
+    def on_revocation_error(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> bool:  # noqa: ARG002
         """Error handler for `revoke_token()`.
 
         Invoked by [revoke_token()][requests_oauth2client.client.OAuth2Client.revoke_token] when the
         revocation endpoint returns an error.
 
         Args:
-            response: the [Response][requests.Response] as returned by the Revocation Endpoint
+            response: the `requests.Response` as returned by the Revocation Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             `False` to signal that an error occurred. May raise exceptions instead depending on the
@@ -1354,7 +1504,12 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             **requests_kwargs,
         )
 
-    def parse_introspection_response(self, response: requests.Response) -> Any:
+    def parse_introspection_response(
+        self,
+        response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
+    ) -> Any:
         """Parse Token Introspection Responses received by `introspect_token()`.
 
         Invoked by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token]
@@ -1363,6 +1518,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Args:
             response: the [Response][requests.Response] as returned by the Introspection Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             the decoded JSON content, or a `str` with the content.
@@ -1373,7 +1529,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         except ValueError:
             return response.text
 
-    def on_introspection_error(self, response: requests.Response) -> Any:
+    def on_introspection_error(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> Any:  # noqa: ARG002
         """Error handler for `introspect_token()`.
 
         Invoked by [introspect_token()][requests_oauth2client.client.OAuth2Client.introspect_token]
@@ -1381,6 +1537,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Args:
             response: the response as returned by the Introspection Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             usually raises exceptions. A subclass can return a default response instead.
@@ -1501,6 +1658,8 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
     def parse_backchannel_authentication_response(
         self,
         response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
     ) -> BackChannelAuthenticationResponse:
         """Parse a response received by `backchannel_authentication_request()`.
 
@@ -1510,6 +1669,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Args:
             response: the response returned by the BackChannel Authentication Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             a `BackChannelAuthenticationResponse`
@@ -1524,7 +1684,12 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         except TypeError as exc:
             raise InvalidBackChannelAuthenticationResponse(response=response, client=self) from exc
 
-    def on_backchannel_authentication_error(self, response: requests.Response) -> BackChannelAuthenticationResponse:
+    def on_backchannel_authentication_error(
+        self,
+        response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
+    ) -> BackChannelAuthenticationResponse:
         """Error handler for `backchannel_authentication_request()`.
 
         Invoked by
@@ -1534,6 +1699,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Args:
             response: the response returned by the BackChannel Authentication Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             usually raises an exception. But a subclass can return a default response instead.
@@ -1589,7 +1755,12 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             **requests_kwargs,
         )
 
-    def parse_device_authorization_response(self, response: requests.Response) -> DeviceAuthorizationResponse:
+    def parse_device_authorization_response(
+        self,
+        response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
+    ) -> DeviceAuthorizationResponse:
         """Parse a Device Authorization Response received by `authorize_device()`.
 
         Invoked by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device]
@@ -1597,6 +1768,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Args:
             response: the response returned by the Device Authorization Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             a `DeviceAuthorizationResponse` as returned by AS
@@ -1604,7 +1776,12 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
         """
         return DeviceAuthorizationResponse(**response.json())
 
-    def on_device_authorization_error(self, response: requests.Response) -> DeviceAuthorizationResponse:
+    def on_device_authorization_error(
+        self,
+        response: requests.Response,
+        *,
+        dpop_key: DPoPKey | None = None,  # noqa: ARG002
+    ) -> DeviceAuthorizationResponse:
         """Error handler for `authorize_device()`.
 
         Invoked by [authorize_device()][requests_oauth2client.client.OAuth2Client.authorize_device]
@@ -1613,6 +1790,7 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         Args:
             response: the response returned by the Device Authorization Endpoint.
+            dpop_key: the `DPoPKey` that was used to proof the token request, if any.
 
         Returns:
             usually raises an Exception. But a subclass may return a default response instead.
@@ -1653,15 +1831,12 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
         """
         requests_kwargs = requests_kwargs or {}
+        requests_kwargs.setdefault("auth", None)
 
-        jwks = self._request(
-            Endpoints.JWKS,
-            auth=None,
-            method="GET",
-            on_success=lambda resp: resp.json(),
-            on_failure=lambda resp: resp.raise_for_status(),
-            **requests_kwargs,
-        )
+        jwks_uri = self._require_endpoint(Endpoints.JWKS)
+        resp = self.session.get(jwks_uri, **requests_kwargs)
+        resp.raise_for_status()
+        jwks = resp.json()
         self.authorization_server_jwks.update(jwks)
         return self.authorization_server_jwks
 

@@ -76,6 +76,15 @@ from .discovery import (
     oidc_discovery_document_url,
     well_known_uri,
 )
+from .dpop import (
+    DPoPKey,
+    DPoPToken,
+    InvalidDPoPAccessToken,
+    InvalidDPoPAlg,
+    InvalidDPoPKey,
+    InvalidDPoPProof,
+    validate_dpop_proof,
+)
 from .exceptions import (
     AccessDenied,
     AccountSelectionRequired,
@@ -113,6 +122,7 @@ from .exceptions import (
     UnknownIntrospectionError,
     UnknownTokenEndpointError,
     UnsupportedTokenType,
+    UseDPoPNonce,
 )
 from .pooling import (
     BaseTokenEndpointPoolingJob,
@@ -160,6 +170,8 @@ __all__ = [
     "ClientSecretPost",
     "CodeChallengeMethods",
     "ConsentRequired",
+    "DPoPKey",
+    "DPoPToken",
     "DeviceAuthorizationError",
     "DeviceAuthorizationPoolingJob",
     "DeviceAuthorizationResponse",
@@ -183,6 +195,10 @@ __all__ = [
     "InvalidCodeVerifierParam",
     "InvalidDeviceAuthorizationResponse",
     "InvalidDiscoveryDocument",
+    "InvalidDPoPAccessToken",
+    "InvalidDPoPAlg",
+    "InvalidDPoPKey",
+    "InvalidDPoPProof",
     "InvalidEndpointUri",
     "InvalidGrant",
     "InvalidIdToken",
@@ -247,9 +263,11 @@ __all__ = [
     "UnknownTokenType",
     "UnknownActorTokenType",
     "UnknownSubjectTokenType",
+    "UseDPoPNonce",
     "requests",
     "oauth2_discovery_document_url",
     "oidc_discovery_document_url",
+    "validate_dpop_proof",
     "validate_endpoint_uri",
     "validate_issuer_uri",
     "well_known_uri",

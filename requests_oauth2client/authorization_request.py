@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Sequence
 from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
 from furl import furl  # type: ignore[import-untyped]
-from jwskate import JweCompact, Jwk, Jwt, SignedJwt
+from jwskate import JweCompact, Jwk, Jwt, SignatureAlgs, SignedJwt
 
+from .dpop import DPoPKey
 from .exceptions import (
     AuthorizationResponseError,
     ConsentRequired,
@@ -207,12 +208,17 @@ class AuthorizationResponse:
     extracted from the Authorization Response parameters.
 
     Args:
-        code: the authorization code returned by the AS
-        redirect_uri: the redirect_uri that was passed as parameter in the AuthorizationRequest
-        code_verifier: the code_verifier matching the code_challenge that was passed as
-            parameter in the AuthorizationRequest
-        state: the state returned by the AS
-        **kwargs: other parameters as returned by the AS
+        code: The authorization `code` returned by the AS.
+        redirect_uri: The `redirect_uri` that was passed as parameter in the Authorization Request.
+        code_verifier: the `code_verifier` matching the `code_challenge` that was passed as
+            parameter in the Authorization Request.
+        state: the `state` that was was passed as parameter in the Authorization Request and returned by the AS.
+        nonce: the `nonce` that was was passed as parameter in the Authorization Request.
+        acr_values: the `acr_values` that was passed as parameter in the Authorization Request.
+        max_age: the `max_age` that was passed as parameter in the Authorization Request.
+        issuer: the expected `issuer` identifier.
+        dpop_key: the `DPoPKey` that was used for Authorization Code DPoP binding.
+        **kwargs: other parameters as returned by the AS.
 
     """
 
@@ -224,6 +230,7 @@ class AuthorizationResponse:
     acr_values: tuple[str, ...] | None
     max_age: int | None
     issuer: str | None
+    dpop_key: DPoPKey | None
     kwargs: dict[str, Any]
 
     def __init__(
@@ -237,6 +244,7 @@ class AuthorizationResponse:
         acr_values: str | Sequence[str] | None = None,
         max_age: int | None = None,
         issuer: str | None = None,
+        dpop_key: DPoPKey | None = None,
         **kwargs: str,
     ) -> None:
         if not acr_values:
@@ -255,6 +263,7 @@ class AuthorizationResponse:
             acr_values=acr_values,
             max_age=max_age,
             issuer=issuer,
+            dpop_key=dpop_key,
             kwargs=kwargs,
         )
 
@@ -364,6 +373,8 @@ class AuthorizationRequest:
     authorization_response_iss_parameter_supported: bool
     issuer: str | None
 
+    dpop_key: DPoPKey | None = None
+
     exception_classes: ClassVar[dict[str, type[AuthorizationResponseError]]] = {
         "interaction_required": InteractionRequired,
         "login_required": LoginRequired,
@@ -397,6 +408,9 @@ class AuthorizationRequest:
         max_age: int | None = None,
         issuer: str | None = None,
         authorization_response_iss_parameter_supported: bool = False,
+        dpop: bool = False,
+        dpop_alg: str = SignatureAlgs.ES256,
+        dpop_key: DPoPKey | None = None,
         **kwargs: Any,
     ) -> None:
         if response_type != ResponseTypes.CODE:
@@ -441,6 +455,9 @@ class AuthorizationRequest:
         else:
             code_verifier = None
 
+        if dpop and not dpop_key:
+            dpop_key = DPoPKey.generate(dpop_alg)
+
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,
             client_id=client_id,
@@ -455,6 +472,7 @@ class AuthorizationRequest:
             acr_values=acr_values,
             max_age=max_age,
             authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
+            dpop_key=dpop_key,
             kwargs=kwargs,
         )
 
@@ -463,6 +481,13 @@ class AuthorizationRequest:
         """The `code_challenge` that matches `code_verifier` and `code_challenge_method`."""
         if self.code_verifier and self.code_challenge_method:
             return PkceUtils.derive_challenge(self.code_verifier, self.code_challenge_method)
+        return None
+
+    @cached_property
+    def dpop_jkt(self) -> str | None:
+        """The DPoP JWK thumbprint that matches ``dpop_key`."""
+        if self.dpop_key:
+            return self.dpop_key.dpop_jkt
         return None
 
     def as_dict(self) -> dict[str, Any]:
@@ -487,6 +512,7 @@ class AuthorizationRequest:
         if d["scope"]:
             d["scope"] = " ".join(d["scope"])
         d["code_challenge"] = self.code_challenge
+        d["dpop_jkt"] = self.dpop_jkt
         d.update(self.kwargs)
 
         return {key: val for key, val in d.items() if val is not None}
@@ -495,8 +521,7 @@ class AuthorizationRequest:
         """Validate an Authorization Response against this Request.
 
         Validate a given Authorization Response URI against this Authorization Request, and return
-        an
-        [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
+        an [AuthorizationResponse][requests_oauth2client.authorization_request.AuthorizationResponse].
 
         This includes matching the `state` parameter, checking for returned errors, and extracting
         the returned `code` and other parameters.
@@ -557,6 +582,7 @@ class AuthorizationRequest:
             nonce=self.nonce,
             acr_values=self.acr_values,
             max_age=self.max_age,
+            dpop_key=self.dpop_key,
             **response_url.args,
         )
 
@@ -769,6 +795,7 @@ class RequestParameterAuthorizationRequest:
     client_id: str
     request: Jwt
     expires_at: datetime | None
+    dpop_key: DPoPKey | None
     kwargs: dict[str, Any]
 
     @accepts_expires_in
@@ -778,6 +805,7 @@ class RequestParameterAuthorizationRequest:
         client_id: str,
         request: Jwt | str,
         expires_at: datetime | None = None,
+        dpop_key: DPoPKey | None = None,
         **kwargs: Any,
     ) -> None:
         if isinstance(request, str):
@@ -788,6 +816,7 @@ class RequestParameterAuthorizationRequest:
             client_id=client_id,
             request=request,
             expires_at=expires_at,
+            dpop_key=dpop_key,
             kwargs=kwargs,
         )
 
@@ -823,11 +852,11 @@ class RequestUriParameterAuthorizationRequest:
     """Represent an Authorization Request that includes a `request_uri` parameter.
 
     Args:
-        authorization_endpoint: the Authorization Endpoint uri
-        client_id: the client_id
-        request_uri: the request_uri
-        expires_at: the expiration date for this request
-        kwargs: extra parameters to include in the request
+        authorization_endpoint: The Authorization Endpoint uri.
+        client_id: The Client ID.
+        request_uri: The `request_uri`.
+        expires_at: The expiration date for this request.
+        kwargs: Extra query parameters to include in the request.
 
     """
 
@@ -835,15 +864,18 @@ class RequestUriParameterAuthorizationRequest:
     client_id: str
     request_uri: str
     expires_at: datetime | None
+    dpop_key: DPoPKey | None
     kwargs: dict[str, Any]
 
     @accepts_expires_in
     def __init__(
         self,
         authorization_endpoint: str,
+        *,
         client_id: str,
         request_uri: str,
         expires_at: datetime | None = None,
+        dpop_key: DPoPKey | None = None,
         **kwargs: Any,
     ) -> None:
         self.__attrs_init__(
@@ -851,6 +883,7 @@ class RequestUriParameterAuthorizationRequest:
             client_id=client_id,
             request_uri=request_uri,
             expires_at=expires_at,
+            dpop_key=dpop_key,
             kwargs=kwargs,
         )
 
@@ -879,8 +912,8 @@ class RequestUriParameterAuthorizationRequest:
 class AuthorizationRequestSerializer:
     """(De)Serializer for `AuthorizationRequest` instances.
 
-    You might need to store pending authorization requests in session, either server-side or client-
-    side. This class is here to help you do that.
+    You might need to store pending authorization requests in session, either server-side or client- side. This class is
+    here to help you do that.
 
     """
 
