@@ -22,7 +22,7 @@ jobs:
 
     strategy:
       matrix:
-        python-versions: ['3.11']
+        python-versions: ['3.12']
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -31,7 +31,7 @@ jobs:
 
       - name: Generate Changelog
         if: ${{ false }}
-        uses: heinrichreimer/github-changelog-generator-action@v2.1.1
+        uses: heinrichreimer/github-changelog-generator-action@v2.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issues: true
