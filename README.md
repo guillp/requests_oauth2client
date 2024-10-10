@@ -959,6 +959,15 @@ oauth2client = OAuth2Client.from_discovery_endpoint(
 )
 ```
 
+### About DPoP nonces
+
+Authorization Server provided `DPoP` nonces will automatically be obeyed transparently by `OAuth2Client`.
+Note that the DPoP specification mentions that clients are expected to keep the latest `nonce` value in memory, and use
+it until the AS provides a new one. `OAuth2Client` instead will always send a first token request with a DPoP proof that
+does not contain a `nonce`, and will send a new request, this time including the AS-provided nonce, if the AS replies
+with a `"use_dpop_nonce"` error. This makes sure that a fresh `nonce` is always used, and, in practice, that no `nonce`
+is used twice (unless, of course, the same nonce is provided twice by the AS).
+
 ## Specialized API Client
 
 Using APIs usually involves multiple endpoints under the same root url, with a common authentication method. To make it
