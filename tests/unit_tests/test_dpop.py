@@ -384,3 +384,36 @@ def test_validate_dpop_proof() -> None:
         ),
         SignedJwt,
     )
+
+
+def test_dpop_as_provided_nonce(requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str) -> None:
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.post(
+        token_endpoint,
+        [
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": dpop_nonce},
+            },
+            {"status_code": 200, "json": {"access_token": "my_access_token"}},
+        ],
+    )
+
+    token = oauth2client.client_credentials(scope="my_scope", dpop=True)
+    assert isinstance(token, DPoPToken)
+    assert requests_mock.call_count == 2
+    request_without_nonce = requests_mock.request_history[0]
+    request_with_nonce = requests_mock.request_history[1]
+
+    assert "DPoP" in request_without_nonce.headers
+    assert "DPop-Nonce" not in request_without_nonce.headers
+    assert "DPoP" in request_with_nonce.headers
+
+    proof_without_nonce = SignedJwt(request_without_nonce.headers["DPoP"])
+    assert "nonce" not in proof_without_nonce.claims
+    proof_with_nonce = SignedJwt(request_with_nonce.headers["DPoP"])
+    assert proof_with_nonce.claims["nonce"] == dpop_nonce

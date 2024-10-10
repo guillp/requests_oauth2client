@@ -208,7 +208,7 @@ class GrantTypes(str, Enum):
 
 @frozen(init=False)
 class OAuth2Client:
-    """An OAuth 2.x Client, that can send requests to an OAuth 2.x Authorization Server.
+    """An OAuth 2.x Client that can send requests to an OAuth 2.x Authorization Server.
 
     `OAuth2Client` is able to obtain tokens from the Token Endpoint using any of the standardised
     Grant Types, and to communicate with the various backend endpoints like the Revocation,
@@ -550,6 +550,7 @@ class OAuth2Client:
         timeout: int = 10,
         dpop: bool | None = None,
         dpop_key: DPoPKey | None = None,
+        dpop_nonce: str | None = None,
         **requests_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint.
@@ -567,6 +568,7 @@ class OAuth2Client:
                 - if `None`, defaults to `dpop_bound_access_tokens` configuration parameter for the client.
           dpop_key: a chosen `DPoPKey` for this request. If `None`, a new key will be generated automatically
                 with a call to this client `dpop_key_generator`.
+          dpop_nonce: a `nonce` to use for DPoP proofing
           **requests_kwargs: additional parameters for requests.post()
 
         Returns:
@@ -578,20 +580,43 @@ class OAuth2Client:
         if dpop and not dpop_key:
             dpop_key = self.dpop_key_generator(self.dpop_alg)
         if dpop_key:
-            dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint)
+            dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint, nonce=dpop_nonce)
             requests_kwargs.setdefault("headers", {})
             requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
 
-        return self._request(
-            Endpoints.TOKEN,
-            auth=self.auth,
-            data=data,
-            timeout=timeout,
-            dpop_key=dpop_key,
-            on_success=self.parse_token_response,
-            on_failure=self.on_token_error,
-            **requests_kwargs,
-        )
+        try:
+            return self._request(
+                Endpoints.TOKEN,
+                auth=self.auth,
+                data=data,
+                timeout=timeout,
+                dpop_key=dpop_key,
+                on_success=self.parse_token_response,
+                on_failure=self.on_token_error,
+                **requests_kwargs,
+            )
+        except UseDPoPNonce as exc:
+            if dpop_nonce:
+                raise InvalidTokenResponse(
+                    exc.response,
+                    self,
+                    """\
+Authorization Server returned a new DPoP `nonce` while a previous `nonce` is already included in the DPoP proof.
+This error is raised to avoid a potential infinite loop.
+""",
+                ) from exc
+            nonce = exc.response.headers.get("DPoP-Nonce")
+            if not nonce:
+                raise InvalidTokenResponse(
+                    exc.response,
+                    self,
+                    """\
+Authorization Server requires the use of a DPoP nonce, but not provide that nonce in a DPoP-Nonce response header.
+""",
+                ) from exc
+            return self.token_request(
+                data, timeout=timeout, dpop=dpop, dpop_key=dpop_key, dpop_nonce=nonce, **requests_kwargs
+            )
 
     def parse_token_response(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> BearerToken:
         """Parse a Response returned by the Token Endpoint.
@@ -654,7 +679,11 @@ class OAuth2Client:
                 uri=error_uri,
             )
         except Exception as exc:
-            raise InvalidTokenResponse(response=response, client=self) from exc
+            raise InvalidTokenResponse(
+                response=response,
+                client=self,
+                description=f"An error happened while processing the error response: {exc}",
+            ) from exc
         raise exception
 
     def client_credentials(
