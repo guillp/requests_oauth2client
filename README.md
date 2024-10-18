@@ -1,4 +1,4 @@
-`requests_oauth2client` is an OAuth 2.x client for Python, able to obtain, refresh and revoke tokens from any
+from jwskate import SignedJwtfrom jwskate import SignedJwtfrom tests.unit_tests.conftest import oauth2client`requests_oauth2client` is an OAuth 2.x client for Python, able to obtain, refresh and revoke tokens from any
 OAuth2.x/OIDC compliant Authorization Server. It sits upon and extends the famous [requests] HTTP client module.
 
 It can act as an [OAuth 2.0](https://tools.ietf.org/html/rfc6749) /
@@ -845,7 +845,7 @@ check will be made to ensure that the `issuer` from the retrieved metadata docum
 from requests_oauth2client import DPoPToken, OAuth2Client
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
-    "https://url.to.the.as/.well-known/openid-configuration",
+    issuer="https://as.local",
     client_id="client_id", client_secret="client_secret",
 )
 
@@ -854,7 +854,7 @@ assert isinstance(token, DPoPToken)
 
 # or, to enable DPoP by default for every token request
 oauth2client = OAuth2Client.from_discovery_endpoint(
-    "https://url.to.the.as/.well-known/openid-configuration",
+    issuer="https://as.local",
     client_id="client_id", client_secret="client_secret",
     dpop_bound_access_tokens=True,
 )
@@ -909,7 +909,7 @@ import jwskate
 from requests_oauth2client import DPoPKey, DPoPToken, OAuth2Client
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
-    "https://url.to.the.as/.well-known/openid-configuration",
+    issuer="https://as.local",
     client_id="client_id", client_secret="client_secret",
     dpop_bound_access_tokens=True,
 )
@@ -944,7 +944,7 @@ class CustomDPoPToken(DPoPToken):
     DPOP_HEADER = "X-DPoP"
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
-    "https://url.to.the.as/.well-known/openid-configuration",
+    issuer="https://as.local",
     client_id="client_id", client_secret="client_secret",
     dpop_bound_access_tokens=True,  # enable DPoP by default
     dpop_alg="RS256", # choose the signing alg to use, and it will automatically determine the key type to generate.
@@ -967,6 +967,64 @@ it until the AS provides a new one. `OAuth2Client` instead will always send a fi
 does not contain a `nonce`, and will send a new request, this time including the AS-provided nonce, if the AS replies
 with a `"use_dpop_nonce"` error. This makes sure that a fresh `nonce` is always used, and, in practice, that no `nonce`
 is used twice (unless, of course, the same nonce is provided twice by the AS).
+
+Likewise, when using one of the requests-compatible auth handlers provided by `requests_oauth2client`, any request that
+triggers a Resource-Server provided `DPoP` nonce will be automatically replayed with a new DPoP proof containing that
+nonce:
+
+```python
+from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
+
+import requests
+
+oauth2client = OAuth2Client.from_discovery_endpoint(
+    issuer="https://as.local",
+    client_id="client_id", client_secret="client_secret",
+)
+
+response = requests.get(
+    "https://my.api.local/endpoint",
+    auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope", dpop=True),
+)
+```
+
+
+Assuming that the called API did require the use of a `DPoP` nonce, at least 3 different requests were sent as a result
+of the `requests.get()` call above:
+
+1. The first request is to get a token from the Authorization Server, using a *Client Credentials* grant (or any other grant
+type, depending on the Auth Handler you are using).
+
+2. The second request is sent to the target API, with a DPoP proof that does not contain a `nonce`.
+The response from this call is a `401` with at least those 2 response headers:
+
+    - a `WWW-Authenticate: DPoP error="use_dpop_nonce"` header, indicating that a DPoP `nonce` is requested,
+    - and a `DPoP-Nonce` header containing the `nonce` to use.
+
+3. the third request is sent again to the target API, this time with a DPoP proof that contains the RS provided `nonce`
+obtained above.
+
+If you send multiple requests to the same API, instead of using individual calls to `requests.get()`, `requests.post()`
+etc., you should use a `requests.Session` or an `ApiClient` , etc. It will make sure that the obtained access token and
+DPoP nonce are reused as long as they are valid, which avoid repeating calls 1 and 2 unnecessarily and consuming more
+tokens than necessary:
+
+```python
+from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
+
+oauth2client = OAuth2Client.from_discovery_endpoint(
+    issuer="https://as.local",
+    client_id="client_id",
+    client_secret="client_secret",
+)
+
+api = ApiClient("https://my.api.local/", auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope", dpop=True))
+response1 = api.get("endpoint") # the first call will trigger requests 1. 2. 3. like above
+response2 = api.post("other_endpoint") # next calls will reuse the same token and DPoP nonces as long as they are valid.
+# some time later
+response3 = api.get("other_endpoint") # new tokens and DPoP nonces will automatically be obtained when the first ones are expired
+```
+
 
 ## Specialized API Client
 
