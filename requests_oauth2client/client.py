@@ -23,7 +23,7 @@ from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
-from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg
+from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg, MissingDPoPNonce
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -607,13 +607,7 @@ This error is raised to avoid a potential infinite loop.
                 ) from exc
             nonce = exc.response.headers.get("DPoP-Nonce")
             if not nonce:
-                raise InvalidTokenResponse(
-                    exc.response,
-                    self,
-                    """\
-Authorization Server requires the use of a DPoP nonce, but not provide that nonce in a DPoP-Nonce response header.
-""",
-                ) from exc
+                raise MissingDPoPNonce(exc.response) from exc
             return self.token_request(
                 data, timeout=timeout, dpop=dpop, dpop_key=dpop_key, dpop_nonce=nonce, **requests_kwargs
             )

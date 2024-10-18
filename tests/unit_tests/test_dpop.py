@@ -14,6 +14,7 @@ from requests_oauth2client import (
     InvalidDPoPKey,
     InvalidDPoPProof,
     OAuth2Client,
+    OAuth2ClientCredentialsAuth,
     validate_dpop_proof,
 )
 from tests.conftest import RequestsMocker
@@ -417,3 +418,55 @@ def test_dpop_as_provided_nonce(requests_mock: RequestsMocker, oauth2client: OAu
     assert "nonce" not in proof_without_nonce.claims
     proof_with_nonce = SignedJwt(request_with_nonce.headers["DPoP"])
     assert proof_with_nonce.claims["nonce"] == dpop_nonce
+
+
+def test_dpop_with_rs_provided_nonce(
+    requests_mock: RequestsMocker, oauth2client: OAuth2Client, target_api: str, token_endpoint: str
+) -> None:
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.post(
+        token_endpoint, json={"access_token": "my_access_token", "token_type": "DPoP", "expires_in": 3600}
+    )
+
+    requests_mock.post(
+        target_api,
+        [
+            {
+                "status_code": 401,
+                "headers": {
+                    "DPoP-Nonce": dpop_nonce,
+                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+                },
+            },
+            {"status_code": 200},
+            {"status_code": 200},
+        ],
+    )
+
+    session = requests.Session()
+    session.auth = OAuth2ClientCredentialsAuth(oauth2client, dpop=True)
+
+    response = session.post(target_api)
+    assert response.status_code == 200
+    assert requests_mock.call_count == 3
+
+    token_req = requests_mock.request_history[0]
+    api_req_without_nonce = requests_mock.request_history[1]
+    api_req_with_nonce = requests_mock.request_history[2]
+
+    assert token_req.url == token_endpoint
+    assert api_req_without_nonce.url == api_req_with_nonce.url == target_api
+
+    proof_without_nonce = SignedJwt(api_req_without_nonce.headers["DPoP"])
+    assert "nonce" not in proof_without_nonce.claims
+    proof_with_nonce = SignedJwt(api_req_with_nonce.headers["DPoP"])
+    assert proof_with_nonce.claims["nonce"] == dpop_nonce
+
+    requests_mock.reset_mock()
+    second_response = session.post(target_api)
+    assert second_response.status_code == 200
+    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.url == target_api
+    second_proof_with_nonce = SignedJwt(requests_mock.last_request.headers["DPoP"])
+    assert second_proof_with_nonce.claims["nonce"] == dpop_nonce
