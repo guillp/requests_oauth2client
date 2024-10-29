@@ -577,21 +577,31 @@ class OAuth2Client:
             dpop = self.dpop_bound_access_tokens
         if dpop and not dpop_key:
             dpop_key = self.dpop_key_generator(self.dpop_alg)
-        if dpop_key:
-            dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint)
-            requests_kwargs.setdefault("headers", {})
-            requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
 
-        return self._request(
-            Endpoints.TOKEN,
-            auth=self.auth,
-            data=data,
-            timeout=timeout,
-            dpop_key=dpop_key,
-            on_success=self.parse_token_response,
-            on_failure=self.on_token_error,
-            **requests_kwargs,
-        )
+        dpop_nonce = None
+        while True:
+            if dpop_key:
+                dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint, nonce=dpop_nonce)
+                requests_kwargs.setdefault("headers", {})
+                requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
+
+            try:
+                return self._request(
+                    Endpoints.TOKEN,
+                    auth=self.auth,
+                    data=data,
+                    timeout=timeout,
+                    dpop_key=dpop_key,
+                    on_success=self.parse_token_response,
+                    on_failure=self.on_token_error,
+                    **requests_kwargs,
+                )
+            except UseDPoPNonce as exc:
+                dpop_nonce = exc.response.headers.get('dpop-nonce')
+                if dpop_nonce:
+                    continue
+                else:
+                    raise
 
     def parse_token_response(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> BearerToken:
         """Parse a Response returned by the Token Endpoint.
@@ -1088,15 +1098,30 @@ class OAuth2Client:
 
         """
         requests_kwargs = requests_kwargs or {}
-        return self._request(
-            Endpoints.PUSHED_AUTHORIZATION_REQUEST,
-            data=authorization_request.args,
-            auth=self.auth,
-            on_success=self.parse_pushed_authorization_response,
-            on_failure=self.on_pushed_authorization_request_error,
-            dpop_key=authorization_request.dpop_key,
-            **requests_kwargs,
-        )
+        retried_nonce = False
+        dpop_nonce = None
+        while True:
+            if authorization_request.dpop_key:
+                dpop_proof = authorization_request.dpop_key.proof(htm="POST", htu=self.pushed_authorization_request_endpoint, nonce=dpop_nonce)
+                requests_kwargs.setdefault("headers", {})
+                requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
+
+            try:
+                return self._request(
+                    Endpoints.PUSHED_AUTHORIZATION_REQUEST,
+                    data=authorization_request.args,
+                    auth=self.auth,
+                    on_success=self.parse_pushed_authorization_response,
+                    on_failure=self.on_pushed_authorization_request_error,
+                    dpop_key=authorization_request.dpop_key,
+                    **requests_kwargs,
+                )
+            except UseDPoPNonce as exc:
+                dpop_nonce = exc.response.headers.get('dpop-nonce')
+                if dpop_nonce:
+                    continue
+                else:
+                    raise
 
     def parse_pushed_authorization_response(
         self,
