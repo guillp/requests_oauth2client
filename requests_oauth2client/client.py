@@ -2008,6 +2008,7 @@ Mismatching `issuer` value in discovery document (received '{discovery.get('issu
         revocation_endpoint = discovery.get(Endpoints.REVOCATION)
         introspection_endpoint = discovery.get(Endpoints.INTROSPECTION)
         userinfo_endpoint = discovery.get(Endpoints.USER_INFO)
+        pushed_authorization_request_endpoint = discovery.get(Endpoints.PUSHED_AUTHORIZATION_REQUEST)
         jwks_uri = discovery.get(Endpoints.JWKS)
         if jwks_uri is not None and not testing:
             validate_endpoint_uri(jwks_uri)
@@ -2022,6 +2023,7 @@ Mismatching `issuer` value in discovery document (received '{discovery.get('issu
             revocation_endpoint=revocation_endpoint,
             introspection_endpoint=introspection_endpoint,
             userinfo_endpoint=userinfo_endpoint,
+            pushed_authorization_request_endpoint=pushed_authorization_request_endpoint,
             jwks_uri=jwks_uri,
             authorization_server_jwks=authorization_server_jwks,
             auth=auth,
