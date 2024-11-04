@@ -533,6 +533,11 @@ class OAuth2Client:
         requests_kwargs.setdefault("headers", {})
         requests_kwargs["headers"]["Accept"] = accept
 
+        if dpop_key:
+            dpop_proof = dpop_key.proof(htm="POST", htu=endpoint_uri, nonce=dpop_key.as_nonce)
+            requests_kwargs.setdefault("headers", {})
+            requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
+
         response = self.session.request(
             method,
             endpoint_uri,
@@ -541,7 +546,34 @@ class OAuth2Client:
         if response.ok:
             return on_success(response, dpop_key=dpop_key)
 
-        return on_failure(response, dpop_key=dpop_key)
+        try:
+            return on_failure(response, dpop_key=dpop_key)
+        except UseDPoPNonce as exc:
+            if dpop_key is None:
+                raise InvalidTokenResponse(
+                    response,
+                    self,
+                    """\
+Authorization Server requested a DPoP `nonce` to be included in the DPoP proof,
+but no DPoP key was used for this request.
+""",
+                ) from exc
+            if dpop_key.as_nonce:
+                raise InvalidTokenResponse(
+                    exc.response,
+                    self,
+                    """\
+Authorization Server returned a new DPoP `nonce` while a previous `nonce` is already included in the DPoP proof.
+This error is raised to avoid a potential infinite loop.
+""",
+                ) from exc
+            nonce = exc.response.headers.get("DPoP-Nonce")
+            if not nonce:
+                raise MissingDPoPNonce(exc.response) from exc
+            dpop_key.as_nonce = nonce
+            return self._request(
+                endpoint, on_success=on_success, on_failure=on_failure, dpop_key=dpop_key, **requests_kwargs
+            )
 
     def token_request(
         self,
@@ -550,7 +582,6 @@ class OAuth2Client:
         timeout: int = 10,
         dpop: bool | None = None,
         dpop_key: DPoPKey | None = None,
-        dpop_nonce: str | None = None,
         **requests_kwargs: Any,
     ) -> BearerToken:
         """Send a request to the token endpoint.
@@ -568,7 +599,6 @@ class OAuth2Client:
                 - if `None`, defaults to `dpop_bound_access_tokens` configuration parameter for the client.
           dpop_key: a chosen `DPoPKey` for this request. If `None`, a new key will be generated automatically
                 with a call to this client `dpop_key_generator`.
-          dpop_nonce: a `nonce` to use for DPoP proofing
           **requests_kwargs: additional parameters for requests.post()
 
         Returns:
@@ -579,38 +609,17 @@ class OAuth2Client:
             dpop = self.dpop_bound_access_tokens
         if dpop and not dpop_key:
             dpop_key = self.dpop_key_generator(self.dpop_alg)
-        if dpop_key:
-            dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint, nonce=dpop_nonce)
-            requests_kwargs.setdefault("headers", {})
-            requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
 
-        try:
-            return self._request(
-                Endpoints.TOKEN,
-                auth=self.auth,
-                data=data,
-                timeout=timeout,
-                dpop_key=dpop_key,
-                on_success=self.parse_token_response,
-                on_failure=self.on_token_error,
-                **requests_kwargs,
-            )
-        except UseDPoPNonce as exc:
-            if dpop_nonce:
-                raise InvalidTokenResponse(
-                    exc.response,
-                    self,
-                    """\
-Authorization Server returned a new DPoP `nonce` while a previous `nonce` is already included in the DPoP proof.
-This error is raised to avoid a potential infinite loop.
-""",
-                ) from exc
-            nonce = exc.response.headers.get("DPoP-Nonce")
-            if not nonce:
-                raise MissingDPoPNonce(exc.response) from exc
-            return self.token_request(
-                data, timeout=timeout, dpop=dpop, dpop_key=dpop_key, dpop_nonce=nonce, **requests_kwargs
-            )
+        return self._request(
+            Endpoints.TOKEN,
+            auth=self.auth,
+            data=data,
+            timeout=timeout,
+            dpop_key=dpop_key,
+            on_success=self.parse_token_response,
+            on_failure=self.on_token_error,
+            **requests_kwargs,
+        )
 
     def parse_token_response(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> BearerToken:
         """Parse a Response returned by the Token Endpoint.

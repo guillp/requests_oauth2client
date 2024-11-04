@@ -118,7 +118,7 @@ class DPoPToken(BearerToken):  # type: ignore[override]
             nonce = response.headers.get("DPoP-Nonce")
             if not nonce:
                 raise MissingDPoPNonce(response)
-            self.dpop_key.nonce = nonce
+            self.dpop_key.rs_nonce = nonce
             request = self(response.request.copy())
             return response.connection.send(request, **kwargs)
 
@@ -174,7 +174,7 @@ class DPoPKey:
         iat_generator: a callable that generates the Issuer Date (iat) to include in proofs.
         jwt_typ: the token type (`typ`) header to include in the generated proofs.
         dpop_token_class: the class to use to represent DPoP tokens.
-        nonce: an initial DPoP `nonce` to include in requests, for testing purposes. You should leave `None`.
+        rs_nonce: an initial DPoP `nonce` to include in requests, for testing purposes. You should leave `None`.
 
     """
 
@@ -184,7 +184,8 @@ class DPoPKey:
     iat_generator: Callable[[], int] = field(on_setattr=setters.frozen, repr=False)
     jwt_typ: str = field(on_setattr=setters.frozen, repr=False)
     dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
-    nonce: str | None = field()
+    as_nonce: str | None
+    rs_nonce: str | None
 
     def __init__(
         self,
@@ -194,7 +195,8 @@ class DPoPKey:
         iat_generator: Callable[[], int] = lambda: jwskate.Jwt.timestamp(),
         jwt_typ: str = "dpop+jwt",
         dpop_token_class: type[DPoPToken] = DPoPToken,
-        nonce: str | None = None,
+        as_nonce: str | None = None,
+        rs_nonce: str | None = None,
     ) -> None:
         try:
             private_key = jwskate.to_jwk(private_key).check(is_private=True, is_symmetric=False)
@@ -210,7 +212,8 @@ class DPoPKey:
             iat_generator=iat_generator,
             jwt_typ=jwt_typ,
             dpop_token_class=dpop_token_class,
-            nonce=nonce,
+            as_nonce=as_nonce,
+            rs_nonce=rs_nonce,
         )
 
     @classmethod
@@ -221,7 +224,8 @@ class DPoPKey:
         jti_generator: Callable[[], str] = lambda: str(uuid4()),
         iat_generator: Callable[[], int] = lambda: jwskate.Jwt.timestamp(),
         dpop_token_class: type[DPoPToken] = DPoPToken,
-        nonce: str | None = None,
+        as_nonce: str | None = None,
+        rs_nonce: str | None = None,
     ) -> Self:
         """Generate a new DPoPKey with a new private key that is suitable for the given `alg`."""
         if alg not in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
@@ -233,7 +237,8 @@ class DPoPKey:
             iat_generator=iat_generator,
             jwt_typ=jwt_typ,
             dpop_token_class=dpop_token_class,
-            nonce=nonce,
+            as_nonce=as_nonce,
+            rs_nonce=rs_nonce,
         )
 
     @cached_property
@@ -265,9 +270,10 @@ class DPoPKey:
             htu: The HTTP target URI of the request to which the proof is attached. Query and Fragment parts will
                 be automatically removed before being used as `htu` value in the generated proof.
             ath: The Access Token hash value.
-            nonce: A recent nonce provided via the DPoP-Nonce HTTP header, from either the AS or RS. This will override
-                the stored `nonce`. In typical cases, you should never have to use this parameter. It is only used
-                internally when requesting the AS token endpoint.
+            nonce: A recent nonce provided via the DPoP-Nonce HTTP header, from either the AS or RS.  If `None`, the
+                value stored in `rs_nonce` will be used instead.
+                In typical cases, you should never have to use this parameter. It is only used internally when
+                requesting the AS token endpoint.
 
         Returns:
             the proof value (as a signed JWT)
@@ -277,8 +283,8 @@ class DPoPKey:
         proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": htu, "iat": self.iat_generator()}
         if nonce:
             proof_claims["nonce"] = nonce
-        elif self.nonce:
-            proof_claims["nonce"] = self.nonce
+        elif self.rs_nonce:
+            proof_claims["nonce"] = self.rs_nonce
         if ath:
             proof_claims["ath"] = ath
         return jwskate.SignedJwt.sign(
@@ -352,11 +358,11 @@ Issued At timestamp (iat) is too far away in the past or future (received: {proo
     if "htm" not in proof_jwt.claims:
         raise InvalidDPoPProof(proof, "the HTTP method (htm) claim is missing.")
     if proof_jwt.htm != htm:
-        raise InvalidDPoPProof(proof, f"HTTP Method (htm) does not matches expected '{htm}'.")
+        raise InvalidDPoPProof(proof, f"HTTP Method (htm) '{proof_jwt.htm}' does not matches expected '{htm}'.")
     if "htu" not in proof_jwt.claims:
         raise InvalidDPoPProof(proof, "the HTTP URI (htu) claim is missing.")
     if proof_jwt.htu != htu:
-        raise InvalidDPoPProof(proof, f"HTTP URI (htu) does not matches expected '{htu}'.")
+        raise InvalidDPoPProof(proof, f"HTTP URI (htu) '{proof_jwt.htu}' does not matches expected '{htu}'.")
     if ath:
         if "ath" not in proof_jwt.claims:
             raise InvalidDPoPProof(proof, "the Access Token hash (ath) claim is missing.")

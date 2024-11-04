@@ -15,6 +15,7 @@ from requests_oauth2client import (
     InvalidDPoPProof,
     OAuth2Client,
     OAuth2ClientCredentialsAuth,
+    RequestUriParameterAuthorizationRequest,
     validate_dpop_proof,
 )
 from tests.conftest import RequestsMocker
@@ -240,6 +241,50 @@ def test_dpop_authorization_code_flow(
     assert dpop_proof.jwt_token_id != dpop_proof2.jwt_token_id
 
 
+@freeze_time()
+def test_dpop_pushed_authorization_code_flow(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    token_endpoint: str,
+    pushed_authorization_request_endpoint: str,
+) -> None:
+    azreq = oauth2client.authorization_request(dpop=True)
+    assert isinstance(azreq.dpop_key, DPoPKey)
+    assert azreq.dpop_key.alg == oauth2client.dpop_alg
+    assert azreq.dpop_jkt == azreq.dpop_key.private_key.thumbprint()
+
+    dpop_nonce = "my_nonce"
+    request_uri = "https://my.request.uri"
+    expires_in = 30
+
+    requests_mock.post(
+        pushed_authorization_request_endpoint,
+        [
+            {"status_code": 401, "headers": {"DPoP-Nonce": dpop_nonce}, "json": {"error": "use_dpop_nonce"}},
+            {"json": {"request_uri": request_uri, "expires_in": expires_in}},
+        ],
+    )
+
+    par_resp = oauth2client.pushed_authorization_request(azreq)
+    assert isinstance(par_resp, RequestUriParameterAuthorizationRequest)
+
+    assert requests_mock.call_count == 2
+    first_request, second_request = requests_mock.request_history
+    assert first_request.url == pushed_authorization_request_endpoint
+    assert second_request.url == pushed_authorization_request_endpoint
+    assert "DPoP" in first_request.headers
+    assert "DPoP" in second_request.headers
+    first_proof = validate_dpop_proof(
+        first_request.headers["DPoP"], htm="POST", htu=pushed_authorization_request_endpoint
+    )
+    second_proof = validate_dpop_proof(
+        second_request.headers["DPoP"], htm="POST", htu=pushed_authorization_request_endpoint
+    )
+    assert "nonce" not in first_proof.claims
+    assert "nonce" in second_proof.claims
+    assert second_proof.claims["nonce"] == dpop_nonce
+
+
 def test_validate_dpop_proof() -> None:
     private_key = Jwk.generate(alg="ES256")
     htm = "POST"
@@ -329,7 +374,7 @@ def test_validate_dpop_proof() -> None:
             htm=htm,
             htu=htu,
         )
-    with pytest.raises(InvalidDPoPProof, match=rf"HTTP Method \(htm\) does not matches expected '{htm}'"):
+    with pytest.raises(InvalidDPoPProof, match=rf"HTTP Method \(htm\) 'PATCH' does not matches expected '{htm}'"):
         validate_dpop_proof(
             SignedJwt.sign_arbitrary(
                 {"iat": Jwt.timestamp(), "htm": "PATCH", "htu": htu, "jti": "random"},
@@ -349,7 +394,9 @@ def test_validate_dpop_proof() -> None:
             htm=htm,
             htu=htu,
         )
-    with pytest.raises(InvalidDPoPProof, match=rf"HTTP URI \(htu\) does not matches expected '{htu}'"):
+    with pytest.raises(
+        InvalidDPoPProof, match=rf"HTTP URI \(htu\) 'https://something.else' does not matches expected '{htu}'"
+    ):
         validate_dpop_proof(
             SignedJwt.sign_arbitrary(
                 {"iat": Jwt.timestamp(), "htm": htm, "htu": "https://something.else", "jti": "random"},
