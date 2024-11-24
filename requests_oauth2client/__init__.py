@@ -83,6 +83,8 @@ from .dpop import (
     InvalidDPoPAlg,
     InvalidDPoPKey,
     InvalidDPoPProof,
+    MissingDPoPNonce,
+    RepeatedDPoPNonce,
     validate_dpop_proof,
 )
 from .exceptions import (
@@ -228,6 +230,7 @@ __all__ = [
     "MismatchingState",
     "MissingAuthCode",
     "MissingDeviceCode",
+    "MissingDPoPNonce",
     "MissingIdToken",
     "MissingIdTokenEncryptedResponseAlgParam",
     "MissingIssuer",
@@ -244,6 +247,7 @@ __all__ = [
     "PkceUtils",
     "PrivateKeyJwt",
     "PublicApp",
+    "RepeatedDPoPNonce",
     "RequestParameterAuthorizationRequest",
     "RequestUriParameterAuthorizationRequest",
     "ResponseTypes",
