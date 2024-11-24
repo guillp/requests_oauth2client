@@ -23,7 +23,7 @@ from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
-from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg, MissingDPoPNonce
+from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg, MissingDPoPNonce, RepeatedDPoPNonce
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -528,52 +528,59 @@ class OAuth2Client:
             method: the HTTP method to use
             **requests_kwargs: keyword arguments for the request
 
+        Raises:
+            InvalidTokenResponse: if the AS response contains a `use_dpop_nonce` error but:
+              - the response comes in reply to a non-DPoP request
+              - the DPoPKey.handle_as_provided_dpop_nonce() method raises an exception. This should happen:
+                    - if the response does not include a DPoP-Nonce HTTP header with the requested nonce value
+                    - or if the requested nonce is the same value that was sent in the request DPoP proof
+              - a new nonce value is requested again for the 3rd time in a row
+
         """
         endpoint_uri = self._require_endpoint(endpoint)
         requests_kwargs.setdefault("headers", {})
         requests_kwargs["headers"]["Accept"] = accept
 
-        if dpop_key:
-            dpop_proof = dpop_key.proof(htm="POST", htu=endpoint_uri, nonce=dpop_key.as_nonce)
-            requests_kwargs.setdefault("headers", {})
-            requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
+        for _ in range(3):
+            if dpop_key:
+                dpop_proof = dpop_key.proof(htm="POST", htu=endpoint_uri, nonce=dpop_key.as_nonce)
+                requests_kwargs.setdefault("headers", {})
+                requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
 
-        response = self.session.request(
-            method,
-            endpoint_uri,
-            **requests_kwargs,
-        )
-        if response.ok:
-            return on_success(response, dpop_key=dpop_key)
-
-        try:
-            return on_failure(response, dpop_key=dpop_key)
-        except UseDPoPNonce as exc:
-            if dpop_key is None:
-                raise InvalidTokenResponse(
-                    response,
-                    self,
-                    """\
-Authorization Server requested a DPoP `nonce` to be included in the DPoP proof,
-but no DPoP key was used for this request.
-""",
-                ) from exc
-            if dpop_key.as_nonce:
-                raise InvalidTokenResponse(
-                    exc.response,
-                    self,
-                    """\
-Authorization Server returned a new DPoP `nonce` while a previous `nonce` is already included in the DPoP proof.
-This error is raised to avoid a potential infinite loop.
-""",
-                ) from exc
-            nonce = exc.response.headers.get("DPoP-Nonce")
-            if not nonce:
-                raise MissingDPoPNonce(exc.response) from exc
-            dpop_key.as_nonce = nonce
-            return self._request(
-                endpoint, on_success=on_success, on_failure=on_failure, dpop_key=dpop_key, **requests_kwargs
+            response = self.session.request(
+                method,
+                endpoint_uri,
+                **requests_kwargs,
             )
+            if response.ok:
+                return on_success(response, dpop_key=dpop_key)
+
+            try:
+                return on_failure(response, dpop_key=dpop_key)
+            except UseDPoPNonce as exc:
+                if dpop_key is None:
+                    raise InvalidTokenResponse(
+                        response,
+                        self,
+                        """\
+Authorization Server requested client to include a DPoP `nonce` in its DPoP proof,
+but the initial request did not include a DPoP proof.
+""",
+                    ) from exc
+                try:
+                    dpop_key.handle_as_provided_dpop_nonce(response)
+                except (MissingDPoPNonce, RepeatedDPoPNonce) as exc:
+                    raise InvalidTokenResponse(response, self, """DPoP-related error.""") from exc
+
+        raise InvalidTokenResponse(
+            response,
+            self,
+            """\
+Authorization Server requested client to use a different DPoP `nonce` for the third time in row.
+This should never happen. This exception is raised to avoid a potential endless loop where the client
+keeps trying to obey the new DPoP `nonce` values as provided by the Authorization Server after each token request.
+""",
+        )
 
     def token_request(
         self,

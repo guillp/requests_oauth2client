@@ -64,6 +64,19 @@ class MissingDPoPNonce(ValueError):
         self.response = response
 
 
+class RepeatedDPoPNonce(ValueError):
+    """Raised when the AS requests a DPoP nonce value that is the same as already included in the request."""
+
+    def __init__(self, response: requests.Response) -> None:
+        super().__init__(
+            """\
+Authorization Server requested client to use a DPoP `nonce`,
+but did not provide the value for that nonce in a `DPoP-Nonce` response HTTP header.
+"""
+        )
+        self.response = response
+
+
 token68_pattern = re.compile(r"^[a-zA-Z0-9\-._~+\/]+=*$")
 
 
@@ -294,6 +307,20 @@ class DPoPKey:
             typ=self.jwt_typ,
             extra_headers={"jwk": self.public_jwk},
         )
+
+    def handle_as_provided_dpop_nonce(self, response: requests.Response) -> None:
+        """Handle an Authorization Server response containing a `use_dpop_nonce` error.
+
+        Args:
+            response: the response from the AS.
+
+        """
+        nonce = response.headers.get("DPoP-Nonce")
+        if not nonce:
+            raise MissingDPoPNonce(response)
+        if self.as_nonce == nonce:
+            raise RepeatedDPoPNonce(response)
+        self.as_nonce = nonce
 
 
 def validate_dpop_proof(  # noqa: C901
