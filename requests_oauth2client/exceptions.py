@@ -22,7 +22,7 @@ class OAuth2Error(Exception):
     """
 
     def __init__(self, response: requests.Response, client: OAuth2Client, description: str | None = None) -> None:
-        super().__init__("The remote endpoint returned an error")
+        super().__init__(f"The remote endpoint returned an error: {description or 'no description provided'}")
         self.response = response
         self.client = client
         self.description = description

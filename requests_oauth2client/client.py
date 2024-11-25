@@ -570,7 +570,7 @@ but the initial request did not include a DPoP proof.
                 try:
                     dpop_key.handle_as_provided_dpop_nonce(response)
                 except (MissingDPoPNonce, RepeatedDPoPNonce) as exc:
-                    raise InvalidTokenResponse(response, self, """DPoP-related error.""") from exc
+                    raise InvalidTokenResponse(response, self, str(exc)) from exc
 
         raise InvalidTokenResponse(
             response,
