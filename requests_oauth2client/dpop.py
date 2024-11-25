@@ -56,25 +56,34 @@ class InvalidDPoPProof(ValueError):
         self.proof = proof
 
 
-class MissingDPoPNonce(ValueError):
-    """Raised when a server requests a DPoP nonce but none is provided."""
+class InvalidUseDPoPNonceResponse(Exception):
+    """Base class for invalid Responses with a `use_dpop_nonce` error."""
 
-    def __init__(self, response: requests.Response) -> None:
-        super().__init__("HTTP response requires a DPoP nonce, but none was provided.")
+    def __init__(self, response: requests.Response, message: str) -> None:
+        super().__init__(message)
         self.response = response
 
 
-class RepeatedDPoPNonce(ValueError):
-    """Raised when the AS requests a DPoP nonce value that is the same as already included in the request."""
+class MissingDPoPNonce(InvalidUseDPoPNonceResponse):
+    """Raised when a server requests a DPoP nonce but none is provided in its response."""
 
     def __init__(self, response: requests.Response) -> None:
         super().__init__(
-            """\
-Authorization Server requested client to use a DPoP `nonce`,
-but did not provide the value for that nonce in a `DPoP-Nonce` response HTTP header.
-"""
+            response,
+            "Server requested client to use a DPoP `nonce`, but the `DPoP-Nonce` HTTP header is missing.",
         )
-        self.response = response
+
+
+class RepeatedDPoPNonce(InvalidUseDPoPNonceResponse):
+    """Raised when the server requests a DPoP nonce value that is the same as already included in the request."""
+
+    def __init__(self, response: requests.Response) -> None:
+        super().__init__(
+            response,
+            """\
+Server requested client to use a DPoP `nonce`,
+but did provide the same value for that nonce that was already included in the DPoP proof.""",
+        )
 
 
 token68_pattern = re.compile(r"^[a-zA-Z0-9\-._~+\/]+=*$")
@@ -128,10 +137,7 @@ class DPoPToken(BearerToken):  # type: ignore[override]
         if response.status_code == codes.unauthorized and response.headers.get("WWW-Authenticate", "").startswith(
             "DPoP"
         ):
-            nonce = response.headers.get("DPoP-Nonce")
-            if not nonce:
-                raise MissingDPoPNonce(response)
-            self.dpop_key.rs_nonce = nonce
+            self.dpop_key.handle_rs_provided_dpop_nonce(response)
             request = self(response.request.copy())
             return response.connection.send(request, **kwargs)
 
@@ -321,6 +327,20 @@ class DPoPKey:
         if self.as_nonce == nonce:
             raise RepeatedDPoPNonce(response)
         self.as_nonce = nonce
+
+    def handle_rs_provided_dpop_nonce(self, response: requests.Response) -> None:
+        """Handle a Resource Server response containing a `use_dpop_nonce` error.
+
+        Args:
+            response: the response from the AS.
+
+        """
+        nonce = response.headers.get("DPoP-Nonce")
+        if not nonce:
+            raise MissingDPoPNonce(response)
+        if self.rs_nonce == nonce:
+            raise RepeatedDPoPNonce(response)
+        self.rs_nonce = nonce
 
 
 def validate_dpop_proof(  # noqa: C901
