@@ -19,7 +19,7 @@ from requests_oauth2client import (
     OAuth2ClientCredentialsAuth,
     RepeatedDPoPNonce,
     RequestUriParameterAuthorizationRequest,
-    validate_dpop_proof, UseDPoPNonce,
+    validate_dpop_proof,
 )
 from tests.conftest import RequestsMocker
 
@@ -677,7 +677,9 @@ def test_rs_repeated_nonce(requests_mock: RequestsMocker, target_api: str) -> No
         requests.get(target_api, auth=dpop_token)
 
 
-def test_rs_dpop_nonce_loop(requests_mock: RequestsMocker, target_api: str, oauth2client: OAuth2Client, token_endpoint: str) -> None:
+def test_rs_dpop_nonce_loop(
+    requests_mock: RequestsMocker, target_api: str, oauth2client: OAuth2Client, token_endpoint: str
+) -> None:
     """Protection against infinite looping if the RS keeps requesting new nonces on every request."""
     requests_mock.get(
         target_api,
