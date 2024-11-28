@@ -930,12 +930,12 @@ Instead of generating your own keys everytime, you may also control how `DPoPKey
 be useful for fuzz-testing, pen-testing or feature-testing the Authorization Server. To choose the signing alg, use the
 parameter `dpop_alg` when initializing your client. This will accordingly determine the key type to generate. You may
 also pass a custom `dpop_key_generator`, which is a callable that accepts a signature `alg` as parameter, and generates
-`DPoPKey`instances.
+`DPoPKey` instances.
 
 You can also override the `DPoPToken` class with a custom one, which will be used to represent the DPoP token that is
 returned by the AS, and then generates proofs and includes those proofs into HTTP requests.
 
-You may use`DPoPKey.generate` as a helper method for that, or implement your own generator:
+You may use `DPoPKey.generate` as a helper method for that, or implement your own generator:
 
 
 ```python
@@ -1001,7 +1001,7 @@ nonce.
 As a result, the AS returns a DPoP token.
 3. Third request is sent to the target API, with the DPoP token obtained at step 2, and a DPoP proof that does not yet
 contain a `nonce`.
-   The response from this call is a `401` with at least those 2 response headers:
+   The response from this call is a `401` with at least these 2 response headers:
 
    - a `WWW-Authenticate: DPoP error="use_dpop_nonce"` header, indicating that a DPoP `nonce` is requested,
    - and a `DPoP-Nonce` header containing the `nonce` to use.
@@ -1011,7 +1011,7 @@ contain a `nonce`.
 If you send multiple requests to the same API, instead of using individual calls to `requests.get()`, `requests.post()`
 etc., you should use a `requests.Session` or an `ApiClient`. It will make sure that the obtained access token and
 DPoP nonce(s) are reused as long as they are valid, which avoid repeating calls 1 and 2 unnecessarily and consuming more
-tokens than necessary:
+tokens and nonces than necessary:
 
 ```python
 from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
@@ -1029,7 +1029,7 @@ response2 = api.post("other_endpoint") # next calls will reuse the same token an
 response3 = api.get("other_endpoint") # new tokens and DPoP nonces will automatically be obtained when the first ones are expired
 ```
 
-AS and RS provided nonces are memorized independently by the `DPoPToken` instance, so the amount of "extra" requests to
+AS and RS provided nonces are memoized independently by the `DPoPToken` instance, so the amount of "extra" requests to
 obtain new DPoP nonces should be minimal.
 
 ## Specialized API Client

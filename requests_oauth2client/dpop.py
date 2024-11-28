@@ -82,7 +82,7 @@ class RepeatedDPoPNonce(InvalidUseDPoPNonceResponse):
             response,
             """\
 Server requested client to use a DPoP `nonce`,
-but did provide the same value for that nonce that was already included in the DPoP proof.""",
+but provided the same value for that nonce that was already included in the DPoP proof.""",
         )
 
 
@@ -139,6 +139,7 @@ class DPoPToken(BearerToken):  # type: ignore[override]
         ):
             self.dpop_key.handle_rs_provided_dpop_nonce(response)
             request = self(response.request.copy())
+            request.deregister_hook("response", self._response_hook)
             return response.connection.send(request, **kwargs)
 
         return response
