@@ -139,7 +139,7 @@ class DPoPToken(BearerToken):  # type: ignore[override]
         ):
             self.dpop_key.handle_rs_provided_dpop_nonce(response)
             request = self(response.request.copy())
-            request.deregister_hook("response", self._response_hook)
+            request.deregister_hook("response", self._response_hook)  # type: ignore[no-untyped-call]
             return response.connection.send(request, **kwargs)
 
         return response
