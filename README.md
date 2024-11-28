@@ -130,7 +130,7 @@ These methods directly return a [BearerToken] if the request is successful, or r
   accessible with the `expires_at` attribute.
 - Contain the Refresh Token, if returned by the AS, accessible with the `refresh_token` attribute.
 - Contain the ID Token, if returned by the AS, accessible with the `id_token` attribute (typically available when using
-the Authorization Code flow).
+  the Authorization Code flow).
 - Keep track of other associated metadata as well, also accessible as attributes with the same name:
   `token.custom_attr`, or with subscription syntax `token["my.custom.attr"]`.
 
@@ -255,12 +255,10 @@ auth = OAuth2ClientCredentialsAuth(
 Obtaining tokens using the Authorization code grant is made in 3 steps:
 
 1. your application must open a specific url called the *Authentication Request* in a browser.
-
 2. your application must obtain and validate the *Authorization Response*, which is a redirection back to your
    application that contains an *Authorization Code* as parameter. This redirect back (often called "callback") is
    initiated by the Authorization Server after any necessary interaction with the user is complete (Registration, Login,
    Profile completion, Multi-Factor Authentication, Authorization, Consent, etc.)
-
 3. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
    Endpoint.
 
@@ -926,20 +924,26 @@ assert isinstance(token, DPoPToken)
 assert token.dpop_key == dpop_key
 ```
 
-### Hooking into automatic DPoP key generation
+### Hooking into DPoP key and proof generation
 
 Instead of generating your own keys everytime, you may also control how `DPoPKey`s are automatically generated. This can
 be useful for fuzz-testing, pen-testing or feature-testing the Authorization Server. To choose the signing alg, use the
 parameter `dpop_alg` when initializing your client. This will accordingly determine the key type to generate. You may
-also pass a custom `dpop_key_generator`, which is a callable that accepts a signature alg as parameter, and generates
-`DPoPKey` instances. You may use `DPoPKey.generate` as a helper method for that, or implement your own generator:
+also pass a custom `dpop_key_generator`, which is a callable that accepts a signature `alg` as parameter, and generates
+`DPoPKey`instances.
+
+You can also override the `DPoPToken` class with a custom one, which will be used to represent the DPoP token that is
+returned by the AS, and then generates proofs and includes those proofs into HTTP requests.
+
+You may use`DPoPKey.generate` as a helper method for that, or implement your own generator:
+
 
 ```python
 import secrets
 from requests_oauth2client import DPoPKey, DPoPToken, OAuth2Client
 
 class CustomDPoPToken(DPoPToken):
-    """A custom DPoP token class that places the DPoP proof and token inta a non-standard header"""
+    """A custom DPoP token class that places the DPoP proof and token into a non-standard header."""
     AUTHORIZATION_HEADER = "X-Custom-Auth"
     DPOP_HEADER = "X-DPoP"
 
@@ -961,11 +965,13 @@ oauth2client = OAuth2Client.from_discovery_endpoint(
 
 ### About DPoP nonces
 
-Authorization Server provided `DPoP` nonces will automatically be obeyed transparently by `OAuth2Client`.
+Authorization Server provided `DPoP` nonces are automatically and transparently handled by `OAuth2Client`.
 
-Likewise, when using one of the requests-compatible auth handlers provided by `requests_oauth2client`, any request that
-triggers a Resource-Server provided `DPoP` nonce will be automatically replayed with a new DPoP proof containing that
-nonce:
+Likewise, Resource Server provided `DPoP` nonces are supported when using the default `DPoPToken` class.
+This includes all requests-compatible auth handlers provided by `requests_oauth2client`, like `OAuth2AccessTokenAuth`,
+`OAuth2ClientCredentialsAuth`, `OAuth2AuthorizationCodeAuth`, etc.
+
+As an example, see the sample below:
 
 ```python
 from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
@@ -983,25 +989,28 @@ response = requests.get(
 )
 ```
 
+Assuming that both the Authorization Server (at https://as.local) and the Resource Server (at https://my.api.local)
+require the use of `DPoP` nonces, then at least 4 different requests are sent as a result of the `requests.get()` call
+above:
 
-Assuming that the called API did require the use of a `DPoP` nonce, at least 3 different requests were sent as a result
-of the `requests.get()` call above:
+1. The first request is to get a token from the Authorization Server, here using a *Client Credentials* grant and
+including a DPoP proof. DPoP also works with all other grant types. That first requests does not include a nonce.
+Since the AS requires a DPoP nonce, it replies to that request with an `error=use_dpop_nonce` flag and a generated DPoP
+nonce.
+2. Second request is automatically sent to the AS, this time with a DPoP proof that contains the nonce provided by the AS.
+As a result, the AS returns a DPoP token.
+3. Third request is sent to the target API, with the DPoP token obtained at step 2, and a DPoP proof that does not yet
+contain a `nonce`.
+   The response from this call is a `401` with at least those 2 response headers:
 
-1. The first request is to get a token from the Authorization Server, using a *Client Credentials* grant (or any other grant
-type, depending on the Auth Handler you are using).
-
-2. The second request is sent to the target API, with a DPoP proof that does not contain a `nonce`.
-The response from this call is a `401` with at least those 2 response headers:
-
-    - a `WWW-Authenticate: DPoP error="use_dpop_nonce"` header, indicating that a DPoP `nonce` is requested,
-    - and a `DPoP-Nonce` header containing the `nonce` to use.
-
-3. the third request is sent again to the target API, this time with a DPoP proof that contains the RS provided `nonce`
-obtained above.
+   - a `WWW-Authenticate: DPoP error="use_dpop_nonce"` header, indicating that a DPoP `nonce` is requested,
+   - and a `DPoP-Nonce` header containing the `nonce` to use.
+4. a request is sent again to the target API, this time with a DPoP proof that contains the RS provided `nonce`
+   obtained at step 3. Target API then should accept that request, do its own business and return a `200` response.
 
 If you send multiple requests to the same API, instead of using individual calls to `requests.get()`, `requests.post()`
-etc., you should use a `requests.Session` or an `ApiClient` , etc. It will make sure that the obtained access token and
-DPoP nonce are reused as long as they are valid, which avoid repeating calls 1 and 2 unnecessarily and consuming more
+etc., you should use a `requests.Session` or an `ApiClient`. It will make sure that the obtained access token and
+DPoP nonce(s) are reused as long as they are valid, which avoid repeating calls 1 and 2 unnecessarily and consuming more
 tokens than necessary:
 
 ```python
@@ -1014,12 +1023,14 @@ oauth2client = OAuth2Client.from_discovery_endpoint(
 )
 
 api = ApiClient("https://my.api.local/", auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope", dpop=True))
-response1 = api.get("endpoint") # the first call will trigger requests 1. 2. 3. like above
+response1 = api.get("endpoint") # the first call will trigger requests 1. 2. 3. 4. like above
 response2 = api.post("other_endpoint") # next calls will reuse the same token and DPoP nonces as long as they are valid.
 # some time later
 response3 = api.get("other_endpoint") # new tokens and DPoP nonces will automatically be obtained when the first ones are expired
 ```
 
+AS and RS provided nonces are memorized independently by the `DPoPToken` instance, so the amount of "extra" requests to
+obtain new DPoP nonces should be minimal.
 
 ## Specialized API Client
 
