@@ -652,25 +652,14 @@ def test_rs_repeated_nonce(requests_mock: RequestsMocker, target_api: str) -> No
     dpop_nonce = "my_dpop_nonce"
     requests_mock.get(
         target_api,
-        [
-            {
-                "status_code": 401,
-                "headers": {
-                    "DPoP-Nonce": dpop_nonce,
-                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
-                },
-            },
-            {
-                "status_code": 401,
-                "headers": {
-                    "DPoP-Nonce": dpop_nonce,
-                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
-                },
-            },
-        ],
+        status_code=401,
+        headers={
+            "DPoP-Nonce": dpop_nonce,
+            "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+        },
     )
 
-    dpop_key = DPoPKey.generate()
+    dpop_key = DPoPKey.generate(rs_nonce=dpop_nonce)
     dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
 
     with pytest.raises(RepeatedDPoPNonce):
