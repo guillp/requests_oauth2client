@@ -138,9 +138,12 @@ class DPoPToken(BearerToken):  # type: ignore[override]
             "DPoP"
         ):
             self.dpop_key.handle_rs_provided_dpop_nonce(response)
-            request = self(response.request.copy())
-            request.deregister_hook("response", self._response_hook)  # type: ignore[no-untyped-call]
-            return response.connection.send(request, **kwargs)
+            new_request = response.request.copy()
+            # remove the previously registered hook to avoid registering it multiple times
+            new_request.deregister_hook("response", self._response_hook)  # type: ignore[no-untyped-call]
+            new_request = self(new_request)  # another hook will be re-registered here in the __call__() method
+
+            return response.connection.send(new_request, **kwargs)
 
         return response
 
