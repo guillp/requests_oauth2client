@@ -594,7 +594,7 @@ be a maximum of {azr.max_age} sec ago.
     def access_token_jwt(self) -> jwskate.SignedJwt:
         """If the access token is a JWT, return it as an instance of `jwskate.SignedJwt`.
 
-        This method is just an helper for AS testing purposes. Note that, as an OAuth 2.0 Client, you should never have
+        This method is just a helper for AS testing purposes. Note that, as an OAuth 2.0 Client, you should never have
         to decode or analyze an access token, since it is simply an abstract string value. It is not even mandatory that
         Access Tokens are JWTs, just an implementation choice. Only Resource Servers (APIs) should check for the
         contents of Access Tokens they receive.
