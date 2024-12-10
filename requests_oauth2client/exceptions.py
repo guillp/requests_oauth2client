@@ -17,13 +17,15 @@ class OAuth2Error(Exception):
     Args:
         response: the HTTP response containing the error
         client : the OAuth2Client used to send the request
+        description: description of the error
 
     """
 
-    def __init__(self, response: requests.Response, client: OAuth2Client) -> None:
-        super().__init__("The remote endpoint returned an error")
+    def __init__(self, response: requests.Response, client: OAuth2Client, description: str | None = None) -> None:
+        super().__init__(f"The remote endpoint returned an error: {description or 'no description provided'}")
         self.response = response
         self.client = client
+        self.description = description
 
     @property
     def request(self) -> requests.PreparedRequest:
@@ -53,9 +55,8 @@ class EndpointError(OAuth2Error):
         description: str | None = None,
         uri: str | None = None,
     ) -> None:
-        super().__init__(response=response, client=client)
+        super().__init__(response=response, client=client, description=description)
         self.error = error
-        self.description = description
         self.uri = uri
 
 
@@ -64,7 +65,7 @@ class InvalidTokenResponse(OAuth2Error):
 
 
 class UnknownTokenEndpointError(EndpointError):
-    """Raised when an otherwise unknown error is returned by the token endpoint."""
+    """Raised when the token endpoint returns an otherwise unknown error."""
 
 
 class ServerError(EndpointError):

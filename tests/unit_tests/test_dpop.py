@@ -13,7 +13,12 @@ from requests_oauth2client import (
     InvalidDPoPAlg,
     InvalidDPoPKey,
     InvalidDPoPProof,
+    InvalidTokenResponse,
+    MissingDPoPNonce,
     OAuth2Client,
+    OAuth2ClientCredentialsAuth,
+    RepeatedDPoPNonce,
+    RequestUriParameterAuthorizationRequest,
     validate_dpop_proof,
 )
 from tests.conftest import RequestsMocker
@@ -112,8 +117,7 @@ def test_dpop_token_api_request(requests_mock: RequestsMocker, alg: str) -> None
 @freeze_time()
 def test_dpop_access_token_request_with_choosen_key(requests_mock: RequestsMocker) -> None:
     dpop_alg = "ES512"
-    private_key = Jwk.generate(alg=dpop_alg)
-    dpop_key = DPoPKey(private_key=private_key)
+    dpop_key = DPoPKey.generate(alg=dpop_alg)
     token_endpoint = "https://url.to.the/token_endpoint"
     client = OAuth2Client(
         token_endpoint=token_endpoint, client_id="foo", client_secret="bar", dpop_bound_access_tokens=True
@@ -139,7 +143,7 @@ def test_dpop_access_token_request_with_choosen_key(requests_mock: RequestsMocke
     assert token_request is not None
     dpop = Jwt(token_request.headers["DPoP"])
     assert isinstance(dpop, SignedJwt)
-    assert dpop.headers == {"typ": "dpop+jwt", "alg": dpop_alg, "jwk": private_key.public_jwk().minimize()}
+    assert dpop.headers == {"typ": "dpop+jwt", "alg": dpop_alg, "jwk": dpop_key.private_key.public_jwk().minimize()}
     assert dpop.claims["htm"] == "POST"
     assert dpop.claims["htu"] == token_endpoint
     assert dpop.claims["iat"] == Jwt.timestamp()
@@ -239,6 +243,50 @@ def test_dpop_authorization_code_flow(
     assert dpop_proof.jwt_token_id != dpop_proof2.jwt_token_id
 
 
+@freeze_time()
+def test_dpop_pushed_authorization_code_flow(
+    requests_mock: RequestsMocker,
+    oauth2client: OAuth2Client,
+    token_endpoint: str,
+    pushed_authorization_request_endpoint: str,
+) -> None:
+    azreq = oauth2client.authorization_request(dpop=True)
+    assert isinstance(azreq.dpop_key, DPoPKey)
+    assert azreq.dpop_key.alg == oauth2client.dpop_alg
+    assert azreq.dpop_jkt == azreq.dpop_key.private_key.thumbprint()
+
+    dpop_nonce = "my_nonce"
+    request_uri = "https://my.request.uri"
+    expires_in = 30
+
+    requests_mock.post(
+        pushed_authorization_request_endpoint,
+        [
+            {"status_code": 401, "headers": {"DPoP-Nonce": dpop_nonce}, "json": {"error": "use_dpop_nonce"}},
+            {"json": {"request_uri": request_uri, "expires_in": expires_in}},
+        ],
+    )
+
+    par_resp = oauth2client.pushed_authorization_request(azreq)
+    assert isinstance(par_resp, RequestUriParameterAuthorizationRequest)
+
+    assert requests_mock.call_count == 2
+    first_request, second_request = requests_mock.request_history
+    assert first_request.url == pushed_authorization_request_endpoint
+    assert second_request.url == pushed_authorization_request_endpoint
+    assert "DPoP" in first_request.headers
+    assert "DPoP" in second_request.headers
+    first_proof = validate_dpop_proof(
+        first_request.headers["DPoP"], htm="POST", htu=pushed_authorization_request_endpoint
+    )
+    second_proof = validate_dpop_proof(
+        second_request.headers["DPoP"], htm="POST", htu=pushed_authorization_request_endpoint
+    )
+    assert "nonce" not in first_proof.claims
+    assert "nonce" in second_proof.claims
+    assert second_proof.claims["nonce"] == dpop_nonce
+
+
 def test_validate_dpop_proof() -> None:
     private_key = Jwk.generate(alg="ES256")
     htm = "POST"
@@ -328,7 +376,7 @@ def test_validate_dpop_proof() -> None:
             htm=htm,
             htu=htu,
         )
-    with pytest.raises(InvalidDPoPProof, match=rf"HTTP Method \(htm\) does not matches expected '{htm}'"):
+    with pytest.raises(InvalidDPoPProof, match=rf"HTTP Method \(htm\) 'PATCH' does not matches expected '{htm}'"):
         validate_dpop_proof(
             SignedJwt.sign_arbitrary(
                 {"iat": Jwt.timestamp(), "htm": "PATCH", "htu": htu, "jti": "random"},
@@ -348,7 +396,9 @@ def test_validate_dpop_proof() -> None:
             htm=htm,
             htu=htu,
         )
-    with pytest.raises(InvalidDPoPProof, match=rf"HTTP URI \(htu\) does not matches expected '{htu}'"):
+    with pytest.raises(
+        InvalidDPoPProof, match=rf"HTTP URI \(htu\) 'https://something.else' does not matches expected '{htu}'"
+    ):
         validate_dpop_proof(
             SignedJwt.sign_arbitrary(
                 {"iat": Jwt.timestamp(), "htm": htm, "htu": "https://something.else", "jti": "random"},
@@ -384,3 +434,272 @@ def test_validate_dpop_proof() -> None:
         ),
         SignedJwt,
     )
+
+
+def test_dpop_as_provided_nonce(requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str) -> None:
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.post(
+        token_endpoint,
+        [
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": dpop_nonce},
+            },
+            {"status_code": 200, "json": {"access_token": "my_access_token"}},
+        ],
+    )
+
+    token = oauth2client.client_credentials(scope="my_scope", dpop=True)
+    assert isinstance(token, DPoPToken)
+    assert requests_mock.call_count == 2
+    request_without_nonce = requests_mock.request_history[0]
+    request_with_nonce = requests_mock.request_history[1]
+
+    assert "DPoP" in request_without_nonce.headers
+    assert "DPop-Nonce" not in request_without_nonce.headers
+    assert "DPoP" in request_with_nonce.headers
+
+    proof_without_nonce = SignedJwt(request_without_nonce.headers["DPoP"])
+    assert "nonce" not in proof_without_nonce.claims
+    proof_with_nonce = SignedJwt(request_with_nonce.headers["DPoP"])
+    assert proof_with_nonce.claims["nonce"] == dpop_nonce
+
+
+def test_dpop_with_rs_provided_nonce(
+    requests_mock: RequestsMocker, oauth2client: OAuth2Client, target_api: str, token_endpoint: str
+) -> None:
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.post(
+        token_endpoint, json={"access_token": "my_access_token", "token_type": "DPoP", "expires_in": 3600}
+    )
+
+    requests_mock.post(
+        target_api,
+        [
+            {
+                "status_code": 401,
+                "headers": {
+                    "DPoP-Nonce": dpop_nonce,
+                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+                },
+            },
+            {"status_code": 200},
+            {"status_code": 200},
+        ],
+    )
+
+    session = requests.Session()
+    session.auth = OAuth2ClientCredentialsAuth(oauth2client, dpop=True)
+
+    response = session.post(target_api)
+    assert response.status_code == 200
+    assert requests_mock.call_count == 3
+
+    token_req = requests_mock.request_history[0]
+    api_req_without_nonce = requests_mock.request_history[1]
+    api_req_with_nonce = requests_mock.request_history[2]
+
+    assert token_req.url == token_endpoint
+    assert api_req_without_nonce.url == api_req_with_nonce.url == target_api
+
+    proof_without_nonce = SignedJwt(api_req_without_nonce.headers["DPoP"])
+    assert "nonce" not in proof_without_nonce.claims
+    proof_with_nonce = SignedJwt(api_req_with_nonce.headers["DPoP"])
+    assert proof_with_nonce.claims["nonce"] == dpop_nonce
+
+    requests_mock.reset_mock()
+    second_response = session.post(target_api)
+    assert second_response.status_code == 200
+    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
+    assert requests_mock.last_request.url == target_api
+    second_proof_with_nonce = SignedJwt(requests_mock.last_request.headers["DPoP"])
+    assert second_proof_with_nonce.claims["nonce"] == dpop_nonce
+
+
+def test_as_missing_dpop_nonce(requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str) -> None:
+    """Raise an exception if the RS requires a nonce but forgets to include its value in the response."""
+    requests_mock.post(
+        token_endpoint,
+        [
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+            },
+            {"status_code": 200, "json": {"access_token": "my_access_token"}},
+        ],
+    )
+
+    with pytest.raises(InvalidTokenResponse, match="`DPoP-Nonce` HTTP header is missing"):
+        oauth2client.client_credentials(scope="my_scope", dpop=True)
+
+
+def test_as_repeated_dpop_nonce(requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str) -> None:
+    """Protect against infinite looping if the AS requires the same nonce that is already included in the proof."""
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.post(
+        token_endpoint,
+        [
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": dpop_nonce},
+            },
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": dpop_nonce},
+            },
+        ],
+    )
+
+    with pytest.raises(InvalidTokenResponse, match="nonce that was already included in the DPoP proof"):
+        oauth2client.client_credentials(scope="my_scope", dpop=True)
+
+
+def test_as_dpop_nonce_in_response_to_non_dpop_request(
+    requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str
+) -> None:
+    """Raise an exception if the AS requires a DPoP nonce as reply to a non-DPoP token request."""
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.post(
+        token_endpoint,
+        [
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": dpop_nonce},
+            },
+            {"status_code": 200, "json": {"access_token": "my_access_token"}},
+        ],
+    )
+
+    with pytest.raises(InvalidTokenResponse, match="initial request did not include a DPoP proof"):
+        oauth2client.client_credentials(scope="my_scope", dpop=False)
+
+
+def test_as_dpop_nonce_loop(requests_mock: RequestsMocker, oauth2client: OAuth2Client, token_endpoint: str) -> None:
+    """Protect against infinite looping if the AS keeps requesting new nonces on every request."""
+    requests_mock.post(
+        token_endpoint,
+        [
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": "dpop_nonce1"},
+            },
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": "dpop_nonce2"},
+            },
+            {
+                "status_code": 400,
+                "json": {
+                    "error": "use_dpop_nonce",
+                    "error_description": "Authorization server requires nonce in DPoP proof",
+                },
+                "headers": {"DPoP-Nonce": "dpop_nonce3"},
+            },
+        ],
+    )
+
+    with pytest.raises(InvalidTokenResponse, match="different DPoP `nonce` for the third time in row"):
+        oauth2client.client_credentials(scope="my_scope", dpop=True)
+
+
+def test_rs_missing_nonce(requests_mock: RequestsMocker, target_api: str) -> None:
+    """Raise an exception if the RS requires a nonce but forgets to include its value in the response."""
+    requests_mock.get(
+        target_api,
+        status_code=401,
+        headers={
+            "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+        },
+    )
+
+    dpop_key = DPoPKey.generate()
+    dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
+
+    with pytest.raises(MissingDPoPNonce):
+        requests.get(target_api, auth=dpop_token)
+
+
+def test_rs_repeated_nonce(requests_mock: RequestsMocker, target_api: str) -> None:
+    """Protect against infinite looping if the RS requires the same nonce that is already included in the proof."""
+    dpop_nonce = "my_dpop_nonce"
+    requests_mock.get(
+        target_api,
+        status_code=401,
+        headers={
+            "DPoP-Nonce": dpop_nonce,
+            "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+        },
+    )
+
+    dpop_key = DPoPKey.generate(rs_nonce=dpop_nonce)
+    dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
+
+    with pytest.raises(RepeatedDPoPNonce):
+        requests.get(target_api, auth=dpop_token)
+
+
+def test_rs_dpop_nonce_loop(
+    requests_mock: RequestsMocker, target_api: str, oauth2client: OAuth2Client, token_endpoint: str
+) -> None:
+    """Protection against infinite looping if the RS keeps requesting new nonces on every request."""
+    requests_mock.get(
+        target_api,
+        [
+            {
+                "status_code": 401,
+                "headers": {
+                    "DPoP-Nonce": "nonce1",
+                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+                },
+            },
+            {
+                "status_code": 401,
+                "headers": {
+                    "DPoP-Nonce": "nonce2",
+                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+                },
+            },
+            {
+                "status_code": 401,
+                "headers": {
+                    "DPoP-Nonce": "nonce3",
+                    "WWW-Authenticate": 'DPoP error="use_dpop_nonce", error_description="Authorization server requires nonce in DPoP proof"',
+                },
+            },
+        ],
+    )
+
+    dpop_key = DPoPKey.generate()
+    dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
+
+    resp = requests.get(target_api, auth=dpop_token)
+    assert resp.status_code == 401
+    assert resp.headers["DPoP-Nonce"] == "nonce2"

@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
 from uuid import uuid4
 
 import jwskate
-from attrs import field, frozen
+from attrs import define, field, frozen, setters
 from binapy import BinaPy
 from furl import furl  # type: ignore[import-untyped]
+from requests import codes
 from typing_extensions import Self
 
 from .tokens import AccessTokenTypes, BearerToken, IdToken, id_token_converter
@@ -55,6 +56,36 @@ class InvalidDPoPProof(ValueError):
         self.proof = proof
 
 
+class InvalidUseDPoPNonceResponse(Exception):
+    """Base class for invalid Responses with a `use_dpop_nonce` error."""
+
+    def __init__(self, response: requests.Response, message: str) -> None:
+        super().__init__(message)
+        self.response = response
+
+
+class MissingDPoPNonce(InvalidUseDPoPNonceResponse):
+    """Raised when a server requests a DPoP nonce but none is provided in its response."""
+
+    def __init__(self, response: requests.Response) -> None:
+        super().__init__(
+            response,
+            "Server requested client to use a DPoP `nonce`, but the `DPoP-Nonce` HTTP header is missing.",
+        )
+
+
+class RepeatedDPoPNonce(InvalidUseDPoPNonceResponse):
+    """Raised when the server requests a DPoP nonce value that is the same as already included in the request."""
+
+    def __init__(self, response: requests.Response) -> None:
+        super().__init__(
+            response,
+            """\
+Server requested client to use a DPoP `nonce`,
+but provided the same value for that nonce that was already included in the DPoP proof.""",
+        )
+
+
 token68_pattern = re.compile(r"^[a-zA-Z0-9\-._~+\/]+=*$")
 
 
@@ -71,11 +102,6 @@ class DPoPToken(BearerToken):  # type: ignore[override]
     DPOP_HEADER: ClassVar[str] = "DPoP"
 
     dpop_key: DPoPKey = field(kw_only=True)
-
-    @cached_property
-    def access_token_hash(self) -> str:
-        """The Access Token Hash, for use in DPoP proofs."""
-        return BinaPy(self.access_token).to("sha256").to("b64u").decode()
 
     @accepts_expires_in
     def __init__(
@@ -106,22 +132,63 @@ class DPoPToken(BearerToken):  # type: ignore[override]
             kwargs=kwargs,
         )
 
+    def _response_hook(self, response: requests.Response, **kwargs: Any) -> requests.Response:
+        """Handles a Resource Server provided DPoP nonce."""
+        if response.status_code == codes.unauthorized and response.headers.get("WWW-Authenticate", "").startswith(
+            "DPoP"
+        ):
+            self.dpop_key.handle_rs_provided_dpop_nonce(response)
+            new_request = response.request.copy()
+            # remove the previously registered hook to avoid registering it multiple times
+            new_request.deregister_hook("response", self._response_hook)  # type: ignore[no-untyped-call]
+            new_request = self(new_request)  # another hook will be re-registered here in the __call__() method
+
+            return response.connection.send(new_request, **kwargs)
+
+        return response
+
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add a DPoP proof in each request."""
         request = super().__call__(request)
-        htu = request.url
-        htm = request.method
-        if htu is None or htm is None:  # pragma: no cover
-            msg = "Request has no 'method' or 'url'! This should not happen."
-            raise RuntimeError(msg)
-        proof = self.dpop_key.proof(htm=htm, htu=htu, ath=self.access_token_hash)
-        request.headers[self.DPOP_HEADER] = str(proof)
+        add_dpop_proof(request, dpop_key=self.dpop_key, access_token=self.access_token, header_name=self.DPOP_HEADER)
+        request.register_hook("response", self._response_hook)  # type: ignore[no-untyped-call]
         return request
 
 
-@frozen(init=False)
+def add_dpop_proof(
+    request: requests.PreparedRequest,
+    dpop_key: DPoPKey,
+    access_token: str,
+    header_name: str = "DPoP",
+) -> None:
+    """Add a valid DPoP proof to a request, in-place.
+
+    Args:
+        request: the request to add the proof to.
+        dpop_key: the DPoP key to use for the proof.
+        access_token: the access token to hash in the proof.
+        header_name: the name of the header to add the proof to.
+
+    """
+    htu = request.url
+    htm = request.method
+    ath = BinaPy(access_token).to("sha256").to("b64u").decode()
+    if htu is None or htm is None:  # pragma: no cover
+        msg = "Request has no 'method' or 'url'! This should not happen."
+        raise RuntimeError(msg)
+    proof = dpop_key.proof(htm=htm, htu=htu, ath=ath)
+    request.headers[header_name] = str(proof)
+
+
+@define(init=False)
 class DPoPKey:
-    """Implementation of a DPoP proof generator.
+    """Wrapper around a DPoP proof signature key.
+
+    This handles DPoP proof generation. It also keeps track of a nonce, if provided
+    by the Resource Server.
+    Its behavior follows the standard DPoP specifications.
+    You may subclass or otherwise customize this class to implement custom behavior,
+    like adding or modifying claims to the proofs.
 
     Args:
         private_key: the private key to use for DPoP proof signatures.
@@ -130,15 +197,18 @@ class DPoPKey:
         iat_generator: a callable that generates the Issuer Date (iat) to include in proofs.
         jwt_typ: the token type (`typ`) header to include in the generated proofs.
         dpop_token_class: the class to use to represent DPoP tokens.
+        rs_nonce: an initial DPoP `nonce` to include in requests, for testing purposes. You should leave `None`.
 
     """
 
-    alg: str
-    private_key: jwskate.Jwk = field(repr=False)
-    jti_generator: Callable[[], str] = field(repr=False)
-    iat_generator: Callable[[], int] = field(repr=False)
-    jwt_typ: str = field(repr=False)
-    dpop_token_class: type[DPoPToken] = field(repr=False)
+    alg: str = field(on_setattr=setters.frozen)
+    private_key: jwskate.Jwk = field(on_setattr=setters.frozen, repr=False)
+    jti_generator: Callable[[], str] = field(on_setattr=setters.frozen, repr=False)
+    iat_generator: Callable[[], int] = field(on_setattr=setters.frozen, repr=False)
+    jwt_typ: str = field(on_setattr=setters.frozen, repr=False)
+    dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
+    as_nonce: str | None
+    rs_nonce: str | None
 
     def __init__(
         self,
@@ -148,6 +218,8 @@ class DPoPKey:
         iat_generator: Callable[[], int] = lambda: jwskate.Jwt.timestamp(),
         jwt_typ: str = "dpop+jwt",
         dpop_token_class: type[DPoPToken] = DPoPToken,
+        as_nonce: str | None = None,
+        rs_nonce: str | None = None,
     ) -> None:
         try:
             private_key = jwskate.to_jwk(private_key).check(is_private=True, is_symmetric=False)
@@ -163,6 +235,8 @@ class DPoPKey:
             iat_generator=iat_generator,
             jwt_typ=jwt_typ,
             dpop_token_class=dpop_token_class,
+            as_nonce=as_nonce,
+            rs_nonce=rs_nonce,
         )
 
     @classmethod
@@ -173,6 +247,8 @@ class DPoPKey:
         jti_generator: Callable[[], str] = lambda: str(uuid4()),
         iat_generator: Callable[[], int] = lambda: jwskate.Jwt.timestamp(),
         dpop_token_class: type[DPoPToken] = DPoPToken,
+        as_nonce: str | None = None,
+        rs_nonce: str | None = None,
     ) -> Self:
         """Generate a new DPoPKey with a new private key that is suitable for the given `alg`."""
         if alg not in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
@@ -184,6 +260,8 @@ class DPoPKey:
             iat_generator=iat_generator,
             jwt_typ=jwt_typ,
             dpop_token_class=dpop_token_class,
+            as_nonce=as_nonce,
+            rs_nonce=rs_nonce,
         )
 
     @cached_property
@@ -199,12 +277,26 @@ class DPoPKey:
     def proof(self, htm: str, htu: str, ath: str | None = None, nonce: str | None = None) -> jwskate.SignedJwt:
         """Generate a DPoP proof.
 
+        Proof will contain the following claims:
+
+            - The HTTP method (`htm`), target URI (`htu`), and Access Token hash (`ath`) that are passed as parameters.
+            - The `iat` claim will be generated by the configured `iat_generator`, which defaults to current datetime.
+            - The `jti` claim will be generated by the configured `jti_generator`, which defaults to a random UUID4.
+            - The `nonce` claim will be the value stored in the `nonce` attribute. This attribute is updated
+              automatically when using a `DPoPToken` or one of the provided Authentication handlers as a `requests`
+              auth handler.
+
+        The proof will be signed with the private key of this DPoPKey, using the configured `alg` signature algorithm.
+
         Args:
             htm: The HTTP method value of the request to which the proof is attached.
             htu: The HTTP target URI of the request to which the proof is attached. Query and Fragment parts will
                 be automatically removed before being used as `htu` value in the generated proof.
             ath: The Access Token hash value.
-            nonce: A recent nonce provided via the DPoP-Nonce HTTP header, from either the AS or RS.
+            nonce: A recent nonce provided via the DPoP-Nonce HTTP header, from either the AS or RS.  If `None`, the
+                value stored in `rs_nonce` will be used instead.
+                In typical cases, you should never have to use this parameter. It is only used internally when
+                requesting the AS token endpoint.
 
         Returns:
             the proof value (as a signed JWT)
@@ -214,6 +306,8 @@ class DPoPKey:
         proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": htu, "iat": self.iat_generator()}
         if nonce:
             proof_claims["nonce"] = nonce
+        elif self.rs_nonce:
+            proof_claims["nonce"] = self.rs_nonce
         if ath:
             proof_claims["ath"] = ath
         return jwskate.SignedJwt.sign(
@@ -223,6 +317,34 @@ class DPoPKey:
             typ=self.jwt_typ,
             extra_headers={"jwk": self.public_jwk},
         )
+
+    def handle_as_provided_dpop_nonce(self, response: requests.Response) -> None:
+        """Handle an Authorization Server response containing a `use_dpop_nonce` error.
+
+        Args:
+            response: the response from the AS.
+
+        """
+        nonce = response.headers.get("DPoP-Nonce")
+        if not nonce:
+            raise MissingDPoPNonce(response)
+        if self.as_nonce == nonce:
+            raise RepeatedDPoPNonce(response)
+        self.as_nonce = nonce
+
+    def handle_rs_provided_dpop_nonce(self, response: requests.Response) -> None:
+        """Handle a Resource Server response containing a `use_dpop_nonce` error.
+
+        Args:
+            response: the response from the AS.
+
+        """
+        nonce = response.headers.get("DPoP-Nonce")
+        if not nonce:
+            raise MissingDPoPNonce(response)
+        if self.rs_nonce == nonce:
+            raise RepeatedDPoPNonce(response)
+        self.rs_nonce = nonce
 
 
 def validate_dpop_proof(  # noqa: C901
@@ -287,11 +409,11 @@ Issued At timestamp (iat) is too far away in the past or future (received: {proo
     if "htm" not in proof_jwt.claims:
         raise InvalidDPoPProof(proof, "the HTTP method (htm) claim is missing.")
     if proof_jwt.htm != htm:
-        raise InvalidDPoPProof(proof, f"HTTP Method (htm) does not matches expected '{htm}'.")
+        raise InvalidDPoPProof(proof, f"HTTP Method (htm) '{proof_jwt.htm}' does not matches expected '{htm}'.")
     if "htu" not in proof_jwt.claims:
         raise InvalidDPoPProof(proof, "the HTTP URI (htu) claim is missing.")
     if proof_jwt.htu != htu:
-        raise InvalidDPoPProof(proof, f"HTTP URI (htu) does not matches expected '{htu}'.")
+        raise InvalidDPoPProof(proof, f"HTTP URI (htu) '{proof_jwt.htu}' does not matches expected '{htu}'.")
     if ath:
         if "ath" not in proof_jwt.claims:
             raise InvalidDPoPProof(proof, "the Access Token hash (ath) claim is missing.")

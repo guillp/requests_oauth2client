@@ -23,7 +23,7 @@ from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
-from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg
+from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg, MissingDPoPNonce, RepeatedDPoPNonce
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -208,7 +208,7 @@ class GrantTypes(str, Enum):
 
 @frozen(init=False)
 class OAuth2Client:
-    """An OAuth 2.x Client, that can send requests to an OAuth 2.x Authorization Server.
+    """An OAuth 2.x Client that can send requests to an OAuth 2.x Authorization Server.
 
     `OAuth2Client` is able to obtain tokens from the Token Endpoint using any of the standardised
     Grant Types, and to communicate with the various backend endpoints like the Revocation,
@@ -528,20 +528,59 @@ class OAuth2Client:
             method: the HTTP method to use
             **requests_kwargs: keyword arguments for the request
 
+        Raises:
+            InvalidTokenResponse: if the AS response contains a `use_dpop_nonce` error but:
+              - the response comes in reply to a non-DPoP request
+              - the DPoPKey.handle_as_provided_dpop_nonce() method raises an exception. This should happen:
+                    - if the response does not include a DPoP-Nonce HTTP header with the requested nonce value
+                    - or if the requested nonce is the same value that was sent in the request DPoP proof
+              - a new nonce value is requested again for the 3rd time in a row
+
         """
         endpoint_uri = self._require_endpoint(endpoint)
         requests_kwargs.setdefault("headers", {})
         requests_kwargs["headers"]["Accept"] = accept
 
-        response = self.session.request(
-            method,
-            endpoint_uri,
-            **requests_kwargs,
-        )
-        if response.ok:
-            return on_success(response, dpop_key=dpop_key)
+        for _ in range(3):
+            if dpop_key:
+                dpop_proof = dpop_key.proof(htm="POST", htu=endpoint_uri, nonce=dpop_key.as_nonce)
+                requests_kwargs.setdefault("headers", {})
+                requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
 
-        return on_failure(response, dpop_key=dpop_key)
+            response = self.session.request(
+                method,
+                endpoint_uri,
+                **requests_kwargs,
+            )
+            if response.ok:
+                return on_success(response, dpop_key=dpop_key)
+
+            try:
+                return on_failure(response, dpop_key=dpop_key)
+            except UseDPoPNonce as exc:
+                if dpop_key is None:
+                    raise InvalidTokenResponse(
+                        response,
+                        self,
+                        """\
+Authorization Server requested client to include a DPoP `nonce` in its DPoP proof,
+but the initial request did not include a DPoP proof.
+""",
+                    ) from exc
+                try:
+                    dpop_key.handle_as_provided_dpop_nonce(response)
+                except (MissingDPoPNonce, RepeatedDPoPNonce) as exc:
+                    raise InvalidTokenResponse(response, self, str(exc)) from exc
+
+        raise InvalidTokenResponse(
+            response,
+            self,
+            """\
+Authorization Server requested client to use a different DPoP `nonce` for the third time in row.
+This should never happen. This exception is raised to avoid a potential endless loop where the client
+keeps trying to obey the new DPoP `nonce` values as provided by the Authorization Server after each token request.
+""",
+        )
 
     def token_request(
         self,
@@ -577,10 +616,6 @@ class OAuth2Client:
             dpop = self.dpop_bound_access_tokens
         if dpop and not dpop_key:
             dpop_key = self.dpop_key_generator(self.dpop_alg)
-        if dpop_key:
-            dpop_proof = dpop_key.proof(htm="POST", htu=self.token_endpoint)
-            requests_kwargs.setdefault("headers", {})
-            requests_kwargs["headers"]["DPoP"] = str(dpop_proof)
 
         return self._request(
             Endpoints.TOKEN,
@@ -654,7 +689,11 @@ class OAuth2Client:
                 uri=error_uri,
             )
         except Exception as exc:
-            raise InvalidTokenResponse(response=response, client=self) from exc
+            raise InvalidTokenResponse(
+                response=response,
+                client=self,
+                description=f"An error happened while processing the error response: {exc}",
+            ) from exc
         raise exception
 
     def client_credentials(
