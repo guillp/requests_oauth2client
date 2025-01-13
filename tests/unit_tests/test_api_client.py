@@ -336,3 +336,17 @@ def test_contextmanager(requests_mock: RequestsMocker, target_api: str) -> None:
         api.post()
 
     assert requests_mock.last_request is not None
+
+
+def test_cookies_and_headers(target_api: str) -> None:
+    cookies = {"cookie1": "value1", "cookie2": "value2"}
+    headers = {"header1": "value1", "header2": "value2"}
+    user_agent = "My User Agent"
+    api = ApiClient(target_api, cookies=cookies, headers=headers, user_agent=user_agent)
+    assert api.session.cookies == cookies
+    for key, value in headers.items():
+        assert api.session.headers[key] == value
+    assert api.session.headers["User-Agent"] == user_agent
+
+    api_without_useragent = ApiClient(target_api, user_agent=None)
+    assert "User-Agent" not in api_without_useragent.session.headers

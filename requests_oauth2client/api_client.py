@@ -77,7 +77,11 @@ class ApiClient:
     automatically discarded from the request
     - boolean values in `data` or `params` fields can be serialized to values that are suitable
     for the target API, like `"true"`  or `"false"`, or `"1"` / `"0"`, instead of the default
-    values `"True"` or `"False"`.
+    values `"True"` or `"False"`,
+    - you may pass `cookies` and `headers`, which will be added to the session cookie handler or
+    request headers respectively.
+    - you may use the `user_agent` parameter to change the `User-Agent` header easily. Set it to
+      `None` to remove that header.
 
     `base_url` will serve as root for relative urls passed to
     [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request],
@@ -125,7 +129,9 @@ class ApiClient:
             a boolean value (`True` or `False`) will be serialized to the corresponding value.
             This can be useful since some APIs expect a `'true'` or `'false'` value as boolean,
             and `requests` serializes `True` to `'True'` and `False` to `'False'`.
-            Set it to `None` to restore default requests behaviour.
+            Set it to `None` to restore default requests behavior.
+        cookies: a mapping of cookies to set in the underlying `requests.Session`.
+        headers: a mapping of headers to set in the underlying `requests.Session`.
         session: a preconfigured `requests.Session` to use with this `ApiClient`.
         **session_kwargs: additional kwargs to configure the underlying `requests.Session`.
 
@@ -151,10 +157,27 @@ class ApiClient:
         raise_for_status: bool = True,
         none_fields: Literal["include", "exclude", "empty"] = "exclude",
         bool_fields: tuple[Any, Any] | None = ("true", "false"),
+        cookies: Mapping[str, Any] | None = None,
+        headers: Mapping[str, Any] | None = None,
+        user_agent: str | None = requests.utils.default_user_agent(),
         session: requests.Session | None = None,
         **session_kwargs: Any,
     ) -> None:
         session = session or requests.Session()
+
+        if cookies:
+            for key, val in cookies.items():
+                session.cookies[key] = str(val)
+
+        if headers:
+            for key, val in headers.items():
+                session.headers[key] = str(val)
+
+        if user_agent is None:
+            session.headers.pop("User-Agent", None)
+        else:
+            session.headers["User-Agent"] = str(user_agent)
+
         for key, val in session_kwargs.items():
             setattr(session, key, val)
 
