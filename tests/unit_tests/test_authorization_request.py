@@ -12,6 +12,7 @@ from requests_oauth2client import (
     AuthorizationRequestSerializer,
     AuthorizationResponse,
     AuthorizationResponseError,
+    DPoPKey,
     InvalidMaxAgeParam,
     MismatchingIssuer,
     MismatchingState,
@@ -191,6 +192,23 @@ def test_authorization_request_serializer(authorization_request: AuthorizationRe
     serializer = AuthorizationRequestSerializer()
     serialized = serializer.dumps(authorization_request)
     assert serializer.loads(serialized) == authorization_request
+
+
+def test_authorization_request_serializer_with_dpop_key() -> None:
+    dpop_key = DPoPKey.generate()
+    authorization_request = AuthorizationRequest(
+        "https://as.local/authorize",
+        client_id="foo",
+        redirect_uri="http://localhost/local",
+        scope="openid",
+        dpop_key=dpop_key,
+    )
+
+    serialized = AuthorizationRequestSerializer.default_dumper(authorization_request)
+    deserialized_request = AuthorizationRequestSerializer.default_loader(serialized)
+
+    assert isinstance(deserialized_request.dpop_key, DPoPKey)
+    assert deserialized_request.dpop_key.private_key == dpop_key.private_key
 
 
 def test_request_acr_values() -> None:
