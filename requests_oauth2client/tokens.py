@@ -645,7 +645,8 @@ class BearerTokenSerializer:
             BinaPy.serialize_to("json", {k: w for k, w in d.items() if w is not None}).to("deflate").to("b64u").ascii()
         )
 
-    def default_loader(self, serialized: str, token_class: type[BearerToken] = BearerToken) -> BearerToken:
+    @staticmethod
+    def default_loader(serialized: str, token_class: type[BearerToken] = BearerToken) -> BearerToken:
         """Deserialize a BearerToken.
 
         This does the opposite operations than `default_dumper`.

@@ -933,6 +933,8 @@ class AuthorizationRequestSerializer:
         Serialize an AuthorizationRequest as JSON, then compress with deflate, then encodes as
         base64url.
 
+        WARNING: If the `AuthorizationRequest` has `DPoPKey`, this does not serialize custom `jti_generator`, `iat_generator` or `dpop_token_class`!
+
         Args:
             azr: the `AuthorizationRequest` to serialize
 
