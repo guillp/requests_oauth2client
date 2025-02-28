@@ -2,7 +2,6 @@ from typing import Any, Iterable
 from urllib.parse import parse_qs
 
 import pytest
-from flask import request
 
 from requests_oauth2client import ApiClient, ClientSecretPost, OAuth2Client
 from tests.conftest import RequestsMocker
@@ -20,7 +19,7 @@ def test_flask(
 ) -> None:
     try:
         from flask import Flask
-
+        from flask import request
         from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
     except ImportError:
         pytest.skip("Flask is not available")
@@ -99,3 +98,24 @@ def test_flask(
     api_request3 = requests_mock.request_history[4]
     assert api_request3.url == "https://myapi.local/root/?call=3"
     assert api_request3.headers.get("Authorization") == f"Bearer {access_token}"
+
+
+def test_flask_token_kwarg() -> None:
+    try:
+        from flask import Flask
+
+        from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
+    except ImportError:
+        pytest.skip("Flask is not available")
+
+    app = Flask("testapp")
+    app.config["TESTING"] = True
+    app.config["SECRET_KEY"] = "thisissecret"
+
+    with app.test_request_context('/'):
+        auth = FlaskOAuth2ClientCredentialsAuth(
+            client=None,
+            session_key=session_key,
+            token="xyz",
+        )
+        assert auth.token.access_token == "xyz"
