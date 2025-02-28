@@ -940,6 +940,8 @@ class AuthorizationRequestSerializer:
 
         """
         d = asdict(azr)
+        if azr.dpop_key:
+            d["dpop_key"]["private_key"] = azr.dpop_key.private_key.to_pem()
         d.update(**d.pop("kwargs", {}))
         return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
 
@@ -961,6 +963,14 @@ class AuthorizationRequestSerializer:
 
         """
         args = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
+
+        if dpop_key := args.get("dpop_key"):
+            dpop_key["private_key"] = Jwk.from_pem(dpop_key["private_key"])
+            dpop_key.pop("jti_generator", None)
+            dpop_key.pop("iat_generator", None)
+            dpop_key.pop("dpop_token_class", None)
+            args["dpop_key"] = DPoPKey(**dpop_key)
+
         return azr_class(**args)
 
     def dumps(self, azr: AuthorizationRequest) -> str:
