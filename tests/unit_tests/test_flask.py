@@ -18,8 +18,8 @@ def test_flask(
     target_api: str,
 ) -> None:
     try:
-        from flask import Flask
-        from flask import request
+        from flask import Flask, request
+
         from requests_oauth2client.flask import FlaskOAuth2ClientCredentialsAuth
     except ImportError:
         pytest.skip("Flask is not available")
@@ -112,10 +112,11 @@ def test_flask_token_kwarg() -> None:
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "thisissecret"
 
-    with app.test_request_context('/'):
+    with app.test_request_context("/"):
         auth = FlaskOAuth2ClientCredentialsAuth(
             client=None,
             session_key=session_key,
             token="xyz",
         )
+        assert auth.token
         assert auth.token.access_token == "xyz"

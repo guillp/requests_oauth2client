@@ -467,9 +467,9 @@ def authorization_request(  # noqa: C901
         if code_verifier is None:
             assert isinstance(generated_code_challenge, str)
             assert len(generated_code_challenge) == 43
-            assert base64.urlsafe_b64decode(
-                generated_code_challenge.encode() + b"="
-            ), f"Invalid B64U for generated code_challenge: {generated_code_challenge}"
+            assert base64.urlsafe_b64decode(generated_code_challenge.encode() + b"="), (
+                f"Invalid B64U for generated code_challenge: {generated_code_challenge}"
+            )
         else:
             assert azr.code_verifier == code_verifier
             assert generated_code_challenge == base64.urlsafe_b64encode(

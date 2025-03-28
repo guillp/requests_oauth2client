@@ -314,7 +314,7 @@ class OAuth2DeviceCodeAuth(OAuth2AccessTokenAuth):  # type: ignore[override]
 
     """
 
-    device_code: str | DeviceAuthorizationResponse
+    device_code: str | DeviceAuthorizationResponse | None
     interval: int
     expires_in: int
 

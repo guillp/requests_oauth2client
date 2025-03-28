@@ -2030,7 +2030,7 @@ To disable endpoint uri validation, set `testing=True` when initializing your `O
             testing = True
         if issuer and discovery.get("issuer") != issuer:
             msg = f"""\
-Mismatching `issuer` value in discovery document (received '{discovery.get('issuer')}', expected '{issuer}')."""
+Mismatching `issuer` value in discovery document (received '{discovery.get("issuer")}', expected '{issuer}')."""
             raise InvalidParam(
                 msg,
                 issuer,
