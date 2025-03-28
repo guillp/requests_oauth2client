@@ -204,8 +204,10 @@ def test_authorization_request_serializer_with_dpop_key() -> None:
         dpop_key=dpop_key,
     )
 
-    serialized = AuthorizationRequestSerializer.default_dumper(authorization_request)
-    deserialized_request = AuthorizationRequestSerializer.default_loader(serialized)
+    serializer = AuthorizationRequestSerializer()
+
+    serialized = serializer.dumps(authorization_request)
+    deserialized_request = serializer.loads(serialized)
 
     assert isinstance(deserialized_request.dpop_key, DPoPKey)
     assert deserialized_request.dpop_key.private_key == dpop_key.private_key
