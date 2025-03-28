@@ -96,7 +96,7 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.md.
-3. The pull request should work for Python 3.6, 3.7, 3.8, 3.9 and for PyPy. Check
+3. The pull request should work for Python 3.8+ and for PyPy. Check
    https://github.com/guillp/requests_oauth2client/actions
    and make sure that the tests pass for all supported Python versions.
 

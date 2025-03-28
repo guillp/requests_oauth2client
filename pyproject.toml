@@ -1,10 +1,10 @@
 [tool]
 [tool.poetry]
 name = "requests_oauth2client"
-version = "1.6.0"
+version = "1.7.0"
 homepage = "https://github.com/guillp/requests_oauth2client"
 description = "An OAuth2.x client based on `requests`."
-authors = ["Guillaume Pujol <guill.p.linux@gmail.com>"]
+authors = ["Guillaume Pujol <guillp.dev@pm.me>"]
 readme = "README.md"
 license = "Apache-2.0"
 classifiers = [
@@ -18,6 +18,7 @@ classifiers = [
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
 ]
 packages = [
     { include = "requests_oauth2client" },
