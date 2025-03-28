@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
     - id: trailing-whitespace
       args: [--markdown-linebreak-ext=md]
@@ -14,23 +14,15 @@ repos:
     hooks:
     - id: python-use-type-annotations
     - id: text-unicode-replacement-char
-- repo: https://github.com/myint/docformatter
-  rev: v1.7.5
-  hooks:
-    - id: docformatter
-      additional_dependencies:
-      - tomli
-      args:
-      - --in-place
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
+    rev: v0.11.2
     hooks:
         - id: ruff-format
         - id: ruff
           args: [ --fix ]
         - id: ruff-format
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+    rev: v1.15.0
     hooks:
     -   id: mypy
         args:

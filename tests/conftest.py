@@ -247,9 +247,9 @@ def client_credentials_grant_validator() -> RequestValidatorType:
         if scope is not None and not isinstance(scope, str):
             scope = " ".join(scope)
 
-        assert (
-            not scope and params.get("scope") is None or scope and params.get("scope") == scope
-        ), f"expected {scope=}, got {params.get('scope')=}"
+        assert (not scope and params.get("scope") is None) or (scope and params.get("scope") == scope), (
+            f"expected {scope=}, got {params.get('scope')=}"
+        )
         for key, val in kwargs.items():
             assert params.get(key) == val
 
