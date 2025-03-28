@@ -30,9 +30,9 @@ class FlaskSessionAuthMixin:
         *args: Any,
         **token_kwargs: Any,
     ) -> None:
-        super().__init__(*args, **token_kwargs)
         self.serializer = serializer or BearerTokenSerializer()
         self.session_key = session_key
+        super().__init__(*args, **token_kwargs)
 
     @property
     def token(self) -> BearerToken | None:
