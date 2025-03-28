@@ -1,5 +1,4 @@
 site_name: requests_oauth2client
-# site_url: http://www.jieyu.ai
 repo_url: https://github.com/guillp/requests_oauth2client
 repo_name: requests_oauth2client
 strict: true
