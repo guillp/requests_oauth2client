@@ -29,10 +29,12 @@ repos:
         - --show-error-context
         - --show-column-numbers
         additional_dependencies:
+            - attrs
+            - pytest_examples
             - pytest-mock
             - pytest-mypy
             - pytest-freezer
-            - jwskate>=0.11.1
+            - jwskate
             - types-requests
             - requests_mock
             - flask

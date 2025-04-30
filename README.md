@@ -76,6 +76,7 @@ If you have already obtained an access token for the API you want to call, you c
 
 ```python
 import requests
+
 from requests_oauth2client import BearerToken
 
 token = BearerToken("my_access_token")
@@ -208,6 +209,7 @@ auth handler. It takes an `OAuth2Client` as parameter, and the additional kwargs
 
 ```python
 import requests
+
 from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
 
 oauth2client = OAuth2Client(
@@ -216,9 +218,7 @@ oauth2client = OAuth2Client(
     client_secret="client_secret",
 )
 
-auth = OAuth2ClientCredentialsAuth(
-    oauth2client, scope="myscope", resource="https://myapi.local"
-)
+auth = OAuth2ClientCredentialsAuth(oauth2client, scope="myscope", resource="https://myapi.local")
 
 # use it like this:
 requests.get("https://myapi.local/resource", auth=auth)
@@ -329,9 +329,7 @@ that the issuer matches what is expected. You can do this with:
 ```python
 # using the `az_request` as defined above
 
-response_uri = input(
-    "Please enter the full url and/or params obtained on the redirect_uri: "
-)
+response_uri = input("Please enter the full url and/or params obtained on the redirect_uri: ")
 # say the callback url is https://url.to.my.application/redirect_uri?code=an_az_code&state=FBx9mWeLwoKGgG76vhi6v61-4mgxmgZhtWIa7aTffdY&issuer=https://url.to.the.as
 az_response = az_request.validate_callback(response_uri)
 ```
@@ -373,7 +371,7 @@ handler takes an [OAuth2Client] and an authorization code as parameter, plus wha
 required by your Authorization Server:
 
 ```python
-from requests_oauth2client import OAuth2Client, ApiClient, OAuth2AuthorizationCodeAuth
+from requests_oauth2client import ApiClient, OAuth2AuthorizationCodeAuth, OAuth2Client
 
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
@@ -417,22 +415,23 @@ az_request = AuthorizationRequest(
     # extra parameters such as `resource` can be included as well if required by your AS
     resource="https://my.resource.local/api",
 )
-print(
-    az_request
-)  # this request will look like this, with line breaks for display purposes only
-# https://url.to.the/authorization_endpoint
-# ?client_id=my_client_id
-# &redirect_uri=http%3A%2F%2Flocalhost%callback
-# &response_type=code
-# &state=kHWL4VwcbUbtPR4mtht6yMAGG_S-ZcBh5RxI_IGDmJc
-# &nonce=mSGOS1M3LYU9ncTvvutoqUR4n1EtmaC_sQ3db4dyMAc
-# &scope=openid+email+profile
-# &code_challenge=W3n02f6xUKoDVbmhWEWz3h780b-Ci6ucnBS_d7nogmQ
-# &code_challenge_method=S256
-# &resource=https%3A%2F%2Fmy.resource.local%2Fapi
-
+print(az_request)  # this request will look like this, with line breaks for display purposes only
+"""
+https://url.to.the/authorization_endpoint
+?client_id=my_client_id
+&redirect_uri=http%3A%2F%2Flocalhost%callback
+&response_type=code
+&state=kHWL4VwcbUbtPR4mtht6yMAGG_S-ZcBh5RxI_IGDmJc
+&nonce=mSGOS1M3LYU9ncTvvutoqUR4n1EtmaC_sQ3db4dyMAc
+&scope=openid+email+profile
+&code_challenge=W3n02f6xUKoDVbmhWEWz3h780b-Ci6ucnBS_d7nogmQ
+&code_challenge_method=S256
+&resource=https%3A%2F%2Fmy.resource.local%2Fapi
+"""
 print(az_request.code_verifier)
-# 'gYK-ZnQfoat2bghwed7oEz--wvn4D70ksJ5GuWO9sXXygZ7PMnUlSpBmMCcNRHxdgTS9m_roYwGxF6HQxIqZVwXmxRJUziFHUFxDrNuUIjCJCx6gBhPlpFbUXulB1fo2'
+"""
+gYK-ZnQfoat2bghwed7oEz--wvn4D70ksJ5GuWO9sXXygZ7PMnUlSpBmMCcNRHxdgTS9m_roYwGxF6HQxIqZVwXmxRJUziFHUFxDrNuUIjCJCx6gBhPlpFbUXulB1fo2
+"""
 ```
 
 ### Device Authorization Grant
@@ -442,9 +441,9 @@ Helpers for the Device Authorization Grant are also included. To get device and 
 
 ```python
 from requests_oauth2client import (
-    OAuth2Client,
-    DeviceAuthorizationPoolingJob,
     BearerToken,
+    DeviceAuthorizationPoolingJob,
+    OAuth2Client,
 )
 
 client = OAuth2Client(
@@ -456,12 +455,12 @@ client = OAuth2Client(
 da_resp = client.authorize_device()
 
 # `da_resp` contains the Device Code, User Code, Verification URI, and other info returned by the AS:
-da_resp.device_code
-da_resp.user_code
-da_resp.verification_uri
-da_resp.verification_uri_complete
-da_resp.expires_at
-da_resp.interval
+assert da_resp.device_code
+assert da_resp.user_code
+assert da_resp.verification_uri
+assert da_resp.verification_uri_complete
+assert da_resp.expires_at
+assert da_resp.interval
 
 # Send/show the Verification Uri and User Code to the user. They must use a browser to visit that URL, authenticate, and input the User Code.
 
@@ -486,7 +485,7 @@ Use
 as auth handler to exchange a device code for an access token:
 
 ```python
-from requests_oauth2client import ApiClient, OAuth2DeviceCodeAuth, OAuth2Client
+from requests_oauth2client import ApiClient, OAuth2Client, OAuth2DeviceCodeAuth
 
 client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
@@ -497,9 +496,9 @@ client = OAuth2Client(
 device_auth_resp = client.authorize_device()
 
 # expose user_code and verification_uri or verification_uri_complete to the user
-device_auth_resp.user_code
-device_auth_resp.verification_uri
-device_auth_resp.verification_uri_complete
+assert device_auth_resp.user_code
+assert device_auth_resp.verification_uri
+assert device_auth_resp.verification_uri_complete
 
 # then try to send your request with an OAuth2DeviceCodeAuth handler
 # this will pool the token endpoint until the user authorizes the device
@@ -520,9 +519,9 @@ Endpoint until the end-user successfully authenticates:
 
 ```python
 from requests_oauth2client import (
-    OAuth2Client,
-    BearerToken,
     BackChannelAuthenticationPoolingJob,
+    BearerToken,
+    OAuth2Client,
 )
 
 client = OAuth2Client(
@@ -537,11 +536,11 @@ ba_resp = client.backchannel_authentication_request(
 )
 
 # `ba_resp` will contain the response attributes as returned by the AS, including an `auth_req_id`:
-ba_resp.auth_req_id
-ba_resp.expires_in  # decreases with time
-ba_resp.expires_at  # a static `datetime` to keep track of the expiration date, based on the "expires_in" returned by the AS
-ba_resp.interval  # the pooling interval indicated by the AS
-ba_resp.custom  # if the AS respond with additional attributes, they are also accessible
+assert ba_resp.auth_req_id
+assert ba_resp.expires_in  # decreases with time
+assert ba_resp.expires_at  # a static `datetime` to keep track of the expiration date, based on "expires_in"
+assert ba_resp.interval  # the pooling interval indicated by the AS
+assert ba_resp.custom  # if the AS respond with additional attributes, they are also accessible
 
 pool_job = BackChannelAuthenticationPoolingJob(client, ba_resp)
 
@@ -561,7 +560,7 @@ To send a token exchange request, use the
 method:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretJwt
+from requests_oauth2client import ClientSecretJwt, OAuth2Client
 
 client = OAuth2Client(
     "https://url.to.the/token_endpoint",
@@ -600,9 +599,7 @@ token = client.token_exchange(
     subject_token=BearerToken(
         "your_token_value"
     ),  # subject_token_type will be "urn:ietf:params:oauth:token-type:access_token"
-    actor_token=IdToken(
-        "your_actor_token"
-    ),  # actor_token_type will be "urn:ietf:params:oauth:token-type:id_token"
+    actor_token=IdToken("your_actor_token"),  # actor_token_type will be "urn:ietf:params:oauth:token-type:id_token"
 )
 ```
 
@@ -621,7 +618,7 @@ when sending requests to the Token Endpoint. To use it, just pass a
 as `auth` parameter:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretBasic
+from requests_oauth2client import ClientSecretBasic, OAuth2Client
 
 client = OAuth2Client(
     "https://url.to.the/token_endpoint",
@@ -638,16 +635,14 @@ as `auth` parameter. This is the default when you pass a tuple `(client_id, clie
 an `OAuth2Client`:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretPost
+from requests_oauth2client import ClientSecretPost, OAuth2Client
 
 client = OAuth2Client(
     "https://url.to.the/token_endpoint",
     auth=ClientSecretPost("client_id", "client_secret"),
 )
 # or
-client = OAuth2Client(
-    "https://url.to.the/token_endpoint", auth=("client_id", "client_secret")
-)
+client = OAuth2Client("https://url.to.the/token_endpoint", auth=("client_id", "client_secret"))
 # or
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
@@ -664,7 +659,7 @@ With **client_secret_jwt**, the client generates an ephemeral JWT assertion incl
 as `auth` parameter. Assertion generation is entirely automatic, you don't have anything to do:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretJwt
+from requests_oauth2client import ClientSecretJwt, OAuth2Client
 
 client = OAuth2Client(
     "https://url.to.the/token_endpoint",
@@ -701,17 +696,11 @@ private_jwk = {
     "qi": "...",
 }
 
-client = OAuth2Client(
-    "https://url.to.the/token_endpoint", auth=PrivateKeyJwt("client_id", private_jwk)
-)
+client = OAuth2Client("https://url.to.the/token_endpoint", auth=PrivateKeyJwt("client_id", private_jwk))
 # or
-client = OAuth2Client(
-    "https://url.to.the/token_endpoint", auth=("client_id", private_jwk)
-)
+client = OAuth2Client("https://url.to.the/token_endpoint", auth=("client_id", private_jwk))
 # or
-client = OAuth2Client(
-    "https://url.to.the/token_endpoint", client_id="client_id", private_jwk=private_jwk
-)
+client = OAuth2Client("https://url.to.the/token_endpoint", client_id="client_id", private_jwk=private_jwk)
 ```
 
 This method can be considered more secure than those relying on a client secret, because only ephemeral credentials are
@@ -728,9 +717,7 @@ Endpoint. Those clients only include their `client_id` in body form data, withou
 ```python
 from requests_oauth2client import OAuth2Client, PublicApp
 
-client = OAuth2Client(
-    "https://url.to.the/token_endpoint", auth=PublicApp("app_client_id")
-)
+client = OAuth2Client("https://url.to.the/token_endpoint", auth=PublicApp("app_client_id"))
 ```
 
 ## Token Revocation
@@ -746,7 +733,7 @@ The available methods for revoking tokens are:
 Here is an example of how to use these methods:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretJwt
+from requests_oauth2client import ClientSecretJwt, OAuth2Client
 
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
@@ -771,7 +758,7 @@ The [introspect_token()](https://guillp.github.io/requests_oauth2client/api/#req
 method is then available for introspecting tokens:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretJwt
+from requests_oauth2client import ClientSecretJwt, OAuth2Client
 
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
@@ -792,7 +779,7 @@ The [userinfo()](https://guillp.github.io/requests_oauth2client/api/#requests_oa
 method is then available for retrieving user information:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretJwt
+from requests_oauth2client import ClientSecretJwt, OAuth2Client
 
 oauth2client = OAuth2Client(
     token_endpoint="https://url.to.the/token_endpoint",
@@ -812,7 +799,7 @@ You can initialize an [OAuth2Client] with the endpoint URIs mentioned in a stand
 class method:
 
 ```python
-from requests_oauth2client import OAuth2Client, ClientSecretJwt
+from requests_oauth2client import ClientSecretJwt, OAuth2Client
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
     "https://url.to.the.as/.well-known/openid-configuration",
@@ -846,7 +833,8 @@ from requests_oauth2client import DPoPToken, OAuth2Client
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
     issuer="https://as.local",
-    client_id="client_id", client_secret="client_secret",
+    client_id="client_id",
+    client_secret="client_secret",
 )
 
 token = oauth2client.client_credentials(scope="my_scope", dpop=True)
@@ -855,7 +843,8 @@ assert isinstance(token, DPoPToken)
 # or, to enable DPoP by default for every token request
 oauth2client = OAuth2Client.from_discovery_endpoint(
     issuer="https://as.local",
-    client_id="client_id", client_secret="client_secret",
+    client_id="client_id",
+    client_secret="client_secret",
     dpop_bound_access_tokens=True,
 )
 token = oauth2client.client_credentials(scope="my_scope")
@@ -873,19 +862,21 @@ those auth handlers like this:
 
 ```python
 import requests
-from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth, PrivateKeyJwt
+
+from requests_oauth2client import (
+    OAuth2Client,
+    OAuth2ClientCredentialsAuth,
+    PrivateKeyJwt,
+)
 
 client = OAuth2Client.from_discovery_endpoint(
     issuer="https://my.issuer.local",
     auth=PrivateKeyJwt("client_id", "client_secret"),
-    dpop_bound_access_tokens=True, # enable DPoP by default
+    dpop_bound_access_tokens=True,  # enable DPoP by default
 )
 
 session = requests.Session()
-session.auth = OAuth2ClientCredentialsAuth(
-    client=client,
-    scope="my_scope"
-)
+session.auth = OAuth2ClientCredentialsAuth(client=client, scope="my_scope")
 
 resp = session.get("https://my.api.local/endpoint")  # this will automatically obtain a DPoP token and use it
 assert "DPoP" in resp.requests.headers  # the appropriate DPoP proof will be included in the request
@@ -904,22 +895,38 @@ use the parameter `dpop_key` to provide a key of your choice. It takes a `DPoPKe
 using `DPoPKey.generate()`, or by initializing an instance with a key that you previously generated:
 
 ```python
-from cryptography.hazmat.primitives.asymmetric import rsa
 import jwskate
+from cryptography.hazmat.primitives.asymmetric import rsa
+
 from requests_oauth2client import DPoPKey, DPoPToken, OAuth2Client
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
     issuer="https://as.local",
-    client_id="client_id", client_secret="client_secret",
+    client_id="client_id",
+    client_secret="client_secret",
     dpop_bound_access_tokens=True,
 )
 
 dpop_key = DPoPKey.generate(alg="RS512")  # generate a new DPoP key with an alg of your choice
 # or, for testing purposes only, your can load your own key
-dpop_key = DPoPKey(private_key=jwskate.Jwk({"kty": "EC", "crv": "P-256", "alg": "ES256", "x": "...", "y": "...", "d": "..."}))
+dpop_key = DPoPKey(
+    private_key=jwskate.Jwk(
+        {
+            "kty": "EC",
+            "crv": "P-256",
+            "alg": "ES256",
+            "x": "...",
+            "y": "...",
+            "d": "...",
+        }
+    )
+)
 # or, any key material supported by `jwskate` is supported, so you can also use `cryptography` keys directly,
 # but you need to specify the signature `alg` since it is not part of the key itself
-dpop_key = DPoPKey(private_key=rsa.generate_private_key(public_exponent=65537, key_size=2048), alg="RS256")
+dpop_key = DPoPKey(
+    private_key=rsa.generate_private_key(public_exponent=65537, key_size=2048),
+    alg="RS256",
+)
 
 token = oauth2client.client_credentials(scope="my_scope", dpop_key=dpop_key)
 assert isinstance(token, DPoPToken)
@@ -942,26 +949,31 @@ You may use `DPoPKey.generate` as a helper method for that, or implement your ow
 
 ```python
 import secrets
+
 from requests_oauth2client import DPoPKey, DPoPToken, OAuth2Client
+
 
 class CustomDPoPToken(DPoPToken):
     """A custom DPoP token class that places the DPoP proof and token into a non-standard header."""
+
     AUTHORIZATION_HEADER = "X-Custom-Auth"
     DPOP_HEADER = "X-DPoP"
 
+
 oauth2client = OAuth2Client.from_discovery_endpoint(
     issuer="https://as.local",
-    client_id="client_id", client_secret="client_secret",
+    client_id="client_id",
+    client_secret="client_secret",
     dpop_bound_access_tokens=True,  # enable DPoP by default
-    dpop_alg="RS256", # choose the signing alg to use, and it will automatically determine the key type to generate.
+    dpop_alg="RS256",  # choose the signing alg to use, and it will automatically determine the key type to generate.
     dpop_key_generator=lambda alg: DPoPKey.generate(
         alg=alg,
         # those other parameters are for feature testing the AS, or for workarounding AS bugs:
-        jwt_typ="jwt+custom", # you can customize the `typ` that is included in DPoP proof headers
-        jti_generator=lambda: secrets.token_urlsafe(24), # generate unique jti differently than the default UUIDs
-        iat_generator=lambda: 12532424, # override `iat` generation in DPoP proofs, here it will return a static value
-        dpop_token_class=CustomDPoPToken, # override the class that represents DPoP tokens
-    )
+        jwt_typ="jwt+custom",  # you can customize the `typ` that is included in DPoP proof headers
+        jti_generator=lambda: secrets.token_urlsafe(24),  # generate unique jti differently than the default UUIDs
+        iat_generator=lambda: 12532424,  # override `iat` generation in DPoP proofs, here it will return a static value
+        dpop_token_class=CustomDPoPToken,  # override the class that represents DPoP tokens
+    ),
 )
 ```
 
@@ -976,13 +988,14 @@ This includes all requests-compatible auth handlers provided by `requests_oauth2
 As an example, see the sample below:
 
 ```python
-from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
-
 import requests
+
+from requests_oauth2client import OAuth2Client, OAuth2ClientCredentialsAuth
 
 oauth2client = OAuth2Client.from_discovery_endpoint(
     issuer="https://as.local",
-    client_id="client_id", client_secret="client_secret",
+    client_id="client_id",
+    client_secret="client_secret",
 )
 
 response = requests.get(
@@ -1024,11 +1037,17 @@ oauth2client = OAuth2Client.from_discovery_endpoint(
     client_secret="client_secret",
 )
 
-api = ApiClient("https://my.api.local/", auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope", dpop=True))
-response1 = api.get("endpoint") # the first call will trigger requests 1. 2. 3. 4. like above
-response2 = api.post("other_endpoint") # next calls will reuse the same token and DPoP nonces as long as they are valid.
+api = ApiClient(
+    "https://my.api.local/",
+    auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope", dpop=True),
+)
+# the first call will trigger requests 1. 2. 3. 4. like above
+response1 = api.get("endpoint")
+# next calls will reuse the same token and DPoP nonces as long as they are valid.
+response2 = api.post("other_endpoint")
 # some time later
-response3 = api.get("other_endpoint") # new tokens and DPoP nonces will automatically be obtained when the first ones are expired
+# new tokens and DPoP nonces will automatically be obtained when the first ones are expired
+response3 = api.get("other_endpoint")
 ```
 
 AS and RS provided nonces are memoized independently by the `DPoPToken` instance, so the amount of "extra" requests to
@@ -1045,14 +1064,14 @@ Handler from this module, or any [requests]-compatible
 very easy to call APIs that are protected with an OAuth2 Client Credentials Grant:
 
 ```python
-from requests_oauth2client import OAuth2Client, ApiClient, OAuth2ClientCredentialsAuth
+from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
 
 oauth2client = OAuth2Client(
-    "https://url.to.the/token_endpoint", client_id="client_id", client_secret="client_secret"
+    "https://url.to.the/token_endpoint",
+    client_id="client_id",
+    client_secret="client_secret",
 )
-api = ApiClient(
-    "https://myapi.local/root", auth=OAuth2ClientCredentialsAuth(oauth2client)
-)
+api = ApiClient("https://myapi.local/root", auth=OAuth2ClientCredentialsAuth(oauth2client))
 
 # will actually send a GET to https://myapi.local/root/resource/foo
 resp = api.get("/resource/foo")
@@ -1103,9 +1122,7 @@ passing `raise_for_status=False` when initializing your [ApiClient]:
 ```python
 from requests_oauth2client import ApiClient
 
-api = ApiClient(
-    "http://httpstat.us", raise_for_status=False
-)  # raise_for_status defaults to True
+api = ApiClient("http://httpstat.us", raise_for_status=False)  # raise_for_status defaults to True
 resp = api.get("500")
 assert resp is not None
 # without raise_for_status=False, a requests.exceptions.HTTPError exception would be raised instead
@@ -1123,6 +1140,7 @@ configured `Session` instance at init time:
 
 ```python
 import requests
+
 from requests_oauth2client import ApiClient
 
 session = requests.Session()
@@ -1144,17 +1162,13 @@ etc.
 ```python
 from requests_oauth2client.vendor_specific import Auth0
 
-a0client = Auth0.client(
-    "mytenant.eu", client_id="client_id", client_secret="client_secret"
-)
+a0client = Auth0.client("mytenant.eu", client_id="client_id", client_secret="client_secret")
 # this will automatically initialize the token endpoint to https://mytenant.eu.auth0.com/oauth/token
 # and other endpoints accordingly
 token = a0client.client_credentials(audience="audience")
 
 # this is a wrapper around Auth0 Management API
-a0mgmt = Auth0.management_api_client(
-    "mytenant.eu", client_id="client_id", client_secret="client_secret"
-)
+a0mgmt = Auth0.management_api_client("mytenant.eu", client_id="client_id", client_secret="client_secret")
 myusers = a0mgmt.get("users")
 ```
 
