@@ -1,3 +1,5 @@
+# ![requests_oauth2client](docs/logo.png)
+
 `requests_oauth2client` is an OAuth 2.x client for Python, able to obtain, refresh and revoke tokens from any
 OAuth2.x/OIDC compliant Authorization Server. It sits upon and extends the famous [requests] HTTP client module.
 
