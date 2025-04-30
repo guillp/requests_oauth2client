@@ -6,7 +6,7 @@ import re
 import secrets
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
@@ -28,6 +28,7 @@ from .exceptions import (
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
     from datetime import datetime
 
 
