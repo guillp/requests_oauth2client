@@ -9,9 +9,12 @@ from __future__ import annotations
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import Any, Callable, Iterator
+from typing import TYPE_CHECKING, Any, Callable
 
 from furl import furl  # type: ignore[import-untyped]
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class InvalidUri(ValueError):

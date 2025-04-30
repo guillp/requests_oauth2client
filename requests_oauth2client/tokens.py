@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import cached_property
 from math import ceil
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Sequence
+from typing import TYPE_CHECKING, Any, Callable, ClassVar
 
 import jwskate
 import requests
@@ -17,6 +17,8 @@ from typing_extensions import Self
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
 

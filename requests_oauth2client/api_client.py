@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import IO, TYPE_CHECKING, Any, Callable, Iterable, Mapping, MutableMapping
+from collections.abc import Iterable, Mapping, MutableMapping
+from typing import IO, TYPE_CHECKING, Any, Callable
 from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
