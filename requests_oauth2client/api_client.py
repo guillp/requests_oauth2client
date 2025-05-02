@@ -362,7 +362,6 @@ class ApiClient:
         matches the issuer of the client passed as parameter. An exception will be raised if any of those checks fails.
 
         Args:
-            resource: the resource identifier
             auth: the OAuth2AccessTokenAuth to use as auth handler
             document: the metadata document
             document_url: the url of the metadata document
