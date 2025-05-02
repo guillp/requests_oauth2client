@@ -79,7 +79,7 @@ def validate_endpoint_uri(
         path: if `True`, check that the uri contains a path component
 
     Raises:
-        ValueError: if the supplied url is not suitable
+        InvalidUri: if the supplied url is not suitable
 
     Returns:
         the endpoint URI, if all checks passed
