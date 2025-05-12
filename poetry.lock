@@ -1360,14 +1360,14 @@ testing = ["fields", "hunter", "process-tests", "pytest-xdist", "virtualenv"]
 
 [[package]]
 name = "pytest-examples"
-version = "0.0.17"
+version = "0.0.18"
 description = "Pytest plugin for testing examples in docstrings and markdown files."
 optional = false
 python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "pytest_examples-0.0.17-py3-none-any.whl", hash = "sha256:3269b8b108e248d81edead269b2abf1cb76636bd49b7d5d3b41b194634cb10e6"},
-    {file = "pytest_examples-0.0.17.tar.gz", hash = "sha256:3f02460c10de36646dab45825659fa4735441863af8c86388c22eb6113d038d8"},
+    {file = "pytest_examples-0.0.18-py3-none-any.whl", hash = "sha256:86c195b98c4e55049a0df3a0a990ca89123b7280473ab57608eecc6c47bcfe9c"},
+    {file = "pytest_examples-0.0.18.tar.gz", hash = "sha256:9a464f007f805b113677a15e2f8942ebb92d7d3eb5312e9a405d018478ec9801"},
 ]
 
 [package.dependencies]
