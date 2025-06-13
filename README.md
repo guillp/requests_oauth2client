@@ -26,6 +26,7 @@ It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-co
 [Pushed Authorization Requests](https://datatracker.ietf.org/doc/rfc9126/),
 [Authorization Server Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html),
 [Demonstrating Proof of Possession](https://www.rfc-editor.org/rfc/rfc9449.html),
+[Protected Resource Metadata](https://www.rfc-editor.org/rfc/rfc9728.html),
 as well as using custom params to any endpoint, and other important features that are often overlooked or needlessly
 complex in other client libraries.
 
@@ -1147,6 +1148,61 @@ session = requests.Session()
 session.proxies = {"https": "http://localhost:3128"}
 api = ApiClient("https://myapi.local/resource", session=session)
 assert api.session == session
+```
+
+### OAuth2.0 Protected Resource Metadata
+
+`ApiClient` supports OAuth2.0 Protected Resource Metadata, as defined in RFC9728. You can initialize your `ApiClient`
+this way:
+
+```python
+from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
+
+# you need to initialize your client first, either with a discovery endpoint, or with any other method
+oauth2client = OAuth2Client.from_discovery_endpoint(
+    issuer="https://youras.local",
+    client_id="your_client_id",
+    client_secret="your_client_secret",
+)
+
+api = ApiClient.from_metadata_endpoint(
+    resource="https://yourapi.local",
+    auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope"),  # use any other grant type as required
+)
+```
+
+Compared to the initializing an ApiClient directly, this will:
+- fetch the protected resource metadata from the RFC9728 metadata endpoint, and check that the mentionned `resource`
+matches the one you passed as parameter.
+- check that the client `issuer` from the auth handler is mentioned in the resource metadata. You can skip this check
+by passing `check_issuer=False` as parameter to `ApiClient.from_metadata_endpoint()`.
+- if the resource metadata enforces the use of `DPoP` tokens, it will automatically enable `DPoP` for the client and
+auth handler. It also checks that the client defined
+- initialize the API `base_url` to the same value as its resource identifier. You may override this value (typically, to
+include additional path segments) by passing a `base_url` as parameter to `ApiClient.from_metadata_endpoint()`.
+- any other parameter passed to `ApiClient.from_metadata_endpoint()` will be passed to the `ApiClient` constructor.
+
+You may also initialize an `ApiClient` based on a metadata document that you already fetched and decoded. In that case,
+you can use `ApiClient.from_metadata_document()`:
+
+```python
+from requests_oauth2client import ApiClient, OAuth2Client, OAuth2ClientCredentialsAuth
+
+# you need to initialize your client first, either with a discovery endpoint, or with any other method
+oauth2client = OAuth2Client.from_discovery_endpoint(
+    issuer="https://youras.local",
+    client_id="your_client_id",
+    client_secret="your_client_secret",
+)
+protected_resource_metadata = {
+    "resource": "https://yourapi.local",
+    "authorization_servers": ["https://youras.local"],
+}
+
+api = ApiClient.from_metadata_document(
+    protected_resource_metadata,
+    auth=OAuth2ClientCredentialsAuth(oauth2client, scope="my_scope"),  # use any other grant type as required
+)
 ```
 
 ## Vendor-Specific clients
