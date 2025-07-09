@@ -8,7 +8,7 @@ import pytest
 from freezegun import freeze_time
 
 from requests_oauth2client import (
-    BackChannelAuthenticationPoolingJob,
+    BackChannelAuthenticationPollingJob,
     BackChannelAuthenticationResponse,
     BaseClientAuthenticationMethod,
     BearerToken,
@@ -264,7 +264,7 @@ def test_backchannel_authentication_invalid_scope(bca_client: OAuth2Client) -> N
         )
 
 
-def test_pooling_job(
+def test_polling_job(
     requests_mock: RequestsMocker,
     bca_client: OAuth2Client,
     token_endpoint: str,
@@ -275,11 +275,11 @@ def test_pooling_job(
     mocker: MockerFixture,
 ) -> None:
     interval = 20
-    job = BackChannelAuthenticationPoolingJob(client=bca_client, auth_req_id=auth_req_id, interval=interval)
+    job = BackChannelAuthenticationPollingJob(client=bca_client, auth_req_id=auth_req_id, interval=interval)
     assert job.interval == interval
     assert job.slow_down_interval == 5
 
-    assert job == BackChannelAuthenticationPoolingJob(
+    assert job == BackChannelAuthenticationPollingJob(
         bca_client,
         BackChannelAuthenticationResponse(auth_req_id, interval=interval),
     )

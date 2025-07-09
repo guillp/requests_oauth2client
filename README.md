@@ -437,12 +437,12 @@ gYK-ZnQfoat2bghwed7oEz--wvn4D70ksJ5GuWO9sXXygZ7PMnUlSpBmMCcNRHxdgTS9m_roYwGxF6HQ
 ### Device Authorization Grant
 
 Helpers for the Device Authorization Grant are also included. To get device and user codes, read the response attributes
-(including Device Code, User Code, Verification URI, etc.), then pooling the Token Endpoint:
+(including Device Code, User Code, Verification URI, etc.), then polling the Token Endpoint:
 
 ```python
 from requests_oauth2client import (
     BearerToken,
-    DeviceAuthorizationPoolingJob,
+    DeviceAuthorizationPollingJob,
     OAuth2Client,
 )
 
@@ -465,17 +465,17 @@ assert da_resp.interval
 # Send/show the Verification Uri and User Code to the user. They must use a browser to visit that URL, authenticate, and input the User Code.
 
 # You can then request the Token endpoint to check if the user successfully authorized your device like this:
-pool_job = DeviceAuthorizationPoolingJob(client, da_resp)
+polling_job = DeviceAuthorizationPollingJob(client, da_resp)
 
 resp = None
 while resp is None:
-    resp = pool_job()
+    resp = polling_job()
 
 assert isinstance(resp, BearerToken)
 ```
 
-[DeviceAuthorizationPoolingJob](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPoolingJob)
-will automatically obey the pooling period. Everytime you call `pool_job()`, it will wait the appropriate number of
+[DeviceAuthorizationPollingJob](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPollingJob)
+will automatically obey the polling period. Everytime you call `polling_job()`, it will wait the appropriate number of
 seconds as indicated by the AS, and will apply slow-down requests.
 
 #### As Auth Handler
@@ -519,7 +519,7 @@ Endpoint until the end-user successfully authenticates:
 
 ```python
 from requests_oauth2client import (
-    BackChannelAuthenticationPoolingJob,
+    BackChannelAuthenticationPollingJob,
     BearerToken,
     OAuth2Client,
 )
@@ -539,19 +539,19 @@ ba_resp = client.backchannel_authentication_request(
 assert ba_resp.auth_req_id
 assert ba_resp.expires_in  # decreases with time
 assert ba_resp.expires_at  # a static `datetime` to keep track of the expiration date, based on "expires_in"
-assert ba_resp.interval  # the pooling interval indicated by the AS
+assert ba_resp.interval  # the polling interval indicated by the AS
 assert ba_resp.custom  # if the AS respond with additional attributes, they are also accessible
 
-pool_job = BackChannelAuthenticationPoolingJob(client, ba_resp)
+polling_job = BackChannelAuthenticationPollingJob(client, ba_resp)
 
 resp = None
 while resp is None:
-    resp = pool_job()
+    resp = polling_job()
 
 assert isinstance(resp, BearerToken)
 ```
 
-Hints by the AS to slow down pooling will automatically be obeyed.
+Hints by the AS to slow down polling will automatically be obeyed.
 
 ### Token Exchange
 

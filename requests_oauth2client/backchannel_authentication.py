@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from attrs import define
 
-from .pooling import BaseTokenEndpointPoolingJob
+from .polling import BaseTokenEndpointPollingJob
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class BackChannelAuthenticationResponse:
         auth_req_id: the `auth_req_id` as returned by the AS.
         expires_at: the date when the `auth_req_id` expires.
             Note that this request also accepts an `expires_in` parameter, in seconds.
-        interval: the Token Endpoint pooling interval, in seconds, as returned by the AS.
+        interval: the Token Endpoint polling interval, in seconds, as returned by the AS.
         **kwargs: any additional custom parameters as returned by the AS.
 
     """
@@ -94,18 +94,18 @@ class BackChannelAuthenticationResponse:
 
 
 @define(init=False)
-class BackChannelAuthenticationPoolingJob(BaseTokenEndpointPoolingJob):
-    """A pooling job for the BackChannel Authentication flow.
+class BackChannelAuthenticationPollingJob(BaseTokenEndpointPollingJob):
+    """A polling job for the BackChannel Authentication flow.
 
     This will poll the Token Endpoint until the user finishes with its authentication.
 
     Args:
         client: an OAuth2Client that will be used to pool the token endpoint.
         auth_req_id: an `auth_req_id` as `str` or a `BackChannelAuthenticationResponse`.
-        interval: The pooling interval, in seconds, to use. This overrides
+        interval: The polling interval, in seconds, to use. This overrides
             the one in `auth_req_id` if it is a `BackChannelAuthenticationResponse`.
             Defaults to 5 seconds.
-        slow_down_interval: Number of seconds to add to the pooling interval when the AS returns
+        slow_down_interval: Number of seconds to add to the polling interval when the AS returns
             a slow down request.
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
@@ -113,14 +113,14 @@ class BackChannelAuthenticationPoolingJob(BaseTokenEndpointPoolingJob):
     Example:
         ```python
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
-        pool_job = BackChannelAuthenticationPoolingJob(
+        polling_job = BackChannelAuthenticationPollingJob(
             client=client,
             auth_req_id="my_auth_req_id",
         )
 
         token = None
         while token is None:
-            token = pool_job()
+            token = polling_job()
         ```
 
     """

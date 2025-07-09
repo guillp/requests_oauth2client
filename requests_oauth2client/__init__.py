@@ -32,7 +32,7 @@ from .authorization_request import (
     UnsupportedResponseTypeParam,
 )
 from .backchannel_authentication import (
-    BackChannelAuthenticationPoolingJob,
+    BackChannelAuthenticationPollingJob,
     BackChannelAuthenticationResponse,
 )
 from .client import (
@@ -67,8 +67,9 @@ from .client_authentication import (
     PublicApp,
     UnsupportedClientCredentials,
 )
+from .deprecated import DeprecatedClassMeta
 from .device_authorization import (
-    DeviceAuthorizationPoolingJob,
+    DeviceAuthorizationPollingJob,
     DeviceAuthorizationResponse,
 )
 from .discovery import (
@@ -127,8 +128,8 @@ from .exceptions import (
     UnsupportedTokenType,
     UseDPoPNonce,
 )
-from .pooling import (
-    BaseTokenEndpointPoolingJob,
+from .polling import (
+    BaseTokenEndpointPollingJob,
 )
 from .tokens import (
     BearerToken,
@@ -151,6 +152,19 @@ from .utils import (
     validate_issuer_uri,
 )
 
+
+class BackChannelAuthenticationPoolingJob(metaclass=DeprecatedClassMeta):
+    _DeprecatedClassMeta__alias = BackChannelAuthenticationPollingJob
+
+
+class BaseTokenEndpointPoolingJob(metaclass=DeprecatedClassMeta):
+    _DeprecatedClassMeta__alias = BaseTokenEndpointPollingJob
+
+
+class DeviceAuthorizationPoolingJob(metaclass=DeprecatedClassMeta):
+     _DeprecatedClassMeta__alias = DeviceAuthorizationPollingJob
+
+
 __all__ = [
     "AccessDenied",
     "AccountSelectionRequired",
@@ -161,10 +175,12 @@ __all__ = [
     "AuthorizationResponse",
     "AuthorizationResponseError",
     "BackChannelAuthenticationError",
+    "BackChannelAuthenticationPollingJob",
     "BackChannelAuthenticationPoolingJob",
     "BackChannelAuthenticationResponse",
     "BaseClientAssertionAuthenticationMethod",
     "BaseClientAuthenticationMethod",
+    "BaseTokenEndpointPollingJob",
     "BaseTokenEndpointPoolingJob",
     "BearerToken",
     "BearerTokenSerializer",
@@ -176,6 +192,7 @@ __all__ = [
     "DPoPKey",
     "DPoPToken",
     "DeviceAuthorizationError",
+    "DeviceAuthorizationPollingJob",
     "DeviceAuthorizationPoolingJob",
     "DeviceAuthorizationResponse",
     "EncryptionAlgs",
