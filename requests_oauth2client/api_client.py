@@ -11,10 +11,21 @@ import requests
 from attrs import frozen
 from typing_extensions import Literal, Self
 
+from requests_oauth2client.discovery import WellKnownDocument, well_known_uri
+from requests_oauth2client.exceptions import (
+    FailedDiscoveryError,
+    InvalidDiscoveryDocument,
+    MismatchingAuthorizationServerIdentifier,
+    MismatchingResourceIdentifier,
+)
+from requests_oauth2client.utils import InvalidUri, validate_endpoint_uri
+
 if TYPE_CHECKING:
     from types import TracebackType
 
     from requests.cookies import RequestsCookieJar
+
+    from requests_oauth2client import OAuth2AccessTokenAuth
 
 
 class InvalidBoolFieldsParam(ValueError):
@@ -329,6 +340,133 @@ class ApiClient:
         if raise_for_status:
             response.raise_for_status()
         return response
+
+    @classmethod
+    def from_metadata_document(
+        cls,
+        document: Mapping[str, Any],
+        auth: OAuth2AccessTokenAuth,
+        *,
+        document_url: str | None = None,
+        base_url: str | None = None,
+        check_issuer: bool = True,
+        **kwargs: Any,
+    ) -> Self:
+        """Create an `ApiClient` from a protected resource metadata document (RFC9728).
+
+        This will create an `ApiClient` instance with the resource url as base_url, and
+        the client as auth handler.
+
+        This method will check that the `resource` key in the document matches the `resource` parameter.
+        If `check_issuer` is `True`, it will also check that the `authorization_servers` key in the document
+        matches the issuer of the client passed as parameter. An exception will be raised if any of those checks fails.
+
+        Args:
+            auth: the OAuth2AccessTokenAuth to use as auth handler
+            document: the metadata document
+            document_url: the url of the metadata document
+            base_url: the base url to use for the API client (if different from the resource identifier)
+            check_issuer: if `True`, check that the client issuer is in the `authorization_servers` from this document
+            **kwargs: additional kwargs for the ApiClient
+
+        Raises:
+            InvalidDiscoveryDocument: if the document is not a valid JSON object
+            MismatchingResource: if the `resource` key in the document does not match the `resource` parameter
+            FailedDiscoveryError: if the `authorization_servers` key in the document does not match the client issuer
+        """
+        if "resource" not in document or not isinstance(document["resource"], str):
+            msg = "missing `resource` key in document"
+            raise InvalidDiscoveryDocument(msg, metadata=document, url=document_url)
+
+        resource = document["resource"]
+        try:
+            validate_endpoint_uri(resource, path=False)
+        except InvalidUri as exc:
+            msg = "invalid `resource` identifier in document."
+            raise InvalidDiscoveryDocument(
+                msg,
+                metadata=document,
+                url=document_url,
+            ) from exc
+
+        if check_issuer and (
+            auth.client.issuer is None or auth.client.issuer not in document.get("authorization_servers", [])
+        ):
+            raise MismatchingAuthorizationServerIdentifier(
+                expected=auth.client.issuer,
+                metadata=document,
+                url=document_url,
+            )
+
+        if document.get("dpop_bound_access_tokens_required", False):
+            auth.token_kwargs["dpop"] = True
+            if auth.client.dpop_alg not in document.get("dpop_signing_alg_values_supported", []):
+                FailedDiscoveryError(
+                    "mismatching `dpop_signing_alg_values_supported` key in document",
+                    metadata=document,
+                    url=document_url,
+                )
+
+        if base_url is None:
+            base_url = resource
+
+        return cls(base_url=base_url, auth=auth, **kwargs)
+
+    @classmethod
+    def from_metadata_endpoint(
+        cls,
+        resource: str,
+        auth: OAuth2AccessTokenAuth,
+        *,
+        session: requests.Session | None = None,
+        document: str = WellKnownDocument.OAUTH_PROTECTED_RESOURCE,
+        at_root: bool = True,
+        **kwargs: Any,
+    ) -> Self:
+        """Create an `ApiClient` from a protected resource metadata (RFC9728).
+
+        This will create an `ApiClient` instance with the resource url as base_url, and
+        the client as auth handler.
+
+        Args:
+            resource: the resource url
+            auth: the OAuth2AccessTokenAuth subclass instance to use as auth handler
+            session: a requests.Session to use for the request
+            document: the metadata document to fetch.
+            at_root: if `True`, the document will be fetched from the root of the resource url
+            **kwargs: additional kwargs for the ApiClient
+
+        Returns:
+            an `ApiClient` instance
+
+        Raises:
+            InvalidDiscoveryDocument: if the document is not a valid JSON object
+            MismatchingResourceIdentifier: if the `resource` key in the document does not match the `resource` parameter
+
+        """
+        session = session or requests.Session()
+        document_url = well_known_uri(resource, document, at_root=at_root)
+        metadata = session.get(document_url, headers={"Accept": "application/json"}).json()
+
+        if not isinstance(metadata, dict):
+            msg = "Invalid document: must be a JSON object"
+            raise InvalidDiscoveryDocument(
+                msg,
+                metadata=metadata,
+                url=document_url,
+            )
+
+        if metadata["resource"] != resource:
+            raise MismatchingResourceIdentifier(expected=resource, url=document_url, metadata=metadata)
+
+        return cls.from_metadata_document(
+            resource=resource,
+            auth=auth,
+            document=metadata,
+            document_url=document_url,
+            session=session,
+            **kwargs,
+        )
 
     def to_absolute_url(self, path: None | str | bytes | Iterable[str | bytes | int] = None) -> str:
         """Convert a relative url to an absolute url.
