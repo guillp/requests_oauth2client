@@ -67,7 +67,11 @@ from .client_authentication import (
     PublicApp,
     UnsupportedClientCredentials,
 )
-from .deprecated import DeprecatedClassMeta
+from .deprecated import (  # type: ignore[attr-defined]
+    BackChannelAuthenticationPoolingJob,
+    BaseTokenEndpointPoolingJob,
+    DeviceAuthorizationPoolingJob,
+)
 from .device_authorization import (
     DeviceAuthorizationPollingJob,
     DeviceAuthorizationResponse,
@@ -151,19 +155,6 @@ from .utils import (
     validate_endpoint_uri,
     validate_issuer_uri,
 )
-
-
-class BackChannelAuthenticationPoolingJob(metaclass=DeprecatedClassMeta):
-    _DeprecatedClassMeta__alias = BackChannelAuthenticationPollingJob
-
-
-class BaseTokenEndpointPoolingJob(metaclass=DeprecatedClassMeta):
-    _DeprecatedClassMeta__alias = BaseTokenEndpointPollingJob
-
-
-class DeviceAuthorizationPoolingJob(metaclass=DeprecatedClassMeta):
-     _DeprecatedClassMeta__alias = DeviceAuthorizationPollingJob
-
 
 __all__ = [
     "AccessDenied",
