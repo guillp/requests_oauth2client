@@ -87,6 +87,7 @@ jobs:
 
       - name: publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        if: ${{ github.event_name != 'pull_request' }}
         with:
           user: __token__
           password: ${{ secrets.TEST_PYPI_API_TOKEN}}
