@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar
 from uuid import uuid4
 
 import jwskate
-from attrs import define, field, frozen, setters
+from attrs import asdict, define, field, frozen, setters
 from binapy import BinaPy
 from furl import furl  # type: ignore[import-untyped]
 from requests import codes
 from typing_extensions import Self
 
-from .tokens import AccessTokenTypes, BearerToken, IdToken, id_token_converter
+from .tokens import AccessTokenTypes, BearerToken, BearerTokenSerializer, IdToken, id_token_converter
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -347,6 +347,71 @@ class DPoPKey:
         if self.rs_nonce == nonce:
             raise RepeatedDPoPNonce(response)
         self.rs_nonce = nonce
+
+
+class DPoPTokenSerializer(BearerTokenSerializer):
+    """A helper class to serialize `DPoPToken`s.
+
+    This may be used to store DPoPTokens in session or cookies.
+
+    It needs a `dumper` and a `loader` functions that will respectively serialize and deserialize
+    DPoPTokens. Default implementations are provided with use gzip and base64url on the serialized
+    JSON representation.
+
+    Args:
+        dumper: a function to serialize a token into a `str`.
+        loader: a function to deserialize a serialized token representation.
+
+    """
+
+    @staticmethod
+    def default_dumper(token: DPoPToken) -> str:
+        """Serialize a token as JSON, then compress with deflate, then encodes as base64url.
+
+        WARNING: This does not serialize custom `jti_generator`, `iat_generator` or `dpop_token_class` in `DPoPKey`!
+
+        Args:
+            token: the `DPoPToken` to serialize
+
+        Returns:
+            the serialized value
+
+        """
+        d = asdict(token)
+        d.update(**d.pop("kwargs", {}))
+        d["dpop_key"]["private_key"] = token.dpop_key.private_key.to_pem()
+        d["dpop_key"].pop("jti_generator", None)
+        d["dpop_key"].pop("iat_generator", None)
+        d["dpop_key"].pop("dpop_token_class", None)
+        return (
+            BinaPy.serialize_to("json", {k: w for k, w in d.items() if w is not None}).to("deflate").to("b64u").ascii()
+        )
+
+    @staticmethod
+    def default_loader(serialized: str, token_class: type[DPoPToken] = DPoPToken) -> DPoPToken:
+        """Deserialize a `DPoPToken`.
+
+        This does the opposite operations than `default_dumper`.
+
+        Args:
+            serialized: the serialized token
+            token_class: class to use to deserialize the Token
+
+        Returns:
+            a DPoPToken
+
+        """
+        attrs = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
+
+        expires_at = attrs.get("expires_at")
+        if expires_at:
+            attrs["expires_at"] = datetime.fromtimestamp(expires_at, tz=timezone.utc)
+
+        if dpop_key := attrs.pop("dpop_key", None):
+            dpop_key["private_key"] = jwskate.Jwk.from_pem(dpop_key["private_key"])
+            attrs["_dpop_key"] = DPoPKey(**dpop_key)
+
+        return token_class(**attrs)
 
 
 def validate_dpop_proof(  # noqa: C901
