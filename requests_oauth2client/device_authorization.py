@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from attrs import define
 
-from .pooling import BaseTokenEndpointPoolingJob
+from .polling import BaseTokenEndpointPollingJob
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ class DeviceAuthorizationResponse:
         verification_uri_complete: the `device_code` as returned by the AS.
         expires_at: the expiration date for the device_code.
             Also accepts an `expires_in` parameter, as a number of seconds in the future.
-        interval: the pooling `interval` as returned by the AS.
+        interval: the polling `interval` as returned by the AS.
         **kwargs: additional parameters as returned by the AS.
 
     """
@@ -69,8 +69,8 @@ class DeviceAuthorizationResponse:
 
 
 @define(init=False)
-class DeviceAuthorizationPoolingJob(BaseTokenEndpointPoolingJob):
-    """A Token Endpoint pooling job for the Device Authorization Flow.
+class DeviceAuthorizationPollingJob(BaseTokenEndpointPollingJob):
+    """A Token Endpoint polling job for the Device Authorization Flow.
 
     This periodically checks if the user has finished with his authorization in a Device
     Authorization flow.
@@ -78,19 +78,19 @@ class DeviceAuthorizationPoolingJob(BaseTokenEndpointPoolingJob):
     Args:
         client: an OAuth2Client that will be used to pool the token endpoint.
         device_code: a `device_code` as `str` or a `DeviceAuthorizationResponse`.
-        interval: The pooling interval to use. This overrides the one in `auth_req_id` if it is
+        interval: The polling interval to use. This overrides the one in `auth_req_id` if it is
             a `BackChannelAuthenticationResponse`.
-        slow_down_interval: Number of seconds to add to the pooling interval when the AS returns
+        slow_down_interval: Number of seconds to add to the polling interval when the AS returns
             a slow-down request.
         requests_kwargs: Additional parameters for the underlying calls to [requests.request][].
         **token_kwargs: Additional parameters for the token request.
 
     Example:
         ```python
-        from requests_oauth2client import DeviceAuthorizationPoolingJob, OAuth2Client
+        from requests_oauth2client import DeviceAuthorizationPollingJob, OAuth2Client
 
         client = OAuth2Client(token_endpoint="https://my.as.local/token", auth=("client_id", "client_secret"))
-        pooler = DeviceAuthorizationPoolingJob(client=client, device_code="my_device_code")
+        pooler = DeviceAuthorizationPollingJob(client=client, device_code="my_device_code")
 
         token = None
         while token is None:

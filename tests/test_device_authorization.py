@@ -8,7 +8,7 @@ from requests_oauth2client import (
     BearerToken,
     ClientSecretBasic,
     DeviceAuthorizationError,
-    DeviceAuthorizationPoolingJob,
+    DeviceAuthorizationPollingJob,
     InvalidDeviceAuthorizationResponse,
     OAuth2Client,
     PublicApp,
@@ -77,7 +77,7 @@ def test_device_authorization(
         ],
     )
 
-    pool_job = DeviceAuthorizationPoolingJob(
+    polling_job = DeviceAuthorizationPollingJob(
         client,
         device_auth_resp,
         interval=1,
@@ -85,27 +85,27 @@ def test_device_authorization(
     )
 
     # 1st attempt: authorization_pending
-    resp = pool_job()
+    resp = polling_job()
     assert requests_mock.last_request is not None
     params = Query(requests_mock.last_request.text).params
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
 
-    assert pool_job.interval == 1
+    assert polling_job.interval == 1
     assert resp is None
 
     # 2nd attempt: slow down
-    resp = pool_job()
+    resp = polling_job()
     assert requests_mock.last_request is not None
     params = Query(requests_mock.last_request.text).params
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
 
-    assert pool_job.interval == 3
+    assert polling_job.interval == 3
     assert resp is None
 
     # 3rd attempt: access token delivered
-    resp = pool_job()
+    resp = polling_job()
     assert isinstance(resp, BearerToken)
     assert requests_mock.last_request is not None
     params = Query(requests_mock.last_request.text).params

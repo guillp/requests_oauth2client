@@ -1,4 +1,4 @@
-"""Contains base classes for pooling jobs."""
+"""Contains base classes for polling jobs."""
 
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ if TYPE_CHECKING:
 
 
 @define
-class BaseTokenEndpointPoolingJob:
-    """Base class for Token Endpoint pooling jobs.
+class BaseTokenEndpointPollingJob:
+    """Base class for Token Endpoint polling jobs.
 
     This is used for decoupled flows like CIBA or Device Authorization.
 
     This class must be subclassed to implement actual BackChannel flows. This needs an
     [OAuth2Client][requests_oauth2client.client.OAuth2Client] that will be used to pool the token
-    endpoint. The initial pooling `interval` is configurable.
+    endpoint. The initial polling `interval` is configurable.
 
     """
 
@@ -33,11 +33,11 @@ class BaseTokenEndpointPoolingJob:
     interval: int
 
     def __call__(self) -> BearerToken | None:
-        """Wrap the actual Token Endpoint call with a pooling interval.
+        """Wrap the actual Token Endpoint call with a polling interval.
 
-        Everytime this method is called, it will wait for the entire duration of the pooling
+        Everytime this method is called, it will wait for the entire duration of the polling
         interval before calling
-        [token_request()][requests_oauth2client.pooling.TokenEndpointPoolingJob.token_request]. So
+        [token_request()][requests_oauth2client.polling.TokenEndpointPollingJob.token_request]. So
         you can call it immediately after initiating the BackChannel flow, and it will wait before
         initiating the first call.
 
@@ -69,7 +69,7 @@ class BaseTokenEndpointPoolingJob:
     def slow_down(self) -> None:
         """Implement the behavior when receiving a 'slow_down' response from the AS.
 
-        By default, it increases the pooling interval by the slow down interval.
+        By default, it increases the polling interval by the slow down interval.
 
         """
         self.interval += self.slow_down_interval
@@ -86,8 +86,8 @@ class BaseTokenEndpointPoolingJob:
 
         Subclasses must implement this. This method must raise
         [AuthorizationPending][requests_oauth2client.exceptions.AuthorizationPending] to retry after
-        the pooling interval, or [SlowDown][requests_oauth2client.exceptions.SlowDown] to increase
-        the pooling interval by `slow_down_interval` seconds.
+        the polling interval, or [SlowDown][requests_oauth2client.exceptions.SlowDown] to increase
+        the polling interval by `slow_down_interval` seconds.
 
         Returns:
             a [BearerToken][requests_oauth2client.tokens.BearerToken]

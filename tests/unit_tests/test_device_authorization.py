@@ -10,7 +10,7 @@ from requests_oauth2client import (
     BearerToken,
     ClientSecretPost,
     DeviceAuthorizationError,
-    DeviceAuthorizationPoolingJob,
+    DeviceAuthorizationPollingJob,
     DeviceAuthorizationResponse,
     InvalidDeviceAuthorizationResponse,
     OAuth2Client,
@@ -201,7 +201,7 @@ def test_device_authorization_invalid_errors(
 
 
 @freeze_time()
-def test_device_authorization_pooling_job(
+def test_device_authorization_polling_job(
     requests_mock: RequestsMocker,
     token_endpoint: str,
     client_id: str,
@@ -214,7 +214,7 @@ def test_device_authorization_pooling_job(
 ) -> None:
     interval = 20
     client = OAuth2Client(token_endpoint, auth=(client_id, client_secret))
-    job = DeviceAuthorizationPoolingJob(
+    job = DeviceAuthorizationPollingJob(
         client=client,
         device_code=device_code,
         interval=interval,
@@ -222,7 +222,7 @@ def test_device_authorization_pooling_job(
     assert job.interval == interval
     assert job.slow_down_interval == 5
 
-    assert job == DeviceAuthorizationPoolingJob(
+    assert job == DeviceAuthorizationPollingJob(
         client,
         DeviceAuthorizationResponse(
             device_code=device_code, user_code="foo", verification_uri="https://foo.bar", interval=interval

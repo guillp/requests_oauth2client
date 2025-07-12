@@ -32,7 +32,7 @@ from .authorization_request import (
     UnsupportedResponseTypeParam,
 )
 from .backchannel_authentication import (
-    BackChannelAuthenticationPoolingJob,
+    BackChannelAuthenticationPollingJob,
     BackChannelAuthenticationResponse,
 )
 from .client import (
@@ -67,8 +67,13 @@ from .client_authentication import (
     PublicApp,
     UnsupportedClientCredentials,
 )
-from .device_authorization import (
+from .deprecated import (  # type: ignore[attr-defined]
+    BackChannelAuthenticationPoolingJob,
+    BaseTokenEndpointPoolingJob,
     DeviceAuthorizationPoolingJob,
+)
+from .device_authorization import (
+    DeviceAuthorizationPollingJob,
     DeviceAuthorizationResponse,
 )
 from .discovery import (
@@ -127,8 +132,8 @@ from .exceptions import (
     UnsupportedTokenType,
     UseDPoPNonce,
 )
-from .pooling import (
-    BaseTokenEndpointPoolingJob,
+from .polling import (
+    BaseTokenEndpointPollingJob,
 )
 from .tokens import (
     BearerToken,
@@ -161,10 +166,12 @@ __all__ = [
     "AuthorizationResponse",
     "AuthorizationResponseError",
     "BackChannelAuthenticationError",
+    "BackChannelAuthenticationPollingJob",
     "BackChannelAuthenticationPoolingJob",
     "BackChannelAuthenticationResponse",
     "BaseClientAssertionAuthenticationMethod",
     "BaseClientAuthenticationMethod",
+    "BaseTokenEndpointPollingJob",
     "BaseTokenEndpointPoolingJob",
     "BearerToken",
     "BearerTokenSerializer",
@@ -176,6 +183,7 @@ __all__ = [
     "DPoPKey",
     "DPoPToken",
     "DeviceAuthorizationError",
+    "DeviceAuthorizationPollingJob",
     "DeviceAuthorizationPoolingJob",
     "DeviceAuthorizationResponse",
     "EncryptionAlgs",
