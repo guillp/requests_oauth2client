@@ -64,7 +64,7 @@ class FlaskSessionAuthMixin:
             session.pop(self.session_key, None)
 
 
-class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth):  # type: ignore[misc]
+class FlaskOAuth2ClientCredentialsAuth(FlaskSessionAuthMixin, OAuth2ClientCredentialsAuth):
     """A `requests` Auth handler for CC grant that stores its token in Flask session.
 
     It will automatically get Access Tokens from an OAuth 2.x AS with the Client Credentials grant
