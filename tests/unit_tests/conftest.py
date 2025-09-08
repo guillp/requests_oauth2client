@@ -17,6 +17,8 @@ from requests_oauth2client import (
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
+    DPoPKey,
+    DPoPToken,
     OAuth2Client,
     PrivateKeyJwt,
     PublicApp,
@@ -48,6 +50,16 @@ def access_token() -> str:
 @pytest.fixture(scope="session")
 def bearer_auth(access_token: str) -> BearerToken:
     return BearerToken(access_token)
+
+
+@pytest.fixture(scope="session")
+def dpop_key() -> DPoPKey:
+    return DPoPKey.generate()
+
+
+@pytest.fixture(scope="session")
+def dpop_token(access_token: str, dpop_key: DPoPKey) -> DPoPToken:
+    return DPoPToken(access_token=access_token, _dpop_key=dpop_key)
 
 
 @pytest.fixture(scope="session")

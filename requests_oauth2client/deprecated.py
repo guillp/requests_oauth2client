@@ -3,6 +3,7 @@
 """Mark a class as deprecated.
 
 https://stackoverflow.com/a/52087847
+
 """
 
 from warnings import warn
