@@ -15,7 +15,8 @@ from furl import furl  # type: ignore[import-untyped]
 from requests import codes
 from typing_extensions import Self
 
-from .tokens import AccessTokenTypes, BearerToken, IdToken, id_token_converter
+from .enums import AccessTokenTypes
+from .tokens import BearerToken, IdToken, id_token_converter
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -205,8 +206,8 @@ class DPoPKey:
 
     alg: str = field(on_setattr=setters.frozen)
     private_key: jwskate.Jwk = field(on_setattr=setters.frozen, repr=False)
-    jti_generator: Callable[[], str] = field(on_setattr=setters.frozen, repr=False)
-    iat_generator: Callable[[], int] = field(on_setattr=setters.frozen, repr=False)
+    jti_generator: Callable[[], str] = field(on_setattr=setters.frozen, repr=False, eq=False)
+    iat_generator: Callable[[], int] = field(on_setattr=setters.frozen, repr=False, eq=False)
     jwt_typ: str = field(on_setattr=setters.frozen, repr=False)
     dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
     as_nonce: str | None

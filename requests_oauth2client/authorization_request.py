@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import re
 import secrets
-from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
@@ -14,6 +13,7 @@ from furl import furl  # type: ignore[import-untyped]
 from jwskate import JweCompact, Jwk, Jwt, SignatureAlgs, SignedJwt
 
 from .dpop import DPoPKey
+from .enums import CodeChallengeMethods, ResponseTypes
 from .exceptions import (
     AuthorizationResponseError,
     ConsentRequired,
@@ -30,34 +30,6 @@ from .utils import accepts_expires_in
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
     from datetime import datetime
-
-
-class ResponseTypes(str, Enum):
-    """All standardised `response_type` values.
-
-    Note that you should always use `code`. All other values are deprecated.
-
-    """
-
-    CODE = "code"
-    NONE = "none"
-    TOKEN = "token"
-    IDTOKEN = "id_token"
-    CODE_IDTOKEN = "code id_token"
-    CODE_TOKEN = "code token"
-    CODE_IDTOKEN_TOKEN = "code id_token token"
-    IDTOKEN_TOKEN = "id_token token"
-
-
-class CodeChallengeMethods(str, Enum):
-    """All standardised `code_challenge_method` values.
-
-    You should always use `S256`.
-
-    """
-
-    S256 = "S256"
-    plain = "plain"
 
 
 class UnsupportedCodeChallengeMethod(ValueError):
@@ -908,92 +880,3 @@ class RequestUriParameterAuthorizationRequest:
     def __repr__(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
         return self.uri
-
-
-class AuthorizationRequestSerializer:
-    """(De)Serializer for `AuthorizationRequest` instances.
-
-    You might need to store pending authorization requests in session, either server-side or client- side. This class is
-    here to help you do that.
-
-    """
-
-    def __init__(
-        self,
-        dumper: Callable[[AuthorizationRequest], str] | None = None,
-        loader: Callable[[str], AuthorizationRequest] | None = None,
-    ) -> None:
-        self.dumper = dumper or self.default_dumper
-        self.loader = loader or self.default_loader
-
-    @staticmethod
-    def default_dumper(azr: AuthorizationRequest) -> str:
-        """Provide a default dumper implementation.
-
-        Serialize an AuthorizationRequest as JSON, then compress with deflate, then encodes as
-        base64url.
-
-        Args:
-            azr: the `AuthorizationRequest` to serialize
-
-        Returns:
-            the serialized value
-
-        """
-        d = asdict(azr)
-        if azr.dpop_key:
-            d["dpop_key"]["private_key"] = azr.dpop_key.private_key.to_dict()
-        d.update(**d.pop("kwargs", {}))
-        return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
-
-    @staticmethod
-    def default_loader(
-        serialized: str,
-        azr_class: type[AuthorizationRequest] = AuthorizationRequest,
-    ) -> AuthorizationRequest:
-        """Provide a default deserializer implementation.
-
-        This does the opposite operations than `default_dumper`.
-
-        Args:
-            serialized: the serialized AuthorizationRequest
-            azr_class: the class to deserialize the Authorization Request to
-
-        Returns:
-            an AuthorizationRequest
-
-        """
-        args = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
-
-        if dpop_key := args.get("dpop_key"):
-            dpop_key["private_key"] = Jwk(dpop_key["private_key"])
-            dpop_key.pop("jti_generator", None)
-            dpop_key.pop("iat_generator", None)
-            dpop_key.pop("dpop_token_class", None)
-            args["dpop_key"] = DPoPKey(**dpop_key)
-
-        return azr_class(**args)
-
-    def dumps(self, azr: AuthorizationRequest) -> str:
-        """Serialize and compress a given AuthorizationRequest for easier storage.
-
-        Args:
-            azr: an AuthorizationRequest to serialize
-
-        Returns:
-            the serialized AuthorizationRequest, as a str
-
-        """
-        return self.dumper(azr)
-
-    def loads(self, serialized: str) -> AuthorizationRequest:
-        """Deserialize a serialized AuthorizationRequest.
-
-        Args:
-            serialized: the serialized AuthorizationRequest
-
-        Returns:
-            the deserialized AuthorizationRequest
-
-        """
-        return self.loader(serialized)
