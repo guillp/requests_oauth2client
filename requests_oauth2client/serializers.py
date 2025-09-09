@@ -12,15 +12,17 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar, override
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, override
 
 import jwskate
 from attr import asdict, field, frozen
 from binapy import BinaPy
-from jwskate import Jwk
 
-from . import RequestParameterAuthorizationRequest, RequestUriParameterAuthorizationRequest
-from .authorization_request import AuthorizationRequest
+from .authorization_request import (
+    AuthorizationRequest,
+    RequestParameterAuthorizationRequest,
+    RequestUriParameterAuthorizationRequest,
+)
 from .dpop import DPoPKey, DPoPToken
 from .tokens import BearerToken
 
@@ -101,8 +103,8 @@ class BearerTokenSerializer(Serializer[BearerToken]):
             "dpop": DPoPToken,
         }.get(token_type.lower(), BearerToken)
 
-    @staticmethod
-    def default_dumper(token: BearerToken) -> str:
+    @classmethod
+    def default_dumper(cls, token: BearerToken) -> str:
         """Serialize a token as JSON, then compress with deflate, then encodes as base64url.
 
         Args:
@@ -123,8 +125,10 @@ class BearerTokenSerializer(Serializer[BearerToken]):
             BinaPy.serialize_to("json", {k: w for k, w in d.items() if w is not None}).to("deflate").to("b64u").ascii()
         )
 
-    @staticmethod
-    def default_loader(serialized: str, get_class: Callable[[Mapping[str, Any]], type[BearerToken]]) -> BearerToken:
+    @classmethod
+    def default_loader(
+        cls, serialized: str, get_class: Callable[[Mapping[str, Any]], type[BearerToken]]
+    ) -> BearerToken:
         """Deserialize a BearerToken.
 
         This does the opposite operations than `default_dumper`.
@@ -149,6 +153,48 @@ class BearerTokenSerializer(Serializer[BearerToken]):
 
         token_class = get_class(args)
         return token_class(**args)
+
+
+@frozen
+class DPoPKeySerializer(Serializer[DPoPKey]):
+    """A (de)serializer for `DPoPKey` instances."""
+
+    dumper: Callable[[DPoPKey], str] = field(factory=lambda: DPoPKeySerializer.default_dumper)
+    loader: Callable[[str, Callable[[Mapping[str, Any]], type[DPoPKey]]], DPoPKey] = field(
+        factory=lambda: DPoPKeySerializer.default_loader
+    )
+
+    @override
+    def get_class(self, args: Mapping[str, Any]) -> type[DPoPKey]:
+        return DPoPKey
+
+    @classmethod
+    def default_dumper(cls, dpop_key: DPoPKey) -> str:
+        """Provide a default dumper implementation.
+
+        This will not serialize jti_generator, iat_generator, and dpop_token_class!
+
+        """
+        d = dpop_key.private_key.to_dict()
+        d.pop("jti_generator", None)
+        d.pop("iat_generator", None)
+        d.pop("dpop_token_class", None)
+        return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
+
+    @classmethod
+    def default_loader(
+        cls,
+        serialized: str,
+        get_class: Callable[[Mapping[str, Any]], type[DPoPKey]],
+    ) -> DPoPKey:
+        """Provide a default deserializer implementation.
+
+        This will not deserialize iat_generator, iat_generator, and dpop_token_class!
+
+        """
+        private_key = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
+        dpop_class = get_class({})
+        return dpop_class(private_key=private_key)
 
 
 @frozen
@@ -180,6 +226,8 @@ class AuthorizationRequestSerializer(
         AuthorizationRequest | RequestParameterAuthorizationRequest | RequestUriParameterAuthorizationRequest,
     ] = field(factory=lambda: AuthorizationRequestSerializer.default_loader)
 
+    dpop_key_serializer: ClassVar[Serializer[DPoPKey]] = DPoPKeySerializer()
+
     @override
     def get_class(
         self, args: Mapping[str, Any]
@@ -190,8 +238,9 @@ class AuthorizationRequestSerializer(
             return RequestUriParameterAuthorizationRequest
         return AuthorizationRequest
 
-    @staticmethod
+    @classmethod
     def default_dumper(
+        cls,
         azr: AuthorizationRequest | RequestParameterAuthorizationRequest | RequestUriParameterAuthorizationRequest,
     ) -> str:
         """Provide a default dumper implementation.
@@ -208,12 +257,13 @@ class AuthorizationRequestSerializer(
         """
         d = asdict(azr)
         if azr.dpop_key:
-            d["dpop_key"]["private_key"] = azr.dpop_key.private_key.to_dict()
+            d["dpop_key"] = cls.dpop_key_serializer.dumps(azr.dpop_key)
         d.update(**d.pop("kwargs", {}))
         return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
 
-    @staticmethod
+    @classmethod
     def default_loader(
+        cls,
         serialized: str,
         get_class: Callable[
             [Mapping[str, Any]],
@@ -234,55 +284,9 @@ class AuthorizationRequestSerializer(
         """
         args = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
 
-        if dpop_key := args.get("dpop_key"):
-            dpop_key["private_key"] = Jwk(dpop_key["private_key"])
-            dpop_key.pop("jti_generator", None)
-            dpop_key.pop("iat_generator", None)
-            dpop_key.pop("dpop_token_class", None)
-            args["dpop_key"] = DPoPKey(**dpop_key)
+        if args["dpop_key"]:
+            args["dpop_key"] = cls.dpop_key_serializer.loads(args["dpop_key"])
 
         azr_class = get_class(args)
 
         return azr_class(**args)
-
-
-@frozen
-class DPoPKeySerializer(Serializer[DPoPKey]):
-    """A (de)serializer for `DPoPKey` instances."""
-
-    dumper: Callable[[DPoPKey], str] = field(factory=lambda: DPoPKeySerializer.default_dumper)
-    loader: Callable[[str, Callable[[Mapping[str, Any]], type[DPoPKey]]], DPoPKey] = field(
-        factory=lambda: DPoPKeySerializer.default_loader
-    )
-
-    @override
-    def get_class(self, args: Mapping[str, Any]) -> type[DPoPKey]:
-        return DPoPKey
-
-    @staticmethod
-    def default_dumper(dpop_key: DPoPKey) -> str:
-        """Provide a default dumper implementation.
-
-        This will not serialize jti_generator, iat_generator, and dpop_token_class!
-
-        """
-        d = dpop_key.private_key.to_dict()
-        d.pop("jti_generator", None)
-        d.pop("iat_generator", None)
-        d.pop("dpop_token_class", None)
-        return BinaPy.serialize_to("json", d).to("deflate").to("b64u").ascii()
-
-    @staticmethod
-    def default_loader(
-        serialized: str,
-        get_class: Callable[[Mapping[str, Any]], type[DPoPKey]],
-    ) -> DPoPKey:
-        """Provide a default deserializer implementation.
-
-        This will not deserialize iat_generator, iat_generator, and dpop_token_class!
-
-        """
-        args = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
-        args["private_key"] = Jwk(args["private_key"])
-        cls = get_class(args)
-        return cls(**args)
