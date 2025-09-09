@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, override
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar
 
 import jwskate
 from attr import asdict, field, frozen
 from binapy import BinaPy
+from typing_extensions import override
 
 from .authorization_request import (
     AuthorizationRequest,
@@ -28,6 +29,8 @@ from .tokens import BearerToken
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+
 T = TypeVar("T")
 
 
