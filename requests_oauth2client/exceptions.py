@@ -16,7 +16,7 @@ class OAuth2Error(Exception):
 
     Args:
         response: the HTTP response containing the error
-        client : the OAuth2Client used to send the request
+        client: the OAuth2Client used to send the request
         description: description of the error
 
     """

@@ -18,16 +18,13 @@ from .auth import (
 )
 from .authorization_request import (
     AuthorizationRequest,
-    AuthorizationRequestSerializer,
     AuthorizationResponse,
-    CodeChallengeMethods,
     InvalidCodeVerifierParam,
     InvalidMaxAgeParam,
     MissingIssuerParam,
     PkceUtils,
     RequestParameterAuthorizationRequest,
     RequestUriParameterAuthorizationRequest,
-    ResponseTypes,
     UnsupportedCodeChallengeMethod,
     UnsupportedResponseTypeParam,
 )
@@ -36,8 +33,6 @@ from .backchannel_authentication import (
     BackChannelAuthenticationResponse,
 )
 from .client import (
-    Endpoints,
-    GrantTypes,
     InvalidAcrValuesParam,
     InvalidBackchannelAuthenticationRequestHintParam,
     InvalidDiscoveryDocument,
@@ -93,6 +88,7 @@ from .dpop import (
     RepeatedDPoPNonce,
     validate_dpop_proof,
 )
+from .enums import CodeChallengeMethods, Endpoints, GrantTypes, ResponseTypes
 from .exceptions import (
     AccessDenied,
     AccountSelectionRequired,
@@ -135,9 +131,9 @@ from .exceptions import (
 from .polling import (
     BaseTokenEndpointPollingJob,
 )
+from .serializers import AuthorizationRequestSerializer, BearerTokenSerializer
 from .tokens import (
     BearerToken,
-    BearerTokenSerializer,
     ExpiredAccessToken,
     ExpiredIdToken,
     IdToken,

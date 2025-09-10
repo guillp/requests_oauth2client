@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import jwskate
 import pytest
 from freezegun import freeze_time
-from freezegun.api import FrozenDateTimeFactory
 from jwskate import (
     ExpiredJwt,
     InvalidClaim,
@@ -15,7 +14,7 @@ from jwskate import (
     SignedJwt,
 )
 
-from requests_oauth2client import BearerToken, BearerTokenSerializer, IdToken
+from requests_oauth2client import BearerToken, IdToken
 
 ID_TOKEN = (
     "eyJhbGciOiJSUzI1NiIsImtpZCI6Im15X2tleSJ9.eyJhY3IiOiIyIiwiYW1yIjpbInB3ZCIsIm90cCJdLCJhdWQiOiJjbGllbnRfaWQiL"
@@ -269,23 +268,6 @@ def test_id_token_attributes() -> None:
     good_id_token = IdToken(Jwt.sign({"azp": "valid", "auth_time": 1725529281}, Jwk.generate(alg="HS256")).value)
     assert good_id_token.authorized_party == "valid"
     assert good_id_token.auth_datetime == datetime(2024, 9, 5, 9, 41, 21, tzinfo=timezone.utc)
-
-
-@pytest.mark.parametrize(
-    "token",
-    [
-        BearerToken("access_token"),
-        # note that "expires_at" is calculated when the test is ran, so before `freezer` takes effect
-        BearerToken("access_token", expires_in=60),
-        BearerToken("access_token", expires_in=-60),
-    ],
-)
-def test_token_serializer(token: BearerToken, freezer: FrozenDateTimeFactory) -> None:
-    freezer.move_to("2024-08-01")
-    serializer = BearerTokenSerializer()
-    candidate = serializer.dumps(token)
-    freezer.move_to(datetime.now(tz=timezone.utc) + timedelta(days=365))
-    assert serializer.loads(candidate) == token
 
 
 @freeze_time()

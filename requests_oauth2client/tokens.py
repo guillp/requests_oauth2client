@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from enum import Enum
 from functools import cached_property
 from math import ceil
 from typing import TYPE_CHECKING, Any, Callable, ClassVar
@@ -14,6 +13,7 @@ from attrs import asdict, frozen
 from binapy import BinaPy
 from typing_extensions import Self
 
+from .enums import AccessTokenTypes
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -21,21 +21,6 @@ if TYPE_CHECKING:
 
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
-
-
-class TokenType(str, Enum):
-    """An enum of standardised `token_type` values."""
-
-    ACCESS_TOKEN = "access_token"
-    REFRESH_TOKEN = "refresh_token"
-    ID_TOKEN = "id_token"
-
-
-class AccessTokenTypes(str, Enum):
-    """An enum of standardised `access_token` types."""
-
-    BEARER = "Bearer"
-    DPOP = "DPoP"
 
 
 class UnsupportedTokenType(ValueError):
@@ -603,87 +588,3 @@ be a maximum of {azr.max_age} sec ago.
 
         """
         return jwskate.SignedJwt(self.access_token)
-
-
-class BearerTokenSerializer:
-    """A helper class to serialize Token Response returned by an AS.
-
-    This may be used to store BearerTokens in session or cookies.
-
-    It needs a `dumper` and a `loader` functions that will respectively serialize and deserialize
-    BearerTokens. Default implementations are provided with use gzip and base64url on the serialized
-    JSON representation.
-
-    Args:
-        dumper: a function to serialize a token into a `str`.
-        loader: a function to deserialize a serialized token representation.
-
-    """
-
-    def __init__(
-        self,
-        dumper: Callable[[BearerToken], str] | None = None,
-        loader: Callable[[str], BearerToken] | None = None,
-    ) -> None:
-        self.dumper = dumper or self.default_dumper
-        self.loader = loader or self.default_loader
-
-    @staticmethod
-    def default_dumper(token: BearerToken) -> str:
-        """Serialize a token as JSON, then compress with deflate, then encodes as base64url.
-
-        Args:
-            token: the `BearerToken` to serialize
-
-        Returns:
-            the serialized value
-
-        """
-        d = asdict(token)
-        d.update(**d.pop("kwargs", {}))
-        return (
-            BinaPy.serialize_to("json", {k: w for k, w in d.items() if w is not None}).to("deflate").to("b64u").ascii()
-        )
-
-    def default_loader(self, serialized: str, token_class: type[BearerToken] = BearerToken) -> BearerToken:
-        """Deserialize a BearerToken.
-
-        This does the opposite operations than `default_dumper`.
-
-        Args:
-            serialized: the serialized token
-            token_class: class to use to deserialize the Token
-
-        Returns:
-            a BearerToken
-
-        """
-        attrs = BinaPy(serialized).decode_from("b64u").decode_from("deflate").parse_from("json")
-        expires_at = attrs.get("expires_at")
-        if expires_at:
-            attrs["expires_at"] = datetime.fromtimestamp(expires_at, tz=timezone.utc)
-        return token_class(**attrs)
-
-    def dumps(self, token: BearerToken) -> str:
-        """Serialize and compress a given token for easier storage.
-
-        Args:
-            token: a BearerToken to serialize
-
-        Returns:
-            the serialized token, as a str
-
-        """
-        return self.dumper(token)
-
-    def loads(self, serialized: str) -> BearerToken:
-        """Deserialize a serialized token.
-
-        Args:
-            serialized: the serialized token
-
-        Returns:
-            the deserialized token
-
-        """
-        return self.loader(serialized)

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import warnings
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
 
 import requests
@@ -14,16 +13,15 @@ from typing_extensions import Self
 from .authorization_request import (
     AuthorizationRequest,
     AuthorizationResponse,
-    CodeChallengeMethods,
     MissingIssuerParam,
     RequestUriParameterAuthorizationRequest,
-    ResponseTypes,
 )
 from .backchannel_authentication import BackChannelAuthenticationResponse
 from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
 from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg, MissingDPoPNonce, RepeatedDPoPNonce
+from .enums import CodeChallengeMethods, Endpoints, GrantTypes, ResponseTypes, TokenType
 from .exceptions import (
     AccessDenied,
     AuthorizationPending,
@@ -50,7 +48,7 @@ from .exceptions import (
     UnsupportedTokenType,
     UseDPoPNonce,
 )
-from .tokens import BearerToken, IdToken, TokenResponse, TokenType
+from .tokens import BearerToken, IdToken, TokenResponse
 from .utils import InvalidUri, validate_endpoint_uri, validate_issuer_uri
 
 if TYPE_CHECKING:
@@ -169,42 +167,11 @@ class InvalidDiscoveryDocument(ValueError):
         self.discovery_document = discovery_document
 
 
-class Endpoints(str, Enum):
-    """All standardised OAuth 2.0 and extensions endpoints.
-
-    If an endpoint is not mentioned here, then its usage is not supported by OAuth2Client.
-
-    """
-
-    TOKEN = "token_endpoint"
-    AUTHORIZATION = "authorization_endpoint"
-    BACKCHANNEL_AUTHENTICATION = "backchannel_authentication_endpoint"
-    DEVICE_AUTHORIZATION = "device_authorization_endpoint"
-    INTROSPECTION = "introspection_endpoint"
-    REVOCATION = "revocation_endpoint"
-    PUSHED_AUTHORIZATION_REQUEST = "pushed_authorization_request_endpoint"
-    JWKS = "jwks_uri"
-    USER_INFO = "userinfo_endpoint"
-
-
 class MissingEndpointUri(AttributeError):
     """Raised when a required endpoint uri is not known."""
 
     def __init__(self, endpoint: str) -> None:
         super().__init__(f"No '{endpoint}' defined for this client.")
-
-
-class GrantTypes(str, Enum):
-    """An enum of standardized `grant_type` values."""
-
-    CLIENT_CREDENTIALS = "client_credentials"
-    AUTHORIZATION_CODE = "authorization_code"
-    REFRESH_TOKEN = "refresh_token"
-    RESOURCE_OWNER_PASSWORD = "password"
-    TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange"
-    JWT_BEARER = "urn:ietf:params:oauth:grant-type:jwt-bearer"
-    CLIENT_INITIATED_BACKCHANNEL_AUTHENTICATION = "urn:openid:params:grant-type:ciba"
-    DEVICE_CODE = "urn:ietf:params:oauth:grant-type:device_code"
 
 
 @frozen(init=False)
