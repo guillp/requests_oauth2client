@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, Union
 
 import jwskate
 from attr import asdict, field, frozen
@@ -84,12 +84,10 @@ class BearerTokenSerializer(Serializer[BearerToken]):
     This may be used to store BearerTokens in session or cookies.
 
     It needs a `dumper` and a `loader` functions that will respectively serialize and deserialize
-    BearerTokens. Default implementations are provided with use gzip and base64url on the serialized
-    JSON representation.
+    BearerTokens (or subclasses).
 
-    Args:
-        dumper: a function to serialize a token into a `str`.
-        loader: a function to deserialize a serialized token representation.
+    Default implementation uses gzip and base64url on the serialized JSON representation.
+    It supports `BearerToken` and `DPoPToken` instances.
 
     """
 
@@ -202,12 +200,14 @@ class DPoPKeySerializer(Serializer[DPoPKey]):
 
 @frozen
 class AuthorizationRequestSerializer(
-    Serializer[AuthorizationRequest | RequestParameterAuthorizationRequest | RequestUriParameterAuthorizationRequest]
+    Serializer[
+        Union[AuthorizationRequest, RequestParameterAuthorizationRequest, RequestUriParameterAuthorizationRequest]
+    ]
 ):
     """(De)Serializer for `AuthorizationRequest` instances.
 
-    You might need to store pending authorization requests in session, either server-side or client- side. This class is
-    here to help you do that.
+    Default implementation supports `AuthorizationRequest`, `RequestParameterAuthorizationRequest`, and
+    `RequestUriParameterAuthorizationRequest`.
 
     """
 
