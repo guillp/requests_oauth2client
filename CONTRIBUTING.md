@@ -53,14 +53,14 @@ Ready to contribute? Here's how to set up `requests_oauth2client` for local deve
 2. Clone your fork locally
 
 ```
-$ git clone git@github.com:your_name_here/requests_oauth2client.git
+$ git clone https://github.com/<your_github_username_here>/requests_oauth2client.git
 ```
 
-3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
+3. Ensure [uv](https://docs.astral.sh/uv/) is installed.
 4. Install dependencies and start your virtualenv:
 
 ```
-$ poetry install -E test -E doc -E dev
+$ uv sync --all-extras
 ```
 
 5. Create a branch for local development:
@@ -115,7 +115,7 @@ Make sure all your changes are committed (including an entry in HISTORY.md).
 Then run:
 
 ```
-$ poetry patch # possible: major / minor / patch
+$ uv version --bump path # possible: major / minor / patch
 $ git push
 $ git push --tags
 ```
