@@ -44,6 +44,7 @@ jobs:
 
       - name: Build documentation
         run: |
+          uv sync --group doc
           uv run mkdocs build
 
       - name: list files
