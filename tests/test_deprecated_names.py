@@ -1,4 +1,5 @@
 """An attempt to use old class names should generate DeprecationWarning."""
+
 import secrets
 
 import pytest
