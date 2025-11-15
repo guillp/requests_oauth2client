@@ -6,7 +6,7 @@ from typing import Any
 
 from flask import session
 
-from requests_oauth2client import BearerTokenSerializer
+from requests_oauth2client import TokenSerializer
 from requests_oauth2client.auth import OAuth2ClientCredentialsAuth
 from requests_oauth2client.tokens import BearerToken
 
@@ -27,11 +27,11 @@ class FlaskSessionAuthMixin:
     def __init__(
         self,
         session_key: str,
-        serializer: BearerTokenSerializer | None = None,
+        serializer: TokenSerializer | None = None,
         *args: Any,
         **token_kwargs: Any,
     ) -> None:
-        self.serializer = serializer or BearerTokenSerializer()
+        self.serializer = serializer or TokenSerializer()
         self.session_key = session_key
         super().__init__(*args, **token_kwargs)
 

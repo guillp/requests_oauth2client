@@ -14,6 +14,7 @@ from binapy import BinaPy
 from typing_extensions import Self
 
 from .enums import AccessTokenTypes
+from .exceptions import UnsupportedTokenTypeError
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -21,14 +22,6 @@ if TYPE_CHECKING:
 
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client
-
-
-class UnsupportedTokenType(ValueError):
-    """Raised when an unsupported token_type is provided."""
-
-    def __init__(self, token_type: str) -> None:
-        super().__init__(f"Unsupported token_type: {token_type}")
-        self.token_type = token_type
 
 
 class IdToken(jwskate.SignedJwt):
@@ -282,7 +275,7 @@ class BearerToken(TokenResponse, requests.auth.AuthBase):
         **kwargs: Any,
     ) -> None:
         if token_type.title() != self.TOKEN_TYPE.title():
-            raise UnsupportedTokenType(token_type)
+            raise UnsupportedTokenTypeError(token_type)
 
         id_token = id_token_converter(id_token)
 
@@ -517,15 +510,21 @@ be a maximum of {azr.max_age} sec ago.
         """
         return self.access_token
 
-    def as_dict(self) -> dict[str, Any]:
+    def as_dict(self, *, with_expires_in: bool = True) -> dict[str, Any]:
         """Return a dict of parameters.
 
         That is suitable for serialization or to init another BearerToken.
 
+        Args:
+            with_expires_in: if True, the dict will include the expires_in attribute,
+                which is a relative lifetime in seconds.
+                Otherwise, it will be transformed to `expires_at`, an absolute expiration datetime.
+
         """
         d = asdict(self)
-        d.pop("expires_at")
-        d["expires_in"] = self.expires_in
+        if with_expires_in:
+            d.pop("expires_at")
+            d["expires_in"] = self.expires_in
         d.update(**d.pop("kwargs", {}))
         return {key: val for key, val in d.items() if val is not None}
 

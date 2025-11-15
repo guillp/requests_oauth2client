@@ -131,7 +131,7 @@ from .exceptions import (
 from .polling import (
     BaseTokenEndpointPollingJob,
 )
-from .serializers import AuthorizationRequestSerializer, BearerTokenSerializer
+from .serializers import AuthorizationRequestSerializer, TokenSerializer
 from .tokens import (
     BearerToken,
     ExpiredAccessToken,
@@ -170,7 +170,6 @@ __all__ = [
     "BaseTokenEndpointPollingJob",
     "BaseTokenEndpointPoolingJob",
     "BearerToken",
-    "BearerTokenSerializer",
     "ClientSecretBasic",
     "ClientSecretJwt",
     "ClientSecretPost",
@@ -263,6 +262,7 @@ __all__ = [
     "SignatureAlgs",
     "SlowDown",
     "TokenEndpointError",
+    "TokenSerializer",
     "UnauthorizedClient",
     "UnknownActorTokenType",
     "UnknownIntrospectionError",

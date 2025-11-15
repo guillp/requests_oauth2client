@@ -1149,6 +1149,92 @@ api = ApiClient("https://myapi.local/resource", session=session)
 assert api.session == session
 ```
 
+## Token and Authorization Requests serialization
+
+If you implement a web application, you will most likely need to serialize access tokens inside the user session.
+To make it easier, `requests_oauth2client` provides several classes that implement (de)serialization.
+
+```python
+from requests_oauth2client import BearerToken, TokenSerializer
+
+token_serializer = TokenSerializer()
+
+bearer_token = BearerToken("access_token", expires_in=60)  # here is a sample token
+serialized_value = token_serializer.dumps(bearer_token)
+print(serialized_value)
+# q1ZKTE5OLS6OL8nPTs1TskLl6iilVhRkFqUWxyeWKFkZmpsZWFiYmJqZ6iiB5eNLKgtSlayUnFITi1KLlGoB
+# you can store that string value in session or anywhere needed
+# beware, this is clear-text!
+
+# loading back the token to a BearerToken instance
+deserialized_token = token_serializer.loads(serialized_value)
+assert isinstance(deserialized_token, BearerToken)
+assert deserialized_token == bearer_token
+```
+
+Default `TokenSerializer` class supports both `BearerToken` and `DPoPToken` instances.
+
+```python
+from requests_oauth2client import AuthorizationRequest, AuthorizationRequestSerializer
+
+ar_serializer = AuthorizationRequestSerializer()
+
+auth_request = AuthorizationRequest(
+    authorization_endpoint="https://my.as.local/authorize",
+    client_id="my_client_id",
+    redirect_uri="http://localhost:8000/callback",
+)
+
+serialized_ar = ar_serializer.dumps(auth_request)
+assert ar_serializer.loads(serialized_ar) == auth_request
+```
+
+### Customizing token (de)serialization
+
+While provided serializers work well for standard tokens with default classes, you may need to override them for special
+purposes or if you are using custom token classes.
+To do that, you can pass custom methods as parameters when initializing your TokenSerializer instance:
+
+```python
+from __future__ import annotations
+
+import base64
+import json
+from typing import Any, Mapping
+
+from requests_oauth2client import BearerToken, TokenSerializer
+
+
+class CustomToken(BearerToken):
+    TOKEN_TYPE = "CustomToken"
+
+
+def custom_make_instance(args: Mapping[str, Any]) -> BearerToken:
+    """This will add support for a custom token type."""
+    if args.get("token_type") == "CustomToken":
+        return CustomToken(**args)
+    return TokenSerializer.default_make_instance(args)
+
+
+def custom_dumper(token: CustomToken) -> bytes:
+    """This will serialize the token value to base64-encoded JSON"""
+    args = token.as_dict()
+    return base64.b64encode(json.dumps(args).encode())
+
+
+def custom_loader(serialized: bytes) -> dict[str, Any]:
+    """This will load from a base64-encoded JSON"""
+    return json.loads(base64.b64decode(serialized))
+
+
+token_serializer = TokenSerializer(make_instance=custom_make_instance, dumper=custom_dumper, loader=custom_loader)
+
+my_custom_token = CustomToken(**{"token_type": "CustomToken", "access_token": "..."})
+serialized = token_serializer.dumps(my_custom_token)
+assert serialized == b'eyJhY2Nlc3NfdG9rZW4iOiAiLi4uIiwgInRva2VuX3R5cGUiOiAiQ3VzdG9tVG9rZW4ifQ=='
+assert token_serializer.loads(serialized) == my_custom_token
+```
+
 ## Vendor-Specific clients
 
 `requests_oauth2client` is flexible enough to handle most use cases, so you should be able to use any AS by any vendor

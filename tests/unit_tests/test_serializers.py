@@ -7,11 +7,11 @@ from requests_oauth2client import (
     AuthorizationRequest,
     AuthorizationRequestSerializer,
     BearerToken,
-    BearerTokenSerializer,
     DPoPKey,
     DPoPToken,
     RequestParameterAuthorizationRequest,
     RequestUriParameterAuthorizationRequest,
+    TokenSerializer,
 )
 
 
@@ -19,7 +19,7 @@ from requests_oauth2client import (
     "token",
     [
         BearerToken("access_token"),
-        # note that "expires_at" is calculated when the test is ran, so before `freezer` takes effect
+        # note that "expires_at" is calculated when the test is run, so before `freezer` takes effect
         BearerToken("access_token", expires_in=60),
         BearerToken("access_token", expires_in=-60),
         DPoPToken("access_token", _dpop_key=DPoPKey.generate()),
@@ -29,7 +29,7 @@ from requests_oauth2client import (
 )
 def test_token_serializer(token: BearerToken, freezer: FrozenDateTimeFactory) -> None:
     freezer.move_to("2024-08-01")
-    serializer = BearerTokenSerializer()
+    serializer = TokenSerializer()
     candidate = serializer.dumps(token)
     freezer.move_to(datetime.now(tz=timezone.utc) + timedelta(days=365))
     assert serializer.loads(candidate) == token
