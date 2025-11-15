@@ -1152,7 +1152,8 @@ assert api.session == session
 ## Token and Authorization Requests serialization
 
 If you implement a web application, you will most likely need to serialize access tokens inside the user session.
-To make it easier, `requests_oauth2client` provides several classes that implement (de)serialization.
+To make it easier, `requests_oauth2client` provides several classes that implement (de)serialization of `BearerToken`,
+'DPoPToken', `AuthorizationRequest` (and derivates) and `DPoPKey` to `bytes`.
 
 ```python
 from requests_oauth2client import BearerToken, TokenSerializer
@@ -1162,9 +1163,9 @@ token_serializer = TokenSerializer()
 bearer_token = BearerToken("access_token", expires_in=60)  # here is a sample token
 serialized_value = token_serializer.dumps(bearer_token)
 print(serialized_value)
-# q1ZKTE5OLS6OL8nPTs1TskLl6iilVhRkFqUWxyeWKFkZmpsZWFiYmJqZ6iiB5eNLKgtSlayUnFITi1KLlGoB
-# you can store that string value in session or anywhere needed
-# beware, this is clear-text!
+# b'q1ZKTE5OLS6OL8nPTs1TskLl6iilVhRkFqUWxyeWKFkZmpsZWFiYmJqZ6iiB5eNLKgtSlayUnFITi1KLlGoB'
+# you can store that value in session or anywhere needed
+# beware, this is decodable clear-text!
 
 # loading back the token to a BearerToken instance
 deserialized_token = token_serializer.loads(serialized_value)
