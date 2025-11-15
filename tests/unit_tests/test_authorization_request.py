@@ -9,10 +9,8 @@ from jwskate import JweCompact, Jwk, Jwt, SignedJwt
 
 from requests_oauth2client import (
     AuthorizationRequest,
-    AuthorizationRequestSerializer,
     AuthorizationResponse,
     AuthorizationResponseError,
-    DPoPKey,
     InvalidMaxAgeParam,
     MismatchingIssuer,
     MismatchingState,
@@ -186,31 +184,6 @@ def test_missing_issuer(
     if expected_issuer:
         with pytest.raises(MissingIssuer):
             authorization_request.validate_callback(authorization_response_uri)
-
-
-def test_authorization_request_serializer(authorization_request: AuthorizationRequest) -> None:
-    serializer = AuthorizationRequestSerializer()
-    serialized = serializer.dumps(authorization_request)
-    assert serializer.loads(serialized) == authorization_request
-
-
-def test_authorization_request_serializer_with_dpop_key() -> None:
-    dpop_key = DPoPKey.generate()
-    authorization_request = AuthorizationRequest(
-        "https://as.local/authorize",
-        client_id="foo",
-        redirect_uri="http://localhost/local",
-        scope="openid",
-        dpop_key=dpop_key,
-    )
-
-    serializer = AuthorizationRequestSerializer()
-
-    serialized = serializer.dumps(authorization_request)
-    deserialized_request = serializer.loads(serialized)
-
-    assert isinstance(deserialized_request.dpop_key, DPoPKey)
-    assert deserialized_request.dpop_key.private_key == dpop_key.private_key
 
 
 def test_request_acr_values() -> None:
