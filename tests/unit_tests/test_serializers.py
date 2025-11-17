@@ -13,6 +13,7 @@ from requests_oauth2client import (
     RequestUriParameterAuthorizationRequest,
     TokenSerializer,
 )
+from requests_oauth2client.exceptions import UnsupportedTokenTypeError
 
 
 @pytest.mark.parametrize(
@@ -89,3 +90,19 @@ def test_authorization_request_serializer_with_dpop_key() -> None:
 
     assert isinstance(deserialized_request.dpop_key, DPoPKey)
     assert deserialized_request.dpop_key.private_key == dpop_key.private_key
+
+
+def test_unsupported_token_type() -> None:
+    class CustomToken(BearerToken):
+        TOKEN_TYPE = "CustomToken"
+
+    custom_token = CustomToken(access_token="my_access_token", token_type="CustomToken", custom_key="custom_value")
+    serializer = TokenSerializer()
+    serialized = serializer.dumps(custom_token)
+    assert serializer.loader(serialized) == {
+        "access_token": "my_access_token",
+        "token_type": "CustomToken",
+        "custom_key": "custom_value",
+    }  # all attributes are preserved
+    with pytest.raises(UnsupportedTokenTypeError):
+        serializer.loads(serialized)  # but deserialization fails due to unsupported token type
