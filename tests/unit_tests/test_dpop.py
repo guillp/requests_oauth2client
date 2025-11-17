@@ -1,14 +1,17 @@
+from datetime import datetime, timedelta, timezone
 import secrets
 
 import pytest
 import requests
 from binapy import BinaPy
 from freezegun import freeze_time
+from freezegun.api import FrozenDateTimeFactory
 from jwskate import Jwk, Jwt, KeyManagementAlgs, SignatureAlgs, SignedJwt
 
 from requests_oauth2client import (
     DPoPKey,
     DPoPToken,
+    DPoPTokenSerializer,
     InvalidDPoPAccessToken,
     InvalidDPoPAlg,
     InvalidDPoPKey,
@@ -703,3 +706,24 @@ def test_rs_dpop_nonce_loop(
     resp = requests.get(target_api, auth=dpop_token)
     assert resp.status_code == 401
     assert resp.headers["DPoP-Nonce"] == "nonce2"
+
+
+def test_token_serializer(dpop_token: DPoPToken, freezer: FrozenDateTimeFactory) -> None:
+    freezer.move_to("2024-08-01")
+    serializer = DPoPTokenSerializer()
+    candidate = serializer.dumps(dpop_token)
+    freezer.move_to(datetime.now(tz=timezone.utc) + timedelta(days=365))
+    deserialized = serializer.loads(candidate)
+
+    # Can't just check deserialized == dpop_token because DPoPKey iat_generator,
+    # jti_generator, and dpop_token_class defaults are different per instance
+    assert deserialized.access_token == dpop_token.access_token
+    assert deserialized.refresh_token == dpop_token.refresh_token
+    assert deserialized.expires_at == dpop_token.expires_at
+    assert deserialized.token_type == dpop_token.token_type
+
+    assert deserialized.dpop_key.private_key == dpop_token.dpop_key.private_key
+    assert deserialized.dpop_key.alg == dpop_token.dpop_key.alg
+    assert deserialized.dpop_key.jwt_typ == dpop_token.dpop_key.jwt_typ
+    assert deserialized.dpop_key.as_nonce == dpop_token.dpop_key.as_nonce
+    assert deserialized.dpop_key.rs_nonce == dpop_token.dpop_key.rs_nonce
