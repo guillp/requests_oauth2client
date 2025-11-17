@@ -409,7 +409,7 @@ class AuthorizationRequest:
             scope = tuple(scope.split(" ")) if isinstance(scope, str) else tuple(scope)
 
         if acr_values is not None:
-            acr_values = tuple(acr_values.split()) if isinstance(acr_values, str) else tuple(acr_values)
+            acr_values = tuple(acr_values.split(" ")) if isinstance(acr_values, str) else tuple(acr_values)
 
         if max_age is not None and max_age < 0:
             raise InvalidMaxAgeParam
@@ -484,6 +484,8 @@ class AuthorizationRequest:
         d = {field.name: getattr(self, field.name) for field in fields(type(self)) if field.metadata.get("query")}
         if d["scope"]:
             d["scope"] = " ".join(d["scope"])
+        if d["acr_values"]:
+            d["acr_values"] = " ".join(d["acr_values"])
         d["code_challenge"] = self.code_challenge
         d["dpop_jkt"] = self.dpop_jkt
         d.update(self.kwargs)

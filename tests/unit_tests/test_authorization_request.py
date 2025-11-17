@@ -188,20 +188,24 @@ def test_missing_issuer(
 
 def test_request_acr_values() -> None:
     # you may provide acr_values as a space separated list or as a real list
-    assert AuthorizationRequest(
+    azr_str = AuthorizationRequest(
         "https://as.local/authorize",
         client_id="foo",
         redirect_uri="http://localhost/local",
         scope="openid",
         acr_values="1 2 3",
-    ).acr_values == ("1", "2", "3")
-    assert AuthorizationRequest(
+    )
+    assert azr_str.acr_values == ("1", "2", "3")
+    assert azr_str.furl.args["acr_values"] == "1 2 3"
+    azr_tuple = AuthorizationRequest(
         "https://as.local/authorize",
         client_id="foo",
         redirect_uri="http://localhost/local",
         scope="openid",
         acr_values=("1", "2", "3"),
-    ).acr_values == ("1", "2", "3")
+    )
+    assert azr_tuple.acr_values == ("1", "2", "3")
+    assert azr_tuple.furl.args["acr_values"] == "1 2 3"
 
 
 def test_code_challenge() -> None:
@@ -239,7 +243,7 @@ def test_invalid_max_age() -> None:
     assert exc.type is InvalidMaxAgeParam
 
 
-def test_acr_values() -> None:
+def test_response_acr_values() -> None:
     acr_values = ("reinforced", "strong")
     assert (
         AuthorizationResponse(
