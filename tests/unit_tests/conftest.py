@@ -367,6 +367,11 @@ def code_challenge_method(request: FixtureRequest) -> str | None:
     return request.param
 
 
+@pytest.fixture(scope="session", params=[None, "foo bar", ["foo", "bar"]])
+def acr_values(request: FixtureRequest) -> None | str | list[str]:
+    return request.param
+
+
 @pytest.fixture(scope="session")
 def authorization_request(  # noqa: C901
     authorization_endpoint: str,
@@ -379,6 +384,7 @@ def authorization_request(  # noqa: C901
     code_challenge_method: str,
     expected_issuer: str | None,
     auth_request_kwargs: dict[str, Any],
+    acr_values: None | str | list[str],
 ) -> AuthorizationRequest:
     authorization_response_iss_parameter_supported = bool(expected_issuer)
 
@@ -393,6 +399,7 @@ def authorization_request(  # noqa: C901
         code_challenge_method=code_challenge_method,
         authorization_response_iss_parameter_supported=authorization_response_iss_parameter_supported,
         issuer=expected_issuer,
+        acr_values=acr_values,
         **auth_request_kwargs,
     )
 
@@ -486,6 +493,16 @@ def authorization_request(  # noqa: C901
         else:
             assert generated_code_challenge == code_verifier
             assert azr.code_verifier == code_verifier
+
+    if acr_values is None:
+        assert azr.acr_values is None
+        assert "acr_values" not in args
+    elif isinstance(acr_values, str):
+        assert azr.acr_values == tuple(acr_values.split())
+        expected_args["acr_values"] = acr_values
+    else:  # Sequence
+        assert azr.acr_values == tuple(acr_values)
+        expected_args["acr_values"] = " ".join(acr_values)
 
     assert args == expected_args
 
