@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import requests
 
     from requests_oauth2client.authorization_request import AuthorizationRequest
@@ -264,3 +266,41 @@ class InvalidBackChannelAuthenticationResponse(OAuth2Error):
 
 class InvalidPushedAuthorizationResponse(OAuth2Error):
     """Raised when the Pushed Authorization Endpoint returns an error."""
+
+
+class FailedDiscoveryError(Exception):
+    """Raised when a metadata discovery fails."""
+
+    def __init__(self, message: str, metadata: Mapping[str, Any] | None = None, url: str | None = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.url = url
+        self.metadata = metadata
+
+
+class InvalidDiscoveryDocument(FailedDiscoveryError):
+    """Raised when the discovery document is invalid."""
+
+
+class MismatchingResourceIdentifier(FailedDiscoveryError):
+    """Raised when the resource in the discovery document does not match the expected value."""
+
+    def __init__(self, expected: str, metadata: Mapping[str, Any], url: str | None = None) -> None:
+        super().__init__(
+            message=f"mismatching `resource` identifier: expected '{expected}', got '{metadata['resource']}",
+            metadata=metadata,
+            url=url,
+        )
+        self.expected = expected
+
+
+class MismatchingAuthorizationServerIdentifier(FailedDiscoveryError):
+    """Raised when the issuer in the discovery document does not match the expected value."""
+
+    def __init__(self, expected: str | None, metadata: Mapping[str, Any], url: str | None = None) -> None:
+        super().__init__(
+            message=f"mismatching `issuer` identifier: expected '{expected}', got '{metadata['authorization_servers']}",
+            metadata=metadata,
+            url=url,
+        )
+        self.expected = expected
