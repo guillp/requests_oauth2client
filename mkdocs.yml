@@ -41,6 +41,7 @@ markdown_extensions:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
+      default_lang: python
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.details
@@ -57,6 +58,7 @@ plugins:
   - autorefs
   - mkdocstrings:
       default_handler: python
+      enable_inventory: true
       handlers:
         python:
           options:
