@@ -3,6 +3,7 @@
 """Mark a class as deprecated.
 
 https://stackoverflow.com/a/52087847
+
 """
 
 from warnings import warn
@@ -10,6 +11,7 @@ from warnings import warn
 from .backchannel_authentication import BackChannelAuthenticationPollingJob
 from .device_authorization import DeviceAuthorizationPollingJob
 from .polling import BaseTokenEndpointPollingJob
+from .serializers import TokenSerializer
 
 
 class _DeprecatedClassMeta(type):
@@ -76,8 +78,13 @@ class DeviceAuthorizationPoolingJob(metaclass=_DeprecatedClassMeta):
     _DeprecatedClassMeta__alias = DeviceAuthorizationPollingJob
 
 
+class BearerTokenSerializer(metaclass=_DeprecatedClassMeta):
+    _DeprecatedClassMeta__alias = TokenSerializer
+
+
 __all__ = [
     "BackChannelAuthenticationPoolingJob",
     "BaseTokenEndpointPoolingJob",
+    "BearerTokenSerializer",
     "DeviceAuthorizationPoolingJob",
 ]

@@ -1,7 +1,7 @@
 # ![requests_oauth2client](docs/logo.png)
 
 `requests_oauth2client` is an OAuth 2.x client for Python, able to obtain, refresh and revoke tokens from any
-OAuth2.x/OIDC compliant Authorization Server. It sits upon and extends the famous [requests] HTTP client module.
+OAuth2.x/OIDC compliant Authorization Server. It sits upon and extends the famous [requests][] HTTP client module.
 
 It can act as an [OAuth 2.0](https://tools.ietf.org/html/rfc6749) /
 [2.1](https://datatracker.ietf.org/doc/draft-ietf-oauth-v2-1) client, to automatically get and renew Access Tokens,
@@ -29,7 +29,7 @@ It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-co
 as well as using custom params to any endpoint, and other important features that are often overlooked or needlessly
 complex in other client libraries.
 
-And it also includes a [wrapper][apiclient] around [requests.Session] that makes it super easy to use REST-style APIs,
+And it also includes a [wrapper][requests_oauth2client.ApiClient] around [requests.Session][] that makes it super easy to use REST-style APIs,
 with or without OAuth 2.x.
 
 Please note that despite the name, this library has no relationship with Google
@@ -93,9 +93,9 @@ OAuth 2.0 and its extensions. These endpoints include the Token Endpoint, Revoca
 BackChannel Authentication and Device Authorization Endpoints.
 
 You must provide the URLs for these endpoints if you intend to use them. Otherwise, only the Token Endpoint is mandatory
-to initialize an `OAuth2Client`.
+to initialize an [OAuth2Client].
 
-To initialize an instance of `OAuth2Client`, you only need the Token Endpoint URI from your Authorization Server (AS),
+To initialize an instance of [OAuth2Client], you only need the Token Endpoint URI from your Authorization Server (AS),
 and the credentials for your application, typically a `client_id` and a `client_secret`, usually also provided by the
 AS:
 
@@ -112,7 +112,7 @@ oauth2client = OAuth2Client(
 The Token Endpoint is the only endpoint that is mandatory to obtain tokens. Credentials are used to authenticate the
 client everytime it sends a request to its Authorization Server. Usually, these are a static Client ID and Secret, which
 are the equivalent of a username and a password, but meant for an application instead of for a human user. The default
-authentication method used by `OAuth2Client` is *Client Secret Post*, but other standardized methods such as *Client
+authentication method used by [OAuth2Client] is *Client Secret Post*, but other standardized methods such as *Client
 Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See
 [more about client authentication methods below](#supported-client-authentication-methods).
 
@@ -166,11 +166,11 @@ You can use a [BearerToken] instance anywhere you can use an access_token as str
 
 Using [OAuth2Client] directly is useful for testing or debugging OAuth2.x flows, but it may not be suitable for actual
 applications where tokens must be obtained, used during their lifetime, then obtained again or refreshed once they are
-expired. `requests_oauth2client` contains several [requests] compatible Auth Handlers (as subclasses of
+expired. `requests_oauth2client` contains several [requests][] compatible Auth Handlers (as subclasses of
 [requests.auth.AuthBase](https://requests.readthedocs.io/en/latest/user/advanced/#custom-authentication)), that will
 take care of obtaining tokens when required, then will cache those tokens until they are expired, and will obtain new
-ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session],
-or an [ApiClient], which is a wrapper around `Session` with a few enhancements as described below.
+ones (or refresh them, when possible), once the initial token is expired. Those are best used with a [requests.Session][],
+or an [ApiClient], which is a wrapper around [requests.Session][] with a few enhancements as described below.
 
 ### Client Credentials grant
 
@@ -204,8 +204,8 @@ fulfill your request.
 #### As Auth Handler
 
 You can use the
-[OAuth2ClientCredentialsAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
-auth handler. It takes an `OAuth2Client` as parameter, and the additional kwargs to pass to the token endpoint:
+[OAuth2ClientCredentialsAuth]
+auth handler. It takes an [OAuth2Client] as parameter, and the additional kwargs to pass to the token endpoint:
 
 ```python
 import requests
@@ -240,7 +240,7 @@ the previous one is expired.
 
 You can configure a leeway, which is a period of time before the actual expiration, in seconds, when a new token will be
 obtained. This may help getting continuous access to the API when the client and API clocks are slightly out of sync.
-Use the parameter `leeway` to `OAuth2ClientCredentialsAuth`:
+Use the parameter `leeway` to [OAuth2ClientCredentialsAuth]:
 
 ```python
 from requests_oauth2client import OAuth2ClientCredentialsAuth
@@ -264,7 +264,7 @@ Obtaining tokens using the Authorization code grant is made in 3 steps:
 3. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
    Endpoint.
 
-Using an `OAuth2Client` will help you with all those steps, as described below.
+Using an [OAuth2Client] will help you with all those steps, as described below.
 
 #### Generating Authorization Requests
 
@@ -276,9 +276,9 @@ To be able to use the Authorization Code grant, you need 2 (optionally 3) URIs:
 - optionally, the issuer identifier, if your AS uses
   [Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html).
 
-You can declare those URIs when initializing your `OAuth2Client` instance, or you can
+You can declare those URIs when initializing your [OAuth2Client] instance, or you can
 [use the AS discovery endpoint](#initializing-an-oauth2client-from-a-discovery-document) to initialize those URLs
-automatically. Then you can generate valid Authorization Requests by calling the method `.authorization_request()`, with
+automatically. Then you can generate valid Authorization Requests by calling the method `OAuth2Client.authorization_request()`, with
 the request specific parameters, such as `scope`, `state`, `nonce` as parameter:
 
 ```python
@@ -315,7 +315,7 @@ webbrowser.open(az_request.uri)
 Note that the `state`, `nonce` and `code_challenge` parameters are generated with secure random values by default.
 Should you wish to use your own values, you can pass them as parameters to `OAuth2Client.authorization_request()`. For
 PKCE, you need to pass your generated `code_verifier`, and the `code_challenge` will automatically be derived from it.
-If you want to disable PKCE, you can pass `code_challenge_method=None` when initializing your `OAuth2Client`.
+If you want to disable PKCE, you can pass `code_challenge_method=None` when initializing your [OAuth2Client].
 
 #### Validating the Authorization Response
 
@@ -334,7 +334,7 @@ response_uri = input("Please enter the full url and/or params obtained on the re
 az_response = az_request.validate_callback(response_uri)
 ```
 
-This `auth_response` is an `AuthorizationResponse` instance and contains everything that is needed for your application
+This `auth_response` is an [AuthorizationResponse] instance and contains everything that is needed for your application
 to complete the authentication and get its tokens from the AS.
 
 #### Exchanging code for tokens
@@ -352,7 +352,7 @@ token = oauth2client.authorization_code(az_response)
 
 This will automatically include the `code`, `redirect_uri` and `code_verifier` parameters in the Token Request, as
 expected by the AS. You may include extra parameters if required, or you may pass your own parameters, without using an
-`AuthorizationResponse` instance, like this:
+[AuthorizationResponse] instance, like this:
 
 ```python
 token = oauth2client.authorization_code(
@@ -396,10 +396,10 @@ will take care of refreshing the token automatically once it is expired, using t
 
 ### Note on AuthorizationRequest
 
-Authorization Requests generated by `OAuth2Client.authorization_request()` are instance of the class
-[`AuthorizationRequest`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.authorization_request.AuthorizationRequest).
+Authorization Requests generated by `OAuth2Client.authorization_request()` are instances of the class [AuthorizationRequest].
+
 You can also use that class directly to generate your requests, but in that case you need to supply your Authorization
-Endpoint URI, your `client_id`, `redirect_uri`, etc. You can access every parameter from an `AuthorizationRequest`
+Endpoint URI, your `client_id`, `redirect_uri`, etc. You can access every parameter from an [AuthorizationRequest]
 instance, as well as the generated `code_verifier`, as attributes of this instance. Once an Authorization Request URL is
 generated, it your application responsibility to redirect or otherwise send the user to that URL. You may use the
 `webbrowser` module from Python standard library to do so. Here is an example for generating Authorization Requests:
@@ -630,9 +630,9 @@ client = OAuth2Client(
 
 With **client_secret_post**, `client_id` and `client_secret` are included as part of the body form data. To use it, pass
 a
-[`ClientSecretPost(client_id, client_secret)`](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client_authentication.ClientSecretPost)
+[ClientSecretPost] instance `ClientSecretPost(client_id, client_secret)`.
 as `auth` parameter. This is the default when you pass a tuple `(client_id, client_secret)` as `auth` when initializing
-an `OAuth2Client`:
+an [OAuth2Client]:
 
 ```python
 from requests_oauth2client import ClientSecretPost, OAuth2Client
@@ -825,7 +825,7 @@ check will be made to ensure that the `issuer` from the retrieved metadata docum
 
 `DPoP` (Demonstrating Proof of Possession) is supported out-of-the-box. To obtain a *DPoP* token, you can either:
 
-- pass `dpop=True` when using any `OAuth2Client` method that sends a token request,
+- pass `dpop=True` when using any [OAuth2Client] method that sends a token request,
 - or enable `DPoP` by default by passing `dpop_bound_access_tokens=True` when initializing your client.
 
 ```python
@@ -853,10 +853,10 @@ assert isinstance(token, DPoPToken)
 
 ### About `DPoPToken`
 
-`DPoPToken` is actually a `BearerToken` subclass. If you use it as a `requests` Auth Handler, it will take care of
+[DPoPToken] is actually a [BearerToken] subclass. If you use it as a `requests` Auth Handler, it will take care of
 adding a `DPoP` proof to the request headers, in addition to the access token.
 
-Since it is a `BearerToken` subclass, it is fully compatible with the `requests` compatible auth handlers provided by
+Since it is a [BearerToken] subclass, it is fully compatible with the `requests` compatible auth handlers provided by
 `requests_oauth2client`, such as `OAuth2ClientCredentialsAuth`, `OAuth2AccessTokenAuth`, etc. So you may use DPoP with
 those auth handlers like this:
 
@@ -883,15 +883,15 @@ assert "DPoP" in resp.requests.headers  # the appropriate DPoP proof will be inc
 ```
 
 Since DPoP is enabled by default with `dpop_bound_access_tokens=True`, then the `OAuth2ClientCredentialsAuth` will
-obtain and use `DPoPToken` instances. You could also leave it disabled by default and pass `dpop=True` when initializing
+obtain and use [DPoPToken] instances. You could also leave it disabled by default and pass `dpop=True` when initializing
 you auth handler instance: `OAuth2ClientCredentialsAuth(client=client, scope="my_scope", dpop=True)`.
 
 ### Choosing your own proof signature keys
 
-By default, the private key used for signing `DPoP` proofs is auto-generated by `OAuth2Client` whenever a new token is
+By default, the private key used for signing `DPoP` proofs is auto-generated by [OAuth2Client] whenever a new token is
 obtained. By default, generated keys are of type *Elliptic Curve* (`EC`), and use the `ES256` signature alg (as in
 *Elliptic-Curve with a SHA256 hash*). Should you, for testing purposes, wish to generate or use your own key, you may
-use the parameter `dpop_key` to provide a key of your choice. It takes a `DPoPKey` instance, which you can generate
+use the parameter `dpop_key` to provide a key of your choice. It takes a [DPoPKey] instance, which you can generate
 using `DPoPKey.generate()`, or by initializing an instance with a key that you previously generated:
 
 ```python
@@ -935,13 +935,13 @@ assert token.dpop_key == dpop_key
 
 ### Hooking into DPoP key and proof generation
 
-Instead of generating your own keys everytime, you may also control how `DPoPKey`s are automatically generated. This can
+Instead of generating your own keys everytime, you may also control how [DPoPKey]s are automatically generated. This can
 be useful for fuzz-testing, pen-testing or feature-testing the Authorization Server. To choose the signing alg, use the
 parameter `dpop_alg` when initializing your client. This will accordingly determine the key type to generate. You may
 also pass a custom `dpop_key_generator`, which is a callable that accepts a signature `alg` as parameter, and generates
-`DPoPKey` instances.
+[DPoPKey] instances.
 
-You can also override the `DPoPToken` class with a custom one, which will be used to represent the DPoP token that is
+You can also override the [DPoPToken] class with a custom one, which will be used to represent the DPoP token that is
 returned by the AS, and then generates proofs and includes those proofs into HTTP requests.
 
 You may use `DPoPKey.generate` as a helper method for that, or implement your own generator:
@@ -979,9 +979,9 @@ oauth2client = OAuth2Client.from_discovery_endpoint(
 
 ### About DPoP nonces
 
-Authorization Server provided `DPoP` nonces are automatically and transparently handled by `OAuth2Client`.
+Authorization Server provided `DPoP` nonces are automatically and transparently handled by [OAuth2Client].
 
-Likewise, Resource Server provided `DPoP` nonces are supported when using the default `DPoPToken` class.
+Likewise, Resource Server provided `DPoP` nonces are supported when using the default [DPoPToken] class.
 This includes all requests-compatible auth handlers provided by `requests_oauth2client`, like `OAuth2AccessTokenAuth`,
 `OAuth2ClientCredentialsAuth`, `OAuth2AuthorizationCodeAuth`, etc.
 
@@ -1050,16 +1050,16 @@ response2 = api.post("other_endpoint")
 response3 = api.get("other_endpoint")
 ```
 
-AS and RS provided nonces are memoized independently by the `DPoPToken` instance, so the amount of "extra" requests to
+AS and RS provided nonces are memoized independently by the [DPoPToken] instance, so the amount of "extra" requests to
 obtain new DPoP nonces should be minimal.
 
 ## Specialized API Client
 
 Using APIs usually involves multiple endpoints under the same root url, with a common authentication method. To make it
-easier, `requests_oauth2client` includes a [requests.Session] wrapper called [ApiClient], which takes the root API url
+easier, `requests_oauth2client` includes a [requests.Session][] wrapper called [ApiClient], which takes the root API url
 as parameter on initialization. You can then send requests to different endpoints by passing their relative path instead
 of the full url. [ApiClient] also accepts an `auth` parameter with an AuthHandler. You can pass any of the OAuth2 Auth
-Handler from this module, or any [requests]-compatible
+Handler from this module, or any [requests][]-compatible
 [Authentication Handler](https://requests.readthedocs.io/en/latest/user/advanced/#custom-authentication). Which makes it
 very easy to call APIs that are protected with an OAuth2 Client Credentials Grant:
 
@@ -1102,7 +1102,7 @@ api.resource.get()  # will send a GET to https://myapi.local/root/resource
 api["my-resource"].get()  # will send a GET to https://myapi.local/root/my-resource
 ```
 
-Both `__getattr__` and `__getitem__` return a new `ApiClient` initialised on the new base_url. So you can easily call
+Both `__getattr__` and `__getitem__` return a new `ApiClient` initialised on the new `base_url`. So you can easily call
 multiple sub-resources on the same API this way:
 
 ```python
@@ -1112,7 +1112,7 @@ api = ApiClient("https://myapi.local")
 users_api = api.users
 user = users_api.get("userid")  # GET https://myapi.local/users/userid
 other_user = users_api.get("other_userid")  # GET https://myapi.local/users/other_userid
-resources_api = api.resources
+resources_api = api["resources"]
 resources = resources_api.get()  # GET https://myapi.local/resources
 ```
 
@@ -1135,8 +1135,8 @@ You may override this at request time:
 resp = api.get("500", raise_for_status=True)
 ```
 
-You can access the underlying `requests.Session` with the session attribute, and you can provide an already existing and
-configured `Session` instance at init time:
+You can access the underlying [requests.Session][] with the session attribute, and you can provide an already existing and
+configured [requests.Session][] instance at init time:
 
 ```python
 import requests
@@ -1149,6 +1149,94 @@ api = ApiClient("https://myapi.local/resource", session=session)
 assert api.session == session
 ```
 
+## Token and Authorization Requests serialization
+
+If you implement a web application, you will most likely need to serialize access tokens inside the user session.
+Or you may need to serialize Authorization Requests to store them temporarily between multiple HTTP requests.
+To make it easier, `requests_oauth2client` provides several classes that implement (de)serialization of [BearerToken],
+[DPoPToken], [AuthorizationRequest] (and derivates) and [DPoPKey] to `bytes`.
+
+```python
+from requests_oauth2client import BearerToken, TokenSerializer
+
+token_serializer = TokenSerializer()
+
+bearer_token = BearerToken("access_token", expires_in=60)  # here is a sample token
+serialized_value = token_serializer.dumps(bearer_token)
+print(serialized_value)
+# b'q1ZKTE5OLS6OL8nPTs1TskLl6iilVhRkFqUWxyeWKFkZmpsZWFiYmJqZ6iiB5eNLKgtSlayUnFITi1KLlGoB'
+# you can store that value in session or anywhere needed
+# beware, this is decodable clear-text!
+
+# loading back the token to a BearerToken instance
+deserialized_token = token_serializer.loads(serialized_value)
+assert isinstance(deserialized_token, BearerToken)
+assert deserialized_token == bearer_token
+```
+
+Default [TokenSerializer] class supports both [BearerToken] and [DPoPToken] instances.
+
+```python
+from requests_oauth2client import AuthorizationRequest, AuthorizationRequestSerializer
+
+ar_serializer = AuthorizationRequestSerializer()
+
+auth_request = AuthorizationRequest(
+    authorization_endpoint="https://my.as.local/authorize",
+    client_id="my_client_id",
+    redirect_uri="http://localhost:8000/callback",
+)
+
+serialized_ar = ar_serializer.dumps(auth_request)
+assert ar_serializer.loads(serialized_ar) == auth_request
+```
+
+### Customizing token (de)serialization
+
+While default serializers work well for standard tokens represented using default classes, you may need to override them
+for special purposes, or if you are using custom token classes.
+To do that, you can pass custom methods as parameters when initializing your [TokenSerializer] instance:
+
+```python
+from __future__ import annotations
+
+import base64
+import json
+from typing import Any, Mapping
+
+from requests_oauth2client import BearerToken, TokenSerializer
+
+
+class CustomToken(BearerToken):
+    TOKEN_TYPE = "CustomToken"
+
+
+def custom_make_instance(args: Mapping[str, Any]) -> BearerToken:
+    """This will add support for a custom token type."""
+    if args.get("token_type") == "CustomToken":
+        return CustomToken(**args)
+    return TokenSerializer.default_make_instance(args)
+
+
+def custom_dumper(token: CustomToken) -> bytes:
+    """This will serialize the token value to base64-encoded JSON"""
+    args = token.as_dict()
+    return base64.b64encode(json.dumps(args).encode())
+
+
+def custom_loader(serialized: bytes) -> dict[str, Any]:
+    """This will load from a base64-encoded JSON"""
+    return json.loads(base64.b64decode(serialized))
+
+
+token_serializer = TokenSerializer(make_instance=custom_make_instance, dumper=custom_dumper, loader=custom_loader)
+
+my_custom_token = CustomToken(token_type="CustomToken", access_token="...")
+serialized = token_serializer.dumps(my_custom_token)
+assert serialized == b"eyJhY2Nlc3NfdG9rZW4iOiAiLi4uIiwgInRva2VuX3R5cGUiOiAiQ3VzdG9tVG9rZW4ifQ=="
+assert token_serializer.loads(serialized) == my_custom_token
+```
+
 ## Vendor-Specific clients
 
 `requests_oauth2client` is flexible enough to handle most use cases, so you should be able to use any AS by any vendor
@@ -1158,6 +1246,11 @@ You can however create a subclass of [OAuth2Client] or [ApiClient] to make it ea
 Servers or APIs. [OAuth2Client] has several extensibility points in the form of methods like
 `OAuth2Client.parse_token_response()`, `OAuth2Client.on_token_error()` that implement response parsing, error handling,
 etc.
+
+Several helper classes are available in `requests_oauth2client.vendor_specific` for some AS implementations like Auth0
+and Ping Federate.
+They provide easy ways to initialize an [OAuth2Client] with the appropriate endpoints, or [ApiClient] wrappers around
+the vendor-specific management APIs.
 
 ```python
 from requests_oauth2client.vendor_specific import Auth0
@@ -1172,8 +1265,14 @@ a0mgmt = Auth0.management_api_client("mytenant.eu", client_id="client_id", clien
 myusers = a0mgmt.get("users")
 ```
 
-[apiclient]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.api_client.ApiClient
-[bearertoken]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.tokens.BearerToken
-[oauth2client]: https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client
-[requests]: https://requests.readthedocs.io/en/latest/
-[requests.session]: https://requests.readthedocs.io/en/latest/api/#requests.Session
+
+[apiclient]: api/#requests_oauth2client.ApiClient
+[authorizationrequest]: api/#requests_oauth2client.authorization_request.AuthorizationRequest
+[authorizationresponse]: api/#requests_oauth2client.authorization_request.AuthorizationResponse
+[bearertoken]: api/#requests_oauth2client.tokens.BearerToken
+[clientsecretpost]: api/#requests_oauth2client.client_authentication.ClientSecretPost
+[dpopkey]: api/#requests_oauth2client.dpop.DPoPKey
+[dpoptoken]: api/#requests_oauth2client.tokens.DPoPToken
+[oauth2client]: api/#requests_oauth2client.client.OAuth2Client
+[oauth2clientcredentialsauth]: api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth
+[tokenserializer]: api/#requests_oauth2client.serialization.TokenSerializer

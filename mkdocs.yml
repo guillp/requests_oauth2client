@@ -41,6 +41,7 @@ markdown_extensions:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
+      default_lang: python
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.details
@@ -57,11 +58,12 @@ plugins:
   - autorefs
   - mkdocstrings:
       default_handler: python
+      enable_inventory: true
       handlers:
         python:
           options:
-            #extensions:
-            #- griffe_fieldz: {include_inherited: true}
+            extensions:
+            - griffe_fieldz: {include_inherited: true}
             filters:
             - "!^_"
             - "^__init__"
@@ -69,7 +71,7 @@ plugins:
             members_order: source
             show_root_heading: true
             show_submodules: true
-          import:
+          inventories:
             - https://requests.readthedocs.io/en/master/objects.inv
             - https://guillp.github.io/jwskate/objects.inv
 extra:

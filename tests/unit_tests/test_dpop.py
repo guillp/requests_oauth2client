@@ -173,7 +173,7 @@ def test_dpop_errors() -> None:
     with pytest.raises(InvalidDPoPAccessToken, match="invalid characters"):
         DPoPToken(access_token="some_invalid_characters_follow: ?%", _dpop_key=DPoPKey.generate(alg="ES256"))
 
-    with pytest.raises(InvalidDPoPAlg, match="DPoP proofing require an asymmetric signing alg."):
+    with pytest.raises(InvalidDPoPAlg, match="DPoP proofing require an asymmetric signing alg"):
         DPoPToken(access_token="access_token", _dpop_key=DPoPKey.generate(alg="HS256"))
 
     with pytest.raises(InvalidDPoPKey, match="not an asymmetric private key"):

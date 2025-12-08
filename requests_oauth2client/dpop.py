@@ -13,9 +13,10 @@ from attrs import define, field, frozen, setters
 from binapy import BinaPy
 from furl import furl  # type: ignore[import-untyped]
 from requests import codes
-from typing_extensions import Self
+from typing_extensions import Self, override
 
-from .tokens import AccessTokenTypes, BearerToken, IdToken, id_token_converter
+from .enums import AccessTokenTypes
+from .tokens import BearerToken, IdToken, id_token_converter
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
@@ -149,12 +150,22 @@ class DPoPToken(BearerToken):  # type: ignore[override]
 
         return response
 
+    @override
     def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add a DPoP proof in each request."""
         request = super().__call__(request)
         add_dpop_proof(request, dpop_key=self.dpop_key, access_token=self.access_token, header_name=self.DPOP_HEADER)
         request.register_hook("response", self._response_hook)  # type: ignore[no-untyped-call]
         return request
+
+    @override
+    def as_dict(self, with_expires_in: bool = True) -> dict[str, Any]:
+        d = super().as_dict(with_expires_in=with_expires_in)
+        d["dpop_key"]["private_key"] = self.dpop_key.private_key.to_dict()
+        d["dpop_key"].pop("jti_generator", None)
+        d["dpop_key"].pop("iat_generator", None)
+        d["dpop_key"].pop("dpop_token_class", None)
+        return d
 
 
 def add_dpop_proof(
@@ -205,8 +216,8 @@ class DPoPKey:
 
     alg: str = field(on_setattr=setters.frozen)
     private_key: jwskate.Jwk = field(on_setattr=setters.frozen, repr=False)
-    jti_generator: Callable[[], str] = field(on_setattr=setters.frozen, repr=False)
-    iat_generator: Callable[[], int] = field(on_setattr=setters.frozen, repr=False)
+    jti_generator: Callable[[], str] = field(on_setattr=setters.frozen, repr=False, eq=False)
+    iat_generator: Callable[[], int] = field(on_setattr=setters.frozen, repr=False, eq=False)
     jwt_typ: str = field(on_setattr=setters.frozen, repr=False)
     dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
     as_nonce: str | None
