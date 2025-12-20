@@ -1368,9 +1368,11 @@ def test_pushed_authorization_request(
     assert datetime.now(tz=timezone.utc) - timedelta(seconds=2) < razr.expires_at - timedelta(seconds=expires_in)
 
     assert requests_mock.last_request is not None
+    # Check that client_id is in the request body
+    assert 'client_id' in parse_qs(requests_mock.last_request.text)
     # check that no parameter is duplicated in the request body
     for key, val in parse_qs(requests_mock.last_request.text).items():
-        assert len(val) == 1, f"Parameter '{key}' is repeated {len(val)} times"
+        assert len(val) == 1, f"Parameter '{key}' is repeated {len(val)} times. Auth was {oauth2client.auth}"
 
 
 def test_pushed_authorization_request_error(

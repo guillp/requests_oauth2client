@@ -17,7 +17,13 @@ from .authorization_request import (
     RequestUriParameterAuthorizationRequest,
 )
 from .backchannel_authentication import BackChannelAuthenticationResponse
-from .client_authentication import ClientSecretPost, PrivateKeyJwt, client_auth_factory
+from .client_authentication import (
+    ClientSecretJwt,
+    ClientSecretPost,
+    PrivateKeyJwt,
+    PublicApp,
+    client_auth_factory,
+)
 from .device_authorization import DeviceAuthorizationResponse
 from .discovery import oidc_discovery_document_url
 from .dpop import DPoPKey, DPoPToken, InvalidDPoPAlg, MissingDPoPNonce, RepeatedDPoPNonce
@@ -1094,10 +1100,14 @@ keeps trying to obey the new DPoP `nonce` values as provided by the Authorizatio
             The `RequestUriParameterAuthorizationRequest` initialized based on the AS response.
 
         """
+        data = authorization_request.args
+        if isinstance(self.auth, (PrivateKeyJwt, ClientSecretJwt, ClientSecretPost, PublicApp)):
+            data.pop("client_id", None)
+
         requests_kwargs = requests_kwargs or {}
         return self._request(
             Endpoints.PUSHED_AUTHORIZATION_REQUEST,
-            data=authorization_request.args,
+            data=data,
             auth=self.auth,
             on_success=self.parse_pushed_authorization_response,
             on_failure=self.on_pushed_authorization_request_error,
