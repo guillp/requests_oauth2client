@@ -3,6 +3,7 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs
 
 import pytest
 import requests.auth
@@ -1365,6 +1366,11 @@ def test_pushed_authorization_request(
     assert razr.request_uri == request_uri
     assert isinstance(razr.expires_at, datetime)
     assert datetime.now(tz=timezone.utc) - timedelta(seconds=2) < razr.expires_at - timedelta(seconds=expires_in)
+
+    assert requests_mock.last_request is not None
+    # check that no parameter is duplicated in the request body
+    for key, val in parse_qs(requests_mock.last_request.text).items():
+        assert len(val) == 1, f"Parameter '{key}' is repeated {len(val)} times"
 
 
 def test_pushed_authorization_request_error(
