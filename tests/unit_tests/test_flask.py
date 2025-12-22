@@ -35,7 +35,7 @@ def test_flask(
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "thisissecret"
 
-    @app.route("/api")  # type: ignore[misc]
+    @app.route("/api")  # type: ignore[untyped-decorator]
     def get() -> Any:
         return api_client.get(params=flask.request.args).json()
 
