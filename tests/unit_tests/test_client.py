@@ -35,7 +35,7 @@ from requests_oauth2client import (
 )
 
 if TYPE_CHECKING:
-    from tests.conftest import RequestsMocker, RequestValidatorType
+    from tests.utils import RequestsMocker, RequestValidatorType
 
 
 def test_public_client_auth(token_endpoint: str, client_id: str) -> None:

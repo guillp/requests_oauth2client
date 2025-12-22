@@ -5,7 +5,7 @@ from urllib.parse import parse_qs
 import pytest
 
 from requests_oauth2client import ApiClient, ClientSecretPost, OAuth2Client
-from tests.conftest import RequestsMocker
+from tests.utils import RequestsMocker
 
 session_key = "session_key"
 

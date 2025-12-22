@@ -26,7 +26,7 @@ from requests_oauth2client import (
 
 if TYPE_CHECKING:
     from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
-    from tests.conftest import FixtureRequest
+    from tests.utils import FixtureRequest
 
 
 @pytest.fixture(scope="session")

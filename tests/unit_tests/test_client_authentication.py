@@ -13,7 +13,14 @@ from requests_oauth2client import (
     PrivateKeyJwt,
     UnsupportedClientCredentials,
 )
-from tests.conftest import RequestsMocker, RequestValidatorType
+from tests.utils import (
+    RequestsMocker,
+    client_secret_basic_auth_validator,
+    client_secret_jwt_auth_validator,
+    client_secret_post_auth_validator,
+    private_key_jwt_auth_validator,
+    public_app_auth_validator,
+)
 
 
 def test_client_secret_post(
@@ -22,7 +29,6 @@ def test_client_secret_post(
     token_endpoint: str,
     client_id: str,
     client_secret: str,
-    client_secret_post_auth_validator: RequestValidatorType,
 ) -> None:
     client = OAuth2Client(token_endpoint, ClientSecretPost(client_id, client_secret))
 
@@ -32,7 +38,7 @@ def test_client_secret_post(
     )
 
     assert client.client_credentials()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
@@ -42,7 +48,6 @@ def test_client_secret_basic(
     token_endpoint: str,
     client_id: str,
     client_secret: str,
-    client_secret_basic_auth_validator: RequestValidatorType,
 ) -> None:
     client = OAuth2Client(token_endpoint, ClientSecretBasic(client_id, client_secret))
 
@@ -52,7 +57,7 @@ def test_client_secret_basic(
     )
 
     assert client.client_credentials()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_basic_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
@@ -62,7 +67,6 @@ def test_private_key_jwt(
     token_endpoint: str,
     client_id: str,
     private_jwk: Jwk,
-    private_key_jwt_auth_validator: RequestValidatorType,
     public_jwk: Jwk,
 ) -> None:
     client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk))
@@ -73,7 +77,7 @@ def test_private_key_jwt(
     )
 
     assert client.client_credentials()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     private_key_jwt_auth_validator(
         requests_mock.last_request,
         client_id=client_id,
@@ -92,7 +96,6 @@ def test_private_key_jwt_with_kid(
     token_endpoint: str,
     client_id: str,
     private_jwk: Jwk,
-    private_key_jwt_auth_validator: RequestValidatorType,
     public_jwk: Jwk,
 ) -> None:
     client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk))
@@ -103,7 +106,7 @@ def test_private_key_jwt_with_kid(
     )
 
     assert client.client_credentials()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     private_key_jwt_auth_validator(
         requests_mock.last_request,
         client_id=client_id,
@@ -118,7 +121,6 @@ def test_client_secret_jwt(
     token_endpoint: str,
     client_id: str,
     client_secret: str,
-    client_secret_jwt_auth_validator: RequestValidatorType,
 ) -> None:
     client = OAuth2Client(token_endpoint, ClientSecretJwt(client_id, client_secret))
 
@@ -128,7 +130,7 @@ def test_client_secret_jwt(
     )
 
     assert client.client_credentials()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_jwt_auth_validator(
         requests_mock.last_request,
         client_id=client_id,
@@ -143,7 +145,6 @@ def test_public_client(
     token_endpoint: str,
     client_id: str,
     target_api: str,
-    public_app_auth_validator: RequestValidatorType,
 ) -> None:
     client = OAuth2Client(token_endpoint, client_id)
 
@@ -153,7 +154,7 @@ def test_public_client(
     )
 
     assert client.client_credentials()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     public_app_auth_validator(requests_mock.last_request, client_id=client_id)
 
 

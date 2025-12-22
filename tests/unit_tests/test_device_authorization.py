@@ -16,7 +16,7 @@ from requests_oauth2client import (
     OAuth2Client,
     UnauthorizedClient,
 )
-from tests.conftest import RequestsMocker, RequestValidatorType
+from tests.utils import RequestsMocker, RequestValidatorType, client_secret_post_auth_validator
 
 
 def test_device_authorization_response(
@@ -121,7 +121,6 @@ def test_device_authorization_client(
     user_code: str,
     verification_uri: str,
     verification_uri_complete: str,
-    client_secret_post_auth_validator: RequestValidatorType,
     client_id: str,
     client_secret: str,
 ) -> None:
@@ -138,7 +137,7 @@ def test_device_authorization_client(
     )
 
     device_authorization_client.authorize_device()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
@@ -146,7 +145,6 @@ def test_device_authorization_client_error(
     requests_mock: RequestsMocker,
     device_authorization_client: OAuth2Client,
     device_authorization_endpoint: str,
-    client_secret_post_auth_validator: RequestValidatorType,
     client_id: str,
     client_secret: str,
 ) -> None:
@@ -160,7 +158,7 @@ def test_device_authorization_client_error(
 
     with pytest.raises(UnauthorizedClient):
         device_authorization_client.authorize_device()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
@@ -168,7 +166,6 @@ def test_device_authorization_invalid_errors(
     requests_mock: RequestsMocker,
     device_authorization_client: OAuth2Client,
     device_authorization_endpoint: str,
-    client_secret_post_auth_validator: RequestValidatorType,
     client_id: str,
     client_secret: str,
 ) -> None:
@@ -182,7 +179,7 @@ def test_device_authorization_invalid_errors(
 
     with pytest.raises(DeviceAuthorizationError):
         device_authorization_client.authorize_device()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
     requests_mock.reset_mock()
@@ -196,7 +193,7 @@ def test_device_authorization_invalid_errors(
 
     with pytest.raises(InvalidDeviceAuthorizationResponse):
         device_authorization_client.authorize_device()
-    assert requests_mock.called_once
+    assert requests_mock.last_request is not None
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 

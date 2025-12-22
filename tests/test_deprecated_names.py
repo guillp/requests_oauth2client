@@ -1,15 +1,20 @@
 """An attempt to use old class names should generate DeprecationWarning."""
 
+from __future__ import annotations
+
 import secrets
+from typing import TYPE_CHECKING
 
 import pytest
-from requests_mock import Mocker
 
 from requests_oauth2client import (
     DeviceAuthorizationPoolingJob,  # old spelling
     OAuth2Client,
 )
-from tests.conftest import FixtureRequest, join_url
+from tests.utils import join_url
+
+if TYPE_CHECKING:
+    from tests.utils import FixtureRequest, RequestsMocker
 
 
 @pytest.fixture(params=["device", "oauth/device"])
@@ -18,7 +23,7 @@ def device_authorization_endpoint(request: FixtureRequest, issuer: str) -> str:
 
 
 def test_device_authorization_deprecated(
-    requests_mock: Mocker,
+    requests_mock: RequestsMocker,
     device_authorization_endpoint: str,
     token_endpoint: str,
     client_id: str,

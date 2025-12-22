@@ -21,7 +21,7 @@ from requests_oauth2client import (
     RequestUriParameterAuthorizationRequest,
     validate_dpop_proof,
 )
-from tests.conftest import RequestsMocker
+from tests.utils import RequestsMocker
 
 
 @pytest.mark.parametrize("alg", SignatureAlgs.ALL_ASYMMETRIC)

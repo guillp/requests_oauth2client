@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-import base64
 from collections.abc import Iterable
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 
 import pytest
 import requests
-import requests_mock
-from furl import Query, furl  # type: ignore[import-untyped]
-from jwskate import Jwk, JwkSet, SignedJwt, SymmetricJwk
-from requests_mock import Mocker
+from furl import Query  # type: ignore[import-untyped]
+from jwskate import Jwk, JwkSet, SignedJwt
 
 from requests_oauth2client import (
     ApiClient,
@@ -23,36 +19,25 @@ from requests_oauth2client import (
     PrivateKeyJwt,
     PublicApp,
 )
-
-RequestValidatorType = Callable[..., None]
+from tests.utils import (
+    RequestValidatorType,
+    client_secret_basic_auth_validator,
+    client_secret_jwt_auth_validator,
+    client_secret_post_auth_validator,
+    join_url,
+    private_key_jwt_auth_validator,
+    public_app_auth_validator,
+)
 
 if TYPE_CHECKING:
-    from pytest import FixtureRequest as __FixtureRequest  # noqa: PT013
-    from requests_mock.request import _RequestObjectProxy
+    from requests_mock import _RequestObjectProxy
 
-    class FixtureRequest(__FixtureRequest):
-        param: str
-
-    class RequestsMocker(Mocker):
-        def reset_mock(self) -> None: ...
-
-else:
-    from pytest import FixtureRequest  # noqa: PT013
-
-    RequestsMocker = Mocker
+    from tests.utils import FixtureRequest
 
 
 @pytest.fixture(scope="session")
 def session() -> requests.Session:
     return requests.Session()
-
-
-def join_url(root: str, path: str) -> str:
-    if path:
-        f = furl(root).add(path=path)
-        f.path.normalize()
-        return str(f.url)
-    return root
 
 
 @pytest.fixture(
@@ -159,68 +144,6 @@ def client_auth_method(
     client_secret: str,
 ) -> ClientSecretPost | ClientSecretBasic | ClientSecretJwt:
     return client_auth_method_handler(client_id, client_secret)
-
-
-def client_secret_post_auth_validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
-    params = parse_qs(req.text)
-    assert params.get("client_id") == [client_id]
-    assert params.get("client_secret") == [client_secret]
-    assert "Authorization" not in req.headers
-
-
-def public_app_auth_validator(req: _RequestObjectProxy, *, client_id: str) -> None:
-    params = parse_qs(req.text)
-    assert params.get("client_id") == [client_id]
-    assert "client_secret" not in params
-
-
-def client_secret_basic_auth_validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
-    encoded_username_password = base64.b64encode(f"{client_id}:{client_secret}".encode("ascii")).decode()
-    assert req.headers.get("Authorization") == f"Basic {encoded_username_password}"
-    assert "client_secret" not in req.text
-
-
-def client_secret_jwt_auth_validator(
-    req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
-) -> None:
-    params = Query(req.text).params
-    assert params.get("client_id") == client_id
-    assert "client_assertion" in params
-    client_assertion = params.get("client_assertion")
-    jwk = SymmetricJwk.from_bytes(client_secret)
-    jwt = SignedJwt(client_assertion)
-    jwt.verify_signature(jwk, alg="HS256")
-    claims = jwt.claims
-    now = int(datetime.now(tz=timezone.utc).timestamp())
-    assert now - 10 <= claims["iat"] <= now, "unexpected iat"
-    assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
-    assert claims["iss"] == client_id
-    assert claims["aud"] == endpoint
-    assert "jti" in claims
-    assert claims["sub"] == client_id
-
-
-def private_key_jwt_auth_validator(
-    req: requests_mock.request._RequestObjectProxy,
-    *,
-    client_id: str,
-    public_jwk: Jwk,
-    endpoint: str,
-) -> None:
-    params = Query(req.text).params
-    assert params.get("client_id") == client_id, "invalid client_id"
-    client_assertion = params.get("client_assertion")
-    assert client_assertion, "missing client_assertion"
-    jwt = SignedJwt(client_assertion)
-    jwt.verify_signature(public_jwk)
-    claims = jwt.claims
-    now = int(datetime.now(timezone.utc).timestamp())
-    assert now - 10 <= claims["iat"] <= now, "unexpected iat"
-    assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
-    assert claims["iss"] == client_id
-    assert claims["aud"] == endpoint
-    assert "jti" in claims
-    assert claims["sub"] == client_id
 
 
 @pytest.fixture(scope="session")
