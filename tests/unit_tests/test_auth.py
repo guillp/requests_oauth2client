@@ -15,7 +15,7 @@ from requests_oauth2client import (
     OAuth2DeviceCodeAuth,
     OAuth2ResourceOwnerPasswordAuth,
 )
-from tests.conftest import RequestsMocker
+from tests.utils import RequestsMocker
 
 
 @pytest.fixture

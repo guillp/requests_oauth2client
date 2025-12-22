@@ -1,8 +1,7 @@
 import secrets
 
 from requests_oauth2client import OAuth2Client
-
-from .conftest import RequestsMocker, RequestValidatorType
+from tests.utils import RequestsMocker, RequestValidatorType, client_secret_post_auth_validator
 
 
 def test_refresh_token(
@@ -10,7 +9,6 @@ def test_refresh_token(
     token_endpoint: str,
     revocation_endpoint: str,
     refresh_token: str,
-    client_secret_post_auth_validator: RequestValidatorType,
     client_id: str,
     client_secret: str,
     refresh_token_grant_validator: RequestValidatorType,
@@ -38,6 +36,7 @@ def test_refresh_token(
     assert token_resp.access_token == new_access_token
     assert token_resp.refresh_token == new_refresh_token
 
+    assert requests_mock.last_request is not None
     refresh_token_grant_validator(requests_mock.last_request, refresh_token=refresh_token)
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
@@ -45,10 +44,12 @@ def test_refresh_token(
 
     assert client.revoke_access_token(token_resp.access_token) is True
 
+    assert requests_mock.last_request is not None
     revocation_request_validator(requests_mock.last_request, new_access_token, "access_token")
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
     assert client.revoke_refresh_token(token_resp.refresh_token) is True
 
+    assert requests_mock.last_request is not None
     revocation_request_validator(requests_mock.last_request, new_refresh_token, "refresh_token")
     client_secret_post_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)

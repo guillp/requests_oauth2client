@@ -5,7 +5,7 @@ import requests
 from requests import HTTPError
 
 from requests_oauth2client import ApiClient, BearerToken, InvalidBoolFieldsParam, InvalidPathParam
-from tests.conftest import RequestsMocker, RequestValidatorType, join_url
+from tests.utils import RequestsMocker, RequestValidatorType, join_url
 
 
 def test_session_at_init() -> None:

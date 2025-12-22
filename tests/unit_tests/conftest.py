@@ -26,7 +26,7 @@ from requests_oauth2client import (
 
 if TYPE_CHECKING:
     from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
-    from tests.conftest import FixtureRequest
+    from tests.utils import FixtureRequest
 
 
 @pytest.fixture(scope="session")
@@ -508,7 +508,7 @@ def authorization_request(  # noqa: C901
 
     if dpop_key:
         expected_args["dpop_jkt"] = dpop_key.dpop_jkt
-        
+
     if acr_values is None:
         assert azr.acr_values is None
         assert "acr_values" not in args

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from jwskate import Jwk
     from pytest_mock import MockerFixture
 
-    from tests.conftest import RequestsMocker, RequestValidatorType
+    from tests.utils import RequestsMocker, RequestValidatorType
 
 
 @freeze_time()
