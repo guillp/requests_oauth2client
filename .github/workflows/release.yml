@@ -53,7 +53,7 @@ jobs:
 
       - name: Build documentation
         run: |
-          uv install
+          uv sync --group doc
           uv run mkdocs build
 
       - name: Publish documentation
