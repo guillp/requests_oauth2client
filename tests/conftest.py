@@ -20,6 +20,7 @@ from requests_oauth2client import (
     ClientSecretBasic,
     ClientSecretJwt,
     ClientSecretPost,
+    PrivateKeyJwt,
     PublicApp,
 )
 
@@ -160,82 +161,108 @@ def client_auth_method(
     return client_auth_method_handler(client_id, client_secret)
 
 
+def client_secret_post_auth_validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
+    params = parse_qs(req.text)
+    assert params.get("client_id") == [client_id]
+    assert params.get("client_secret") == [client_secret]
+    assert "Authorization" not in req.headers
+
+
+def public_app_auth_validator(req: _RequestObjectProxy, *, client_id: str) -> None:
+    params = parse_qs(req.text)
+    assert params.get("client_id") == [client_id]
+    assert "client_secret" not in params
+
+
+def client_secret_basic_auth_validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
+    encoded_username_password = base64.b64encode(f"{client_id}:{client_secret}".encode("ascii")).decode()
+    assert req.headers.get("Authorization") == f"Basic {encoded_username_password}"
+    assert "client_secret" not in req.text
+
+
+def client_secret_jwt_auth_validator(
+    req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
+) -> None:
+    params = Query(req.text).params
+    assert params.get("client_id") == client_id
+    assert "client_assertion" in params
+    client_assertion = params.get("client_assertion")
+    jwk = SymmetricJwk.from_bytes(client_secret)
+    jwt = SignedJwt(client_assertion)
+    jwt.verify_signature(jwk, alg="HS256")
+    claims = jwt.claims
+    now = int(datetime.now(tz=timezone.utc).timestamp())
+    assert now - 10 <= claims["iat"] <= now, "unexpected iat"
+    assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
+    assert claims["iss"] == client_id
+    assert claims["aud"] == endpoint
+    assert "jti" in claims
+    assert claims["sub"] == client_id
+
+
+def private_key_jwt_auth_validator(
+    req: requests_mock.request._RequestObjectProxy,
+    *,
+    client_id: str,
+    public_jwk: Jwk,
+    endpoint: str,
+) -> None:
+    params = Query(req.text).params
+    assert params.get("client_id") == client_id, "invalid client_id"
+    client_assertion = params.get("client_assertion")
+    assert client_assertion, "missing client_assertion"
+    jwt = SignedJwt(client_assertion)
+    jwt.verify_signature(public_jwk)
+    claims = jwt.claims
+    now = int(datetime.now(timezone.utc).timestamp())
+    assert now - 10 <= claims["iat"] <= now, "unexpected iat"
+    assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
+    assert claims["iss"] == client_id
+    assert claims["aud"] == endpoint
+    assert "jti" in claims
+    assert claims["sub"] == client_id
+
+
 @pytest.fixture(scope="session")
-def client_secret_post_auth_validator() -> RequestValidatorType:
-    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
-        params = parse_qs(req.text)
-        assert params.get("client_id") == [client_id]
-        assert params.get("client_secret") == [client_secret]
-        assert "Authorization" not in req.headers
+def client_auth_validator(
+    client_auth_method_handler: type[BaseClientAuthenticationMethod],
+    client_id: str,
+    client_credential: str,
+    public_jwk: Jwk,
+) -> RequestValidatorType:
+    def validator(request: _RequestObjectProxy, *, endpoint: str) -> None:
+        if client_auth_method_handler == PublicApp:
+            public_app_auth_validator(request, client_id=client_id)
+        elif client_auth_method_handler == ClientSecretPost:
+            client_secret_post_auth_validator(
+                request,
+                client_id=client_id,
+                client_secret=client_credential,
+            )
+        elif client_auth_method_handler == ClientSecretBasic:
+            client_secret_basic_auth_validator(
+                request,
+                client_id=client_id,
+                client_secret=client_credential,
+            )
+        elif client_auth_method_handler == ClientSecretJwt:
+            client_secret_jwt_auth_validator(
+                request,
+                client_id=client_id,
+                client_secret=client_credential,
+                endpoint=endpoint,
+            )
+        elif client_auth_method_handler == PrivateKeyJwt:
+            private_key_jwt_auth_validator(
+                request,
+                client_id=client_id,
+                endpoint=endpoint,
+                public_jwk=public_jwk,
+            )
 
-    return validator
-
-
-@pytest.fixture(scope="session")
-def public_app_auth_validator() -> RequestValidatorType:
-    def validator(req: _RequestObjectProxy, *, client_id: str) -> None:
-        params = parse_qs(req.text)
-        assert params.get("client_id") == [client_id]
-        assert "client_secret" not in params
-
-    return validator
-
-
-@pytest.fixture(scope="session")
-def client_secret_basic_auth_validator() -> RequestValidatorType:
-    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str) -> None:
-        encoded_username_password = base64.b64encode(f"{client_id}:{client_secret}".encode("ascii")).decode()
-        assert req.headers.get("Authorization") == f"Basic {encoded_username_password}"
-        assert "client_secret" not in req.text
-
-    return validator
-
-
-@pytest.fixture(scope="session")
-def client_secret_jwt_auth_validator() -> RequestValidatorType:
-    def validator(req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str) -> None:
-        params = Query(req.text).params
-        assert params.get("client_id") == client_id
-        assert "client_assertion" in params
-        client_assertion = params.get("client_assertion")
-        jwk = SymmetricJwk.from_bytes(client_secret)
-        jwt = SignedJwt(client_assertion)
-        jwt.verify_signature(jwk, alg="HS256")
-        claims = jwt.claims
-        now = int(datetime.now(tz=timezone.utc).timestamp())
-        assert now - 10 <= claims["iat"] <= now, "unexpected iat"
-        assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
-        assert claims["iss"] == client_id
-        assert claims["aud"] == endpoint
-        assert "jti" in claims
-        assert claims["sub"] == client_id
-
-    return validator
-
-
-@pytest.fixture(scope="session")
-def private_key_jwt_auth_validator() -> RequestValidatorType:
-    def validator(
-        req: requests_mock.request._RequestObjectProxy,
-        *,
-        client_id: str,
-        public_jwk: Jwk,
-        endpoint: str,
-    ) -> None:
-        params = Query(req.text).params
-        assert params.get("client_id") == client_id, "invalid client_id"
-        client_assertion = params.get("client_assertion")
-        assert client_assertion, "missing client_assertion"
-        jwt = SignedJwt(client_assertion)
-        jwt.verify_signature(public_jwk)
-        claims = jwt.claims
-        now = int(datetime.now(timezone.utc).timestamp())
-        assert now - 10 <= claims["iat"] <= now, "Unexpected iat"
-        assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
-        assert claims["iss"] == client_id
-        assert claims["aud"] == endpoint
-        assert "jti" in claims
-        assert claims["sub"] == client_id
+        # check that no parameter is duplicated in the request body
+        for key, val in parse_qs(request.text).items():
+            assert len(val) == 1, f"Parameter '{key}' is repeated {len(val)} times in request body"
 
     return validator
 

@@ -508,7 +508,7 @@ def authorization_request(  # noqa: C901
 
     if dpop_key:
         expected_args["dpop_jkt"] = dpop_key.dpop_jkt
-        
+
     if acr_values is None:
         assert azr.acr_values is None
         assert "acr_values" not in args

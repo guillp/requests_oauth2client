@@ -157,8 +157,8 @@ class ClientSecretPost(BaseClientAuthenticationMethod):
             if isinstance(request.body, (str, bytes))
             else {}
         )
-        params[b"client_id"] = [self.client_id.encode()]
-        params[b"client_secret"] = [self.client_secret.encode()]
+        params["client_id"] = [self.client_id]
+        params["client_secret"] = [self.client_secret]
         request.prepare_body(params, files=None)
         return request
 
@@ -204,9 +204,9 @@ class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
             else {}
         )
         client_assertion = self.client_assertion(audience)
-        params[b"client_id"] = [self.client_id.encode()]
-        params[b"client_assertion"] = [client_assertion.encode()]
-        params[b"client_assertion_type"] = [b"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]
+        params["client_id"] = [self.client_id]
+        params["client_assertion"] = [client_assertion]
+        params["client_assertion_type"] = ["urn:ietf:params:oauth:client-assertion-type:jwt-bearer"]
         request.prepare_body(params, files=None)
         return request
 
@@ -438,7 +438,7 @@ class PublicApp(BaseClientAuthenticationMethod):
             if request.body
             else {}
         )
-        params[b"client_id"] = [self.client_id.encode()]
+        params["client_id"] = [self.client_id]
         request.prepare_body(params, files=None)
         return request
 
