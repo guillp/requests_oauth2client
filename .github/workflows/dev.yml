@@ -4,92 +4,90 @@ name: dev workflow
 
 # Controls when the action will run.
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
-  push:
-    branches: [ main,release ]
-  pull_request:
-    branches: [ main,release ]
+    # Triggers the workflow on push or pull request events but only for the master branch
+    push:
+        branches: [main, release]
+    pull_request:
+        branches: [main, release]
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    # Allows you to run this workflow manually from the Actions tab
+    workflow_dispatch:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  test:
-    # The type of runner that the job will run on
-    strategy:
-      matrix:
-        python-versions: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    # This workflow contains a single job called "build"
+    test:
+        # The type of runner that the job will run on
+        strategy:
+            matrix:
+                python-versions: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+                os: [ubuntu-latest]
+        runs-on: ${{ matrix.os }}
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-versions }}
-          allow-prereleases: true
+        # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+            - uses: actions/checkout@v6
+            - uses: actions/setup-python@v6
+              with:
+                  python-version: ${{ matrix.python-versions }}
+                  allow-prereleases: true
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv tox tox-gh-actions
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install uv tox tox-gh-actions
 
-      - name: test with tox
-        run:
-          tox
+            - name: test with tox
+              run: tox
 
-      - name: Build documentation
-        run: |
-          uv sync --group doc
-          uv run mkdocs build
+            - name: Build documentation
+              run: |
+                  uv sync --group doc
+                  uv run mkdocs build
 
-      - name: list files
-        run: ls -l .
+            - name: list files
+              run: ls -l .
 
-  publish_dev_build:
-    # if test failed, we should not publish
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
+    publish_dev_build:
+        # if test failed, we should not publish
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-python@v6
+              with:
+                  python-version: "3.10"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install uv tox tox-gh-actions
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install uv tox tox-gh-actions
 
-      - name: test with tox
-        run:
-          tox
+            - name: test with tox
+              run: tox
 
-      - name: list files
-        run: ls -l .
+            - name: list files
+              run: ls -l .
 
-      - uses: codecov/codecov-action@v5
-        with:
-            token: ${{ secrets.CODECOV_TOKEN }}
-            fail_ci_if_error: true
-            files: coverage.xml
-            verbose: true
+            - uses: codecov/codecov-action@v5
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  fail_ci_if_error: true
+                  files: coverage.xml
+                  verbose: true
 
-      - name: Build wheels and source tarball
-        run: |
-          uv version $(uv version --short)-dev.$GITHUB_RUN_NUMBER
-          uv version --short
-          uv build
+            - name: Build wheels and source tarball
+              run: |
+                  uv version $(uv version --short)-dev.$GITHUB_RUN_NUMBER
+                  uv version --short
+                  uv build
 
-      - name: publish to Test PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        if: ${{ github.event_name != 'pull_request' }}
-        with:
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN}}
-          repository-url: https://test.pypi.org/legacy/
-          skip-existing: true
+            - name: publish to Test PyPI
+              uses: pypa/gh-action-pypi-publish@release/v1
+              if: ${{ github.event_name != 'pull_request' }}
+              with:
+                  user: __token__
+                  password: ${{ secrets.TEST_PYPI_API_TOKEN}}
+                  repository-url: https://test.pypi.org/legacy/
+                  skip-existing: true

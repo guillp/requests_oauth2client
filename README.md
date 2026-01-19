@@ -110,7 +110,7 @@ oauth2client = OAuth2Client(
 ```
 
 The Token Endpoint is the only endpoint that is mandatory to obtain tokens. Credentials are used to authenticate the
-client everytime it sends a request to its Authorization Server. Usually, these are a static Client ID and Secret, which
+client every time it sends a request to its Authorization Server. Usually, these are a static Client ID and Secret, which
 are the equivalent of a username and a password, but meant for an application instead of for a human user. The default
 authentication method used by [OAuth2Client] is *Client Secret Post*, but other standardized methods such as *Client
 Secret Basic*, *Client Secret JWT* or *Private Key JWT* are supported as well. See
@@ -257,11 +257,11 @@ auth = OAuth2ClientCredentialsAuth(
 Obtaining tokens using the Authorization code grant is made in 3 steps:
 
 1. your application must open a specific url called the *Authentication Request* in a browser.
-2. your application must obtain and validate the *Authorization Response*, which is a redirection back to your
+1. your application must obtain and validate the *Authorization Response*, which is a redirection back to your
    application that contains an *Authorization Code* as parameter. This redirect back (often called "callback") is
    initiated by the Authorization Server after any necessary interaction with the user is complete (Registration, Login,
    Profile completion, Multi-Factor Authentication, Authorization, Consent, etc.)
-3. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
+1. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
    Endpoint.
 
 Using an [OAuth2Client] will help you with all those steps, as described below.
@@ -475,7 +475,7 @@ assert isinstance(resp, BearerToken)
 ```
 
 [DeviceAuthorizationPollingJob](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.device_authorization.DeviceAuthorizationPollingJob)
-will automatically obey the polling period. Everytime you call `polling_job()`, it will wait the appropriate number of
+will automatically obey the polling period. Every time you call `polling_job()`, it will wait the appropriate number of
 seconds as indicated by the AS, and will apply slow-down requests.
 
 #### As Auth Handler
@@ -754,7 +754,7 @@ return `False`. If the Authorization Server returns a standard error, an excepti
 
 The [OAuth2Client] class also supports sending requests to a Token Introspection Endpoint.
 To use this feature, you need to provide the Introspection Endpoint URI when creating an instance of [OAuth2Client].
-The [introspect_token()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.instrospect_token())
+The [introspect_token()](<https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.instrospect_token()>)
 method is then available for introspecting tokens:
 
 ```python
@@ -935,7 +935,7 @@ assert token.dpop_key == dpop_key
 
 ### Hooking into DPoP key and proof generation
 
-Instead of generating your own keys everytime, you may also control how [DPoPKey]s are automatically generated. This can
+Instead of letting `requests_oauth2client` generate DPoP keys every time it requests a token, you may also control how [DPoPKey]s are automatically generated. This can
 be useful for fuzz-testing, pen-testing or feature-testing the Authorization Server. To choose the signing alg, use the
 parameter `dpop_alg` when initializing your client. This will accordingly determine the key type to generate. You may
 also pass a custom `dpop_key_generator`, which is a callable that accepts a signature `alg` as parameter, and generates
@@ -945,7 +945,6 @@ You can also override the [DPoPToken] class with a custom one, which will be use
 returned by the AS, and then generates proofs and includes those proofs into HTTP requests.
 
 You may use `DPoPKey.generate` as a helper method for that, or implement your own generator:
-
 
 ```python
 import secrets
@@ -1009,18 +1008,21 @@ require the use of `DPoP` nonces, then at least 4 different requests are sent as
 above:
 
 1. The first request is to get a token from the Authorization Server, here using a *Client Credentials* grant and
-including a DPoP proof. DPoP also works with all other grant types. That first requests does not include a nonce.
-Since the AS requires a DPoP nonce, it replies to that request with an `error=use_dpop_nonce` flag and a generated DPoP
-nonce.
-2. Second request is automatically sent to the AS, this time with a DPoP proof that contains the nonce provided by the AS.
-As a result, the AS returns a DPoP token.
-3. Third request is sent to the target API, with the DPoP token obtained at step 2, and a DPoP proof that does not yet
-contain a `nonce`.
+   including a DPoP proof. DPoP also works with all other grant types. That first requests does not include a nonce.
+   Since the AS requires a DPoP nonce, it replies to that request with an `error=use_dpop_nonce` flag and a generated DPoP
+   nonce.
+
+1. Second request is automatically sent to the AS, this time with a DPoP proof that contains the nonce provided by the AS.
+   As a result, the AS returns a DPoP token.
+
+1. Third request is sent to the target API, with the DPoP token obtained at step 2, and a DPoP proof that does not yet
+   contain a `nonce`.
    The response from this call is a `401` with at least these 2 response headers:
 
    - a `WWW-Authenticate: DPoP error="use_dpop_nonce"` header, indicating that a DPoP `nonce` is requested,
    - and a `DPoP-Nonce` header containing the `nonce` to use.
-4. a request is sent again to the target API, this time with a DPoP proof that contains the RS provided `nonce`
+
+1. a request is sent again to the target API, this time with a DPoP proof that contains the RS provided `nonce`
    obtained at step 3. Target API then should accept that request, do its own business and return a `200` response.
 
 If you send multiple requests to the same API, instead of using individual calls to `requests.get()`, `requests.post()`
@@ -1264,7 +1266,6 @@ token = a0client.client_credentials(audience="audience")
 a0mgmt = Auth0.management_api_client("mytenant.eu", client_id="client_id", client_secret="client_secret")
 myusers = a0mgmt.get("users")
 ```
-
 
 [apiclient]: api/#requests_oauth2client.ApiClient
 [authorizationrequest]: api/#requests_oauth2client.authorization_request.AuthorizationRequest

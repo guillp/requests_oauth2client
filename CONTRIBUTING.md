@@ -50,14 +50,14 @@ If you are proposing a feature:
 Ready to contribute? Here's how to set up `requests_oauth2client` for local development.
 
 1. Fork the `requests_oauth2client` repo on GitHub.
-2. Clone your fork locally
+1. Clone your fork locally
 
 ```
 $ git clone https://github.com/<your_github_username_here>/requests_oauth2client.git
 ```
 
 3. Ensure [uv](https://docs.astral.sh/uv/) is installed.
-4. Install dependencies and start your virtualenv:
+1. Install dependencies and start your virtualenv:
 
 ```
 $ uv sync --all-extras
@@ -93,10 +93,10 @@ $ git push origin name-of-your-bugfix-or-feature
 Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put
+1. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.md.
-3. The pull request should work for Python 3.8+ and for PyPy. Check
+1. The pull request should work for Python 3.8+ and for PyPy. Check
    https://github.com/guillp/requests_oauth2client/actions
    and make sure that the tests pass for all supported Python versions.
 

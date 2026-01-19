@@ -261,7 +261,7 @@ def test_bool_fields(requests_mock: RequestsMocker, target_api: str) -> None:
     assert requests_mock.last_request.query == "foo=bar&true=OK&false=KO"
     assert requests_mock.last_request.text == "foo=bar&true=OK&false=KO"
 
-    api_none = ApiClient(target_api, bool_fields=None)  # default behviour or requests
+    api_none = ApiClient(target_api, bool_fields=None)  # default behaviour or requests
     api_none.post(
         data={"foo": "bar", "true": True, "false": False},
         params={"foo": "bar", "true": True, "false": False},

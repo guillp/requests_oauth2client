@@ -35,7 +35,7 @@ class BaseTokenEndpointPollingJob:
     def __call__(self) -> BearerToken | None:
         """Wrap the actual Token Endpoint call with a polling interval.
 
-        Everytime this method is called, it will wait for the entire duration of the polling
+        Every time this method is called, it will wait for the entire duration of the polling
         interval before calling
         [token_request()][requests_oauth2client.polling.TokenEndpointPollingJob.token_request]. So
         you can call it immediately after initiating the BackChannel flow, and it will wait before

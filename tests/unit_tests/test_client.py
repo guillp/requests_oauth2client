@@ -933,7 +933,7 @@ def test_introspection_jwt(
     introspection_endpoint: str,
     introspection_request_validator: RequestValidatorType,
 ) -> None:
-    introspection = "This.ShouldBe.aJWT"
+    introspection = "This.Should_Be.aJWT"
     requests_mock.post(introspection_endpoint, text=introspection)
     assert oauth2client.introspect_token("access_token") == introspection
 
