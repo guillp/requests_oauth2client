@@ -1,7 +1,6 @@
 # Contributing
 
-Contributions are welcome, and they are greatly appreciated! Every little bit
-helps, and credit will always be given.
+Contributions are welcome, and they are greatly appreciated! Every little bit helps, and credit will always be given.
 
 You can contribute in many ways:
 
@@ -20,19 +19,18 @@ If you are reporting a bug, please include:
 
 ### Fix Bugs
 
-Look through the GitHub issues for bugs. Anything tagged with "bug" and "help
-wanted" is open to whoever wants to implement it.
+Look through the GitHub issues for bugs. Anything tagged with "bug" and "help wanted" is open to whoever wants to
+implement it.
 
 ### Implement Features
 
-Look through the GitHub issues for features. Anything tagged with "enhancement"
-and "help wanted" is open to whoever wants to implement it.
+Look through the GitHub issues for features. Anything tagged with "enhancement" and "help wanted" is open to whoever
+wants to implement it.
 
 ### Write Documentation
 
-`requests_oauth2client` could always use more documentation, whether as part of the
-official requests_oauth2client docs, in docstrings, or even on the web in blog posts,
-articles, and such.
+`requests_oauth2client` could always use more documentation, whether as part of the official requests_oauth2client docs,
+in docstrings, or even on the web in blog posts, articles, and such.
 
 ### Submit Feedback
 
@@ -42,8 +40,7 @@ If you are proposing a feature:
 
 - Explain in detail how it would work.
 - Keep the scope as narrow as possible, to make it easier to implement.
-- Remember that this is a volunteer-driven project, and that contributions
-  are welcome :)
+- Remember that this is a volunteer-driven project, and that contributions are welcome :)
 
 ## Get Started!
 
@@ -71,8 +68,8 @@ $ git checkout -b name-of-your-bugfix-or-feature
 
 Now you can make your changes locally.
 
-6. When you're done making changes, check that your changes pass the
-   tests, including testing other Python versions, with tox:
+6. When you're done making changes, check that your changes pass the tests, including testing other Python versions,
+   with tox:
 
 ```
 $ tox
@@ -93,12 +90,11 @@ $ git push origin name-of-your-bugfix-or-feature
 Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
-1. If the pull request adds functionality, the docs should be updated. Put
-   your new functionality into a function with a docstring, and add the
-   feature to the list in README.md.
-1. The pull request should work for Python 3.8+ and for PyPy. Check
-   https://github.com/guillp/requests_oauth2client/actions
-   and make sure that the tests pass for all supported Python versions.
+1. If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a
+   docstring, and add the feature to the list in README.md.
+1. The pull request should work for Python 3.10+ and for PyPy. Check
+   https://github.com/guillp/requests_oauth2client/actions and make sure that the tests pass for all supported Python
+   versions.
 
 ## Tips
 
@@ -110,9 +106,8 @@ To run a subset of tests.
 
 ## Deploying
 
-A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in HISTORY.md).
-Then run:
+A reminder for the maintainers on how to deploy. Make sure all your changes are committed (including an entry in
+HISTORY.md). Then run:
 
 ```
 $ uv version --bump path # possible: major / minor / patch

@@ -68,6 +68,8 @@ repos:
     hooks:
       - id: mdformat
         name: "📝 Markdown · Format markdown"
+        args:
+          - --wrap=120
         additional_dependencies:
           - mdformat-gfm
           - mdformat-ruff
