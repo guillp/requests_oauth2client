@@ -8,7 +8,6 @@ permissions:
 
 jobs:
   publish_dev_build:
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
