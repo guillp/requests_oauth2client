@@ -39,7 +39,7 @@ Please note that despite the name, this library has no relationship with Google
 [![PyPi version](https://img.shields.io/pypi/v/requests_oauth2client)](https://pypi.org/project/requests_oauth2client/)
 [![Downloads](https://static.pepy.tech/badge/requests_oauth2client/month)](https://pepy.tech/project/requests_oauth2client)
 [![Supported Versions](https://img.shields.io/pypi/pyversions/requests_oauth2client.svg)](https://pypi.org/project/requests_oauth2client)
-[![PyPi license](https://badgen.net/pypi/license/requests_oauth2client/)](https://pypi.com/project/requests_oauth2client/)
+[![PyPi license](https://badgen.net/pypi/license/requests_oauth2client/)](https://pypi.org/project/requests_oauth2client/)
 [![PyPI status](https://img.shields.io/pypi/status/requests_oauth2client.svg)](https://pypi.python.org/pypi/requests_oauth2client/)
 [![GitHub commits](https://badgen.net/github/commits/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
 [![GitHub latest commit](https://badgen.net/github/last-commit/guillp/requests_oauth2client)](https://github.com/guillp/requests_oauth2client/commit/)
