@@ -3,84 +3,82 @@ repo_url: https://github.com/guillp/requests_oauth2client
 repo_name: requests_oauth2client
 strict: true
 watch:
-    - requests_oauth2client
-    - README.md
+  - requests_oauth2client
+  - README.md
 nav:
-    - Home: index.md
-    - Installation: installation.md
-    - API: api.md
-    - Contributing: contributing.md
+  - Home: index.md
+  - Installation: installation.md
+  - API: api.md
+  - Contributing: contributing.md
 theme:
-    name: material
-    language: en
-    #logo: assets/logo.png
-    palette:
-        primary: light blue
-    features:
-        - navigation.indexes
-        - navigation.tabs
-        - navigation.instant
-        - navigation.tabs.sticky
-        - navigation.footer
-        - content.code.copy
-        - content.action.view
+  name: material
+  language: en
+  #logo: assets/logo.png
+  palette:
+    primary: light blue
+  features:
+    - navigation.indexes
+    - navigation.tabs
+    - navigation.instant
+    - navigation.tabs.sticky
+    - navigation.footer
+    - content.code.copy
+    - content.action.view
 markdown_extensions:
-    - pymdownx.emoji:
-          emoji_index: !!python/name:material.extensions.emoji.twemoji
-          emoji_generator: !!python/name:materialx.emoji.to_svg
-    - pymdownx.critic
-    - pymdownx.caret
-    - pymdownx.mark
-    - pymdownx.tilde
-    - pymdownx.tabbed
-    - attr_list
-    - pymdownx.arithmatex:
-          generic: true
-    - pymdownx.highlight:
-          linenums: true
-          anchor_linenums: true
-          line_spans: __span
-          pygments_lang_class: true
-          default_lang: python
-    - pymdownx.inlinehilite
-    - pymdownx.superfences
-    - pymdownx.details
-    - admonition
-    - toc:
-          baselevel: 2
-          permalink: true
-          slugify:
-              !!python/object/apply:pymdownx.slugs.slugify {
-                  kwds: { case: lower },
-              }
-    - meta
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.tabbed
+  - attr_list
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      linenums: true
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+      default_lang: python
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.details
+  - admonition
+  - toc:
+      baselevel: 2
+      permalink: true
+      slugify:
+        !!python/object/apply:pymdownx.slugs.slugify { kwds: { case: lower } }
+  - meta
 plugins:
-    - include-markdown
-    - search:
-          lang: en
-    - autorefs
-    - mkdocstrings:
-          default_handler: python
-          enable_inventory: true
-          handlers:
-              python:
-                  options:
-                      extensions:
-                          - griffe_fieldz: { include_inherited: true }
-                      filters:
-                          - "!^_"
-                          - "^__init__"
-                          - "!^utils"
-                      members_order: source
-                      show_root_heading: true
-                      show_submodules: true
-                  inventories:
-                      - https://requests.readthedocs.io/en/master/objects.inv
-                      - https://guillp.github.io/jwskate/objects.inv
+  - include-markdown
+  - search:
+      lang: en
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      enable_inventory: true
+      handlers:
+        python:
+          options:
+            extensions:
+              - griffe_fieldz: { include_inherited: true }
+            filters:
+              - "!^_"
+              - "^__init__"
+              - "!^utils"
+            members_order: source
+            show_root_heading: true
+            show_submodules: true
+          inventories:
+            - https://requests.readthedocs.io/en/master/objects.inv
+            - https://guillp.github.io/jwskate/objects.inv
 extra:
-    social:
-        - icon: fontawesome/brands/github
-          link: https://github.com/guillp/requests_oauth2client
-          name: Github
-        - icon: material/email
-          link: "mailto:guill.p.linux@gmail.com"
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/guillp/requests_oauth2client
+      name: Github
+    - icon: material/email
+      link: "mailto:guill.p.linux@gmail.com"
