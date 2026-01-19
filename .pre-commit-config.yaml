@@ -13,7 +13,7 @@ repos:
     - id: python-use-type-annotations
     - id: text-unicode-replacement-char
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+    rev: v0.14.13
     hooks:
         - id: ruff-format
         - id: ruff-check
