@@ -1,4 +1,4 @@
-name: Tests workflow
+name: Tests
 
 permissions:
   contents: read
@@ -31,7 +31,7 @@ jobs:
           python-version: ${{ matrix.python-versions }}
 
       - name: Test with Python ${{ matrix.python-versions }}
-        run: uv run --frozen --group test pytest
+        run: uv run --frozen --group test pytest --cov=requests_oauth2client --cov-append --cov-report=xml --cov-report term-missing
 
       - name: Build documentation
         run: uv run --group doc mkdocs build --strict
