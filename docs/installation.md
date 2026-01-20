@@ -2,8 +2,7 @@
 
 ## Stable release
 
-To install requests_oauth2client, run this command in your
-terminal:
+To install requests_oauth2client, run this command in your terminal:
 
 ```console
 $ pip install requests_oauth2client
@@ -11,13 +10,11 @@ $ pip install requests_oauth2client
 
 This is the preferred method to install requests_oauth2client, as it will always install the most recent stable release.
 
-If you don't have [pip] installed, this [Python installation guide]
-can guide you through the process.
+If you don't have [pip] installed, this [Python installation guide] can guide you through the process.
 
 ## From source
 
-The source for requests_oauth2client can be downloaded from
-the [Github repo].
+The source for requests_oauth2client can be downloaded from the [Github repo].
 
 You can either clone the public repository:
 

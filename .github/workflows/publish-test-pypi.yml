@@ -1,0 +1,28 @@
+name: Publish Dev Build to Test PyPI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish_dev_build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Build wheels and source tarball
+        run: |
+          uv version $(uv version --short)-dev.$GITHUB_RUN_NUMBER
+          uv version --short
+          uv build
+
+      - name: publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.TEST_PYPI_API_TOKEN}}
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true

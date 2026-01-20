@@ -1,0 +1,44 @@
+name: Tests
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-versions: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-versions }}
+
+      - name: Test with Python ${{ matrix.python-versions }}
+        run: uv run --frozen --group test pytest --cov=requests_oauth2client --cov-append --cov-report=xml --cov-report term-missing
+
+      - name: Build documentation
+        run: uv run --group doc mkdocs build --strict
+
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          files: coverage.xml
+          verbose: true

@@ -225,7 +225,7 @@ class OAuth2Client:
         token_class: a custom BearerToken class, if required
         dpop_bound_access_tokens: if `True`, DPoP will be used by default for every token request.
             otherwise, you can enable DPoP by passing `dpop=True` when doing a token request.
-        dpop_key_generator: a callable that generates a DPoPKey, for whill be called when doing a token request
+        dpop_key_generator: a callable that generates a DPoPKey, that will be called when doing a token request
             with DPoP enabled.
         testing: if `True`, don't verify the validity of the endpoint urls that are passed as parameter.
         **extra_metadata: additional metadata for this client, unused by this class, but may be
@@ -1395,7 +1395,7 @@ An IdToken or a string representation of it is expected.
         )
 
     def parse_revocation_response(self, response: requests.Response, *, dpop_key: DPoPKey | None = None) -> bool:  # noqa: ARG002
-        """Parse reponses from the Revocation Endpoint.
+        """Parse responses from the Revocation Endpoint.
 
         Since those do not return any meaningful information in a standardised fashion, this just returns `True`.
 

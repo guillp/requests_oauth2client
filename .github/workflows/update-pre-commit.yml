@@ -1,0 +1,27 @@
+name: Pre-commit auto-update
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  update-pre-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Run update-pre-commit
+        id: update-pre-commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: tagdots/update-pre-commit-action@2df1955454adad15d0dd498af05d1b293c7f497a
+        with:
+          file: .pre-commit-config.yaml
+          dry-run: false
+          open-pr: true

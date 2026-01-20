@@ -1,41 +1,140 @@
+exclude: |
+  (?x)^(
+      .*\{\{.*\}\}.*|     # Exclude any files with cookiecutter variables
+      docs/site/.*|       # Exclude mkdocs compiled files
+      \.history/.*|       # Exclude history files
+      .*cache.*/.*|       # Exclude cache directories
+      .*venv.*/.*|        # Exclude virtual environment directories
+  )$
+fail_fast: false
+default_language_version:
+  python: python3.12
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 6eaad039603a4de39fddd1cf5f727391efe9974e # frozen: v8.30.0
     hooks:
-    - id: check-merge-conflict
-    - id: check-yaml
-      args: [--unsafe]
-    - id: no-commit-to-branch
-    - id: end-of-file-fixer
--   repo: https://github.com/pre-commit/pygrep-hooks
-    rev: v1.10.0
+      - id: gitleaks
+        name: "🔒 Security · GitLeaks · Detect hardcoded secrets"
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 9b1e9a33f1b33f6ecc2fdbb8d7cc894e951106e4 # frozen: v0.14.13
     hooks:
-    - id: python-use-type-annotations
-    - id: text-unicode-replacement-char
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.11
+      - id: ruff-format
+        name: "🐍 Python · Ruff · Code formatting"
+      - id: ruff-check
+        name: "🐍 Python · Ruff · Linting"
+
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: 78f5e0f104cfa803d0597eaa924b4de3becd3e3e # frozen: v0.24.1
     hooks:
-        - id: ruff-format
-        - id: ruff-check
-          args: [ --fix ]
-        - id: ruff-format
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+      - id: validate-pyproject
+        name: "🐍 Python · Validate pyproject.toml"
+        additional_dependencies: ["validate-pyproject-schema-store[all]"]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: a66e98df7b4aeeb3724184b332785976d062b92e # frozen: v1.19.1
     hooks:
-    -   id: mypy
+      - id: mypy
+        name: "🐍 Python · mypy · Check static types"
         args:
-        - --strict
-        - --show-error-codes
-        - --show-error-context
-        - --show-column-numbers
+          - --strict
+          - --show-error-codes
+          - --show-error-context
+          - --show-column-numbers
         additional_dependencies:
-            - attrs
-            - pytest_examples
-            - pytest-mock
-            - pytest-mypy
-            - pytest-freezer
-            - jwskate
-            - types-requests
-            - requests_mock
-            - flask
-            - furl
+          - attrs
+          - flask
+          - furl
+          - jwskate
+          - pytest_examples
+          - pytest-freezer
+          - pytest-mock
+          - pytest-mypy
+          - requests_mock
+          - types-requests
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0fe8648804a32455c690e0519c217f8cee6a48c6 # frozen: 0.36.0
+    hooks:
+      - id: check-github-workflows
+        name: "🐙 Github-Actions · Validate gh workflow files"
+        args: ["--verbose"]
+
+  - repo: https://github.com/hukkin/mdformat
+    rev: 82912cdaea4fb830f751504486a7879c70526547 # frozen: 1.0.0
+    hooks:
+      - id: mdformat
+        name: "📝 Markdown · Format markdown"
+        args:
+          - --wrap=120
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-ruff
+          - ruff
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: 745eface02aef23e168a8afb6b5737818efbea95 # frozen: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: "🐚 Shell · shellcheck · Lint shell scripts"
+
+  - repo: https://github.com/openstack/bashate
+    rev: fbd7c2534c2701351c603ff700ddf08202430a31 # frozen: 2.1.1
+    hooks:
+      - id: bashate
+        name: "🐚 Shell · bashate · Check shell script code style"
+        args: [--max-line-length, "120"]
+
+  - repo: https://github.com/jvllmr/pre-commit-prettier
+    rev: 8e4984701c0ec40a5feed8eac345284462430024 # frozen: v3.8.0
+    hooks:
+      - id: prettier
+        name: "✨ Misc · prettier · Format misc web files"
+        types_or: [yaml, html, scss]
+        additional_dependencies:
+          - prettier@3.7.4
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
+    hooks:
+      - id: check-executables-have-shebangs
+        name: "📁 filesystem/⚙️ exec · Verify shebang presence"
+      - id: check-shebang-scripts-are-executable
+        name: "📁 filesystem/⚙️ exec · Verify script permissions"
+      - id: check-case-conflict
+        name: "📁 filesystem/📝 names · Check case sensitivity"
+      - id: check-illegal-windows-names
+        name: "📁 filesystem/📝 names · Validate Windows filenames"
+      - id: check-symlinks
+        name: "📁 filesystem/🔗 symlink · Check symlink validity"
+      - id: destroyed-symlinks
+        name: "📁 filesystem/🔗 symlink · Detect broken symlinks"
+      - id: check-merge-conflict
+        name: "🌳 git · Detect conflict markers"
+      - id: forbid-new-submodules
+        name: "🌳 git · Prevent submodule creation"
+      - id: no-commit-to-branch
+        name: "🌳 git · Protect main branches"
+        args: ["--branch", "main", "--branch", "master"]
+      - id: check-added-large-files
+        name: "🌳 git · Block large file commits"
+        args: ["--maxkb=5000"]
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: 89a69f56703fb6c1d4096bc1d82a1ed0774156df # frozen: v4.12.0
+    hooks:
+      - id: commitizen
+        name: "🌳 git · Validate commit message"
+        stages: [commit-msg]
+        additional_dependencies: [cz-conventional-gitmoji]
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: 63c8f8312b7559622c0d82815639671ae42132ac # frozen: v2.4.1
+    hooks:
+      - id: codespell
+        name: "💎 QA · codespell · Check for common typos"
+        additional_dependencies:
+          - tomli

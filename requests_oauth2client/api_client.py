@@ -88,7 +88,7 @@ class ApiClient:
     [ApiClient.request()][requests_oauth2client.api_client.ApiClient.request],
     [ApiClient.get()][requests_oauth2client.api_client.ApiClient.get], etc.
 
-    A [requests.HTTPError][] will be raised everytime an API call returns an error code (>= 400), unless
+    A [requests.HTTPError][] will be raised every time an API call returns an error code (>= 400), unless
     you set `raise_for_status` to `False`. Additional parameters passed at init time, including
     `auth` will be used to configure the [Session][requests.Session].
 
@@ -118,7 +118,7 @@ class ApiClient:
         auth: the [requests.auth.AuthBase][] to use as authentication handler.
         timeout: the default timeout, in seconds, to use for each request from this `ApiClient`.
             Can be set to `None` to disable timeout.
-        raise_for_status: if `True`, exceptions will be raised everytime a request returns an
+        raise_for_status: if `True`, exceptions will be raised every time a request returns an
             error code (>= 400).
         none_fields: defines what to do with parameters with value `None` in `data` or `json` fields.
 

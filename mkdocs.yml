@@ -49,7 +49,8 @@ markdown_extensions:
   - toc:
       baselevel: 2
       permalink: true
-      slugify: !!python/object/apply:pymdownx.slugs.slugify {kwds: {case: lower}}
+      slugify:
+        !!python/object/apply:pymdownx.slugs.slugify { kwds: { case: lower } }
   - meta
 plugins:
   - include-markdown
@@ -63,11 +64,11 @@ plugins:
         python:
           options:
             extensions:
-            - griffe_fieldz: {include_inherited: true}
+              - griffe_fieldz: { include_inherited: true }
             filters:
-            - "!^_"
-            - "^__init__"
-            - "!^utils"
+              - "!^_"
+              - "^__init__"
+              - "!^utils"
             members_order: source
             show_root_heading: true
             show_submodules: true
