@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping, MutableMapping
-from typing import IO, TYPE_CHECKING, Any, Literal, Self
+from typing import IO, TYPE_CHECKING, Any, Literal
 from urllib.parse import quote as urlencode
 from urllib.parse import urljoin
 
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from requests.cookies import RequestsCookieJar
+    from typing_extensions import Self
 
 
 class InvalidBoolFieldsParam(ValueError):

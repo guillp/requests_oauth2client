@@ -19,11 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "requests>=2.32.5",
+    "attrs>=25.3.0",
     "binapy>=0.8",
     "furl>=2.1.4",
     "jwskate>=0.12.2",
-    "attrs>=25.3.0",
+    "requests>=2.32.5",
+    "typing-extensions>=4.15.0",
 ]
 
 [project.urls]
