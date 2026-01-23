@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs
 
 import requests_mock

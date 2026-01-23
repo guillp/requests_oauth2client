@@ -89,7 +89,7 @@ repos:
         args: [--max-line-length, "120"]
 
   - repo: https://github.com/jvllmr/pre-commit-prettier
-    rev: 8e4984701c0ec40a5feed8eac345284462430024 # frozen: v3.8.0
+    rev: c6c4f2c09b36f023c17d43bce4d86b8aa3b09493 # frozen: v3.8.1
     hooks:
       - id: prettier
         name: "✨ Misc · prettier · Format misc web files"
@@ -124,7 +124,7 @@ repos:
         args: ["--maxkb=5000"]
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 89a69f56703fb6c1d4096bc1d82a1ed0774156df # frozen: v4.12.0
+    rev: 5857050259653556030b6b1f19f53e8868a427f6 # frozen: v4.12.1
     hooks:
       - id: commitizen
         name: "🌳 git · Validate commit message"
