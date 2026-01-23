@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from functools import cached_property
 from math import ceil
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import jwskate
 import requests
@@ -18,7 +18,7 @@ from .exceptions import UnsupportedTokenTypeError
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from .authorization_request import AuthorizationResponse
     from .client import OAuth2Client

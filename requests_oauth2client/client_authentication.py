@@ -9,7 +9,7 @@ used Client Authentication Methods.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
 from uuid import uuid4
 
@@ -17,6 +17,9 @@ import requests
 from attrs import frozen
 from binapy import BinaPy
 from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class InvalidRequestForClientAuthentication(RuntimeError):

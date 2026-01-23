@@ -19,11 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "requests>=2.32.5",
+    "attrs>=25.3.0",
     "binapy>=0.8",
     "furl>=2.1.4",
     "jwskate>=0.12.2",
-    "attrs>=25.3.0",
+    "requests>=2.32.5",
+    "typing-extensions>=4.15.0",
 ]
 
 [project.urls]
@@ -58,7 +59,6 @@ test = [
     "pytest-mock>=3.14.0,<4",
     "pytest-mypy>=1.0.0",
     "requests-mock>=1.9.3",
-    "tox>=4",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -98,7 +98,7 @@ wrap-descriptions = 120
 blank = true
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.format]

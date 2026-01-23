@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta, timezone
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Callable, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 from uuid import uuid4
 
 import jwskate
@@ -20,7 +20,7 @@ from .tokens import BearerToken, IdToken, id_token_converter
 from .utils import accepts_expires_in
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     import requests
 

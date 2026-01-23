@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from abc import ABC
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, TypeVar, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
 import jwskate
 from attr import asdict, field, frozen
@@ -28,7 +28,7 @@ from .exceptions import UnsupportedTokenTypeError
 from .tokens import BearerToken
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
 
 T = TypeVar("T")
@@ -189,9 +189,7 @@ class DPoPKeySerializer(Serializer[DPoPKey]):
 
 @frozen
 class AuthorizationRequestSerializer(
-    Serializer[
-        Union[AuthorizationRequest, RequestParameterAuthorizationRequest, RequestUriParameterAuthorizationRequest]
-    ]
+    Serializer[AuthorizationRequest | RequestParameterAuthorizationRequest | RequestUriParameterAuthorizationRequest]
 ):
     """(De)Serializer for `AuthorizationRequest` instances.
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import requests
 from attrs import Attribute, field, frozen
@@ -52,7 +52,7 @@ from .tokens import BearerToken, IdToken, TokenResponse
 from .utils import InvalidUri, validate_endpoint_uri, validate_issuer_uri
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from types import TracebackType
 
     from mypy_extensions import DefaultNamedArg
