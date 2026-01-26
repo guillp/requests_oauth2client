@@ -14,13 +14,13 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # frozen: v8.30.0
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce # frozen: v8.30.0
     hooks:
       - id: gitleaks
         name: "🔒 Security · GitLeaks · Detect hardcoded secrets"
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 45ef068da5f21267bb2a7ec4a623092959f09ce5  # frozen: v0.14.14
+    rev: 45ef068da5f21267bb2a7ec4a623092959f09ce5 # frozen: v0.14.14
     hooks:
       - id: ruff-format
         name: "🐍 Python · Ruff · Code formatting"
@@ -57,14 +57,14 @@ repos:
           - types-requests
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: ccf21790019848af3eb4464be2a9d5efed6358f3  # frozen: 0.36.1
+    rev: ccf21790019848af3eb4464be2a9d5efed6358f3 # frozen: 0.36.1
     hooks:
       - id: check-github-workflows
         name: "🐙 Github-Actions · Validate gh workflow files"
         args: ["--verbose"]
 
   - repo: https://github.com/hukkin/mdformat
-    rev: 2d496dbc18e31b83a1596685347ffe0b6041daf0  # frozen: 1.0.0
+    rev: 2d496dbc18e31b83a1596685347ffe0b6041daf0 # frozen: 1.0.0
     hooks:
       - id: mdformat
         name: "📝 Markdown · Format markdown"
@@ -82,7 +82,7 @@ repos:
         name: "🐚 Shell · shellcheck · Lint shell scripts"
 
   - repo: https://github.com/openstack/bashate
-    rev: 5798d24d571676fc407e81df574c1ef57b520f23  # frozen: 2.1.1
+    rev: 5798d24d571676fc407e81df574c1ef57b520f23 # frozen: 2.1.1
     hooks:
       - id: bashate
         name: "🐚 Shell · bashate · Check shell script code style"
