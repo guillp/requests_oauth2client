@@ -3,10 +3,9 @@ import secrets
 
 import pytest
 from freezegun import freeze_time
-from furl import Query  # type: ignore[import-untyped]
 
 from requests_oauth2client import BearerToken, ClientSecretPost, IdToken, OAuth2Client, UnknownTokenType
-from tests.utils import RequestsMocker
+from tests.utils import RequestsMocker, parse_url_encoded
 
 
 @freeze_time()
@@ -40,7 +39,7 @@ def test_token_exchange(
     assert token_response.expires_in == 60
 
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.pop("client_id") == client_id
     assert params.pop("client_secret") == client_secret
     assert params.pop("grant_type") == "urn:ietf:params:oauth:grant-type:token-exchange"

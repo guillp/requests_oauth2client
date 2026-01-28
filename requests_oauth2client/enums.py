@@ -6,17 +6,22 @@ Most are taken from https://www.iana.org/assignments/oauth-parameters/oauth-para
 
 from __future__ import annotations
 
-from enum import Enum
+import sys
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from backports.strenum import StrEnum
 
 
-class AccessTokenTypes(str, Enum):
+class AccessTokenTypes(StrEnum):
     """An enum of standardised `access_token` types."""
 
     BEARER = "Bearer"
     DPOP = "DPoP"
 
 
-class CodeChallengeMethods(str, Enum):
+class CodeChallengeMethods(StrEnum):
     """All standardised `code_challenge_method` values.
 
     You should always use `S256`.
@@ -27,7 +32,7 @@ class CodeChallengeMethods(str, Enum):
     plain = "plain"
 
 
-class Endpoints(str, Enum):
+class Endpoints(StrEnum):
     """All standardised OAuth 2.0 and extensions endpoints.
 
     If an endpoint is not mentioned here, then its usage is not supported by OAuth2Client.
@@ -45,7 +50,7 @@ class Endpoints(str, Enum):
     USER_INFO = "userinfo_endpoint"
 
 
-class GrantTypes(str, Enum):
+class GrantTypes(StrEnum):
     """An enum of standardized `grant_type` values."""
 
     CLIENT_CREDENTIALS = "client_credentials"
@@ -58,10 +63,10 @@ class GrantTypes(str, Enum):
     DEVICE_CODE = "urn:ietf:params:oauth:grant-type:device_code"
 
 
-class ResponseTypes(str, Enum):
+class ResponseTypes(StrEnum):
     """All standardised `response_type` values.
 
-    Note that you should always use `code`. All other values are deprecated.
+    Note that you should always use `code`. All other values excepted `none` are considered deprecated.
 
     """
 
@@ -75,7 +80,7 @@ class ResponseTypes(str, Enum):
     IDTOKEN_TOKEN = "id_token token"
 
 
-class TokenType(str, Enum):
+class TokenType(StrEnum):
     """An enum of standardised `token_type` values."""
 
     ACCESS_TOKEN = "access_token"

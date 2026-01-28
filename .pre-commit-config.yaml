@@ -47,7 +47,6 @@ repos:
         additional_dependencies:
           - attrs
           - flask
-          - furl
           - jwskate
           - pytest_examples
           - pytest-freezer
@@ -55,6 +54,7 @@ repos:
           - pytest-mypy
           - requests_mock
           - types-requests
+          - yarl
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0fe8648804a32455c690e0519c217f8cee6a48c6 # frozen: 0.36.0

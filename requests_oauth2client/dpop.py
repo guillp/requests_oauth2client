@@ -11,9 +11,9 @@ from uuid import uuid4
 import jwskate
 from attrs import define, field, frozen, setters
 from binapy import BinaPy
-from furl import furl  # type: ignore[import-untyped]
 from requests import codes
 from typing_extensions import Self, override
+from yarl import URL
 
 from .enums import AccessTokenTypes
 from .tokens import BearerToken, IdToken, id_token_converter
@@ -287,7 +287,7 @@ class DPoPKey:
         """The key thumbprint, used for Authorization Code DPoP binding."""
         return self.private_key.thumbprint()
 
-    def proof(self, htm: str, htu: str, ath: str | None = None, nonce: str | None = None) -> jwskate.SignedJwt:
+    def proof(self, htm: str, htu: str | URL, ath: str | None = None, nonce: str | None = None) -> jwskate.SignedJwt:
         """Generate a DPoP proof.
 
         Proof will contain the following claims:
@@ -315,8 +315,8 @@ class DPoPKey:
             the proof value (as a signed JWT)
 
         """
-        htu = furl(htu).remove(query=True, fragment=True).url
-        proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": htu, "iat": self.iat_generator()}
+        htu = URL(htu).with_query(None).with_fragment(None)
+        proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": str(htu), "iat": self.iat_generator()}
         if nonce:
             proof_claims["nonce"] = nonce
         elif self.rs_nonce:
