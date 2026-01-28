@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import jwskate
 import pytest
 from freezegun import freeze_time
 from jwskate import JweCompact, Jwk, Jwt, SignedJwt
+from yarl import URL
 
 from requests_oauth2client import (
     AuthorizationRequest,
     AuthorizationResponse,
     AuthorizationResponseError,
+    InvalidAuthResponse,
     InvalidMaxAgeParam,
     MismatchingIssuer,
     MismatchingState,
@@ -21,13 +23,10 @@ from requests_oauth2client import (
     UnsupportedResponseTypeParam,
 )
 
-if TYPE_CHECKING:
-    from furl import furl  # type: ignore[import-untyped]
-
 
 def test_authorization_url(authorization_request: AuthorizationRequest) -> None:
-    url = authorization_request.furl
-    assert dict(url.args) == {key: val for key, val in authorization_request.args.items() if val is not None}
+    url = authorization_request.yarl
+    assert url.query == {key: val for key, val in authorization_request.args.items() if val is not None}
 
 
 def test_authorization_signed_request(
@@ -38,8 +37,8 @@ def test_authorization_signed_request(
     assert isinstance(signed_request, RequestParameterAuthorizationRequest)
     assert isinstance(signed_request.uri, str)
     assert signed_request.custom_attr == "custom_value"
-    url = signed_request.furl
-    request = url.args.get("request")
+    url = signed_request.yarl
+    request = url.query["request"]
     jwt = Jwt(request)
     assert isinstance(jwt, SignedJwt)
     assert jwt.verify_signature(public_jwk)
@@ -56,8 +55,8 @@ def test_authorization_signed_request_with_lifetime(
     signed_request = authorization_request.sign(private_jwk, lifetime=60)
     assert isinstance(signed_request.uri, str)
 
-    url = signed_request.furl
-    request = url.args.get("request")
+    url = signed_request.yarl
+    request = url.query["request"]
     jwt = Jwt(request)
     assert isinstance(jwt, SignedJwt)
     assert jwt.verify_signature(public_jwk)
@@ -80,8 +79,8 @@ def test_authorization_signed_and_encrypted_request(
         sign_jwk=private_jwk, enc_jwk=enc_jwk.public_jwk(), lifetime=60
     )
     assert isinstance(signed_and_encrypted_request.uri, str)
-    url = signed_and_encrypted_request.furl
-    request = url.args.get("request")
+    url = signed_and_encrypted_request.yarl
+    request = url.query["request"]
     jwt = Jwt(request)
     assert isinstance(jwt, JweCompact)
     assert Jwt.decrypt_and_verify(jwt, enc_jwk, public_jwk).claims == args
@@ -96,9 +95,9 @@ def test_request_uri_authorization_request(authorization_endpoint: str, client_i
         custom_param="custom_value",
     )
     assert isinstance(request_uri_azr.uri, str)
-    url = request_uri_azr.furl
-    assert url.origin + str(url.path) == authorization_endpoint
-    assert url.args == {"client_id": client_id, "request_uri": request_uri, "custom_param": "custom_value"}
+    url = URL(request_uri_azr.uri)
+    assert str(url.origin()) + str(url.path) == authorization_endpoint
+    assert url.query == {"client_id": client_id, "request_uri": request_uri, "custom_param": "custom_value"}
     assert request_uri_azr.custom_param == "custom_value"
 
 
@@ -113,77 +112,76 @@ def test_request_uri_authorization_request_with_custom_param(authorization_endpo
         custom_attr=custom_attr,
     )
     assert isinstance(request_uri_azr.uri, str)
-    url = request_uri_azr.furl
-    assert url.origin + str(url.path) == authorization_endpoint
-    assert url.args == {"client_id": client_id, "request_uri": request_uri, "custom_attr": custom_attr}
+    url = URL(request_uri_azr.uri)
+    assert str(url.origin()) + str(url.path) == authorization_endpoint
+    assert url.query == {"client_id": client_id, "request_uri": request_uri, "custom_attr": custom_attr}
 
 
 @pytest.mark.parametrize("error", ["consent_required"])
 def test_error_response(
     authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
+    authorization_response_uri: URL,
     error: str,
 ) -> None:
-    authorization_response_uri.args.pop("code")
-    authorization_response_uri.args.add("error", error)
+    aru = authorization_response_uri.without_query_params("code").extend_query(error=error)
     with pytest.raises(AuthorizationResponseError):
-        authorization_request.validate_callback(authorization_response_uri)
+        authorization_request.validate_callback(aru)
 
 
-def test_missing_code(authorization_request: AuthorizationRequest, authorization_response_uri: furl) -> None:
-    authorization_response_uri.args.pop("code")
+def test_missing_code(authorization_request: AuthorizationRequest, authorization_response_uri: URL) -> None:
+    aru = authorization_response_uri.without_query_params("code")
     with pytest.raises(MissingAuthCode):
-        authorization_request.validate_callback(authorization_response_uri)
+        authorization_request.validate_callback(aru)
 
 
 def test_not_an_url(authorization_request: AuthorizationRequest) -> None:
     auth_response = "https://...$cz\\1.3ada////:@+++++z/"
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidAuthResponse):
         authorization_request.validate_callback(auth_response)
 
 
 def test_mismatching_state(
     authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
+    authorization_response_uri: URL,
     state: None | bool | str,
 ) -> None:
-    authorization_response_uri.args["state"] = "foo"
+    aru = authorization_response_uri.without_query_params("state").extend_query(state="foo")
     if state:
         with pytest.raises(MismatchingState):
-            authorization_request.validate_callback(authorization_response_uri)
+            authorization_request.validate_callback(aru)
 
 
 def test_missing_state(
     authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
+    authorization_response_uri: URL,
     state: None | bool | str,
 ) -> None:
-    authorization_response_uri.args.pop("state", None)
+    aru = authorization_response_uri.without_query_params("state")
     if state:
         with pytest.raises(MismatchingState):
-            authorization_request.validate_callback(authorization_response_uri)
+            authorization_request.validate_callback(aru)
 
 
 def test_mismatching_iss(
     authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
+    authorization_response_uri: URL,
     expected_issuer: str | bool | None,
 ) -> None:
-    authorization_response_uri.args["iss"] = "foo"
+    aru = authorization_response_uri.with_query(iss="foo")
     if expected_issuer:
         with pytest.raises(MismatchingIssuer):
-            authorization_request.validate_callback(authorization_response_uri)
+            authorization_request.validate_callback(aru)
 
 
 def test_missing_issuer(
     authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
+    authorization_response_uri: URL,
     expected_issuer: str | bool | None,
 ) -> None:
-    authorization_response_uri.args.pop("iss", None)
+    aru = authorization_response_uri.without_query_params("iss")
     if expected_issuer:
         with pytest.raises(MissingIssuer):
-            authorization_request.validate_callback(authorization_response_uri)
+            authorization_request.validate_callback(aru)
 
 
 def test_request_acr_values() -> None:
@@ -196,7 +194,7 @@ def test_request_acr_values() -> None:
         acr_values="1 2 3",
     )
     assert azr_str.acr_values == ("1", "2", "3")
-    assert azr_str.furl.args["acr_values"] == "1 2 3"
+    assert azr_str.yarl.query["acr_values"] == "1 2 3"
     azr_tuple = AuthorizationRequest(
         "https://as.local/authorize",
         client_id="foo",
@@ -205,7 +203,7 @@ def test_request_acr_values() -> None:
         acr_values=("1", "2", "3"),
     )
     assert azr_tuple.acr_values == ("1", "2", "3")
-    assert azr_tuple.furl.args["acr_values"] == "1 2 3"
+    assert azr_tuple.yarl.query["acr_values"] == "1 2 3"
 
 
 def test_code_challenge() -> None:

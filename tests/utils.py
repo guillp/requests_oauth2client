@@ -3,13 +3,14 @@ from __future__ import annotations
 import base64
 from collections.abc import Callable
 from datetime import datetime, timezone
+from posixpath import join
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs
 
 import requests_mock
-from furl import Query, furl  # type: ignore[import-untyped]
 from jwskate import Jwk, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
+from yarl import URL
 
 RequestValidatorType = Callable[..., None]
 
@@ -50,10 +51,10 @@ def client_secret_basic_auth_validator(req: _RequestObjectProxy, *, client_id: s
 def client_secret_jwt_auth_validator(
     req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
 ) -> None:
-    params = Query(req.text).params
+    params = parse_url_encoded(req.text)
     assert params.get("client_id") == client_id
     assert "client_assertion" in params
-    client_assertion = params.get("client_assertion")
+    client_assertion = params["client_assertion"]
     jwk = SymmetricJwk.from_bytes(client_secret)
     jwt = SignedJwt(client_assertion)
     jwt.verify_signature(jwk, alg="HS256")
@@ -74,7 +75,7 @@ def private_key_jwt_auth_validator(
     public_jwk: Jwk,
     endpoint: str,
 ) -> None:
-    params = Query(req.text).params
+    params = parse_url_encoded(req.text)
     assert params.get("client_id") == client_id, "invalid client_id"
     client_assertion = params.get("client_assertion")
     assert client_assertion, "missing client_assertion"
@@ -92,7 +93,14 @@ def private_key_jwt_auth_validator(
 
 def join_url(root: str, path: str) -> str:
     if path:
-        f = furl(root).add(path=path)
-        f.path.normalize()
-        return str(f.url)
+        url = URL(root)
+        url = url.with_path(join(url.path, path.lstrip("/")))
+        return str(url)
     return root
+
+
+def parse_url_encoded(data: str) -> dict[str, str]:
+    parsed = parse_qs(data)
+    for key, val in parsed.items():
+        assert len(val) == 1, f"Expected single value for key {key}, got {val}"
+    return {k: v[0] for k, v in parsed.items()}

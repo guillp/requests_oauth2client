@@ -4,7 +4,6 @@ import secrets
 from typing import TYPE_CHECKING
 
 import pytest
-from furl import Query  # type: ignore[import-untyped]
 
 from requests_oauth2client import (
     BearerToken,
@@ -15,7 +14,7 @@ from requests_oauth2client import (
     OAuth2Client,
     PublicApp,
 )
-from tests.utils import join_url
+from tests.utils import join_url, parse_url_encoded
 
 if TYPE_CHECKING:
     from tests.utils import FixtureRequest, RequestsMocker
@@ -61,7 +60,7 @@ def test_device_authorization(
     assert not device_auth_resp.is_expired()
 
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
 
@@ -92,7 +91,7 @@ def test_device_authorization(
     # 1st attempt: authorization_pending
     resp = polling_job()
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
 
@@ -102,7 +101,7 @@ def test_device_authorization(
     # 2nd attempt: slow down
     resp = polling_job()
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
 
@@ -113,7 +112,7 @@ def test_device_authorization(
     resp = polling_job()
     assert isinstance(resp, BearerToken)
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
 
