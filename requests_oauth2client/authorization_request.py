@@ -493,7 +493,7 @@ class AuthorizationRequest:
 
         return {key: str(val) for key, val in d.items() if val is not None}
 
-    def validate_callback(self, response: str | URL) -> AuthorizationResponse:  # noqa: C901
+    def validate_callback(self, response: str | URL) -> AuthorizationResponse:
         """Validate an Authorization Response against this Request.
 
         Validate a given Authorization Response URI against this Authorization Request, and return
@@ -521,12 +521,8 @@ class AuthorizationRequest:
             UnsupportedResponseTypeParam: if response_type anything else than 'code'.
 
         """
-        if isinstance(response, str):
-            try:
-                response = URL(response)
-            except ValueError as exc:
-                msg = "Unable to parse the Authorization Response URL."
-                raise InvalidAuthResponse(msg, self, response) from exc
+        if not isinstance(response, URL):
+            response = self._parse_callback_url(response)
 
         def get_query(key: str) -> str | None:
             values = response.query.getall(key, [None])
@@ -535,23 +531,10 @@ class AuthorizationRequest:
                 raise InvalidAuthResponse(msg, self, response)
             return values[0]
 
-        # validate 'iss' according to RFC9207
-        received_issuer = get_query("iss")
-        if self.authorization_response_iss_parameter_supported or received_issuer:
-            if received_issuer is None:
-                raise MissingIssuer(self, response)
-            if self.issuer and received_issuer != self.issuer:
-                raise MismatchingIssuer(self.issuer, received_issuer, self, response)
+        self._validate_issuer(get_query("iss"), response)
+        self._validate_state(get_query("state"), response)
 
-        # validate state
-        requested_state = self.state
-        if requested_state:
-            received_state = get_query("state")
-            if requested_state != received_state:
-                raise MismatchingState(requested_state, received_state, self, response)
-
-        error = get_query("error")
-        if error:
+        if get_query("error") or get_query("error_description") or get_query("error_uri"):
             return self.on_response_error(response)
 
         if self.response_type == ResponseTypes.CODE:
@@ -570,6 +553,32 @@ class AuthorizationRequest:
             dpop_key=self.dpop_key,
             **response.query,
         )
+
+    def _parse_callback_url(self, response: str) -> URL:
+        """Parse the Authorization Response URL."""
+        try:
+            if "=" not in response:
+                raise ValueError(response)  # noqa: TRY301
+            return URL(response) if "?" in response else URL.build(query_string=response)
+        except (ValueError, TypeError) as exc:
+            msg = (
+                "Unable to parse the Authorization Response URL."
+                " It must be a either the full URL, or just the query string."
+            )
+            raise InvalidAuthResponse(msg, self, response) from exc
+
+    def _validate_issuer(self, received_issuer: str | None, response: URL) -> None:
+        """Validate 'iss' according to RFC9207."""
+        if self.authorization_response_iss_parameter_supported or received_issuer:
+            if received_issuer is None:
+                raise MissingIssuer(self, response)
+            if self.issuer and received_issuer != self.issuer:
+                raise MismatchingIssuer(self.issuer, received_issuer, self, response)
+
+    def _validate_state(self, received_state: str | None, response: URL) -> None:
+        """Check that the received 'state' matches the requested one."""
+        if self.state != received_state:
+            raise MismatchingState(self.state, received_state, self, response)
 
     def sign_request_jwt(
         self,
@@ -728,10 +737,7 @@ class AuthorizationRequest:
 
         """
         response_url = URL(response)
-        error = response_url.query.get("error")
-        if error is None:
-            msg = "No 'error' parameter found in the Authorization Response."
-            raise InvalidAuthResponse(msg, self, response)
+        error = response_url.query.get("error", "missing_error_code")
         error_description = response_url.query.get("error_description")
         error_uri = response_url.query.get("error_uri")
         exception_class = self.exception_classes.get(error, AuthorizationResponseError)

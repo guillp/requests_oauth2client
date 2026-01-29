@@ -117,15 +117,44 @@ def test_request_uri_authorization_request_with_custom_param(authorization_endpo
     assert url.query == {"client_id": client_id, "request_uri": request_uri, "custom_attr": custom_attr}
 
 
-@pytest.mark.parametrize("error", ["consent_required"])
-def test_error_response(
-    authorization_request: AuthorizationRequest,
-    authorization_response_uri: URL,
-    error: str,
-) -> None:
-    aru = authorization_response_uri.without_query_params("code").extend_query(error=error)
+def test_error_response() -> None:
+    auth_request = AuthorizationRequest(
+        "https://as.local/authorize",
+        client_id="foo",
+        state=None,
+    )
+    auth_response = "https://client.local/callback?error=access_denied&error_description=The+user+denied+access"
     with pytest.raises(AuthorizationResponseError):
-        authorization_request.validate_callback(aru)
+        auth_request.validate_callback(auth_response)
+
+
+@pytest.mark.parametrize(
+    "auth_response",
+    [
+        "https://not.a.valid@callback/foo",
+        "abc",
+        "not_a_callback?",
+    ],
+)
+def test_invalid_response(auth_response: str) -> None:
+    auth_request = AuthorizationRequest(
+        "https://as.local/authorize",
+        client_id="foo",
+        state=None,
+    )
+    with pytest.raises(InvalidAuthResponse, match="Unable to parse"):
+        auth_request.validate_callback(auth_response)
+
+
+def test_multiple_codes() -> None:
+    auth_request = AuthorizationRequest(
+        "https://as.local/authorize",
+        client_id="foo",
+        state=None,
+    )
+    auth_response = "https://client.local/callback?code=code1&code=code2"
+    with pytest.raises(InvalidAuthResponse, match="multiple 'code' parameters in response"):
+        auth_request.validate_callback(auth_response)
 
 
 def test_missing_code(authorization_request: AuthorizationRequest, authorization_response_uri: URL) -> None:

@@ -199,7 +199,7 @@ class InvalidAuthResponse(ValueError):
     """Raised when the Authorization Endpoint returns an invalid response."""
 
     def __init__(self, message: str, request: AuthorizationRequest, response: str | URL) -> None:
-        super().__init__(f"The Authorization Response is invalid: {message}")
+        super().__init__(f"Invalid Authorization Response: {message}")
         self.request = request
         self.url = response if isinstance(response, URL) else None
         self.response = str(response)
