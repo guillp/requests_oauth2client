@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 from freezegun import freeze_time
-from furl import Query, furl  # type: ignore[import-untyped]
 from jwskate import Jwk
 from requests_mock import Mocker
+from yarl import URL
 
 from requests_oauth2client import (
     AuthorizationRequest,
@@ -17,6 +17,7 @@ from requests_oauth2client import (
     OAuth2Client,
     oidc_discovery_document_url,
 )
+from tests.utils import parse_url_encoded
 
 
 @freeze_time()
@@ -62,7 +63,9 @@ def test_authorization_code(
     authorization_code = secrets.token_urlsafe()
     state = authorization_request.state
 
-    authorization_response = furl(redirect_uri, query={"code": authorization_code, "state": state}).url
+    authorization_response = URL(redirect_uri).extend_query(code=authorization_code)
+    if state:
+        authorization_response = authorization_response.extend_query(state=state)
 
     access_token = secrets.token_urlsafe()
 
@@ -107,7 +110,7 @@ def test_authorization_code(
     assert token.expires_at == datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=3600)
 
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
     assert params.get("grant_type") == "authorization_code"
@@ -146,18 +149,21 @@ def test_authorization_code_legacy(
 
     state = authorization_request.state
 
-    authorization_response = furl(redirect_uri, query={"code": authorization_code, "state": state}).url
+    authorization_response = URL(redirect_uri).extend_query(code=authorization_code)
+    if state:
+        authorization_response = authorization_response.extend_query(state=state)
+
     requests_mock.get(
         authorization_request.uri,
         status_code=302,
-        headers={"Location": authorization_response},
+        headers={"Location": str(authorization_response)},
     )
     resp = requests.get(authorization_request.uri, allow_redirects=False)
     assert resp.status_code == 302
     location = resp.headers.get("Location")
-    assert location == authorization_response
+    assert location == str(authorization_response)
     assert requests_mock.last_request is not None
-    qs = Query(requests_mock.last_request.qs).params
+    qs = parse_url_encoded(requests_mock.last_request.query)
     assert qs.get("client_id") == client_id
     assert qs.get("response_type") == "code"
     assert qs.get("redirect_uri") == redirect_uri
@@ -192,7 +198,7 @@ def test_authorization_code_legacy(
     assert token.expires_at == datetime.now(tz=timezone.utc).replace(microsecond=0) + timedelta(seconds=3600)
 
     assert requests_mock.last_request is not None
-    params = Query(requests_mock.last_request.text).params
+    params = parse_url_encoded(requests_mock.last_request.text)
     assert params.get("client_id") == client_id
     assert params.get("client_secret") == client_secret
     assert params.get("grant_type") == "authorization_code"

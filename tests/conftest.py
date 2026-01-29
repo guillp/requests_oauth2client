@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qs
 
 import pytest
 import requests
-from furl import Query  # type: ignore[import-untyped]
 from jwskate import Jwk, JwkSet, SignedJwt
 
 from requests_oauth2client import (
@@ -25,6 +23,7 @@ from tests.utils import (
     client_secret_jwt_auth_validator,
     client_secret_post_auth_validator,
     join_url,
+    parse_url_encoded,
     private_key_jwt_auth_validator,
     public_app_auth_validator,
 )
@@ -184,8 +183,7 @@ def client_auth_validator(
             )
 
         # check that no parameter is duplicated in the request body
-        for key, val in parse_qs(request.text).items():
-            assert len(val) == 1, f"Parameter '{key}' is repeated {len(val)} times in request body"
+        parse_url_encoded(request.text)
 
     return validator
 
@@ -193,7 +191,7 @@ def client_auth_validator(
 @pytest.fixture(scope="session")
 def client_credentials_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, *, scope: str | None = None, **kwargs: Any) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("grant_type") == "client_credentials"
         if scope is not None and not isinstance(scope, str):
             scope = " ".join(scope)
@@ -212,7 +210,7 @@ def client_credentials_grant_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def authorization_code_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, *, code: str, **kwargs: Any) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("grant_type") == "authorization_code"
         for key, val in kwargs.items():
             assert params.get(key) == val
@@ -225,7 +223,7 @@ def authorization_code_grant_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def refresh_token_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, *, refresh_token: str, **kwargs: Any) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("grant_type") == "refresh_token"
         assert params.get("refresh_token") == refresh_token
         for key, val in kwargs.items():
@@ -239,7 +237,7 @@ def refresh_token_grant_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def device_code_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, device_code: str, **kwargs: Any) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("grant_type") == "urn:ietf:params:oauth:grant-type:device_code"
         assert params.get("device_code") == device_code
         for key, val in kwargs.items():
@@ -253,7 +251,7 @@ def device_code_grant_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def token_exchange_grant_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, subject_token: str, **kwargs: Any) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("grant_type") == "urn:ietf:params:oauth:grant-type:token-exchange"
         assert params.get("subject_token") == subject_token
         for key, val in kwargs.items():
@@ -267,7 +265,7 @@ def token_exchange_grant_validator() -> RequestValidatorType:
 @pytest.fixture(scope="session")
 def ciba_request_validator() -> RequestValidatorType:
     def validator(req: _RequestObjectProxy, *, auth_req_id: str, **kwargs: Any) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("grant_type") == "urn:openid:params:grant-type:ciba"
         assert params.get("auth_req_id") == auth_req_id
         for key, val in kwargs.items():
@@ -287,9 +285,9 @@ def backchannel_auth_request_validator() -> RequestValidatorType:
         acr_values: None | str | Iterable[str] = None,
         **kwargs: Any,
     ) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
 
-        if scope is None:
+        if not scope:
             assert "scope" not in params
         elif isinstance(scope, str):
             assert params.get("scope") == scope
@@ -330,15 +328,15 @@ def backchannel_auth_request_jwt_validator() -> RequestValidatorType:
         scope: str,
         **kwargs: Any,
     ) -> None:
-        params = Query(req.text).params
-        request = params.get("request")
+        params = parse_url_encoded(req.text)
+        request = params["request"]
         jwt = SignedJwt(request)
         jwt.verify_signature(public_jwk, alg)
         claims = jwt.claims
-        if isinstance(scope, str):
+        if not scope:
+            assert "scope" not in claims
+        elif isinstance(scope, str):
             assert claims.get("scope") == scope
-        elif scope is None:
-            assert claims.get("scope") is None
         elif isinstance(scope, Iterable):
             assert claims.get("scope") == " ".join(scope)
         else:
@@ -366,7 +364,7 @@ def revocation_request_validator() -> RequestValidatorType:
         type_hint: str | None = None,
         **kwargs: Any,
     ) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("token") == token
         if type_hint is not None:
             assert params.get("token_type_hint") == type_hint
@@ -384,7 +382,7 @@ def introspection_request_validator() -> RequestValidatorType:
         type_hint: str | None = None,
         **kwargs: Any,
     ) -> None:
-        params = Query(req.text).params
+        params = parse_url_encoded(req.text)
         assert params.get("token") == token
         if type_hint is not None:
             assert params.get("token_type_hint") == type_hint

@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 import requests
-from furl import furl  # type: ignore[import-untyped]
 from jwskate import Jwk
+from yarl import URL
 
 from requests_oauth2client import (
     ApiClient,
@@ -23,6 +23,7 @@ from requests_oauth2client import (
     PublicApp,
     RequestParameterAuthorizationRequest,
 )
+from tests.utils import join_url
 
 if TYPE_CHECKING:
     from requests_oauth2client.client_authentication import BaseClientAuthenticationMethod
@@ -32,14 +33,6 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="session")
 def session() -> requests.Session:
     return requests.Session()
-
-
-def join_url(root: str, path: str) -> str:
-    if path:
-        f = furl(root).add(path=path)
-        f.path.normalize()
-        return str(f.url)
-    return root
 
 
 @pytest.fixture(scope="session")
@@ -414,8 +407,8 @@ def authorization_request(  # noqa: C901
         **auth_request_kwargs,
     )
 
-    url = furl(str(azr))
-    assert url.origin + str(url.path) == authorization_endpoint
+    url = URL(str(azr))
+    assert str(url.origin()) + str(url.path) == authorization_endpoint
 
     assert azr.authorization_endpoint == authorization_endpoint
     assert azr.client_id == client_id
@@ -424,7 +417,7 @@ def authorization_request(  # noqa: C901
     assert azr.kwargs == auth_request_kwargs
     assert azr.dpop_key == dpop_key
 
-    args = dict(url.args)
+    args = dict(url.query)
     expected_args = dict(
         client_id=client_id,
         redirect_uri=redirect_uri,
@@ -530,12 +523,12 @@ def authorization_response_uri(
     redirect_uri: str,
     authorization_code: str,
     expected_issuer: str | bool | None,
-) -> furl:
-    auth_url = furl(redirect_uri).add(args={"code": authorization_code})
+) -> URL:
+    auth_url = URL(redirect_uri).extend_query(code=authorization_code)
     if authorization_request.state is not None:
-        auth_url.add(args={"state": authorization_request.state})
+        auth_url = auth_url.extend_query(state=authorization_request.state)
     if expected_issuer:
-        auth_url.add(args={"iss": expected_issuer})
+        auth_url = auth_url.extend_query(iss=expected_issuer)
 
     return auth_url
 
@@ -543,7 +536,7 @@ def authorization_response_uri(
 @pytest.fixture
 def authorization_response(
     authorization_request: AuthorizationRequest,
-    authorization_response_uri: furl,
+    authorization_response_uri: URL,
     redirect_uri: str,
     authorization_code: str,
 ) -> AuthorizationResponse:

@@ -5,7 +5,9 @@ Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html#Provid
 
 """
 
-from furl import Path, furl  # type: ignore[import-untyped]
+from posixpath import join
+
+from yarl import URL
 
 
 def well_known_uri(origin: str, name: str, *, at_root: bool = True) -> str:
@@ -27,12 +29,10 @@ def well_known_uri(origin: str, name: str, *, at_root: bool = True) -> str:
         found.
 
     """
-    url = furl(origin)
+    url = URL(origin)
     if at_root:
-        url.path = Path(".well-known") / url.path / name
-    else:
-        url.path.add(Path(".well-known") / name)
-    return str(url)
+        return str(url.with_path(join(".well-known", url.path.lstrip("/"), name.lstrip("/"))))
+    return str(url.with_path(join(url.path.lstrip("/"), ".well-known", name.lstrip("/"))))
 
 
 def oidc_discovery_document_url(issuer: str) -> str:

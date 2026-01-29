@@ -1,6 +1,6 @@
 from freezegun import freeze_time
-from furl import furl  # type: ignore[import-untyped]
 from jwskate import EncryptionAlgs, Jwk, Jwt
+from yarl import URL
 
 from requests_oauth2client import IdToken, OAuth2Client
 from tests.utils import RequestsMocker
@@ -77,7 +77,7 @@ def test_encrypted_id_token(requests_mock: RequestsMocker) -> None:
     authorization_request = client.authorization_request(scope="openid", state=state, nonce=nonce)
 
     authorization_response = authorization_request.validate_callback(
-        furl(redirect_uri).add(args={"code": authorization_code, "state": state, "iss": issuer})
+        URL(redirect_uri).with_query(code=authorization_code, state=state, iss=issuer)
     )
 
     access_token = "my_access_token"
