@@ -153,7 +153,7 @@ def test_multiple_codes() -> None:
         state=None,
     )
     auth_response = "https://client.local/callback?code=code1&code=code2"
-    with pytest.raises(InvalidAuthResponse, match="multiple 'code' parameters in response"):
+    with pytest.raises(InvalidAuthResponse, match="multiple 'code' query parameters in response"):
         auth_request.validate_callback(auth_response)
 
 

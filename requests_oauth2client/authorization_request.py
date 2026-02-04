@@ -6,6 +6,7 @@ import re
 import secrets
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, ClassVar
+from urllib.parse import parse_qs
 
 from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
@@ -524,21 +525,15 @@ class AuthorizationRequest:
         if not isinstance(response, URL):
             response = self._parse_callback_url(response)
 
-        def get_query(key: str) -> str | None:
-            values = response.query.getall(key, [None])
-            if len(values) > 1:
-                msg = f"multiple '{key}' parameters in response"
-                raise InvalidAuthResponse(msg, self, response)
-            return values[0]
+        self._validate_query_params(response)
+        self._validate_issuer(response)
+        self._validate_state(response)
 
-        self._validate_issuer(get_query("iss"), response)
-        self._validate_state(get_query("state"), response)
-
-        if get_query("error") or get_query("error_description") or get_query("error_uri"):
+        if response.query.get("error") or response.query.get("error_description") or response.query.get("error_uri"):
             return self.on_response_error(response)
 
         if self.response_type == ResponseTypes.CODE:
-            code = get_query("code")
+            code = response.query.get("code")
             if code is None:
                 raise MissingAuthCode(self, response)
         else:
@@ -567,16 +562,26 @@ class AuthorizationRequest:
             )
             raise InvalidAuthResponse(msg, self, response) from exc
 
-    def _validate_issuer(self, received_issuer: str | None, response: URL) -> None:
+    def _validate_query_params(self, response: URL) -> None:
+        """Validate that no query parameter is repeated."""
+        query_params = parse_qs(response.raw_query_string, strict_parsing=True, errors="strict")
+        for key, values in query_params.items():
+            if len(values) > 1:
+                msg = f"multiple '{key}' query parameters in response"
+                raise InvalidAuthResponse(msg, self, response)
+
+    def _validate_issuer(self, response: URL) -> None:
         """Validate 'iss' according to RFC9207."""
+        received_issuer = response.query.get("iss")
         if self.authorization_response_iss_parameter_supported or received_issuer:
             if received_issuer is None:
                 raise MissingIssuer(self, response)
             if self.issuer and received_issuer != self.issuer:
                 raise MismatchingIssuer(self.issuer, received_issuer, self, response)
 
-    def _validate_state(self, received_state: str | None, response: URL) -> None:
+    def _validate_state(self, response: URL) -> None:
         """Check that the received 'state' matches the requested one."""
+        received_state = response.query.get("state")
         if self.state != received_state:
             raise MismatchingState(self.state, received_state, self, response)
 
