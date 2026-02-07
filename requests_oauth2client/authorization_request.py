@@ -564,7 +564,11 @@ class AuthorizationRequest:
 
     def _validate_query_params(self, response: URL) -> None:
         """Validate that no query parameter is repeated."""
-        query_params = parse_qs(response.raw_query_string, strict_parsing=True, errors="strict")
+        query_params = (
+            parse_qs(response.raw_query_string, strict_parsing=True, errors="strict")
+            if response.raw_query_string
+            else {}
+        )
         for key, values in query_params.items():
             if len(values) > 1:
                 msg = f"multiple '{key}' query parameters in response"
