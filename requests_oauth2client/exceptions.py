@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from yarl import URL
+
 if TYPE_CHECKING:
     import requests
 
@@ -160,7 +162,7 @@ class AuthorizationResponseError(Exception):
     def __init__(
         self,
         request: AuthorizationRequest,
-        response: str,
+        response: URL,
         error: str,
         description: str | None = None,
         uri: str | None = None,
@@ -169,7 +171,8 @@ class AuthorizationResponseError(Exception):
         self.description = description
         self.uri = uri
         self.request = request
-        self.response = response
+        self.url = response
+        self.response = str(response)
 
 
 class InteractionRequired(AuthorizationResponseError):
@@ -195,10 +198,11 @@ class ConsentRequired(InteractionRequired):
 class InvalidAuthResponse(ValueError):
     """Raised when the Authorization Endpoint returns an invalid response."""
 
-    def __init__(self, message: str, request: AuthorizationRequest, response: str) -> None:
-        super().__init__(f"The Authorization Response is invalid: {message}")
+    def __init__(self, message: str, request: AuthorizationRequest, response: str | URL) -> None:
+        super().__init__(f"Invalid Authorization Response: {message}")
         self.request = request
-        self.response = response
+        self.url = response if isinstance(response, URL) else None
+        self.response = str(response)
 
 
 class MissingAuthCode(InvalidAuthResponse):
@@ -209,7 +213,7 @@ class MissingAuthCode(InvalidAuthResponse):
 
     """
 
-    def __init__(self, request: AuthorizationRequest, response: str) -> None:
+    def __init__(self, request: AuthorizationRequest, response: URL) -> None:
         super().__init__("missing `code` query parameter in response", request, response)
 
 
@@ -223,7 +227,7 @@ class MissingIssuer(InvalidAuthResponse):
 
     """
 
-    def __init__(self, request: AuthorizationRequest, response: str) -> None:
+    def __init__(self, request: AuthorizationRequest, response: URL) -> None:
         super().__init__("missing `iss` query parameter in response", request, response)
 
 
@@ -235,7 +239,9 @@ class MismatchingState(InvalidAuthResponse):
 
     """
 
-    def __init__(self, received: str, expected: str, request: AuthorizationRequest, response: str) -> None:
+    def __init__(
+        self, received: str | None, expected: str | None, request: AuthorizationRequest, response: URL
+    ) -> None:
         super().__init__(f"mismatching `state` (received '{received}', expected '{expected}')", request, response)
         self.received = received
         self.expected = expected
@@ -248,7 +254,7 @@ class MismatchingIssuer(InvalidAuthResponse):
 
     """
 
-    def __init__(self, received: str, expected: str, request: AuthorizationRequest, response: str) -> None:
+    def __init__(self, received: str, expected: str, request: AuthorizationRequest, response: URL) -> None:
         super().__init__(f"mismatching `iss` (received '{received}', expected '{expected}')", request, response)
         self.received = received
         self.expected = expected

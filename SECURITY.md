@@ -5,7 +5,7 @@
 ### Out of scope
 
 `requests_oauth2client` is a relatively thin wrapper around the `requests` library that implements OAuth 2.x and OpenID
-Connect 1.0 and some related protocols. It also uses `jwskate` for JWK and JWT handling, and `furl` for URL
+Connect 1.0 and some related protocols. It also uses `jwskate` for JWK and JWT handling, and `yarl` for URL
 parsing/manipulation. Security vulnerabilities in these underlying libraries are out of scope for this policy, and
 should be reported to their respective maintainers.
 

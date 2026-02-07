@@ -6,11 +6,12 @@ import re
 import secrets
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, ClassVar
+from urllib.parse import parse_qs
 
 from attrs import asdict, field, fields, frozen
 from binapy import BinaPy
-from furl import furl  # type: ignore[import-untyped]
 from jwskate import JweCompact, Jwk, Jwt, SignatureAlgs, SignedJwt
+from yarl import URL
 
 from .dpop import DPoPKey
 from .enums import CodeChallengeMethods, ResponseTypes
@@ -18,6 +19,7 @@ from .exceptions import (
     AuthorizationResponseError,
     ConsentRequired,
     InteractionRequired,
+    InvalidAuthResponse,
     LoginRequired,
     MismatchingIssuer,
     MismatchingState,
@@ -490,9 +492,9 @@ class AuthorizationRequest:
         d["dpop_jkt"] = self.dpop_jkt
         d.update(self.kwargs)
 
-        return {key: val for key, val in d.items() if val is not None}
+        return {key: str(val) for key, val in d.items() if val is not None}
 
-    def validate_callback(self, response: str) -> AuthorizationResponse:
+    def validate_callback(self, response: str | URL) -> AuthorizationResponse:
         """Validate an Authorization Response against this Request.
 
         Validate a given Authorization Response URI against this Authorization Request, and return
@@ -520,32 +522,18 @@ class AuthorizationRequest:
             UnsupportedResponseTypeParam: if response_type anything else than 'code'.
 
         """
-        try:
-            response_url = furl(response)
-        except ValueError:
-            return self.on_response_error(response)
+        if not isinstance(response, URL):
+            response = self._parse_callback_url(response)
 
-        # validate 'iss' according to RFC9207
-        received_issuer = response_url.args.get("iss")
-        if self.authorization_response_iss_parameter_supported or received_issuer:
-            if received_issuer is None:
-                raise MissingIssuer(self, response)
-            if self.issuer and received_issuer != self.issuer:
-                raise MismatchingIssuer(self.issuer, received_issuer, self, response)
+        self._validate_query_params(response)
+        self._validate_issuer(response)
+        self._validate_state(response)
 
-        # validate state
-        requested_state = self.state
-        if requested_state:
-            received_state = response_url.args.get("state")
-            if requested_state != received_state:
-                raise MismatchingState(requested_state, received_state, self, response)
-
-        error = response_url.args.get("error")
-        if error:
+        if response.query.get("error") or response.query.get("error_description") or response.query.get("error_uri"):
             return self.on_response_error(response)
 
         if self.response_type == ResponseTypes.CODE:
-            code: str = response_url.args.get("code")
+            code = response.query.get("code")
             if code is None:
                 raise MissingAuthCode(self, response)
         else:
@@ -558,8 +546,48 @@ class AuthorizationRequest:
             acr_values=self.acr_values,
             max_age=self.max_age,
             dpop_key=self.dpop_key,
-            **response_url.args,
+            **response.query,
         )
+
+    def _parse_callback_url(self, response: str) -> URL:
+        """Parse the Authorization Response URL."""
+        try:
+            if "=" not in response:
+                raise ValueError(response)  # noqa: TRY301
+            return URL(response) if "?" in response else URL.build(query_string=response)
+        except (ValueError, TypeError) as exc:
+            msg = (
+                "Unable to parse the Authorization Response URL."
+                " It must be a either the full URL, or just the query string."
+            )
+            raise InvalidAuthResponse(msg, self, response) from exc
+
+    def _validate_query_params(self, response: URL) -> None:
+        """Validate that no query parameter is repeated."""
+        query_params = (
+            parse_qs(response.raw_query_string, strict_parsing=True, errors="strict")
+            if response.raw_query_string
+            else {}
+        )
+        for key, values in query_params.items():
+            if len(values) > 1:
+                msg = f"multiple '{key}' query parameters in response"
+                raise InvalidAuthResponse(msg, self, response)
+
+    def _validate_issuer(self, response: URL) -> None:
+        """Validate 'iss' according to RFC9207."""
+        received_issuer = response.query.get("iss")
+        if self.authorization_response_iss_parameter_supported or received_issuer:
+            if received_issuer is None:
+                raise MissingIssuer(self, response)
+            if self.issuer and received_issuer != self.issuer:
+                raise MismatchingIssuer(self.issuer, received_issuer, self, response)
+
+    def _validate_state(self, response: URL) -> None:
+        """Check that the received 'state' matches the requested one."""
+        received_state = response.query.get("state")
+        if self.state != received_state:
+            raise MismatchingState(self.state, received_state, self, response)
 
     def sign_request_jwt(
         self,
@@ -699,7 +727,7 @@ class AuthorizationRequest:
             request=str(request_jwt),
         )
 
-    def on_response_error(self, response: str) -> AuthorizationResponse:
+    def on_response_error(self, response: URL) -> AuthorizationResponse:
         """Error handler for Authorization Response errors.
 
         Triggered by
@@ -717,27 +745,24 @@ class AuthorizationRequest:
             AuthorizationResponseError: if the response contains an `error`. The raised exception may be a subclass
 
         """
-        response_url = furl(response)
-        error = response_url.args.get("error")
-        error_description = response_url.args.get("error_description")
-        error_uri = response_url.args.get("error_uri")
+        response_url = URL(response)
+        error = response_url.query.get("error", "missing_error_code")
+        error_description = response_url.query.get("error_description")
+        error_uri = response_url.query.get("error_uri")
         exception_class = self.exception_classes.get(error, AuthorizationResponseError)
         raise exception_class(
             request=self, response=response, error=error, description=error_description, uri=error_uri
         )
 
     @property
-    def furl(self) -> furl:
-        """Return the Authorization Request URI, as a `furl`."""
-        return furl(
-            self.authorization_endpoint,
-            args=self.args,
-        )
+    def yarl(self) -> URL:
+        """Return the Authorization Request URI, as a `yarl.URL`."""
+        return URL(self.authorization_endpoint).with_query(self.args)
 
     @property
     def uri(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
-        return str(self.furl.url)
+        return str(self.yarl)
 
     def __getattr__(self, item: str) -> Any:
         """Allow attribute access to extra parameters."""
@@ -796,17 +821,16 @@ class RequestParameterAuthorizationRequest:
         )
 
     @property
-    def furl(self) -> furl:
-        """Return the Authorization Request URI, as a `furl` instance."""
-        return furl(
-            self.authorization_endpoint,
-            args={"client_id": self.client_id, "request": str(self.request), **self.kwargs},
+    def yarl(self) -> URL:
+        """Return the Authorization Request URI, as a `yarl.URL` instance."""
+        return URL(self.authorization_endpoint).with_query(
+            {"client_id": self.client_id, "request": str(self.request), **self.kwargs}
         )
 
     @property
     def uri(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
-        return str(self.furl.url)
+        return str(self.yarl)
 
     def __getattr__(self, item: str) -> Any:
         """Allow attribute access to extra parameters."""
@@ -863,17 +887,16 @@ class RequestUriParameterAuthorizationRequest:
         )
 
     @property
-    def furl(self) -> furl:
-        """Return the Authorization Request URI, as a `furl` instance."""
-        return furl(
-            self.authorization_endpoint,
-            args={"client_id": self.client_id, "request_uri": self.request_uri, **self.kwargs},
+    def yarl(self) -> URL:
+        """Return the Authorization Request URI, as a `yarl.URL` instance."""
+        return URL(self.authorization_endpoint).with_query(
+            {"client_id": self.client_id, "request_uri": self.request_uri, **self.kwargs}
         )
 
     @property
     def uri(self) -> str:
         """Return the Authorization Request URI, as a `str`."""
-        return str(self.furl.url)
+        return str(self.yarl)
 
     def __getattr__(self, item: str) -> Any:
         """Allow attribute access to extra parameters."""

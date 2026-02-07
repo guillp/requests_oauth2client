@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import TYPE_CHECKING, Any
 
-from furl import furl  # type: ignore[import-untyped]
+from yarl import URL
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -85,12 +85,12 @@ def validate_endpoint_uri(
         the endpoint URI, if all checks passed
 
     """
-    url = furl(uri)
+    url = URL(uri)
     if https and url.scheme == "https":
         https = False
     if no_port and url.port == 443:  # noqa: PLR2004
         no_port = False
-    if no_credentials and not url.username and not url.password:
+    if no_credentials and not url.user and not url.password:
         no_credentials = False
     if no_fragment and not url.fragment:
         no_fragment = False

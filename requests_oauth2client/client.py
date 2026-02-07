@@ -1631,24 +1631,31 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             except Exception as exc:
                 raise InvalidScopeParam(scope) from exc
 
+        if scope == "":
+            scope = None
+
         if acr_values is not None and not isinstance(acr_values, str):
             try:
                 acr_values = " ".join(acr_values)
             except Exception as exc:
                 raise InvalidAcrValuesParam(acr_values) from exc
 
-        data = dict(
-            ciba_kwargs,
-            scope=scope,
-            client_notification_token=client_notification_token,
-            acr_values=acr_values,
-            login_hint_token=login_hint_token,
-            id_token_hint=id_token_hint,
-            login_hint=login_hint,
-            binding_message=binding_message,
-            user_code=user_code,
-            requested_expiry=requested_expiry,
-        )
+        data = {
+            key: val
+            for key, val in dict(
+                ciba_kwargs,
+                scope=scope,
+                client_notification_token=client_notification_token,
+                acr_values=acr_values,
+                login_hint_token=login_hint_token,
+                id_token_hint=id_token_hint,
+                login_hint=login_hint,
+                binding_message=binding_message,
+                user_code=user_code,
+                requested_expiry=requested_expiry,
+            ).items()
+            if val is not None
+        }
 
         if private_jwk is not None:
             data = {"request": str(Jwt.sign(data, key=private_jwk, alg=alg))}

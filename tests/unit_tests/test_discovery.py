@@ -21,6 +21,12 @@ def test_well_known_uri() -> None:
         == "http://www.example.com/.well-known/foo/bar/example"
     )
 
+    assert well_known_uri("http://www.example.com", "/example") == "http://www.example.com/.well-known/example"
+    assert (
+        well_known_uri("http://www.example.com/foo/bar", "/example")
+        == "http://www.example.com/.well-known/foo/bar/example"
+    )
+
 
 def test_oidc_discovery() -> None:
     assert oidc_discovery_document_url("https://issuer.com") == "https://issuer.com/.well-known/openid-configuration"
