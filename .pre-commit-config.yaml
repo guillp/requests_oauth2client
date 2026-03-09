@@ -14,13 +14,13 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 6eaad039603a4de39fddd1cf5f727391efe9974e # frozen: v8.30.0
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # frozen: v8.30.0
     hooks:
       - id: gitleaks
         name: "🔒 Security · GitLeaks · Detect hardcoded secrets"
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 9b1e9a33f1b33f6ecc2fdbb8d7cc894e951106e4 # frozen: v0.14.13
+    rev: b969e2851312ca2b24bbec879ba4954341d1bd12  # frozen: v0.15.5
     hooks:
       - id: ruff-format
         name: "🐍 Python · Ruff · Code formatting"
@@ -28,7 +28,7 @@ repos:
         name: "🐍 Python · Ruff · Linting"
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: 78f5e0f104cfa803d0597eaa924b4de3becd3e3e # frozen: v0.24.1
+    rev: 4b2e70d08cb2ccd26d1fba73588de41c7a5d50b7  # frozen: v0.25
     hooks:
       - id: validate-pyproject
         name: "🐍 Python · Validate pyproject.toml"
@@ -57,14 +57,14 @@ repos:
           - yarl
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0fe8648804a32455c690e0519c217f8cee6a48c6 # frozen: 0.36.0
+    rev: 8db279a37c552206d2df62269ff6f9d31125815a  # frozen: 0.37.0
     hooks:
       - id: check-github-workflows
         name: "🐙 Github-Actions · Validate gh workflow files"
         args: ["--verbose"]
 
   - repo: https://github.com/hukkin/mdformat
-    rev: 82912cdaea4fb830f751504486a7879c70526547 # frozen: 1.0.0
+    rev: 2d496dbc18e31b83a1596685347ffe0b6041daf0  # frozen: 1.0.0
     hooks:
       - id: mdformat
         name: "📝 Markdown · Format markdown"
@@ -82,7 +82,7 @@ repos:
         name: "🐚 Shell · shellcheck · Lint shell scripts"
 
   - repo: https://github.com/openstack/bashate
-    rev: fbd7c2534c2701351c603ff700ddf08202430a31 # frozen: 2.1.1
+    rev: 5798d24d571676fc407e81df574c1ef57b520f23  # frozen: 2.1.1
     hooks:
       - id: bashate
         name: "🐚 Shell · bashate · Check shell script code style"
@@ -124,7 +124,7 @@ repos:
         args: ["--maxkb=5000"]
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 5857050259653556030b6b1f19f53e8868a427f6 # frozen: v4.12.1
+    rev: 4fbeae7861663ecf4b4989211eba41c1a3fb1227  # frozen: v4.13.9
     hooks:
       - id: commitizen
         name: "🌳 git · Validate commit message"
@@ -132,7 +132,7 @@ repos:
         additional_dependencies: [cz-conventional-gitmoji]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: 63c8f8312b7559622c0d82815639671ae42132ac # frozen: v2.4.1
+    rev: 2ccb47ff45ad361a21071a7eedda4c37e6ae8c5a  # frozen: v2.4.2
     hooks:
       - id: codespell
         name: "💎 QA · codespell · Check for common typos"
