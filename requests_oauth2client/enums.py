@@ -86,3 +86,9 @@ class TokenType(StrEnum):
     ACCESS_TOKEN = "access_token"
     REFRESH_TOKEN = "refresh_token"
     ID_TOKEN = "id_token"
+
+
+class JwtTypes(StrEnum):
+    """An enum of standardised JWT `typ` values."""
+
+    CLIENT_AUTHENTICATION_JWT = "client-authentication+jwt"

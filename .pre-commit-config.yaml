@@ -26,6 +26,8 @@ repos:
         name: "🐍 Python · Ruff · Code formatting"
       - id: ruff-check
         name: "🐍 Python · Ruff · Linting"
+        args:
+          - --fix
 
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: 4b2e70d08cb2ccd26d1fba73588de41c7a5d50b7 # frozen: v0.25

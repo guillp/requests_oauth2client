@@ -151,6 +151,7 @@ def client_auth_validator(
     client_id: str,
     client_credential: str,
     public_jwk: Jwk,
+    issuer: str,
 ) -> RequestValidatorType:
     def validator(request: _RequestObjectProxy, *, endpoint: str) -> None:
         if client_auth_method_handler == PublicApp:
@@ -176,10 +177,7 @@ def client_auth_validator(
             )
         elif client_auth_method_handler == PrivateKeyJwt:
             private_key_jwt_auth_validator(
-                request,
-                client_id=client_id,
-                endpoint=endpoint,
-                public_jwk=public_jwk,
+                request, client_id=client_id, endpoint=endpoint, public_jwk=public_jwk, issuer=issuer
             )
 
         # check that no parameter is duplicated in the request body
