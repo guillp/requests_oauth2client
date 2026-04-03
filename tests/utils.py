@@ -49,7 +49,7 @@ def client_secret_basic_auth_validator(req: _RequestObjectProxy, *, client_id: s
 
 
 def client_secret_jwt_auth_validator(
-    req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str
+    req: _RequestObjectProxy, *, client_id: str, client_secret: str, endpoint: str, validity_window: int = 60
 ) -> None:
     params = parse_url_encoded(req.text)
     assert params.get("client_id") == client_id
@@ -60,12 +60,13 @@ def client_secret_jwt_auth_validator(
     jwt.verify_signature(jwk, alg="HS256")
     claims = jwt.claims
     now = int(datetime.now(tz=timezone.utc).timestamp())
-    assert now - 10 <= claims["iat"] <= now, "unexpected iat"
-    assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
+    assert claims["iat"] == now, "unexpected iat"
+    assert claims["exp"] == now + validity_window, "unexpected exp"
     assert claims["iss"] == client_id
     assert claims["aud"] == endpoint
     assert "jti" in claims
     assert claims["sub"] == client_id
+    assert jwt.typ == "client-authentication+jwt"
 
 
 def private_key_jwt_auth_validator(
@@ -73,8 +74,11 @@ def private_key_jwt_auth_validator(
     *,
     client_id: str,
     public_jwk: Jwk,
+    issuer: str,
     endpoint: str,
+    validity_window: int = 60,
 ) -> None:
+    assert req.url == endpoint
     params = parse_url_encoded(req.text)
     assert params.get("client_id") == client_id, "invalid client_id"
     client_assertion = params.get("client_assertion")
@@ -83,12 +87,13 @@ def private_key_jwt_auth_validator(
     jwt.verify_signature(public_jwk)
     claims = jwt.claims
     now = int(datetime.now(timezone.utc).timestamp())
-    assert now - 10 <= claims["iat"] <= now, "unexpected iat"
-    assert now + 10 < claims["exp"] < now + 180, "unexpected exp"
+    assert claims["iat"] == now, "unexpected iat"
+    assert claims["exp"] == now + validity_window, "unexpected exp"
     assert claims["iss"] == client_id
-    assert claims["aud"] == endpoint
+    assert claims["aud"] == issuer
     assert "jti" in claims
     assert claims["sub"] == client_id
+    assert jwt.typ == "client-authentication+jwt"
 
 
 def join_url(root: str, path: str) -> str:

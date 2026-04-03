@@ -1,5 +1,6 @@
 import pytest
 import requests
+from freezegun import freeze_time
 from jwskate import InvalidJwk, Jwk
 from requests_mock import ANY
 
@@ -61,6 +62,7 @@ def test_client_secret_basic(
     client_secret_basic_auth_validator(requests_mock.last_request, client_id=client_id, client_secret=client_secret)
 
 
+@freeze_time()
 def test_private_key_jwt(
     requests_mock: RequestsMocker,
     access_token: str,
@@ -68,8 +70,9 @@ def test_private_key_jwt(
     client_id: str,
     private_jwk: Jwk,
     public_jwk: Jwk,
+    issuer: str,
 ) -> None:
-    client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk))
+    client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk, aud=issuer))
 
     requests_mock.post(
         token_endpoint,
@@ -83,6 +86,7 @@ def test_private_key_jwt(
         client_id=client_id,
         public_jwk=public_jwk,
         endpoint=token_endpoint,
+        issuer=issuer,
     )
 
     with pytest.raises(ValueError, match="asymmetric private signing key") as exc:
@@ -97,8 +101,9 @@ def test_private_key_jwt_with_kid(
     client_id: str,
     private_jwk: Jwk,
     public_jwk: Jwk,
+    issuer: str,
 ) -> None:
-    client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk))
+    client = OAuth2Client(token_endpoint, PrivateKeyJwt(client_id, private_jwk=private_jwk, aud=issuer))
 
     requests_mock.post(
         token_endpoint,
@@ -112,9 +117,11 @@ def test_private_key_jwt_with_kid(
         client_id=client_id,
         public_jwk=public_jwk,
         endpoint=token_endpoint,
+        issuer=issuer,
     )
 
 
+@freeze_time()
 def test_client_secret_jwt(
     requests_mock: RequestsMocker,
     access_token: str,
@@ -189,13 +196,13 @@ def test_private_key_jwt_missing_kid(client_id: str, private_jwk: Jwk) -> None:
     assert exc.type is InvalidClientAssertionSigningKeyOrAlg
 
 
-def test_init_auth(token_endpoint: str, client_id: str, client_secret: str, private_jwk: Jwk) -> None:
+def test_init_auth(token_endpoint: str, client_id: str, client_secret: str, private_jwk: Jwk, issuer: str) -> None:
     csp_client = OAuth2Client(token_endpoint, (client_id, client_secret))
     assert isinstance(csp_client.auth, ClientSecretPost)
     assert csp_client.auth.client_id == client_id
     assert csp_client.auth.client_secret == client_secret
 
-    pkj_client = OAuth2Client(token_endpoint, (client_id, dict(private_jwk)))
+    pkj_client = OAuth2Client(token_endpoint, (client_id, dict(private_jwk)), issuer=issuer)
     assert isinstance(pkj_client.auth, PrivateKeyJwt)
     assert pkj_client.auth.client_id == client_id
     assert pkj_client.auth.private_jwk == private_jwk
