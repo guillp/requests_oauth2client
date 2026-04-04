@@ -30,7 +30,7 @@ def test_bearer_auth(
     access_token: str,
 ) -> None:
     requests_mock.post(target_api)
-    response = requests.post(target_api, auth=bearer_token)
+    response = requests.post(target_api, auth=bearer_token, timeout=10.0)
     assert response.ok
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.headers.get("Authorization") == f"Bearer {access_token}"
@@ -39,7 +39,7 @@ def test_bearer_auth(
 def test_expired_token(minutes_ago: datetime) -> None:
     token = BearerToken(access_token="foo", expires_at=minutes_ago)
     with pytest.raises(ExpiredAccessToken):
-        requests.post("http://localhost/test", auth=token)
+        requests.post("http://localhost/test", auth=token, timeout=10.0)
 
 
 def test_access_token_auth(
@@ -72,7 +72,7 @@ def test_access_token_auth(
             "token_type": "Bearer",
         },
     )
-    requests.post(target_uri, auth=auth)
+    requests.post(target_uri, auth=auth, timeout=10.0)
 
     assert len(requests_mock.request_history) == 2
     refresh_request = requests_mock.request_history[0]
@@ -120,7 +120,7 @@ def test_client_credentials_auth(
             "token_type": "Bearer",
         },
     )
-    requests.post(target_api, auth=auth)
+    requests.post(target_api, auth=auth, timeout=10.0)
 
     assert len(requests_mock.request_history) == 2
     cc_request = requests_mock.request_history[0]
@@ -140,7 +140,7 @@ def test_client_credentials_auth(
     assert auth.token.refresh_token == refresh_token
 
     requests_mock.reset_mock()
-    requests.post(target_api, auth=auth)
+    requests.post(target_api, auth=auth, timeout=10.0)
     assert len(requests_mock.request_history) == 1
 
     assert OAuth2ClientCredentialsAuth(client, token=access_token).token == BearerToken(access_token)
@@ -174,7 +174,7 @@ def test_authorization_code_auth(
             "token_type": "Bearer",
         },
     )
-    requests.post(target_api, auth=auth)
+    requests.post(target_api, auth=auth, timeout=10.0)
 
     assert len(requests_mock.request_history) == 2
     code_request = requests_mock.request_history[0]
@@ -195,7 +195,7 @@ def test_authorization_code_auth(
     assert auth.token.refresh_token == refresh_token
 
     requests_mock.reset_mock()
-    requests.post(target_api, auth=auth)
+    requests.post(target_api, auth=auth, timeout=10.0)
     assert len(requests_mock.request_history) == 1
 
     assert OAuth2AuthorizationCodeAuth(client, code=authorization_code, token=access_token).token == BearerToken(
@@ -238,7 +238,7 @@ def test_ropc_auth(
     )
     requests_mock.post(target_api)
 
-    assert requests.post(target_api, auth=auth).ok
+    assert requests.post(target_api, auth=auth, timeout=10.0).ok
 
     assert len(requests_mock.request_history) == 2
 
@@ -257,7 +257,7 @@ def test_ropc_auth(
     assert auth.token.refresh_token == refresh_token
 
     requests_mock.reset_mock()
-    requests.post(target_api, auth=auth)
+    requests.post(target_api, auth=auth, timeout=10.0)
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.url == target_api
 
@@ -315,7 +315,7 @@ def test_device_code_auth(
     assert auth.device_code is da_resp.device_code
     assert auth.token is None
 
-    assert requests.post(target_api, auth=auth)
+    assert requests.post(target_api, auth=auth, timeout=10.0)
     assert len(requests_mock.request_history) == 2
     device_code_request = requests_mock.request_history[0]
     api_request = requests_mock.request_history[1]
@@ -335,13 +335,13 @@ def test_device_code_auth(
     assert auth.token.refresh_token == refresh_token
 
     requests_mock.reset_mock()
-    requests.post(target_api, auth=auth)
+    requests.post(target_api, auth=auth, timeout=10.0)
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.url == target_api
 
     auth.forget_token()
     with pytest.raises(NonRenewableTokenError):
-        requests.post(target_api, auth=auth)
+        requests.post(target_api, auth=auth, timeout=10.0)
 
     assert OAuth2DeviceCodeAuth(oauth2client, device_code=device_code, token=access_token).token == BearerToken(
         access_token

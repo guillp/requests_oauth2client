@@ -161,7 +161,7 @@ def test_public_client(
 def test_invalid_request(requests_mock: RequestsMocker, client_id: str, client_secret: str) -> None:
     requests_mock.get(ANY)
     with pytest.raises(RuntimeError) as exc:
-        requests.get("http://localhost", auth=ClientSecretBasic(client_id, client_secret))
+        requests.get("http://localhost", auth=ClientSecretBasic(client_id, client_secret), timeout=10.0)
     assert exc.type is InvalidRequestForClientAuthentication
 
 

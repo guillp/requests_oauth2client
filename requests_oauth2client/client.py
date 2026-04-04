@@ -1927,10 +1927,10 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
             validate_endpoint_uri(url, path=False)
 
         session = session or requests.Session()
-        discovery = session.get(url).json()
+        discovery = session.get(url, timeout=10.0).json()
 
         jwks_uri = discovery.get("jwks_uri")
-        jwks = JwkSet(session.get(jwks_uri).json()) if jwks_uri else None
+        jwks = JwkSet(session.get(jwks_uri, timeout=10.0).json()) if jwks_uri else None
 
         return cls.from_discovery_document(
             discovery,
