@@ -1202,7 +1202,7 @@ def test_proxy_authorization(requests_mock: RequestsMocker, target_api: str) -> 
 
     requests_mock.post(target_api)
 
-    requests.post(target_api, auth=ProxyAuthorizationBearerToken(access_token))
+    requests.post(target_api, auth=ProxyAuthorizationBearerToken(access_token), timeout=10.0)
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.headers[auth_header] == f"Bearer {access_token}"
 

@@ -94,7 +94,7 @@ def test_dpop_token_api_request(requests_mock: RequestsMocker, alg: str) -> None
 
     target_api = "https://my.api/resource"
     requests_mock.put(target_api)
-    requests.put(target_api, params={"key": "value"}, auth=dpop_token)
+    requests.put(target_api, params={"key": "value"}, auth=dpop_token, timeout=10.0)
     assert requests_mock.called_once
     api_request = requests_mock.last_request
     assert api_request is not None
@@ -495,7 +495,7 @@ def test_dpop_with_rs_provided_nonce(
     session = requests.Session()
     session.auth = OAuth2ClientCredentialsAuth(oauth2client, dpop=True)
 
-    response = session.post(target_api)
+    response = session.post(target_api, timeout=10.0)
     assert response.status_code == 200
     assert requests_mock.call_count == 3
 
@@ -512,7 +512,7 @@ def test_dpop_with_rs_provided_nonce(
     assert proof_with_nonce.claims["nonce"] == dpop_nonce
 
     requests_mock.reset_mock()
-    second_response = session.post(target_api)
+    second_response = session.post(target_api, timeout=10.0)
     assert second_response.status_code == 200
     assert requests_mock.called_once
     assert requests_mock.last_request is not None
@@ -644,7 +644,7 @@ def test_rs_missing_nonce(requests_mock: RequestsMocker, target_api: str) -> Non
     dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
 
     with pytest.raises(MissingDPoPNonce):
-        requests.get(target_api, auth=dpop_token)
+        requests.get(target_api, auth=dpop_token, timeout=10.0)
 
 
 def test_rs_repeated_nonce(requests_mock: RequestsMocker, target_api: str) -> None:
@@ -663,7 +663,7 @@ def test_rs_repeated_nonce(requests_mock: RequestsMocker, target_api: str) -> No
     dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
 
     with pytest.raises(RepeatedDPoPNonce):
-        requests.get(target_api, auth=dpop_token)
+        requests.get(target_api, auth=dpop_token, timeout=10.0)
 
 
 def test_rs_dpop_nonce_loop(
@@ -700,6 +700,6 @@ def test_rs_dpop_nonce_loop(
     dpop_key = DPoPKey.generate()
     dpop_token = DPoPToken(access_token="my_dpop_access_token", _dpop_key=dpop_key)
 
-    resp = requests.get(target_api, auth=dpop_token)
+    resp = requests.get(target_api, auth=dpop_token, timeout=10.0)
     assert resp.status_code == 401
     assert resp.headers["DPoP-Nonce"] == "nonce2"
