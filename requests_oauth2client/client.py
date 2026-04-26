@@ -346,6 +346,7 @@ class OAuth2Client:
             client_id=client_id,
             client_secret=client_secret,
             private_key=private_key,
+            audience=issuer,
             default_auth_handler=ClientSecretPost,
         )
 

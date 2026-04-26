@@ -8,6 +8,7 @@ used Client Authentication Methods.
 
 from __future__ import annotations
 
+import warnings
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs
@@ -17,6 +18,8 @@ import requests
 from attrs import frozen
 from binapy import BinaPy
 from jwskate import Jwk, Jwt, SignatureAlgs, SymmetricJwk, to_jwk
+
+from requests_oauth2client.enums import JwtTypes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -174,6 +177,7 @@ class BaseClientAssertionAuthenticationMethod(BaseClientAuthenticationMethod):
     jti_gen: Callable[[], str]
     aud: str | None
     alg: str | None
+    typ: str
 
     def client_assertion(self, audience: str) -> str:
         """Generate a Client Assertion for a specific audience.
@@ -249,6 +253,7 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
         alg: str = SignatureAlgs.HS256,
         jti_gen: Callable[[], str] = lambda: str(uuid4()),
         aud: str | None = None,
+        typ: str = JwtTypes.CLIENT_AUTHENTICATION_JWT,
     ) -> None:
         self.__attrs_init__(
             client_id=client_id,
@@ -257,6 +262,7 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
             alg=alg,
             jti_gen=jti_gen,
             aud=aud,
+            typ=typ,
         )
 
     def client_assertion(self, audience: str) -> str:
@@ -288,6 +294,7 @@ class ClientSecretJwt(BaseClientAssertionAuthenticationMethod):
             },
             key=jwk,
             alg=self.alg,
+            typ=self.typ,
         )
         return str(jwt)
 
@@ -325,7 +332,7 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
         alg: the alg to use to sign generated Client Assertions.
         lifetime: the lifetime to use for generated Client Assertions.
         jti_gen: a function to generate JWT Token Ids (`jti`) for generated Client Assertions.
-        aud: the audience value to use. If `None` (default), the endpoint URL will be used.k
+        aud: the audience value to use. If `None` (default), the endpoint URL will be used.
 
     Example:
         ```python
@@ -353,6 +360,7 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
         lifetime: int = 60,
         jti_gen: Callable[[], str] = lambda: str(uuid4()),
         aud: str | None = None,
+        typ: str = JwtTypes.CLIENT_AUTHENTICATION_JWT,
     ) -> None:
         private_jwk = to_jwk(private_jwk)
 
@@ -370,6 +378,16 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
         if not kid:
             raise InvalidClientAssertionSigningKeyOrAlg(alg)
 
+        if aud is None:
+            warnings.warn(
+                "No audience (`aud`) provided for `PrivateKeyJwt` authentication method."
+                " The target endpoint URL will be used as audience."
+                " It is recommended to provide the AS Issuer identifier as `aud` value."
+                " If you initialized an `OAuth2Client` without specifying its AS `issuer`,"
+                " the `aud` value will default to the target endpoint URL at runtime.",
+                stacklevel=2,
+            )
+
         self.__attrs_init__(
             client_id=client_id,
             private_jwk=private_jwk,
@@ -377,6 +395,7 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
             lifetime=lifetime,
             jti_gen=jti_gen,
             aud=aud,
+            typ=typ,
         )
 
     def client_assertion(self, audience: str) -> str:
@@ -404,6 +423,7 @@ class PrivateKeyJwt(BaseClientAssertionAuthenticationMethod):
             },
             key=self.private_jwk,
             alg=self.alg,
+            typ=self.typ,
         )
         return str(jwt)
 
@@ -456,6 +476,7 @@ def client_auth_factory(
     client_id: str | None = None,
     client_secret: str | None = None,
     private_key: Jwk | dict[str, Any] | None = None,
+    audience: str | None = None,
     default_auth_handler: type[ClientSecretPost | ClientSecretBasic | ClientSecretJwt] = ClientSecretPost,
 ) -> requests.auth.AuthBase:
     """Initialize the appropriate Auth Handler based on the provided parameters.
@@ -469,7 +490,8 @@ def client_auth_factory(
             - a tuple of (client_id, client_secret) which will be used to initialize an instance of
               `default_auth_handler`,
             - a tuple of (client_id, jwk), used to initialize a `PrivateKeyJwk` (`jwk` being an
-              instance of `jwskate.Jwk` or a `dict`),
+              instance of `jwskate.Jwk` or a `dict`). Parameter `audience` must be provided in this case,
+              with the target AS Issuer identifier as value.
             - a `client_id`, as `str`,
             - or `None`, to pass `client_id` and other credentials as dedicated parameters, see
               below.
@@ -477,6 +499,7 @@ def client_auth_factory(
         client_secret: the Client Secret to use for this client, if any (for clients using
             an authentication method based on a secret)
         private_key: the private key to use for private_key_jwt authentication method
+        audience: the Audience value to use, which must be the Issuer identifier of the target AS.
         default_auth_handler: if a client_id and client_secret are provided, initialize an
             instance of this class with those 2 parameters.
             You can choose between `ClientSecretBasic`, `ClientSecretPost`, or `ClientSecretJwt`.
@@ -516,7 +539,7 @@ or use `client_id` and one of `client_secret` or `private_key`.
         raise UnsupportedClientCredentials(msg)
 
     if private_key is not None:
-        return PrivateKeyJwt(client_id, private_jwk=private_key)
+        return PrivateKeyJwt(client_id, private_jwk=private_key, aud=audience)
     if client_secret is None:
         return PublicApp(str(client_id))
 
