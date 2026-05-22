@@ -451,5 +451,3 @@ Issued At timestamp (iat) is too far away in the past or future (received: {proo
             )
 
     return proof_jwt
-
-    return proof_jwt
