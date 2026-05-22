@@ -211,6 +211,7 @@ class DPoPKey:
         jwt_typ: the token type (`typ`) header to include in the generated proofs.
         dpop_token_class: the class to use to represent DPoP tokens.
         rs_nonce: an initial DPoP `nonce` to include in requests, for testing purposes. You should leave `None`.
+        exp: used for proof claims payload
 
     """
 
@@ -222,6 +223,7 @@ class DPoPKey:
     dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
     as_nonce: str | None
     rs_nonce: str | None
+    exp: int | None
 
     def __init__(
         self,
@@ -233,6 +235,7 @@ class DPoPKey:
         dpop_token_class: type[DPoPToken] = DPoPToken,
         as_nonce: str | None = None,
         rs_nonce: str | None = None,
+        exp: int | None = None,
     ) -> None:
         try:
             private_key = jwskate.to_jwk(private_key).check(is_private=True, is_symmetric=False)
@@ -250,6 +253,7 @@ class DPoPKey:
             dpop_token_class=dpop_token_class,
             as_nonce=as_nonce,
             rs_nonce=rs_nonce,
+            exp=exp,
         )
 
     @classmethod
@@ -298,6 +302,7 @@ class DPoPKey:
             - The `nonce` claim will be the value stored in the `nonce` attribute. This attribute is updated
               automatically when using a `DPoPToken` or one of the provided Authentication handlers as a `requests`
               auth handler.
+            - The `exp` claim will is based on jit and set exp on key initialization.
 
         The proof will be signed with the private key of this DPoPKey, using the configured `alg` signature algorithm.
 
@@ -316,7 +321,10 @@ class DPoPKey:
 
         """
         htu = URL(htu).with_query(None).with_fragment(None)
-        proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": str(htu), "iat": self.iat_generator()}
+        iat = self.iat_generator()
+        proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": str(htu), "iat": iat}
+        if self.exp:
+            proof_claims["exp"] = self.exp + iat
         if nonce:
             proof_claims["nonce"] = nonce
         elif self.rs_nonce:
@@ -441,5 +449,7 @@ Issued At timestamp (iat) is too far away in the past or future (received: {proo
             raise InvalidDPoPProof(
                 proof, f"DPoP Nonce (nonce) value '{proof_jwt.nonce}' does not match expected '{nonce}'."
             )
+
+    return proof_jwt
 
     return proof_jwt
