@@ -148,3 +148,11 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead."
 ]
+
+[tool.rumdl.MD013]
+line-length = 120
+reflow = true
+reflow-mode = "semantic-line-breaks"
+
+[tool.rumdl.MD057]
+enabled = false
