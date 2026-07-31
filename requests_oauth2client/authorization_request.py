@@ -811,7 +811,7 @@ class RequestParameterAuthorizationRequest:
         if isinstance(request, str):
             request = Jwt(request)  # type: ignore[assignment]
 
-        if not isinstance(request, (SignedJwt, JweCompact)):
+        if not isinstance(request, (SignedJwt, JweCompact)):  # pragma: no cover
             msg = "The `request` parameter must be a SignedJwt, a JweCompact, or a string representing one."
             raise TypeError(msg)
 
