@@ -373,7 +373,7 @@ class AuthorizationRequest:
         *,
         client_id: str,
         redirect_uri: str | None = None,
-        scope: None | str | Iterable[str] = "openid",
+        scope: str | Iterable[str] | None = "openid",
         response_type: str = ResponseTypes.CODE,
         state: str | ellipsis | None = ...,  # noqa: F821
         nonce: str | ellipsis | None = ...,  # noqa: F821
@@ -793,7 +793,7 @@ class RequestParameterAuthorizationRequest:
 
     authorization_endpoint: str
     client_id: str
-    request: Jwt
+    request: SignedJwt | JweCompact
     expires_at: datetime | None
     dpop_key: DPoPKey | None
     kwargs: dict[str, Any]
@@ -803,13 +803,17 @@ class RequestParameterAuthorizationRequest:
         self,
         authorization_endpoint: str,
         client_id: str,
-        request: Jwt | str,
+        request: SignedJwt | JweCompact | str,
         expires_at: datetime | None = None,
         dpop_key: DPoPKey | None = None,
         **kwargs: Any,
     ) -> None:
         if isinstance(request, str):
-            request = Jwt(request)
+            request = Jwt(request)  # type: ignore[assignment]
+
+        if not isinstance(request, (SignedJwt, JweCompact)):
+            msg = "The `request` parameter must be a SignedJwt, a JweCompact, or a string representing one."
+            raise TypeError(msg)
 
         self.__attrs_init__(
             authorization_endpoint=authorization_endpoint,

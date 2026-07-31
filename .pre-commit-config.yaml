@@ -14,13 +14,13 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 6eaad039603a4de39fddd1cf5f727391efe9974e # frozen: v8.30.0
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e # frozen: v8.30.1
     hooks:
       - id: gitleaks
         name: "🔒 Security · GitLeaks · Detect hardcoded secrets"
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 9b1e9a33f1b33f6ecc2fdbb8d7cc894e951106e4 # frozen: v0.14.13
+    rev: 39d9ac5938dadb73df0564a45f163e25ff9fa6e2 # frozen: v0.16.1
     hooks:
       - id: ruff-format
         name: "🐍 Python · Ruff · Code formatting"
@@ -28,14 +28,14 @@ repos:
         name: "🐍 Python · Ruff · Linting"
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: 78f5e0f104cfa803d0597eaa924b4de3becd3e3e # frozen: v0.24.1
+    rev: 4b2e70d08cb2ccd26d1fba73588de41c7a5d50b7 # frozen: v0.25
     hooks:
       - id: validate-pyproject
         name: "🐍 Python · Validate pyproject.toml"
         additional_dependencies: ["validate-pyproject-schema-store[all]"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: a66e98df7b4aeeb3724184b332785976d062b92e # frozen: v1.19.1
+    rev: 41e691678310dfd3833f7ab4e180ddb014310356 # frozen: v2.3.0
     hooks:
       - id: mypy
         name: "🐍 Python · mypy · Check static types"
@@ -57,14 +57,14 @@ repos:
           - yarl
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0fe8648804a32455c690e0519c217f8cee6a48c6 # frozen: 0.36.0
+    rev: 6b63472e72e1a91ed8a2f6d483790dfb644fa1d3 # frozen: 0.37.4
     hooks:
       - id: check-github-workflows
         name: "🐙 Github-Actions · Validate gh workflow files"
         args: ["--verbose"]
 
   - repo: https://github.com/rvben/rumdl-pre-commit
-    rev: v0.2.47
+    rev: b28bdfeabf9f8b43c4a0f286bd5fdb5162fdb789 # frozen: v0.2.47
     hooks:
       - id: rumdl # Lint only; add args [--fix] to auto-fix
         name: "📝 Markdown · Format markdown"
@@ -85,7 +85,7 @@ repos:
         args: [--max-line-length, "120"]
 
   - repo: https://github.com/jvllmr/pre-commit-prettier
-    rev: c6c4f2c09b36f023c17d43bce4d86b8aa3b09493 # frozen: v3.8.1
+    rev: 17dfa8703c8f518a3d797a8dfa115b9875926b36 # frozen: v3.9.6
     hooks:
       - id: prettier
         name: "✨ Misc · prettier · Format misc web files"
@@ -120,7 +120,7 @@ repos:
         args: ["--maxkb=5000"]
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 5857050259653556030b6b1f19f53e8868a427f6 # frozen: v4.12.1
+    rev: 93c7b51d860138c34a0613756c0151209b88d56f # frozen: v4.17.0
     hooks:
       - id: commitizen
         name: "🌳 git · Validate commit message"
@@ -128,7 +128,7 @@ repos:
         additional_dependencies: [cz-conventional-gitmoji]
 
   - repo: https://github.com/codespell-project/codespell
-    rev: 63c8f8312b7559622c0d82815639671ae42132ac # frozen: v2.4.1
+    rev: 57b21406f092110c18776e39b0bda50d37c945c8 # frozen: v2.4.3
     hooks:
       - id: codespell
         name: "💎 QA · codespell · Check for common typos"

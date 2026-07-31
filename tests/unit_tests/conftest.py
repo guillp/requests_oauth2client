@@ -168,7 +168,7 @@ def client_credential(
     ),
     client_secret: str,
     private_jwk: Jwk,
-) -> None | str | Jwk:
+) -> str | Jwk | None:
     if client_auth_method_handler == PublicApp:
         return None
     if client_auth_method_handler in (
@@ -188,10 +188,10 @@ def client_auth_method(
         type[PublicApp | ClientSecretPost | ClientSecretBasic | ClientSecretJwt | PrivateKeyJwt]
     ),
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
 ) -> BaseClientAuthenticationMethod:
     if client_auth_method_handler == PublicApp:
-        return client_auth_method_handler(client_id)  # type: ignore[call-arg]
+        return client_auth_method_handler(client_id)
     return client_auth_method_handler(client_id, client_credential)  # type: ignore[arg-type,call-arg]
 
 
@@ -324,7 +324,7 @@ def sub() -> str:
     scope="session",
     params=[None, "state", ...],
 )
-def state(request: FixtureRequest) -> None | ellipsis | str:
+def state(request: FixtureRequest) -> ellipsis | str | None:
     return request.param
 
 
@@ -342,7 +342,7 @@ def auth_request_kwargs(request: FixtureRequest) -> dict[str, Any]:
     scope="session",
     params=[None, "nonce", ...],
 )
-def nonce(request: FixtureRequest) -> None | ellipsis | str:
+def nonce(request: FixtureRequest) -> ellipsis | str | None:
     return request.param
 
 
@@ -351,7 +351,7 @@ def nonce(request: FixtureRequest) -> None | ellipsis | str:
     params=[None, "openid", "openid profile email", ("openid", "profile", "email"), ()],
     ids=["None", "single", "space-separated", "tuple", "empty"],
 )
-def scope(request: FixtureRequest) -> None | str | list[str]:
+def scope(request: FixtureRequest) -> str | list[str] | None:
     return request.param
 
 
@@ -370,7 +370,7 @@ def code_challenge_method(request: FixtureRequest) -> str | None:
 
 
 @pytest.fixture(scope="session", params=[None, "foo bar", ["foo", "bar"]])
-def acr_values(request: FixtureRequest) -> None | str | list[str]:
+def acr_values(request: FixtureRequest) -> str | list[str] | None:
     return request.param
 
 
@@ -379,15 +379,15 @@ def authorization_request(  # noqa: C901
     authorization_endpoint: str,
     client_id: str,
     redirect_uri: str,
-    scope: None | str | list[str],
-    state: None | ellipsis | str,
-    nonce: None | ellipsis | str,
+    scope: str | list[str] | None,
+    state: ellipsis | str | None,
+    nonce: ellipsis | str | None,
     code_verifier: str,
     code_challenge_method: str,
     expected_issuer: str | None,
     auth_request_kwargs: dict[str, Any],
     dpop_key: DPoPKey,
-    acr_values: None | str | list[str],
+    acr_values: str | list[str] | None,
 ) -> AuthorizationRequest:
     authorization_response_iss_parameter_supported = bool(expected_issuer)
 
