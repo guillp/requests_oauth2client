@@ -708,3 +708,13 @@ def test_rs_dpop_nonce_loop(
     resp = requests.get(target_api, auth=dpop_token)
     assert resp.status_code == 401
     assert resp.headers["DPoP-Nonce"] == "nonce2"
+
+
+def test_dpop_proof_with_lifetime() -> None:
+    private_key = Jwk.generate(alg="ES256")
+    htm = "POST"
+    htu = "https://foo.bar"
+
+    valid_proof = DPoPKey(private_key=private_key, lifetime=60).proof(htm=htm, htu=htu)
+    assert isinstance(valid_proof, SignedJwt)
+    assert valid_proof.claims["exp"] - valid_proof.claims["iat"] == 60

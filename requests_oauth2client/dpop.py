@@ -15,7 +15,7 @@ from requests import codes
 from typing_extensions import Self, override
 from yarl import URL
 
-from .enums import AccessTokenTypes
+from .enums import AccessTokenTypes, JwtTypes
 from .tokens import BearerToken, IdToken, id_token_converter
 from .utils import accepts_expires_in
 
@@ -211,7 +211,7 @@ class DPoPKey:
         jwt_typ: the token type (`typ`) header to include in the generated proofs.
         dpop_token_class: the class to use to represent DPoP tokens.
         rs_nonce: an initial DPoP `nonce` to include in requests, for testing purposes. You should leave `None`.
-        exp: used for proof claims payload
+        lifetime: if specified, the lifetime of the proof in seconds.
 
     """
 
@@ -223,7 +223,7 @@ class DPoPKey:
     dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
     as_nonce: str | None
     rs_nonce: str | None
-    exp: int | None
+    lifetime: int | None
 
     def __init__(
         self,
@@ -235,7 +235,7 @@ class DPoPKey:
         dpop_token_class: type[DPoPToken] = DPoPToken,
         as_nonce: str | None = None,
         rs_nonce: str | None = None,
-        exp: int | None = None,
+        lifetime: int | None = None,
     ) -> None:
         try:
             private_key = jwskate.to_jwk(private_key).check(is_private=True, is_symmetric=False)
@@ -253,14 +253,14 @@ class DPoPKey:
             dpop_token_class=dpop_token_class,
             as_nonce=as_nonce,
             rs_nonce=rs_nonce,
-            exp=exp,
+            lifetime=lifetime,
         )
 
     @classmethod
     def generate(
         cls,
         alg: str = jwskate.SignatureAlgs.ES256,
-        jwt_typ: str = "dpop+jwt",
+        jwt_typ: str = JwtTypes.DPOP_PROOF_JWT,
         jti_generator: Callable[[], str] = lambda: str(uuid4()),
         iat_generator: Callable[[], int] = jwskate.Jwt.timestamp,
         dpop_token_class: type[DPoPToken] = DPoPToken,
@@ -302,7 +302,7 @@ class DPoPKey:
             - The `nonce` claim will be the value stored in the `nonce` attribute. This attribute is updated
               automatically when using a `DPoPToken` or one of the provided Authentication handlers as a `requests`
               auth handler.
-            - The `exp` claim will is based on jit and set exp on key initialization.
+            - The `exp` claim will be included if the `lifetime` attribute is set, and will be equal to `iat+lifetime`.
 
         The proof will be signed with the private key of this DPoPKey, using the configured `alg` signature algorithm.
 
@@ -323,8 +323,8 @@ class DPoPKey:
         htu = URL(htu).with_query(None).with_fragment(None)
         iat = self.iat_generator()
         proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": str(htu), "iat": iat}
-        if self.exp:
-            proof_claims["exp"] = self.exp + iat
+        if self.lifetime:
+            proof_claims["exp"] = iat + self.lifetime
         if nonce:
             proof_claims["nonce"] = nonce
         elif self.rs_nonce:
