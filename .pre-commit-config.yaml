@@ -63,17 +63,13 @@ repos:
         name: "🐙 Github-Actions · Validate gh workflow files"
         args: ["--verbose"]
 
-  - repo: https://github.com/hukkin/mdformat
-    rev: 82912cdaea4fb830f751504486a7879c70526547 # frozen: 1.0.0
+  - repo: https://github.com/rvben/rumdl-pre-commit
+    rev: v0.2.47
     hooks:
-      - id: mdformat
+      - id: rumdl # Lint only; add args [--fix] to auto-fix
         name: "📝 Markdown · Format markdown"
         args:
-          - --wrap=120
-        additional_dependencies:
-          - mdformat-gfm
-          - mdformat-ruff
-          - ruff
+          - --fix
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: 745eface02aef23e168a8afb6b5737818efbea95 # frozen: v0.11.0.1
