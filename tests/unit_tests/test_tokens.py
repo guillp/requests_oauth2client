@@ -129,9 +129,10 @@ def test_invalid_token_type() -> None:
 
 
 def test_empty_jwt() -> None:
-    jwt = SignedJwt(
+    jwt = Jwt(
         "eyJhbGciOiJSUzI1NiIsImtpZCI6Im15X2tleSJ9.e30.qoopspKRRo0LvRHcBVAjGNOVAnGkfgOmcSTwhRv46RUuEPvoDoodtLq5hINC3TvRm8GidshIU2e-lHZ033Ja4KE5DQSL8pPItjwUxFIQ9qUYhF625bOisufNoE9YK0qDup_jcawRaBWoxkJB9oPSFaV9sCXLBX_szrUI87PPs7GDxXfgpgnztazFizizIdNf29f_FKTKRwldiQz1zaB9D_svOOThQm3ECk0PFbjqlfn7uYxe5l_GDmdgvV479rkySHhgNEC-HrGYD18Kc7Zsl1avvuLV8X-qzj-I8N06Wst8kEVnrGcCm0S4K3HfG4xHzohPQFoIuwdVzDIjSVEfCQ"
     )
+    assert isinstance(jwt, SignedJwt)
 
     assert jwt.verify_signature(PUBLIC_JWK)
     assert jwt.expires_at is None
@@ -148,9 +149,10 @@ def test_empty_jwt() -> None:
 
 
 def test_jwt_iat_exp_nbf() -> None:
-    jwt = SignedJwt(
+    jwt = Jwt(
         "eyJhbGciOiJSUzI1NiIsImtpZCI6Im15X2tleSJ9.eyJleHAiOjE2MjkzODQ5ODgsImlhdCI6MTYyOTM4NDkyOCwibmJmIjoxNjI5Mzg0ODY4fQ.k_0abUntpK5yVOvalZGnhEhUuq1lmtoRQfKmEJuQpYiHCb3x9buYWclQCMNGzHikiyGtrRqN0RcyUPeGI9QN7hasvj1ItzrhsdXJDO968y3VXjfPnOz2lDPUKJjsTdWXbCGDZD82d4OX8E9WFaOwwutMb_5ismEBvttNAmwHJG433TzEO2rFhno9X3RPo8IqOJg_HSw8Q0BLsub7Ak9I0eGDsb8x5J8_fp6zqGkZaqL35DkLPZSHdLzYalmH4ksH69SVWu-7rD-W1brGxVpJg8unV9fy_1AmiQu-8tIedo68br2Tg0oNekwT-lXMTjmiJkYv8hpnECbtFXMRQSGcvQ"
     )
+    assert isinstance(jwt, SignedJwt)
 
     assert jwt.verify_signature(PUBLIC_JWK, alg="RS256")
     assert jwt.issued_at == datetime(year=2021, month=8, day=19, hour=14, minute=55, second=28, tzinfo=timezone.utc)
@@ -170,6 +172,7 @@ def test_id_token() -> None:
     id_token = IdToken(
         "eyJhbGciOiJSUzI1NiIsImtpZCI6Im15X2tleSJ9.eyJhY3IiOiIyIiwiYW1yIjpbInB3ZCIsIm90cCJdLCJhdWQiOiJjbGllbnRfaWQiLCJhdXRoX3RpbWUiOjE2MjkyMDQ1NjAsImV4cCI6MTYyOTIwNDYyMCwiaWF0IjoxNjI5MjA0NTYwLCJpc3MiOiJodHRwczovL215YXMubG9jYWwiLCJub25jZSI6Im5vbmNlIiwic3ViIjoiMTIzNDU2In0.wUfjMyjlOSdvbFGFP8O8wGcNBK7akeyOUBMvYcNZclFUtokOyxhLUPxmo1THo1DV1BHUVd6AWfeKUnyTxl_8-G3E_a9u5wJfDyfghPDhCmfkYARvqQnnV_3aIbfTfUBC4f0bHr08d_q0fED88RLu77wESIPCVqQYy2bk4FLucc63yGBvaCskqzthZ85DbBJYWLlR8qBUk_NA8bWATYEtjwTrxoZe-uA-vB6NwUv1h8DKRsDF-9HSVHeWXXAeoG9UW7zgxoY3KbDIVzemvGzs2R9OgDBRRafBBVeAkDV6CdbdMNJDmHzcjase5jX6LE-3YCy7c7AMM1uWRCnK3f-azA"
     )
+    assert isinstance(id_token, IdToken)
 
     with pytest.raises(AttributeError):
         id_token.attr_not_found
@@ -204,6 +207,8 @@ def test_invalid_jwt() -> None:
     modified_id_token = IdToken(
         ID_TOKEN[:-4] + "abcd"  # strips a few chars from the signature  # replace them with arbitrary data
     )
+    assert isinstance(id_token, IdToken)
+    assert isinstance(modified_id_token, IdToken)
 
     # invalid signature
     with pytest.raises(InvalidSignature):
@@ -259,6 +264,7 @@ def test_id_token_eq() -> None:
 
 def test_id_token_attributes() -> None:
     bad_id_token = IdToken(Jwt.sign({"azp": 1234, "auth_time": -3000}, Jwk.generate(alg="HS256")).value)
+    assert isinstance(bad_id_token, IdToken)
     with pytest.raises(AttributeError):
         bad_id_token.authorized_party
 
@@ -266,6 +272,7 @@ def test_id_token_attributes() -> None:
         bad_id_token.auth_datetime
 
     good_id_token = IdToken(Jwt.sign({"azp": "valid", "auth_time": 1725529281}, Jwk.generate(alg="HS256")).value)
+    assert isinstance(good_id_token, IdToken)
     assert good_id_token.authorized_party == "valid"
     assert good_id_token.auth_datetime == datetime(2024, 9, 5, 9, 41, 21, tzinfo=timezone.utc)
 

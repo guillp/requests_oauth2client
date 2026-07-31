@@ -463,9 +463,11 @@ def test_dpop_as_provided_nonce(requests_mock: RequestsMocker, oauth2client: OAu
     assert "DPop-Nonce" not in request_without_nonce.headers
     assert "DPoP" in request_with_nonce.headers
 
-    proof_without_nonce = SignedJwt(request_without_nonce.headers["DPoP"])
+    proof_without_nonce = Jwt(request_without_nonce.headers["DPoP"])
+    assert isinstance(proof_without_nonce, SignedJwt)
     assert "nonce" not in proof_without_nonce.claims
-    proof_with_nonce = SignedJwt(request_with_nonce.headers["DPoP"])
+    proof_with_nonce = Jwt(request_with_nonce.headers["DPoP"])
+    assert isinstance(proof_with_nonce, SignedJwt)
     assert proof_with_nonce.claims["nonce"] == dpop_nonce
 
 
@@ -506,9 +508,11 @@ def test_dpop_with_rs_provided_nonce(
     assert token_req.url == token_endpoint
     assert api_req_without_nonce.url == api_req_with_nonce.url == target_api
 
-    proof_without_nonce = SignedJwt(api_req_without_nonce.headers["DPoP"])
+    proof_without_nonce = Jwt(api_req_without_nonce.headers["DPoP"])
+    assert isinstance(proof_without_nonce, SignedJwt)
     assert "nonce" not in proof_without_nonce.claims
-    proof_with_nonce = SignedJwt(api_req_with_nonce.headers["DPoP"])
+    proof_with_nonce = Jwt(api_req_with_nonce.headers["DPoP"])
+    assert isinstance(proof_with_nonce, SignedJwt)
     assert proof_with_nonce.claims["nonce"] == dpop_nonce
 
     requests_mock.reset_mock()
@@ -517,7 +521,8 @@ def test_dpop_with_rs_provided_nonce(
     assert requests_mock.called_once
     assert requests_mock.last_request is not None
     assert requests_mock.last_request.url == target_api
-    second_proof_with_nonce = SignedJwt(requests_mock.last_request.headers["DPoP"])
+    second_proof_with_nonce = Jwt(requests_mock.last_request.headers["DPoP"])
+    assert isinstance(second_proof_with_nonce, SignedJwt)
     assert second_proof_with_nonce.claims["nonce"] == dpop_nonce
 
 

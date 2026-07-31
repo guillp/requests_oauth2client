@@ -54,7 +54,7 @@ def validate_bool_fields(bool_fields: tuple[str, str]) -> tuple[str, str]:
 class InvalidPathParam(TypeError, ValueError):
     """Raised when an unexpected path is passed as 'url' parameter."""
 
-    def __init__(self, path: None | str | bytes | Iterable[str | bytes | int]) -> None:
+    def __init__(self, path: str | bytes | Iterable[str | bytes | int] | None) -> None:
         super().__init__("""\
 Unexpected path. Please provide a path that is relative to the configured `base_url`:
 - `None` (default) to call the base_url
@@ -200,9 +200,9 @@ class ApiClient:
     def request(  # noqa: C901, PLR0913, D417
         self,
         method: str,
-        path: None | str | bytes | Iterable[str | bytes | int] = None,
+        path: str | bytes | Iterable[str | bytes | int] | None = None,
         *,
-        params: None | bytes | MutableMapping[str, Any] = None,
+        params: bytes | MutableMapping[str, Any] | None = None,
         data: (
             Iterable[bytes]
             | str
@@ -213,24 +213,19 @@ class ApiClient:
             | None
         ) = None,
         headers: MutableMapping[str, str] | None = None,
-        cookies: None | RequestsCookieJar | MutableMapping[str, str] = None,
+        cookies: RequestsCookieJar | MutableMapping[str, str] | None = None,
         files: MutableMapping[str, IO[Any]] | None = None,
         auth: (
-            None
-            | tuple[str, str]
+            tuple[str, str]
             | requests.auth.AuthBase
             | Callable[[requests.PreparedRequest], requests.PreparedRequest]
+            | None
         ) = None,
-        timeout: None | float | tuple[float, float] | tuple[float, None] = None,
+        timeout: float | tuple[float, float] | tuple[float, None] | None = None,
         allow_redirects: bool = False,
         proxies: MutableMapping[str, str] | None = None,
-        hooks: None
-        | (
-            MutableMapping[
-                str,
-                (Iterable[Callable[[requests.Response], Any]] | Callable[[requests.Response], Any]),
-            ]
-        ) = None,
+        hooks: MutableMapping[str, Iterable[Callable[[requests.Response], Any]] | Callable[[requests.Response], Any]]
+        | None = None,
         stream: bool | None = None,
         verify: str | bool | None = None,
         cert: str | tuple[str, str] | None = None,
@@ -330,7 +325,7 @@ class ApiClient:
             response.raise_for_status()
         return response
 
-    def to_absolute_url(self, path: None | str | bytes | Iterable[str | bytes | int] = None) -> str:
+    def to_absolute_url(self, path: str | bytes | Iterable[str | bytes | int] | None = None) -> str:
         """Convert a relative url to an absolute url.
 
         Given a `path`, return the matching absolute url, based on the `base_url` that is
@@ -391,7 +386,7 @@ class ApiClient:
 
     def get(
         self,
-        path: None | str | bytes | Iterable[str | bytes | int] = None,
+        path: str | bytes | Iterable[str | bytes | int] | None = None,
         *,
         raise_for_status: bool | None = None,
         **kwargs: Any,

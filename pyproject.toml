@@ -36,7 +36,7 @@ dev = [
     "flask>=3.0.3",
     "livereload>=2.6.3",
     "mypy>=1.8",
-    "pre-commit>=3.5.0",
+    "prek>=0.4.11",
     "toml>=0.10.2",
     "types-requests>=2.25.10",
     "types-cryptography>=3.3.15",
@@ -117,11 +117,31 @@ ignore = [
     "S105", # Possible hardcoded password
     "COM812",
     "ISC001",
+    "CPY001", # Copyright notice
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**.py" = ["ARG001", "B018", "D100", "D101", "D102", "D103", "D104", "F821", "FBT001", "PGH005", "PLR0913", "PLR0915", "PLR2004", "S101", "S106", "S113",
-"PT011", "E501"]
+"tests/**.py" = [
+    "ARG001",
+    "B018",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "E501",
+    "F821",
+    "FBT001",
+    "PGH005",
+    "PLR0913",
+    "PLR0915",
+    "PLR0917",
+    "PLR2004",
+    "PT011",
+    "S101",
+    "S106",
+    "S113",
+]
 
 [tool.ruff.lint.pylint]
 max-args = 10

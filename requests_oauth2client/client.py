@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import requests
 from attrs import Attribute, field, frozen
-from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs
+from jwskate import Jwk, JwkSet, Jwt, SignatureAlgs, SignedJwt
 from typing_extensions import Self
 
 from .authorization_request import (
@@ -882,7 +882,7 @@ keeps trying to obey the new DPoP `nonce` values as provided by the Authorizatio
         *,
         subject_token: str | BearerToken | IdToken,
         subject_token_type: str | None = None,
-        actor_token: None | str | BearerToken | IdToken = None,
+        actor_token: str | BearerToken | IdToken | None = None,
         actor_token_type: str | None = None,
         requested_token_type: str | None = None,
         dpop: bool = False,
@@ -966,7 +966,7 @@ keeps trying to obey the new DPoP `nonce` values as provided by the Authorizatio
         requests_kwargs = requests_kwargs or {}
 
         if not isinstance(assertion, Jwt):
-            assertion = Jwt(assertion)
+            assertion = SignedJwt(assertion)
 
         data = dict(
             grant_type=GrantTypes.JWT_BEARER,
@@ -1015,7 +1015,7 @@ keeps trying to obey the new DPoP `nonce` values as provided by the Authorizatio
     def authorization_request(
         self,
         *,
-        scope: None | str | Iterable[str] = "openid",
+        scope: str | Iterable[str] | None = "openid",
         response_type: str = ResponseTypes.CODE,
         redirect_uri: str | None = None,
         state: str | ellipsis | None = ...,  # noqa: F821
@@ -1227,7 +1227,7 @@ keeps trying to obey the new DPoP `nonce` values as provided by the Authorizatio
     def get_token_type(  # noqa: C901
         cls,
         token_type: str | None = None,
-        token: None | str | BearerToken | IdToken = None,
+        token: str | BearerToken | IdToken | None = None,
     ) -> str:
         """Get standardized token type identifiers.
 
@@ -1573,10 +1573,10 @@ Invalid `token_type_hint`. To test arbitrary `token_type_hint` values, you must 
 
     def backchannel_authentication_request(  # noqa: PLR0913
         self,
-        scope: None | str | Iterable[str] = "openid",
+        scope: str | Iterable[str] | None = "openid",
         *,
         client_notification_token: str | None = None,
-        acr_values: None | str | Iterable[str] = None,
+        acr_values: str | Iterable[str] | None = None,
         login_hint_token: str | None = None,
         id_token_hint: str | None = None,
         login_hint: str | None = None,

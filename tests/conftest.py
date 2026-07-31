@@ -281,8 +281,8 @@ def backchannel_auth_request_validator() -> RequestValidatorType:
     def validator(
         req: _RequestObjectProxy,
         *,
-        scope: None | str | Iterable[str],
-        acr_values: None | str | Iterable[str] = None,
+        scope: str | Iterable[str] | None,
+        acr_values: str | Iterable[str] | None = None,
         **kwargs: Any,
     ) -> None:
         params = parse_url_encoded(req.text)

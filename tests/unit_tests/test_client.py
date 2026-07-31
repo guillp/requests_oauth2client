@@ -97,7 +97,7 @@ def test_client_credentials_grant(
     client_credentials_grant_validator: RequestValidatorType,
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     client_auth_validator: RequestValidatorType,
 ) -> None:
@@ -163,7 +163,7 @@ def test_authorization_code_grant(
     authorization_code_grant_validator: RequestValidatorType,
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     client_auth_validator: RequestValidatorType,
 ) -> None:
@@ -196,7 +196,7 @@ def test_refresh_token_grant(
     token_endpoint: str,
     refresh_token: str,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     refresh_token_grant_validator: RequestValidatorType,
@@ -237,7 +237,7 @@ def test_refresh_token_with_bearer_instance_as_param(
     access_token: str,
     refresh_token: str,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     refresh_token_grant_validator: RequestValidatorType,
@@ -305,7 +305,7 @@ def test_device_code_grant(
     token_endpoint: str,
     device_code: str,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     device_code_grant_validator: RequestValidatorType,
@@ -347,7 +347,7 @@ def test_token_exchange_grant(
     oauth2client: OAuth2Client,
     token_endpoint: str,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     token_exchange_grant_validator: RequestValidatorType,
@@ -595,7 +595,7 @@ def test_revoke_access_token(
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_auth_validator: RequestValidatorType,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
@@ -625,7 +625,7 @@ def test_revoke_refresh_token(
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_auth_validator: RequestValidatorType,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
@@ -684,7 +684,7 @@ def test_revoke_token(
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_auth_validator: RequestValidatorType,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
@@ -737,7 +737,7 @@ def test_revoke_token_error(
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_auth_validator: RequestValidatorType,
     client_id: str,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
     revocation_request_validator: RequestValidatorType,
 ) -> None:
@@ -889,7 +889,7 @@ def test_introspection(
     client_auth_method_handler: type[BaseClientAuthenticationMethod],
     client_id: str,
     client_auth_validator: RequestValidatorType,
-    client_credential: None | str | Jwk,
+    client_credential: str | Jwk | None,
     public_jwk: Jwk,
 ) -> None:
     introspection_data = {"active": False}

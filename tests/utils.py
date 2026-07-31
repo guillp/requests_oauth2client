@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import parse_qs
 
 import requests_mock
-from jwskate import Jwk, SignedJwt, SymmetricJwk
+from jwskate import Jwk, Jwt, SignedJwt, SymmetricJwk
 from requests_mock import Mocker
 from yarl import URL
 
@@ -56,7 +56,8 @@ def client_secret_jwt_auth_validator(
     assert "client_assertion" in params
     client_assertion = params["client_assertion"]
     jwk = SymmetricJwk.from_bytes(client_secret)
-    jwt = SignedJwt(client_assertion)
+    jwt = Jwt(client_assertion)
+    assert isinstance(jwt, SignedJwt), "client_assertion is not a SignedJwt"
     jwt.verify_signature(jwk, alg="HS256")
     claims = jwt.claims
     now = int(datetime.now(tz=timezone.utc).timestamp())
@@ -79,7 +80,8 @@ def private_key_jwt_auth_validator(
     assert params.get("client_id") == client_id, "invalid client_id"
     client_assertion = params.get("client_assertion")
     assert client_assertion, "missing client_assertion"
-    jwt = SignedJwt(client_assertion)
+    jwt = Jwt(client_assertion)
+    assert isinstance(jwt, SignedJwt), "client_assertion is not a SignedJwt"
     jwt.verify_signature(public_jwk)
     claims = jwt.claims
     now = int(datetime.now(timezone.utc).timestamp())

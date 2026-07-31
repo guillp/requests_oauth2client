@@ -172,7 +172,7 @@ def test_not_an_url(authorization_request: AuthorizationRequest) -> None:
 def test_mismatching_state(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: URL,
-    state: None | bool | str,
+    state: bool | str | None,
 ) -> None:
     aru = authorization_response_uri.without_query_params("state").extend_query(state="foo")
     if state:
@@ -183,7 +183,7 @@ def test_mismatching_state(
 def test_missing_state(
     authorization_request: AuthorizationRequest,
     authorization_response_uri: URL,
-    state: None | bool | str,
+    state: bool | str | None,
 ) -> None:
     aru = authorization_response_uri.without_query_params("state")
     if state:
