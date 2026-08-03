@@ -14,7 +14,7 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # frozen: v8.30.0
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce # frozen: v8.30.0
     hooks:
       - id: gitleaks
         name: "🔒 Security · GitLeaks · Detect hardcoded secrets"
@@ -59,14 +59,14 @@ repos:
           - yarl
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 1a4bb160cab6417b3045e1b37b6b72449243e658  # frozen: 0.37.4
+    rev: 1a4bb160cab6417b3045e1b37b6b72449243e658 # frozen: 0.37.4
     hooks:
       - id: check-github-workflows
         name: "🐙 Github-Actions · Validate gh workflow files"
         args: ["--verbose"]
 
   - repo: https://github.com/rvben/rumdl-pre-commit
-    rev: 794470c9117665bb6bc2bff622747f50aa43431a  # frozen: v0.2.49
+    rev: 794470c9117665bb6bc2bff622747f50aa43431a # frozen: v0.2.49
     hooks:
       - id: rumdl # Lint only; add args [--fix] to auto-fix
         name: "📝 Markdown · Format markdown"
@@ -80,7 +80,7 @@ repos:
         name: "🐚 Shell · shellcheck · Lint shell scripts"
 
   - repo: https://github.com/openstack/bashate
-    rev: 5798d24d571676fc407e81df574c1ef57b520f23  # frozen: 2.1.1
+    rev: 5798d24d571676fc407e81df574c1ef57b520f23 # frozen: 2.1.1
     hooks:
       - id: bashate
         name: "🐚 Shell · bashate · Check shell script code style"
@@ -122,7 +122,7 @@ repos:
         args: ["--maxkb=5000"]
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 1afca4a81ca3e578ba142fe15a0f8a1a94b894ad  # frozen: v4.17.0
+    rev: 1afca4a81ca3e578ba142fe15a0f8a1a94b894ad # frozen: v4.17.0
     hooks:
       - id: commitizen
         name: "🌳 git · Validate commit message"
