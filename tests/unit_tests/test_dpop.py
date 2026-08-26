@@ -718,3 +718,27 @@ def test_dpop_proof_with_lifetime() -> None:
     valid_proof = DPoPKey(private_key=private_key, lifetime=60).proof(htm=htm, htu=htu)
     assert isinstance(valid_proof, SignedJwt)
     assert valid_proof.claims["exp"] - valid_proof.claims["iat"] == 60
+
+    assert validate_dpop_proof(
+        proof=valid_proof,
+        htm=htm,
+        htu=htu,
+        leeway=60,
+    )
+
+    exp_before_iat_claims = valid_proof.claims.copy()
+    exp_before_iat_claims["exp"] = exp_before_iat_claims["iat"] - 10
+    exp_before_iat_proof = SignedJwt.sign(
+        exp_before_iat_claims,
+        key=private_key,
+        typ="dpop+jwt",
+        alg="ES256",
+        extra_headers={"jwk": private_key.public_jwk()},
+    )
+    with pytest.raises(InvalidDPoPProof, match=r"Expires At timestamp \(exp\) is before Issued At timestamp \(iat\)"):
+        validate_dpop_proof(
+            proof=exp_before_iat_proof,
+            htm=htm,
+            htu=htu,
+            leeway=60,
+        )
