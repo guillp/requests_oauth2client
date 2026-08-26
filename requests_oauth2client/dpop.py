@@ -266,8 +266,22 @@ class DPoPKey:
         dpop_token_class: type[DPoPToken] = DPoPToken,
         as_nonce: str | None = None,
         rs_nonce: str | None = None,
+        lifetime: int | None = None,
     ) -> Self:
-        """Generate a new DPoPKey with a new private key that is suitable for the given `alg`."""
+        """Generate a new DPoPKey with a new private key that is suitable for the given `alg`.
+
+        Args:
+            alg: The signature algorithm to use for the new DPoP key.
+            jwt_typ: The JWT type for the DPoP proof.
+            jti_generator: A callable that generates the `jti` claim.
+            iat_generator: A callable that generates the `iat` claim.
+            dpop_token_class: The class to use for DPoP tokens.
+            as_nonce: The Authorization Server nonce.
+            rs_nonce: The Resource Server nonce.
+            lifetime: The lifetime for generated proofs, in seconds.
+              If None (default), no `exp` claim will be included in proofs,
+              as specified in RFC9449.
+        """
         if alg not in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             raise InvalidDPoPAlg(alg)
         key = jwskate.Jwk.generate(alg=alg)
@@ -279,6 +293,7 @@ class DPoPKey:
             dpop_token_class=dpop_token_class,
             as_nonce=as_nonce,
             rs_nonce=rs_nonce,
+            lifetime=lifetime,
         )
 
     @cached_property
