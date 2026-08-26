@@ -15,7 +15,7 @@ from requests import codes
 from typing_extensions import Self, override
 from yarl import URL
 
-from .enums import AccessTokenTypes
+from .enums import AccessTokenTypes, JwtTypes
 from .tokens import BearerToken, IdToken, id_token_converter
 from .utils import accepts_expires_in
 
@@ -211,6 +211,7 @@ class DPoPKey:
         jwt_typ: the token type (`typ`) header to include in the generated proofs.
         dpop_token_class: the class to use to represent DPoP tokens.
         rs_nonce: an initial DPoP `nonce` to include in requests, for testing purposes. You should leave `None`.
+        lifetime: if specified, the lifetime of the proof in seconds.
 
     """
 
@@ -222,6 +223,7 @@ class DPoPKey:
     dpop_token_class: type[DPoPToken] = field(on_setattr=setters.frozen, repr=False)
     as_nonce: str | None
     rs_nonce: str | None
+    lifetime: int | None
 
     def __init__(
         self,
@@ -233,6 +235,7 @@ class DPoPKey:
         dpop_token_class: type[DPoPToken] = DPoPToken,
         as_nonce: str | None = None,
         rs_nonce: str | None = None,
+        lifetime: int | None = None,
     ) -> None:
         try:
             private_key = jwskate.to_jwk(private_key).check(is_private=True, is_symmetric=False)
@@ -250,20 +253,35 @@ class DPoPKey:
             dpop_token_class=dpop_token_class,
             as_nonce=as_nonce,
             rs_nonce=rs_nonce,
+            lifetime=lifetime,
         )
 
     @classmethod
     def generate(
         cls,
         alg: str = jwskate.SignatureAlgs.ES256,
-        jwt_typ: str = "dpop+jwt",
+        jwt_typ: str = JwtTypes.DPOP_PROOF_JWT,
         jti_generator: Callable[[], str] = lambda: str(uuid4()),
         iat_generator: Callable[[], int] = jwskate.Jwt.timestamp,
         dpop_token_class: type[DPoPToken] = DPoPToken,
         as_nonce: str | None = None,
         rs_nonce: str | None = None,
+        lifetime: int | None = None,
     ) -> Self:
-        """Generate a new DPoPKey with a new private key that is suitable for the given `alg`."""
+        """Generate a new DPoPKey with a new private key that is suitable for the given `alg`.
+
+        Args:
+            alg: The signature algorithm to use for the new DPoP key.
+            jwt_typ: The JWT type for the DPoP proof.
+            jti_generator: A callable that generates the `jti` claim.
+            iat_generator: A callable that generates the `iat` claim.
+            dpop_token_class: The class to use for DPoP tokens.
+            as_nonce: The Authorization Server nonce.
+            rs_nonce: The Resource Server nonce.
+            lifetime: The lifetime for generated proofs, in seconds.
+              If None (default), no `exp` claim will be included in proofs,
+              as specified in RFC9449.
+        """
         if alg not in jwskate.SignatureAlgs.ALL_ASYMMETRIC:
             raise InvalidDPoPAlg(alg)
         key = jwskate.Jwk.generate(alg=alg)
@@ -275,6 +293,7 @@ class DPoPKey:
             dpop_token_class=dpop_token_class,
             as_nonce=as_nonce,
             rs_nonce=rs_nonce,
+            lifetime=lifetime,
         )
 
     @cached_property
@@ -298,6 +317,7 @@ class DPoPKey:
             - The `nonce` claim will be the value stored in the `nonce` attribute. This attribute is updated
               automatically when using a `DPoPToken` or one of the provided Authentication handlers as a `requests`
               auth handler.
+            - The `exp` claim will be included if the `lifetime` attribute is set, and will be equal to `iat+lifetime`.
 
         The proof will be signed with the private key of this DPoPKey, using the configured `alg` signature algorithm.
 
@@ -316,7 +336,10 @@ class DPoPKey:
 
         """
         htu = URL(htu).with_query(None).with_fragment(None)
-        proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": str(htu), "iat": self.iat_generator()}
+        iat = self.iat_generator()
+        proof_claims = {"jti": self.jti_generator(), "htm": htm, "htu": str(htu), "iat": iat}
+        if self.lifetime:
+            proof_claims["exp"] = iat + self.lifetime
         if nonce:
             proof_claims["nonce"] = nonce
         elif self.rs_nonce:
@@ -360,8 +383,8 @@ class DPoPKey:
         self.rs_nonce = nonce
 
 
-def validate_dpop_proof(  # noqa: C901
-    proof: str | bytes,
+def validate_dpop_proof(  # noqa: C901, PLR0915
+    proof: str | bytes | jwskate.SignedJwt,
     *,
     htm: str,
     htu: str,
@@ -379,7 +402,7 @@ def validate_dpop_proof(  # noqa: C901
         htu: The HTTP target URI of the request to which the JWT is attached, without query and fragment parts.
         ath: The Hash of the access token.
         nonce: A recent nonce provided via the DPoP-Nonce HTTP header, from either the AS or RS.
-        leeway: A leeway, in number of seconds, to validate the proof `iat` claim.
+        leeway: A leeway, in number of seconds, to validate the proof `iat` and `exp` claim.
         alg: Allowed signature alg, if there is only one. Use this or `algs`.
         algs: Allowed signature algs, if there is several. Use this or `alg`.
 
@@ -387,12 +410,17 @@ def validate_dpop_proof(  # noqa: C901
         The validated DPoP proof, as a `SignedJwt`.
 
     """
-    if not isinstance(proof, bytes):
-        proof = proof.encode()
-    try:
-        proof_jwt = jwskate.SignedJwt(proof)
-    except jwskate.InvalidJwt as exc:
-        raise InvalidDPoPProof(proof, "not a syntactically valid JWT") from exc
+    if isinstance(proof, jwskate.SignedJwt):
+        proof_jwt = proof
+        proof = bytes(proof_jwt)
+    else:
+        if not isinstance(proof, bytes):
+            proof = proof.encode()
+        try:
+            proof_jwt = jwskate.SignedJwt(proof)
+        except jwskate.InvalidJwt as exc:
+            raise InvalidDPoPProof(proof, "not a syntactically valid JWT") from exc
+
     if proof_jwt.typ != "dpop+jwt":
         raise InvalidDPoPProof(proof, f"typ '{proof_jwt.typ}' is not the expected 'dpop+jwt'.")
     if "jwk" not in proof_jwt.headers:
@@ -411,12 +439,27 @@ def validate_dpop_proof(  # noqa: C901
         raise InvalidDPoPProof(proof, "a Issued At (iat) claim is missing.")
     now = datetime.now(tz=timezone.utc)
     if not now - timedelta(seconds=leeway) < proof_jwt.issued_at < now + timedelta(seconds=leeway):
-        msg = f"""\
-Issued At timestamp (iat) is too far away in the past or future (received: {proof_jwt.issued_at}, now: {now})."""
-        raise InvalidDPoPProof(
-            proof,
-            msg,
+        msg = (
+            "Issued At timestamp (iat) is too far away in the past or future"
+            f" (received: {proof_jwt.issued_at}, now: {now})."
         )
+        raise InvalidDPoPProof(proof, msg)
+    if proof_jwt.expires_at:
+        if proof_jwt.expires_at - timedelta(seconds=leeway) > now:  # pragma: no cover
+            # DPoP proofs are supposed to be very short-lived, and the exp claim is not mandatory.
+            # The Issued At (iat) claim check above ensures that the proof is somewhere around the current time.
+            # So this expires check should never trigger.
+            msg = (
+                "Expires At timestamp (exp) is too far away in the past"
+                f" (received: {proof_jwt.expires_at}, now: {now})."
+            )
+            raise InvalidDPoPProof(proof, msg)
+        if proof_jwt.expires_at < proof_jwt.issued_at:
+            msg = (
+                "Expires At timestamp (exp) is before Issued At timestamp (iat)"
+                f" (received: {proof_jwt.expires_at}, iat: {proof_jwt.issued_at})."
+            )
+            raise InvalidDPoPProof(proof, msg)
     if proof_jwt.jwt_token_id is None:
         raise InvalidDPoPProof(proof, "a Unique Identifier (jti) claim is missing.")
     if "htm" not in proof_jwt.claims:
