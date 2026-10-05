@@ -13,16 +13,16 @@ based on the
 [Token Exchange](https://www.rfc-editor.org/rfc/rfc8693.html),
 [JWT Bearer](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1),
 [Device Authorization](https://www.rfc-editor.org/rfc/rfc8628.html),
-[Resource Owner Password](https://www.rfc-editor.org/rfc/rfc6749#section-4.3)
-or [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
+[Resource Owner Password](https://www.rfc-editor.org/rfc/rfc6749#section-4.3) or
+[CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
 
 Additional grant types are easy to add if needed.
 
 It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-core-1_0.html),
 [PKCE](https://www.rfc-editor.org/rfc/rfc7636.html),
 [Client Assertions](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.2),
-[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html) and
-[Introspection](https://www.rfc-editor.org/rfc/rfc7662.html),
+[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
+and [Introspection](https://www.rfc-editor.org/rfc/rfc7662.html),
 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html),
 [JWT-secured Authorization Requests](https://datatracker.ietf.org/doc/rfc9101/),
 [Pushed Authorization Requests](https://datatracker.ietf.org/doc/rfc9126/),
@@ -121,8 +121,7 @@ but meant for an application instead of for a human user.
 The default authentication method used by [OAuth2Client] is *Client Secret Post*,
 but other standardized methods such as *Client Secret Basic*,
 *Client Secret JWT* or *Private Key JWT* are supported as well.
-See
-[more about client authentication methods below](#supported-client-authentication-methods).
+See [more about client authentication methods below](#supported-client-authentication-methods).
 
 Instead of providing each endpoint URL yourself,
 you may also [use the AS metadata endpoint URI](#initializing-an-oauth2client-from-a-discovery-document),
@@ -246,8 +245,8 @@ Once again, extra parameters such as `scope`, `resource` or `audience` are allow
 
 When you send your first request,
 [OAuth2ClientCredentialsAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
-will automatically retrieve an access token from the AS using the Client Credentials grant,
-then will include it in the request.
+will automatically retrieve an access token from the AS using the Client Credentials grant, then will include it in the
+request.
 Next requests will use the same token, as long as it is valid.
 A new token will be automatically retrieved once the previous one is expired.
 
@@ -389,8 +388,8 @@ token = oauth2client.authorization_code(
 
 The
 [OAuth2AuthorizationCodeAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth)
-handler takes an [OAuth2Client] and an authorization code as parameter,
-plus whatever additional keyword parameters are required by your Authorization Server:
+handler takes an [OAuth2Client] and an authorization code as parameter, plus whatever additional keyword parameters are
+required by your Authorization Server:
 
 ```python
 from requests_oauth2client import ApiClient, OAuth2AuthorizationCodeAuth, OAuth2Client
@@ -823,8 +822,7 @@ decoded if it is in JSON format.
 The [OAuth2Client] class also supports sending requests to a UserInfo Endpoint.
 To use this feature, you need to provide the UserInfo Endpoint URI when creating an instance of [OAuth2Client],
 as `userinfo_endpoint` parameter.
-The
-[userinfo()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.userinfo)
+The [userinfo()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.userinfo)
 method is then available for retrieving user information:
 
 ```python
