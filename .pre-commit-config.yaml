@@ -14,13 +14,13 @@ default_install_hook_types:
   - commit-msg
 repos:
   - repo: https://github.com/gitleaks/gitleaks
-    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # frozen: v8.30.0
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce # frozen: v8.30.0
     hooks:
       - id: gitleaks
         name: "🔒 Security · GitLeaks · Detect hardcoded secrets"
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: f368fb366ff7f2f808dd324b83a6d32267799e19  # frozen: v0.17.2
+    rev: f368fb366ff7f2f808dd324b83a6d32267799e19 # frozen: v0.17.2
     hooks:
       - id: ruff-format
         name: "🐍 Python · Ruff · Code formatting"
@@ -30,14 +30,14 @@ repos:
           - --fix
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: 82d21874c3242e4dc27bb47641c996902ef64eef  # frozen: v0.27
+    rev: 82d21874c3242e4dc27bb47641c996902ef64eef # frozen: v0.27
     hooks:
       - id: validate-pyproject
         name: "🐍 Python · Validate pyproject.toml"
         additional_dependencies: ["validate-pyproject-schema-store[all]"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 2834ec6639549dd6796205c8f011dedcd587288b  # frozen: v2.4.0
+    rev: 2834ec6639549dd6796205c8f011dedcd587288b # frozen: v2.4.0
     hooks:
       - id: mypy
         name: "🐍 Python · mypy · Check static types"
@@ -59,14 +59,14 @@ repos:
           - yarl
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 4f85d46a92dc17713078e5de73f8a13190edf6fc  # frozen: 0.38.2
+    rev: 4f85d46a92dc17713078e5de73f8a13190edf6fc # frozen: 0.38.2
     hooks:
       - id: check-github-workflows
         name: "🐙 Github-Actions · Validate gh workflow files"
         args: ["--verbose"]
 
   - repo: https://github.com/rvben/rumdl-pre-commit
-    rev: 03a7d1a4936b5889602852175bca2d39acb3281e  # frozen: v0.3.0
+    rev: 03a7d1a4936b5889602852175bca2d39acb3281e # frozen: v0.3.0
     hooks:
       - id: rumdl # Lint only; add args [--fix] to auto-fix
         name: "📝 Markdown · Format markdown"
@@ -74,20 +74,20 @@ repos:
           - --fix
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: a6564f5d57444e123433a5c9af733e3975c77229  # frozen: v0.11.0.1-1
+    rev: a6564f5d57444e123433a5c9af733e3975c77229 # frozen: v0.11.0.1-1
     hooks:
       - id: shellcheck
         name: "🐚 Shell · shellcheck · Lint shell scripts"
 
   - repo: https://github.com/openstack/bashate
-    rev: 5798d24d571676fc407e81df574c1ef57b520f23  # frozen: 2.1.1
+    rev: 5798d24d571676fc407e81df574c1ef57b520f23 # frozen: 2.1.1
     hooks:
       - id: bashate
         name: "🐚 Shell · bashate · Check shell script code style"
         args: [--max-line-length, "120"]
 
   - repo: https://github.com/jvllmr/pre-commit-prettier
-    rev: 4b2297bf73a9e72d94d97e73ad424e502bd43a74  # frozen: v3.9.10
+    rev: 4b2297bf73a9e72d94d97e73ad424e502bd43a74 # frozen: v3.9.10
     hooks:
       - id: prettier
         name: "✨ Misc · prettier · Format misc web files"
@@ -122,7 +122,7 @@ repos:
         args: ["--maxkb=5000"]
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: 0c47f153e36705819b4d819508fa913d979c1ccc  # frozen: v4.19.3
+    rev: 0c47f153e36705819b4d819508fa913d979c1ccc # frozen: v4.19.3
     hooks:
       - id: commitizen
         name: "🌳 git · Validate commit message"
