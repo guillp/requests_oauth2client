@@ -92,3 +92,4 @@ class JwtTypes(StrEnum):
     """An enum of standardised JWT `typ` values."""
 
     CLIENT_AUTHENTICATION_JWT = "client-authentication+jwt"
+    DPOP_PROOF_JWT = "dpop+jwt"
