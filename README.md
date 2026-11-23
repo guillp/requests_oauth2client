@@ -13,16 +13,16 @@ based on the
 [Token Exchange](https://www.rfc-editor.org/rfc/rfc8693.html),
 [JWT Bearer](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.1),
 [Device Authorization](https://www.rfc-editor.org/rfc/rfc8628.html),
-[Resource Owner Password](https://www.rfc-editor.org/rfc/rfc6749#section-4.3)
-or [CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
+[Resource Owner Password](https://www.rfc-editor.org/rfc/rfc6749#section-4.3) or
+[CIBA](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html) grants.
 
 Additional grant types are easy to add if needed.
 
 It also supports [OpenID Connect 1.0](https://openid.net/specs/openid-connect-core-1_0.html),
 [PKCE](https://www.rfc-editor.org/rfc/rfc7636.html),
 [Client Assertions](https://www.rfc-editor.org/rfc/rfc7523.html#section-2.2),
-[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html) and
-[Introspection](https://www.rfc-editor.org/rfc/rfc7662.html),
+[Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
+and [Introspection](https://www.rfc-editor.org/rfc/rfc7662.html),
 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html),
 [JWT-secured Authorization Requests](https://datatracker.ietf.org/doc/rfc9101/),
 [Pushed Authorization Requests](https://datatracker.ietf.org/doc/rfc9126/),
@@ -121,8 +121,7 @@ but meant for an application instead of for a human user.
 The default authentication method used by [OAuth2Client] is *Client Secret Post*,
 but other standardized methods such as *Client Secret Basic*,
 *Client Secret JWT* or *Private Key JWT* are supported as well.
-See
-[more about client authentication methods below](#supported-client-authentication-methods).
+See [more about client authentication methods below](#supported-client-authentication-methods).
 
 Instead of providing each endpoint URL yourself,
 you may also [use the AS metadata endpoint URI](#initializing-an-oauth2client-from-a-discovery-document),
@@ -141,8 +140,8 @@ It will also:
 - Keep track of the Access Token expiration date (based on the `expires_in` hint as returned by the AS).
   This date is accessible with the `expires_at` attribute.
 - Contain the Refresh Token, if returned by the AS, accessible with the `refresh_token` attribute.
-- Contain the ID Token, if returned by the AS, accessible with the `id_token` attribute (typically available when using
-  the Authorization Code flow).
+- Contain the ID Token, if returned by the AS, accessible with the `id_token` attribute
+  (typically available when using the Authorization Code flow).
 - Keep track of other associated metadata as well, also accessible as attributes with the same name:
   `token.custom_attr`, or with subscription syntax `token["my.custom.attr"]`.
 
@@ -246,8 +245,8 @@ Once again, extra parameters such as `scope`, `resource` or `audience` are allow
 
 When you send your first request,
 [OAuth2ClientCredentialsAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2ClientCredentialsAuth)
-will automatically retrieve an access token from the AS using the Client Credentials grant,
-then will include it in the request.
+will automatically retrieve an access token from the AS using the Client Credentials grant, then will include it in the
+request.
 Next requests will use the same token, as long as it is valid.
 A new token will be automatically retrieved once the previous one is expired.
 
@@ -276,8 +275,8 @@ Obtaining tokens using the Authorization code grant is made in 3 steps:
    This redirect back (often called "callback") is initiated by the Authorization Server
    after any necessary interaction with the user is complete
    (Registration, Login, Profile completion, Multi-Factor Authentication, Authorization, Consent, etc.)
-1. your application must then exchange this Authorization Code for an *Access Token*, with a request to the Token
-   Endpoint.
+1. your application must then exchange this Authorization Code for an *Access Token*,
+   with a request to the Token Endpoint.
 
 Using an [OAuth2Client] will help you with all those steps, as described below.
 
@@ -286,10 +285,10 @@ Using an [OAuth2Client] will help you with all those steps, as described below.
 To be able to use the Authorization Code grant, you need 2 (optionally 3) URIs:
 
 - the URL for Authorization Endpoint, which is the url where you must send your Authorization Requests
-- the Redirect URI, which is the url pointing to your application, where the Authorization Server will reply with
-  Authorization Response
-- optionally, the issuer identifier, if your AS uses
-  [Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html).
+- the Redirect URI, which is the url pointing to your application,
+  where the Authorization Server will reply with Authorization Response
+- optionally, the issuer identifier, if your
+  AS uses [Issuer Identification](https://www.rfc-editor.org/rfc/rfc9207.html).
 
 You can declare those URIs when initializing your [OAuth2Client] instance,
 or you can [use the AS discovery endpoint](#initializing-an-oauth2client-from-a-discovery-document) to initialize those
@@ -389,8 +388,8 @@ token = oauth2client.authorization_code(
 
 The
 [OAuth2AuthorizationCodeAuth](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.auth.OAuth2AuthorizationCodeAuth)
-handler takes an [OAuth2Client] and an authorization code as parameter,
-plus whatever additional keyword parameters are required by your Authorization Server:
+handler takes an [OAuth2Client] and an authorization code as parameter, plus whatever additional keyword parameters are
+required by your Authorization Server:
 
 ```python
 from requests_oauth2client import ApiClient, OAuth2AuthorizationCodeAuth, OAuth2Client
@@ -823,8 +822,7 @@ decoded if it is in JSON format.
 The [OAuth2Client] class also supports sending requests to a UserInfo Endpoint.
 To use this feature, you need to provide the UserInfo Endpoint URI when creating an instance of [OAuth2Client],
 as `userinfo_endpoint` parameter.
-The
-[userinfo()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.userinfo)
+The [userinfo()](https://guillp.github.io/requests_oauth2client/api/#requests_oauth2client.client.OAuth2Client.userinfo)
 method is then available for retrieving user information:
 
 ```python
