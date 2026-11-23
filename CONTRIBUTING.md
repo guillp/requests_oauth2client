@@ -49,6 +49,7 @@ Ready to contribute?
 Here's how to set up `requests_oauth2client` for local development.
 
 1. Fork the `requests_oauth2client` repo on GitHub.
+
 1. Clone your fork locally
 
    ```bash
@@ -56,6 +57,7 @@ Here's how to set up `requests_oauth2client` for local development.
    ```
 
 1. Ensure [uv](https://docs.astral.sh/uv/) is installed.
+
 1. Install dependencies and start your virtualenv:
 
    ```bash
